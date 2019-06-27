@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/skycoin/skywire/internal/ioutil"
-	"github.com/skycoin/skywire/pkg/cipher"
+	"github.com/skycoin/dmsg/pkg/cipher"
+	"github.com/skycoin/dmsg/pkg/ioutil"
 )
 
 func Test_isInitiatorID(t *testing.T) {

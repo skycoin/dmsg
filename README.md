@@ -1,454 +1,279 @@
-[![Build Status](https://travis-ci.com/watercompany/skywire.svg?token=QxVQj6gVZDzoFxD2YG65&branch=master)](https://travis-ci.com/watercompany/skywire)
+# dmsg
 
-# Skywire Mainnet - Public Test Phase
+Distributed messaging system.
 
-- [Skywire Mainnet - Public Test Phase](#Skywire-Mainnet---Public-Test-Phase)
-  - [Notes on this release](#Notes-on-this-release)
-  - [Architecture](#Architecture)
-  - [Build and run](#Build-and-run)
-    - [Requirements](#Requirements)
-    - [Build](#Build)
-    - [Run `skywire-node`](#Run-skywire-node)
-    - [Run `skywire-node` in docker container](#Run-skywire-node-in-docker-container)
-    - [Run `skywire-cli`](#Run-skywire-cli)
-    - [Apps](#Apps)
-    - [Transports](#Transports)
-  - [App programming API](#App-programming-API)
-  - [Testing](#Testing)
-    - [Testing with default settings](#Testing-with-default-settings)
-    - [Customization with environment variables](#Customization-with-environment-variables)
-      - [$TEST_OPTS](#TESTOPTS)
-      - [$TEST_LOGGING_LEVEL](#TESTLOGGINGLEVEL)
-      - [$SYSLOG_OPTS](#SYSLOGOPTS)
-  - [Updater](#Updater)
-  - [Running skywire in docker containers](#Running-skywire-in-docker-containers)
-    - [Run dockerized `skywire-node`](#Run-dockerized-skywire-node)
-      - [Structure of `./node`](#Structure-of-node)
-    - [Refresh and restart `SKY01`](#Refresh-and-restart-SKY01)
-    - [Customization of dockers](#Customization-of-dockers)
-      - [1. DOCKER_IMAGE](#1-DOCKERIMAGE)
-      - [2.DOCKER_NETWORK](#2DOCKERNETWORK)
-      - [3. DOCKER_NODE](#3-DOCKERNODE)
-      - [4. DOCKER_OPTS](#4-DOCKEROPTS)
-    - [Dockerized `skywire-node` recipes](#Dockerized-skywire-node-recipes)
-      - [1. Get Public Key of docker-node](#1-Get-Public-Key-of-docker-node)
-      - [2. Get an IP of node](#2-Get-an-IP-of-node)
-      - [3. Open in browser containerized `skychat` application](#3-Open-in-browser-containerized-skychat-application)
-      - [4. Create new dockerized `skywire-nodes`](#4-Create-new-dockerized-skywire-nodes)
-      - [5. Env-vars for develoment-/testing- purposes](#5-Env-vars-for-develoment-testing--purposes)
-      - [6. "Hello-Mike-Hello-Joe" test](#6-%22Hello-Mike-Hello-Joe%22-test)
+>**TODO:**
+>
+>- `ACK` frames should include the first 4 bytes of the rolling hash of incoming payloads, enforcing reliability of data. Transports should therefore keep track of incoming/outgoing rolling hashes.
+>- Transports should also be noise-encrypted. `REQUEST` and `ACCEPT` frames should include noise handshake messages (`KK` handshake pattern), and the `FWD` and `ACK` payloads are to be encrypted.
+> - Transports should implement read/write deadlines and local/remote addresses (like `net.Conn`).
+> - `dmsg.Server` should check incoming frames to disallow excessive sending of `CLOSE`, `ACCEPT` and `REQUEST` frames.
 
-## Notes on this release
+## Terminology
 
-This is a public testing version of the Skywire mainnet and is intended for developers use to find bugs only. It is not yet intended to replace the testnet and miners should not install this software on their miners or they may lose their reward eligibility. 
+- **entity -** A service of `dmsg` (typically being part of an executable running on a machine).
+- **entity type -** The type of entity. `dmsg` has three entity types; `dmsg.Server`, `dmsg.Client`, `dmsg.Discovery`.
+- **entry -** A data structure that describes an entity and is stored in `dmsg.Discovery` for entities to access.
+- **frame -** The data unit of the `dmsg` system.
+- **frame type -** The type of `dmsg` frame. There are four frame types; `REQUEST`, `ACCEPT`, `CLOSE`, `FWD`, `ACK`.
+- **connection -** The direct line of duplex communication between a `dmsg.Server` and `dmsg.Client`.
+- **transport -** A line of communication between two `dmsg.Client`s that is proxied via a `dmsg.Server`.
+- **transport ID -** A uint16 value that identifies a transport.
 
-The software is still under heavy development and the current version is intended for public testing purposes only. A GUI interface and various guides on how to use Skywire, application development on Skywire and contribution policies will follow in the near future. For now this version of the software can be used by developers to test the functionality and file bug issues to help the development. 
+## Entities
 
-## Architecture 
+The `dmsg` system is made up of three entity types:
+- `dmsg.Discovery` is a RESTful API that allows `dmsg.Client`s to find remote `dmg.Client`s and `dmsg.Server`s.
+- `dmsg.Server` proxies frames between clients.
+- `dmsg.Client` establishes transports between itself and remote `dmsg.Client`s.
 
-Skywire is a decentralized and private network. Skywire separates the data and control plane of the network and assigns the tasks of network coordination and administration to dedicated services, while the nodes follow the rules that were created by the control plane and execute them. 
-
-The core of Skywire is the Skywire node which hosts applications and is the gateway to use the network. It establishes connections, called transports, to other nodes, requests the setup of routes and forwards packets for other nodes on a route. The Skywire node exposes an API to applications for using the networking protocol of Skywire. 
-
-In order to detach control plane tasks from the network nodes, there are 3 other services that maintain a picture of the network topology, calculate routes (currently based on the number of hops, but will be extended to other metrics) and set the routing rules on the nodes. 
-
-The transport discovery maintains a picture of the network topology, by allowing Skywire nodes to advertise transports that they established with other nodes. It also allows to upload a status to indicate whether a given transport is currently working or not.
-
-On the basis of this information the route finder calculates the most efficient route in the network. Nodes request a route to a given public key and the route finder will calculate the best route and return the transports that the packet will be sent over to reach the intended node. 
-
-This information is sent from a node to the Setup Node, which sets the routing rules in all nodes along a route. Skywire nodes determine, which nodes they accept routing rules from, so only a whitelisted node can send routing rules to a node in the network. The only information the Skywire node gets for routing is a Routing ID and an associated rule that defines which transport to send a packet to (or to consume the packet). Therefore nodes along a route only know the last and next hop along the route, but not where the packet originates from and where it is sent to. Skywire supports source routing, so nodes can specify a path that a packet is supposed to take in the network. 
-
-There are currently two types of transports that nodes can use. The messaging transport is a transport between two nodes that uses an intermediary messaging server to relay packets between them. The connection to a specific node and the connection to a messaging server is facilitated by a discovery service, that allows nodes to advertise the messaging servers over which they can be contacted. This transport is used by the setup node to send routing rules and can be used for other applications as well. It allows nodes behind NATs to communicate. The second transport type is TCP, which sets up a connection between two servers with a public IP. More transport types will be supported in the future and custom transport implementations can be written for specific use cases.
-
-## Build and run
-
-### Requirements
-
-Skywire requires a version of [golang](https://golang.org/) with [go modules](https://github.com/golang/go/wiki/Modules) support.
-
-### Build
-
-```bash
-# Clone.
-$ git clone https://github.com/skycoin/skywire
-$ cd skywire
-$ git checkout mainnet
-# Build
-$ make build # installs all dependencies, build binaries and apps
-```
-
-**Note: Environment variable OPTS**
-
-Build can be customized with environment variable `OPTS` with default value `GO111MODULE=on`
-
-E.g.
-
-```bash
-$ export OPTS="GO111MODULE=on GOOS=darwin"
-$ make
-# or
-$ OPTS="GSO111MODULE=on GOOS=linux GOARCH=arm" make
-```
-
-**Install skywire-node, skywire-cli, manager-node and SSH-cli**
-
-```bash
-$ make install  # compiles and installs all binaries
-```
-
-**Generate default json config**
-
-```bash
-$ skywire-cli node gen-config
-```
-
-### Run `skywire-node`
-
-`skywire-node` hosts apps, proxies app's requests to remote nodes and exposes communication API that apps can use to implement communication protocols. App binaries are spawned by the node, communication between node and app is performed via unix pipes provided on app startup.
-
-```bash
-# Run skywire-node. It takes one argument; the path of a configuration file (`skywire-config.json` if unspecified).
-$ skywire-node skywire-config.json
-```
-
-### Run `skywire-node` in docker container
-
-```bash
-make docker-run
-```
-
-### Run `skywire-cli`
-
-The `skywire-cli` tool is used to control the `skywire-node`. Refer to the help menu for usage:
-
-```bash
-$ skywire-cli -h
-
-# Command Line Interface for skywire
-#
-# Usage:
-#   skywire-cli [command]
-#
-# Available Commands:
-#   help        Help about any command
-#   mdisc       Contains sub-commands that interact with a remote Messaging Discovery
-#   node        Contains sub-commands that interact with the local Skywire (App) Node
-#   rtfind      Queries the Route Finder for available routes between two nodes
-#   tpdisc      Queries the Transport Discovery to find transport(s) of given transport ID or edge public key
-#
-# Flags:
-#   -h, --help   help for skywire-cli
-#
-# Use "skywire-cli [command] --help" for more information about a command.
+Entities of types `dmsg.Server` or `dmsg.Client` are represented by a `secp256k1` public key.
 
 ```
+           [D]
 
-### Apps
-
-After `skywire-node` is up and running with default environment, default apps are run with the configuration specified in `skywire-config.json`. Refer to the following for usage of the default apps:
-
-- [Chat](/cmd/apps/skychat)
-- [Hello World](/cmd/apps/helloworld)
-- [The Real Proxy](/cmd/apps/therealproxy) ([Client](/cmd/apps/therealproxy-client))
-- [The Real SSH](/cmd/apps/SSH) ([Client](/cmd/apps/SSH-client))
-
-### Transports
-
-In order for a local Skywire App to communicate with an App running on a remote Skywire node, a transport to that remote Skywire node needs to be established.
-
-Transports can be established via the `skywire-cli`.
-
-```bash
-# Establish transport to `0276ad1c5e77d7945ad6343a3c36a8014f463653b3375b6e02ebeaa3a21d89e881`.
-$ skywire-cli node add-tp 0276ad1c5e77d7945ad6343a3c36a8014f463653b3375b6e02ebeaa3a21d89e881
-
-# List established transports.
-$ skywire-cli node ls-tp
+     S(1)        S(2)
+   //   \\      //   \\
+  //     \\    //     \\
+ C(A)    C(B) C(C)    C(D)
 ```
 
-## App programming API
+Legend:
+- ` [D]` - `dmsg.Discovery`
+- `S(X)` - `dmsg.Server`
+- `C(X)` - `dmsg.Client`
 
-App is a generic binary that can be executed by the node. On app
-startup node will open pair of unix pipes that will be used for
-communication between app and node. `app` packages exposes
-communication API over the pipe.
+## Connection Handshake
+
+A Connection refers to the line of communication between a `dmsg.Client` and `dmsg.Server`.
+
+To set up a `dmsg` Connection, `dmsg.Client` dials a TCP connection to the `dmsg.Server` and then they perform a handshake via the [noise protocol](http://noiseprotocol.org/) using the `XK` handshake pattern (with the `dmsg.Client` as the initiator).
+
+Note that `dmsg.Client` always initiates the `dmsg` connection, and it is a given that a `dmsg.Client` always knows the public key that identifies the `dmsg.Server` that it wishes to connect with.
+
+## Frames
+
+Frames are sent and received within a `dmsg` connection after the noise handshake. A frame has two sections; the header and the payload. Here are the fields of a frame:
+
+```
+|| FrameType | TransportID | PayloadSize || Payload ||
+|| 1 byte    | 2 bytes     | 2 bytes     || ~ bytes ||
+```
+
+- The `FrameType` specifies the frame type via the one byte.
+- The `TransportID` contains an encoded `uint16` which represents a identifier for a transport. A set of IDs are unique for a given `dmsg` connection.
+- The `PayloadSize` contains an encoded `uint16` which represents the size (in bytes) of the payload.
+- The `Payload` have a size that is obtainable via `PayloadSize`.
+
+The following is a summary of the frame types:
+
+| FrameType | Name | Payload Contents | Payload Size |
+| --- | --- | --- | --- |
+| `0x1` | `REQUEST` | initiating client's public key + responding client's public key | 66 |
+| `0x2` | `ACCEPT` | initiating client's public key + responding client's public key | 66 |
+| `0x3` | `CLOSE` | 1 byte that represents the reason for closing | 1 |
+| `0xa` | `FWD` | uint16 sequence + transport payload | >2 |
+| `0xb` | `ACK` | uint16 sequence | 2 |
+
+## Transports
+
+Transports are represented by transport IDs and facilitate duplex communication between two `dmsg.Client`s which are connected to a common `dmsg.Server`.
+
+Transport IDs are assigned in such a manner:
+- A `dmsg.Client` manages the assignment of even transport IDs between itself and each connected `dmsg.Server`. The set of transport IDs will be unique between itself and each `dmsg.Server`.
+- A `dmsg.Server` manages the assignment of odd transport IDs between itself and each connected `dmsg.Client`. The set of transport IDs will be unique between itself and each `dmsg.Client`.
+
+For a given transport:
+- Between the initiating client and the common server - the transport ID is always a even value.
+- Between the responding client and the common server - the transport ID is always a odd value.
+
+Hence, a transport in it's entirety, is represented by 2 transport IDs.
+
+### Transport Establishment
+
+1. The initiating client chooses an even transport ID and forms a `REQUEST` frame with the chosen transport ID, initiating client's public key (itself) and also the responding client's public key. The `REQUEST` frame is then sent to the common server. The transport ID chosen must be unused between the initiating client and the server.
+2. The common server receives the `REQUEST` frame and checks the contents. If valid, and the responding client exists, the server chooses an odd transport ID, swaps this original transport ID of the `REQUEST` frame with the chosen odd transport ID, and continues to forward it to the responding client. In doing this, the server records a rule relating the initiating/responding clients and the associated odd/even transport IDs.
+3. The responding client receives the `REQUEST` frame and checks the contents. If valid, the responding client sends an `ACCEPT` frame (containing the same payload as the `REQUEST`) back to the common server. The common server changes the transport ID, and forwards the `ACCEPT` to the initiating client.
+
+On any step, if an error occurs, any entity can send a `CLOSE` frame.
+
+### Acknowledgement Logic
+
+Each `FWD` frame is to be met with an `ACK` frame in order to be considered delivered.
+
+- Each `FWD` payload has a 2-byte prefix (represented by a uint16 sequence). This sequence is unique per transport.
+- The destination of the transport, after receiving the `FWD` frame, responds with an `ACK` frame with the same sequence as the payload.
+
+## `dmsg.Discovery`
+
+### Entry
+
+An entry within the `dmsg.Discovery` can either represent a `dmsg.Server` or a `dmsg.Client`. The `dmsg.Discovery` is a key-value store, in which entries (of either server or client) use their public keys as their "key".
+
+The following is the representation of an Entry in Golang.
 
 ```golang
-// Config defines configuration parameters for App
-&app.Config{AppName: "helloworld", AppVersion: "1.0", ProtocolVersion: "0.0.1"}
-// Setup setups app using default pair of pipes
-func Setup(config *Config) (*App, error) {}
+// Entry represents an entity's entry in the Discovery database.
+type Entry struct {
+    // The data structure's version.
+    Version string `json:"version"`
 
-// Accept awaits for incoming loop confirmation request from a Node and
-// returns net.Conn for a received loop.
-func (app *App) Accept() (net.Conn, error) {}
+    // A Entry of a given public key may need to iterate. This is the iteration sequence.
+    Sequence uint64 `json:"sequence"`
 
-// Addr implements net.Addr for App connections.
-&Addr{PubKey: pk, Port: 12}
-// Dial sends create loop request to a Node and returns net.Conn for created loop.
-func (app *App) Dial(raddr *Addr) (net.Conn, error) {}
+    // Timestamp of the current iteration.
+    Timestamp int64 `json:"timestamp"`
 
-// Close implements io.Closer for App.
-func (app *App) Close() error {}
+    // Public key that represents the entity.
+    Static cipher.PubKey `json:"static"`
+
+    // Contains the entity's required client meta if it's to be advertised as a Client.
+    Client *Client `json:"client,omitempty"`
+
+    // Contains the entity's required server meta if it's to be advertised as a Server.
+    Server *Server `json:"server,omitempty"`
+
+    // Signature for proving authenticity of of the Entry.
+    Signature cipher.Sig `json:"signature,omitempty"`
+}
+
+// Client contains the entity's required client meta, if it is to be advertised as a Client.
+type Client struct {
+    // DelegatedServers contains a list of delegated servers represented by their public keys.
+    DelegatedServers []cipher.PubKey `json:"delegated_servers"`
+}
+
+// Server contains the entity's required server meta, if it is to be advertised as a Messaging Server.
+type Server struct {
+    // IPv4 or IPv6 public address of the Messaging Server.
+    Address string `json:"address"`
+
+    // Number of connections still available.
+    AvailableConnections int `json:"available_connections"`
+}
 ```
 
-## Testing
+**Definition rules:**
 
-### Testing with default settings
+- A record **MUST** have either a "Server" field, a "Client" field, or both "Server" and "Client" fields. In other words, a Messaging Node can be a Messaging Server Node, a Messaging Client Node, or both a Messaging Server Node and a Messaging Client Node.
 
-```bash
-$ make test
-```
+**Iteration rules:**
 
-### Customization with environment variables
+- The first entry submitted of a given static public key, needs to have a "Sequence" value of `0`. Any future entries (of the same static public key) need to have a "Sequence" value of `{previous_sequence} + 1`.
+- The "Timestamp" field of an entry, must be of a higher value than the "Timestamp" value of the previous entry.
 
-#### $TEST_OPTS
+**Signature Rules:**
 
-Options for `go test` could be customized with $TEST_OPTS variable
+The "Signature" field authenticates the entry. This is the process of generating a signature of the entry:
 
-E.g.
-```bash
-$ export TEST_OPTS="-race -tags no_ci -timeout 90s -v"
-$ make test
-```
+1. Obtain a JSON representation of the Entry, in which:
+   1. There is no whitespace (no ` ` or `\n` characters).
+   2. The `"signature"` field is non-existent.
+2. Hash this JSON representation, ensuring the above rules.
+3. Create a Signature of the hash using the node's static secret key.
 
-#### $TEST_LOGGING_LEVEL
+The process of verifying an entry's signature will be similar.
 
-By default all log messages during tests are disabled.
-In case of need to turn on log messages it could be achieved by setting $TEST_LOGGING_LEVEL variable
+### Endpoints
 
-Possible values:
-- "debug"
-- "info", "notice"
-- "warn", "warning"
-- "error"
-- "fatal", "critical"
-- "panic"
+Only 3 endpoints need to be defined; Get Entry, Post Entry, and Get Available Servers.
 
-E.g.
-```bash 
-$ export TEST_LOGGING_LEVEL="info"
-$ go clean -testcache || go test ./pkg/transport -v -run ExampleManager_CreateTransport
-$ unset TEST_LOGGING_LEVEL
-$ go clean -testcache || go test ./pkg/transport -v
-```
+#### GET Entry
 
-#### $SYSLOG_OPTS
+Obtains a messaging node's entry.
 
-In case of need to collect logs in syslog during integration tests $SYSLOG_OPTS variable can be used.
+> `GET {domain}/discovery/entries/{public_key}`
 
-E.g.
-```bash
-$ make run_syslog ## run syslog-ng in docker container with logs mounted to /tmp/syslog
-$ export SYSLOG_OPTS='--syslog localhost:514'
-$ make integration-run-messaging ## or other integration-run-* goal
-$ sudo cat /tmp/syslog/messages ## collected logs from NodeA, NodeB, NodeC instances
-```
+**REQUEST**
 
-## Updater
-
-This software comes with an updater, which is located in this repo: https://github.com/skycoin/skywire-updater. Follow the instructions in the README.md for further information. It can be used with a CLI for now and will be usable with the manager interface.
-
-## Running skywire in docker containers
-
-There are two make goals for running in development environment dockerized `skywire-node`.
-
-### Run dockerized `skywire-node`
-
-```bash
-$ make docker-run
-```
-
-This will:
-
-- create docker image `skywire-runner` for running `skywire-node`
-- create docker network `SKYNET` (can be customized)
-- create docker volume ./node with linux binaries and apps
-- create container  `SKY01` and starts it (can be customized)
-
-#### Structure of `./node`
+Header:
 
 ```
-./node
-├── apps                            # node `apps` compiled with DOCKER_OPTS
-│   ├── skychat.v1.0                   #
-│   ├── helloworld.v1.0             #
-│   ├── socksproxy-client.v1.0    #
-│   ├── socksproxy.v1.0           #
-│   ├── SSH-client.v1.0      #
-│   └── SSH.v1.0             #
-├── local                           # **Created inside docker**
-│   ├── skychat                        #  according to "local_path" in skywire-config.json
-│   ├── socksproxy                #
-│   └── SSH                  #
-├── PK                              # contains public key of node
-├── skywire                         # db & logs. **Created inside docker**
-│   ├── routing.db                  #
-│   └── transport_logs              #
-├── skywire-config.json                    # config of node
-└── skywire-node                    # `skywire-node binary` compiled with DOCKER_OPTS
+Accept: application/json
 ```
 
-Directory `./node` is mounted as docker volume for `skywire-node` container.
+**RESPONSE**
 
-Inside docker container it is mounted on `/sky`
+Possible Status Codes:
 
-Structure of `./node` partially replicates structure of project root directory.
+- Success (200) - Successfully updated record.
 
-Note that files created inside docker container has ownership `root:root`, 
-so in case you want to `rm -rf ./node` (or other file operations) - you will need `sudo` it.
+  - Header:
 
-Look at "Recipes: Creating new dockerized node" for further details.
+    ```
+    Content-Type: application/json
+    ```
 
-### Refresh and restart `SKY01`
+  - Body:
 
-```bash
-$ make refresh-node
+    > JSON-encoded entry.
+
+- Not Found (404) - Entry of public key is not found.
+
+- Unauthorized (401) - invalid signature.
+
+- Internal Server Error (500) - something unexpected happened.
+
+#### POST Entry
+
+Posts an entry and replaces the current entry if valid.
+
+> `POST {domain}/discovery/entries`
+
+**REQUEST**
+
+Header:
+
+```
+Content-Type: application/json
 ```
 
-This will:
+Body:
 
- - stops running node
- - recompiles `skywire-node` for container
- - start node again
+> JSON-encoded, signed Entry.
 
-### Customization of dockers
+**RESPONSE**
 
-#### 1. DOCKER_IMAGE
+Possible Response Codes:
 
-Docker image for running `skywire-node`.
+- Success (200) - Successfully registered record.
+- Unauthorized (401) - invalid signature.
+- Internal Server Error (500) - something unexpected happened.
 
-Default value: `skywire-runner` (built with `make docker-image`)
+#### GET Available Servers
 
-Other images can be used.
-E.g.
+Obtains a subset of available server entries.
 
-```bash
-DOCKER_IMAGE=golang make docker-run #buildpack-deps:stretch-scm is OK too
+> `GET {domain}/discovery/available_servers`
+
+**REQUEST**
+
+Header:
+
+```
+Accept: application/json
 ```
 
-#### 2.DOCKER_NETWORK
+**RESPONSE**
 
-Name of virtual network for `skywire-node`
+Possible Status Codes:
 
-Default value: SKYNET
+- Success (200) - Got results.
 
-#### 3. DOCKER_NODE
+  - Header:
 
-Name of container for `skywire-node`
+    ```
+    Content-Type: application/json
+    ```
 
-Default value: SKY01
+  - Body:
 
-#### 4. DOCKER_OPTS
+    > JSON-encoded `[]Entry`.
 
-`go build` options for binaries and apps in container.
+- Not Found (404) - No results.
 
-Default value: "GO111MODULE=on GOOS=linux"
+- Forbidden (403) - When access is forbidden.
 
-### Dockerized `skywire-node` recipes
+- Internal Server Error (500) - Something unexpected happened.
 
-#### 1. Get Public Key of docker-node
 
-```bash
-$ cat ./node/skywire-config.json|grep static_public_key |cut -d ':' -f2 |tr -d '"'','' '
-# 029be6fa68c13e9222553035cc1636d98fb36a888aa569d9ce8aa58caa2c651b45
-```
-
-#### 2. Get an IP of node
-
-```bash
-$ docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' SKY01
-# 192.168.112
-```
-
-#### 3. Open in browser containerized `skychat` application
-
-```bash
-$ firefox http://$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' SKY01):8000  
-```
-
-#### 4. Create new dockerized `skywire-nodes`
-
-In case you need more dockerized nodes or maybe it's needed to customize node
-let's look how to create new node.
-
-```bash
-# 1. We need a folder for docker volume
-$ mkdir /tmp/SKYNODE
-# 2. compile  `skywire-node`
-$ GO111MODULE=on GOOS=linux go build -o /tmp/SKYNODE/skywire-node ./cmd/skywire-node
-# 3. compile apps
-$ GO111MODULE=on GOOS=linux go build -o /tmp/SKYNODE/apps/skychat.v1.0 ./cmd/apps/skychat
-$ GO111MODULE=on GOOS=linux go build -o /tmp/SKYNODE/apps/helloworld.v1.0 ./cmd/apps/helloworld
-$ GO111MODULE=on GOOS=linux go build -o /tmp/SKYNODE/apps/socksproxy.v1.0 ./cmd/apps/therealproxy
-$ GO111MODULE=on GOOS=linux go build -o /tmp/SKYNODE/apps/SSH.v1.0  ./cmd/apps/SSH
-$ GO111MODULE=on GOOS=linux go build -o /tmp/SKYNODE/apps/SSH-client.v1.0  ./cmd/apps/SSH-client
-# 4. Create skywire-config.json for node
-$ skywire-cli node gen-config -o /tmp/SKYNODE/skywire-config.json
-# 2019/03/15 16:43:49 Done!
-$ tree /tmp/SKYNODE
-# /tmp/SKYNODE
-# ├── apps
-# │   ├── skychat.v1.0
-# │   ├── helloworld.v1.0
-# │   ├── socksproxy.v1.0
-# │   ├── SSH-client.v1.0
-# │   └── SSH.v1.0
-# ├── skywire-config.json
-# └── skywire-node
-# So far so good. We prepared docker volume. Now we can:
-$ docker run -it -v /tmp/SKYNODE:/sky --network=SKYNET --name=SKYNODE skywire-runner bash -c "cd /sky && ./skywire-node"
-# [2019-03-15T13:55:08Z] INFO [messenger]: Opened new link with the server # 02a49bc0aa1b5b78f638e9189be4ed095bac5d6839c828465a8350f80ac07629c0
-# [2019-03-15T13:55:08Z] INFO [messenger]: Updating discovery entry
-# [2019-03-15T13:55:10Z] INFO [skywire]: Connected to messaging servers
-# [2019-03-15T13:55:10Z] INFO [skywire]: Starting skychat.v1.0
-# [2019-03-15T13:55:10Z] INFO [skywire]: Starting RPC interface on 127.0.0.1:3435
-# [2019-03-15T13:55:10Z] INFO [skywire]: Starting socksproxy.v1.0
-# [2019-03-15T13:55:10Z] INFO [skywire]: Starting SSH.v1.0
-# [2019-03-15T13:55:10Z] INFO [skywire]: Starting packet router
-# [2019-03-15T13:55:10Z] INFO [router]: Starting router
-# [2019-03-15T13:55:10Z] INFO [trmanager]: Starting transport manager
-# [2019-03-15T13:55:10Z] INFO [router]: Got new App request with type Init: {"app-name":"skychat",# "app-version":"1.0","protocol-version":"0.0.1"}
-# [2019-03-15T13:55:10Z] INFO [router]: Handshaked new connection with the app skychat.v1.0
-# [2019-03-15T13:55:10Z] INFO [skychat.v1.0]: 2019/03/15 13:55:10 Serving HTTP on :8000
-# [2019-03-15T13:55:10Z] INFO [router]: Got new App request with type Init: {"app-name":"SSH",# "app-version":"1.0","protocol-version":"0.0.1"}
-# [2019-03-15T13:55:10Z] INFO [router]: Handshaked new connection with the app SSH.v1.0
-# [2019-03-15T13:55:10Z] INFO [router]: Got new App request with type Init: {"app-name":"socksproxy",# "app-version":"1.0","protocol-version":"0.0.1"}
-# [2019-03-15T13:55:10Z] INFO [router]: Handshaked new connection with the app socksproxy.v1.0
-```
-
-Note that in this example docker is running in non-detached mode - it could be useful in some scenarios.
-
-Instead of skywire-runner you can use:
-
-- `golang`, `buildpack-deps:stretch-scm` "as is"
-- and `debian`, `ubuntu` - after `apt-get install ca-certificates` in them. Look in `skywire-runner.Dockerfile` for example
-
-#### 5. Env-vars for develoment-/testing- purposes
-
-```bash
-export SW_NODE_A=127.0.0.1
-export SW_NODE_A_PK=$(cat ./skywire-config.json|grep static_public_key |cut -d ':' -f2 |tr -d '"'','' ')
-export SW_NODE_B=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' SKY01)
-export SW_NODE_B_PK=$(cat ./node/skywire-config.json|grep static_public_key |cut -d ':' -f2 |tr -d '"'','' ')
-```
-
-#### 6. "Hello-Mike-Hello-Joe" test
-
-Idea of test from Erlang classics: https://youtu.be/uKfKtXYLG78?t=120
-
-```bash
-# Setup: run skywire-nodes on host and in docker
-$ make run
-$ make docker-run
-# Open in browser skychat application
-$ firefox http://$SW_NODE_B:8000  &
-# add transport
-$ ./skywire-cli add-transport $SW_NODE_B_PK
-# "Hello Mike!" - "Hello Joe!" - "System is working!"
-$ curl --data  {'"recipient":"'$SW_NODE_A_PK'", "message":"Hello Mike!"}' -X POST  http://$SW_NODE_B:8000/message
-$ curl --data  {'"recipient":"'$SW_NODE_B_PK'", "message":"Hello Joe!"}' -X POST  http://$SW_NODE_A:8000/message
-$ curl --data  {'"recipient":"'$SW_NODE_A_PK'", "message":"System is working!"}' -X POST  http://$SW_NODE_B:8000/message
-# Teardown
-$ make stop && make docker-stop
-```

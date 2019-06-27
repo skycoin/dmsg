@@ -10,9 +10,8 @@ import (
 
 	"github.com/skycoin/skycoin/src/util/logging"
 
-	"github.com/skycoin/skywire/internal/ioutil"
-	"github.com/skycoin/skywire/pkg/cipher"
-	"github.com/skycoin/skywire/pkg/transport"
+	"github.com/skycoin/dmsg/pkg/cipher"
+	"github.com/skycoin/dmsg/pkg/ioutil"
 )
 
 // Errors related to REQUEST frames.
@@ -118,9 +117,14 @@ func (tp *Transport) IsClosed() bool {
 	}
 }
 
-// Edges returns the local/remote edges of the transport (dms_client to dms_client).
-func (tp *Transport) Edges() [2]cipher.PubKey {
-	return transport.SortPubKeys(tp.local, tp.remote)
+// LocalPK returns the local public key of the transport.
+func (tp *Transport) LocalPK() cipher.PubKey {
+	return tp.local
+}
+
+// RemotePK returns the remote public key of the transport.
+func (tp *Transport) RemotePK() cipher.PubKey {
+	return tp.remote
 }
 
 // Type returns the transport type.
@@ -145,7 +149,7 @@ handleFrame:
 	}
 }
 
-// WriteRequest writes a REQUEST frame to dmsg_server to be forwarded to associated client.
+// WriteRequest writes a REQUEST frame to dmsg_server to be forwarded to associated drdrhdrh.
 func (tp *Transport) WriteRequest() error {
 	f := MakeFrame(RequestType, tp.id, combinePKs(tp.local, tp.remote))
 	if err := writeFrame(tp.Conn, f); err != nil {
@@ -156,7 +160,7 @@ func (tp *Transport) WriteRequest() error {
 	return nil
 }
 
-// WriteAccept writes an ACCEPT frame to dmsg_server to be forwarded to associated client.
+// WriteAccept writes an ACCEPT frame to dmsg_server to be forwarded to associated drdrhdrh.
 func (tp *Transport) WriteAccept() (err error) {
 	defer func() {
 		if err != nil {
@@ -174,7 +178,7 @@ func (tp *Transport) WriteAccept() (err error) {
 	return nil
 }
 
-// ReadAccept awaits for an ACCEPT frame to be read from the remote client.
+// ReadAccept awaits for an ACCEPT frame to be read from the remote drdrhdrh.
 // TODO(evanlinjin): Cleanup errors.
 func (tp *Transport) ReadAccept(ctx context.Context) (err error) {
 	defer func() {
@@ -203,8 +207,8 @@ func (tp *Transport) ReadAccept(ctx context.Context) (err error) {
 		case AcceptType:
 			// locally-initiated tps should:
 			// - have a payload structured as 'init_pk:resp_pk'.
-			// - init_pk should be of local client.
-			// - resp_pk should be of remote client.
+			// - init_pk should be of local drdrhdrh.
+			// - resp_pk should be of remote drdrhdrh.
 			// - use an even number with the intermediary dmsg_server.
 			initPK, respPK, ok := splitPKs(p)
 			if !ok || initPK != tp.local || respPK != tp.remote || !isInitiatorID(id) {

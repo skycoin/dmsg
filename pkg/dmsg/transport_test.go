@@ -6,7 +6,7 @@ import (
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/skycoin/skywire/pkg/cipher"
+	"github.com/skycoin/dmsg/pkg/cipher"
 )
 
 func TestNewTransport(t *testing.T) {

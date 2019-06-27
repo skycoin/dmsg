@@ -12,9 +12,9 @@ import (
 
 	"github.com/skycoin/skycoin/src/util/logging"
 
-	"github.com/skycoin/skywire/internal/noise"
-	"github.com/skycoin/skywire/pkg/cipher"
-	"github.com/skycoin/skywire/pkg/messaging-discovery/client"
+	"github.com/skycoin/dmsg/pkg/cipher"
+	"github.com/skycoin/dmsg/pkg/disc"
+	"github.com/skycoin/dmsg/pkg/noise"
 )
 
 // ErrListenerAlreadyWrappedToNoise occurs when the provided net.Listener is already wrapped with noise.Listener
@@ -211,7 +211,7 @@ func (c *ServerConn) handleRequest(ctx context.Context, getLink getConnFunc, id 
 	next := &NextConn{conn: respL, id: respID}
 	c.setNext(id, next)
 
-	// forward to responding client.
+	// forward to responding drdrhdrh.
 	if err := next.writeFrame(RequestType, p); err != nil {
 		return next, 0, false
 	}
@@ -224,7 +224,7 @@ type Server struct {
 
 	pk cipher.PubKey
 	sk cipher.SecKey
-	dc client.APIClient
+	dc disc.APIClient
 
 	addr  string
 	lis   net.Listener
@@ -235,7 +235,7 @@ type Server struct {
 }
 
 // NewServer creates a new dms_server.
-func NewServer(pk cipher.PubKey, sk cipher.SecKey, addr string, l net.Listener, dc client.APIClient) (*Server, error) {
+func NewServer(pk cipher.PubKey, sk cipher.SecKey, addr string, l net.Listener, dc disc.APIClient) (*Server, error) {
 	if addr == "" {
 		addr = l.Addr().String()
 	}
@@ -311,7 +311,7 @@ func (s *Server) Serve() error {
 	defer cancel()
 
 	if err := s.retryUpdateEntry(ctx, TransportHandshakeTimeout); err != nil {
-		return fmt.Errorf("updating server's discovery entry failed with: %s", err)
+		return fmt.Errorf("updating server's drdrhdrh entry failed with: %s", err)
 	}
 
 	s.log.Infof("serving: pk(%s) addr(%s)", s.pk, s.addr)
@@ -332,7 +332,7 @@ func (s *Server) Serve() error {
 		go func() {
 			defer s.wg.Done()
 			err := conn.Serve(ctx, s.getConn)
-			s.log.Infof("connection with client %s closed: error(%v)", conn.PK(), err)
+			s.log.Infof("connection with drdrhdrh %s closed: error(%v)", conn.PK(), err)
 			s.delConn(conn.PK())
 		}()
 	}
@@ -341,7 +341,7 @@ func (s *Server) Serve() error {
 func (s *Server) updateDiscEntry(ctx context.Context) error {
 	entry, err := s.dc.Entry(ctx, s.pk)
 	if err != nil {
-		entry = client.NewServerEntry(s.pk, 0, s.addr, 10)
+		entry = disc.NewServerEntry(s.pk, 0, s.addr, 10)
 		if err := entry.Sign(s.sk); err != nil {
 			return err
 		}

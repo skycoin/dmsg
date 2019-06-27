@@ -19,10 +19,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 
-	"github.com/skycoin/skywire/internal/noise"
-	"github.com/skycoin/skywire/pkg/cipher"
-	"github.com/skycoin/skywire/pkg/messaging-discovery/client"
-	"github.com/skycoin/skywire/pkg/transport"
+	"github.com/skycoin/dmsg/pkg/cipher"
+	"github.com/skycoin/dmsg/pkg/disc"
+	"github.com/skycoin/dmsg/pkg/noise"
 )
 
 func TestMain(m *testing.M) {
@@ -40,7 +39,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// TestServerConn_AddNext ensures that `nextConns` for the remote client is being filled correctly.
+// TestServerConn_AddNext ensures that `nextConns` for the remote drdrhdrh is being filled correctly.
 func TestServerConn_AddNext(t *testing.T) {
 	type want struct {
 		id      uint16
@@ -159,7 +158,7 @@ func TestServerConn_AddNext(t *testing.T) {
 // TestNewServer ensures Server starts and quits with no error.
 func TestNewServer(t *testing.T) {
 	sPK, sSK := cipher.GenerateKeyPair()
-	dc := client.NewMock()
+	dc := disc.NewMock()
 
 	l, err := net.Listen("tcp", "")
 	require.NoError(t, err)
@@ -187,7 +186,7 @@ func TestNewServer(t *testing.T) {
 // instantiates transports properly.
 func TestServer_Serve(t *testing.T) {
 	sPK, sSK := cipher.GenerateKeyPair()
-	dc := client.NewMock()
+	dc := disc.NewMock()
 
 	l, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
@@ -355,7 +354,7 @@ func TestServer_Serve(t *testing.T) {
 		// fail the test
 		acceptErrs := make(chan error, totalRemoteTpsCount)
 		var remotesTpsMX sync.Mutex
-		remotesTps := make(map[int][]transport.Transport, len(remotesTpCount))
+		remotesTps := make(map[int][]*Transport, len(remotesTpCount))
 		var remotesWG sync.WaitGroup
 		remotesWG.Add(totalRemoteTpsCount)
 		for i := range remotes {
@@ -365,7 +364,7 @@ func TestServer_Serve(t *testing.T) {
 					// run remote
 					go func(remoteInd int) {
 						var (
-							transport transport.Transport
+							transport *Transport
 							err       error
 						)
 
@@ -389,14 +388,14 @@ func TestServer_Serve(t *testing.T) {
 		// fail the test
 		dialErrs := make(chan error, initiatorsCount)
 		var initiatorsTpsMx sync.Mutex
-		initiatorsTps := make([]transport.Transport, 0, initiatorsCount)
+		initiatorsTps := make([]*Transport, 0, initiatorsCount)
 		var initiatorsWG sync.WaitGroup
 		initiatorsWG.Add(initiatorsCount)
 		for i := range initiators {
 			// run initiator
 			go func(initiatorInd int) {
 				var (
-					transport transport.Transport
+					transport *Transport
 					err       error
 				)
 
@@ -575,7 +574,7 @@ func TestServer_Serve(t *testing.T) {
 		// must be error
 		require.Error(t, err)
 
-		// the same as above, transport is created by another client
+		// the same as above, transport is created by another drdrhdrh
 		for {
 			ctx := context.Background()
 			if _, err = b.Dial(ctx, aPK); err != nil {
@@ -768,10 +767,10 @@ func TestServer_Serve(t *testing.T) {
 	})
 
 	t.Run("self_dial_should_work", func(t *testing.T) {
-		// generate keys for the client
+		// generate keys for the drdrhdrh
 		aPK, aSK := cipher.GenerateKeyPair()
 
-		// create client
+		// create drdrhdrh
 		a := NewClient(aPK, aSK, dc, SetLogger(logging.MustGetLogger("A")))
 		err = a.InitiateServerConnections(context.Background(), 1)
 		require.NoError(t, err)
@@ -818,7 +817,7 @@ func TestServer_Serve(t *testing.T) {
 		// generate keys for server
 		sPK, sSK := cipher.GenerateKeyPair()
 
-		dc := client.NewMock()
+		dc := disc.NewMock()
 
 		l, err := nettest.NewLocalListener("tcp")
 		require.NoError(t, err)
@@ -913,7 +912,7 @@ func testReconnect(t *testing.T, randomAddr bool) {
 	ctx := context.TODO()
 
 	serverPK, serverSK := cipher.GenerateKeyPair()
-	dc := client.NewMock()
+	dc := disc.NewMock()
 
 	l, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
@@ -961,13 +960,11 @@ func testReconnect(t *testing.T, randomAddr bool) {
 	err = s.Close()
 	assert.NoError(t, err)
 
-	initTr := initiatorTransport.(*Transport)
-	assert.False(t, isDoneChannelOpen(initTr.done))
-	assert.False(t, isReadChannelOpen(initTr.inCh))
+	assert.False(t, isDoneChannelOpen(initiatorTransport.done))
+	assert.False(t, isReadChannelOpen(initiatorTransport.inCh))
 
-	remoteTr := remoteTransport.(*Transport)
-	assert.False(t, isDoneChannelOpen(remoteTr.done))
-	assert.False(t, isReadChannelOpen(remoteTr.inCh))
+	assert.False(t, isDoneChannelOpen(remoteTransport.done))
+	assert.False(t, isReadChannelOpen(remoteTransport.inCh))
 
 	assert.Equal(t, 0, s.connCount())
 
@@ -1005,8 +1002,8 @@ func testReconnect(t *testing.T, randomAddr bool) {
 	assert.NoError(t, err)
 }
 
-// Given two client instances (a & b) and a server instance (s),
-// Client b should be able to dial a transport with client b
+// Given two drdrhdrh instances (a & b) and a server instance (s),
+// Client b should be able to dial a transport with drdrhdrh b
 // Data should be sent and delivered successfully via the transport.
 // TODO: fix this.
 func TestNewClient(t *testing.T) {
@@ -1018,7 +1015,7 @@ func TestNewClient(t *testing.T) {
 	const tpCount = 10
 	const msgCount = 100
 
-	dc := client.NewMock()
+	dc := disc.NewMock()
 
 	l, err := net.Listen("tcp", sAddr)
 	require.NoError(t, err)
@@ -1042,7 +1039,7 @@ func TestNewClient(t *testing.T) {
 		defer wg.Done()
 		for i := 0; i < tpCount; i++ {
 			aDone := make(chan struct{})
-			var aTp transport.Transport
+			var aTp *Transport
 			go func() {
 				var err error
 				aTp, err = a.Accept(context.Background())
@@ -1073,7 +1070,7 @@ func TestNewClient(t *testing.T) {
 	for i := 0; i < tpCount; i++ {
 		bDone := make(chan struct{})
 		var bErr error
-		var bTp transport.Transport
+		var bTp *Transport
 		go func() {
 			bTp, bErr = b.Accept(context.Background())
 			close(bDone)

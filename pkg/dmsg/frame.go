@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/skycoin/skywire/internal/ioutil"
+	"github.com/skycoin/dmsg/pkg/ioutil"
 
-	"github.com/skycoin/skywire/pkg/cipher"
+	"github.com/skycoin/dmsg/pkg/cipher"
 )
 
 const (
