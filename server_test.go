@@ -907,6 +907,10 @@ func TestServer_Serve(t *testing.T) {
 	})
 }
 
+// Create a server, initiator, responder and transport between them then check if clients are connected to the server.
+// Stop the server, then check if no client is connected and if transport is closed.
+// Start the server again, check if clients reconnected and if `Dial()` and `Accept()` still work.
+// Second argument indicates if the server restarts not on the same address, but on the random one.
 func testReconnect(t *testing.T, randomAddr bool) {
 	const smallDelay = time.Second * 5
 	ctx := context.TODO()
