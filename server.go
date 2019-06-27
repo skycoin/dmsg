@@ -232,6 +232,9 @@ type Server struct {
 	mx    sync.RWMutex
 
 	wg sync.WaitGroup
+
+	done   chan struct{}
+	doneMx sync.Mutex
 }
 
 // NewServer creates a new dms_server.
@@ -252,6 +255,7 @@ func NewServer(pk cipher.PubKey, sk cipher.SecKey, addr string, l net.Listener, 
 		lis:   noise.WrapListener(l, pk, sk, false, noise.HandshakeXK),
 		dc:    dc,
 		conns: make(map[cipher.PubKey]*ServerConn),
+		done:  make(chan struct{}),
 	}, nil
 }
 
@@ -293,6 +297,12 @@ func (s *Server) connCount() int {
 
 // Close closes the dms_server.
 func (s *Server) Close() (err error) {
+	s.doneMx.Lock()
+	defer func() {
+		close(s.done)
+		s.doneMx.Unlock()
+	}()
+
 	if err = s.lis.Close(); err != nil {
 		return err
 	}
@@ -303,6 +313,16 @@ func (s *Server) Close() (err error) {
 
 	s.wg.Wait()
 	return nil
+}
+
+// IsClosed returns whether dmsg_server is closed.
+func (s *Server) IsClosed() bool {
+	select {
+	case <-s.done:
+		return true
+	default:
+		return false
+	}
 }
 
 // Serve serves the dmsg_server.
