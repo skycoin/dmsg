@@ -339,6 +339,11 @@ func (s *Server) Serve() error {
 	for {
 		rawConn, err := s.lis.Accept()
 		if err != nil {
+			// if the server is closed, it means that this error is not interesting
+			// for the outer client
+			if s.IsClosed() {
+				return nil
+			}
 			if err == io.ErrUnexpectedEOF {
 				continue
 			}
