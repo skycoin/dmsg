@@ -12,11 +12,11 @@ lint: ## Run linters. Use make install-linters first
 	${OPTS} go vet -all ./...
 
 vendorcheck:  ## Run vendorcheck
-	GO111MODULE=off vendorcheck ./pkg/...
+	GO111MODULE=off vendorcheck ./...
 
 test: ## Run tests
 	-go clean -testcache &>/dev/null
-	${OPTS} go test ${TEST_OPTS} ./pkg/...
+	${OPTS} go test ${TEST_OPTS} ./...
 
 install-linters: ## Install linters
 	- VERSION=1.17.1 ./ci_scripts/install-golangci-lint.sh 
@@ -27,7 +27,7 @@ install-linters: ## Install linters
 	${OPTS} go get -u golang.org/x/tools/cmd/goimports
 
 format: ## Formats the code. Must have goimports installed (use make install-linters).
-	${OPTS} goimports -w -local github.com/skycoin/skywire ./pkg
+	${OPTS} goimports -w -local github.com/skycoin/dmsg ./...
 
 dep: ## Sorts dependencies
 	${OPTS} go mod vendor -v
