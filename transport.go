@@ -22,7 +22,6 @@ var (
 )
 
 // Transport represents a connection from dmsg.Client to remote dmsg.Client (via dmsg.Server intermediary).
-// It implements transport.Transport
 type Transport struct {
 	net.Conn // underlying connection to dmsg.Server
 	log      *logging.Logger
@@ -78,6 +77,11 @@ func (tp *Transport) serve() (started bool) {
 	return started
 }
 
+// Regarding the use of mutexes:
+// 1. `done` is always closed before `inCh`/`bufCh` is closed.
+// 2. mutexes protect `inCh`/`bufCh` to ensure that closing and writing to these chans does not happen concurrently.
+// 3. Our worry now, is writing to `inCh`/`bufCh` AFTER they have been closed.
+// 4. But as, under the mutexes protecting `inCh`/`bufCh`, checking `done` comes first, and we know that `done` is closed before `inCh`/`bufCh`, we can gurantee that it avoids writing to closed chan.
 func (tp *Transport) close() (closed bool) {
 	tp.doneOnce.Do(func() {
 		closed = true
@@ -136,16 +140,15 @@ func (tp *Transport) Type() string {
 func (tp *Transport) HandleFrame(f Frame) error {
 	tp.inMx.Lock()
 	defer tp.inMx.Unlock()
-
-handleFrame:
-	if tp.IsClosed() {
-		return io.ErrClosedPipe
-	}
-	select {
-	case tp.inCh <- f:
-		return nil
-	default:
-		goto handleFrame
+	for {
+		if tp.IsClosed() {
+			return io.ErrClosedPipe
+		}
+		select {
+		case tp.inCh <- f:
+			return nil
+		default:
+		}
 	}
 }
 
