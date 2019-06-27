@@ -172,14 +172,24 @@ func TestNewServer(t *testing.T) {
 		assert.Nil(t, s)
 	})
 
-	s, err := NewServer(sPK, sSK, "", l, dc)
-	require.NoError(t, err)
+	t.Run("should_start_and_stop_okay", func(t *testing.T) {
+		s, err := NewServer(sPK, sSK, "", l, dc)
+		require.NoError(t, err)
 
-	go s.Serve() //nolint:errcheck
+		var serveErr error
+		serveDone := make(chan struct{})
+		go func() {
+			serveErr = s.Serve()
+			close(serveDone)
+		}()
 
-	time.Sleep(time.Second)
+		time.Sleep(time.Second)
 
-	assert.NoError(t, s.Close())
+		require.NoError(t, s.Close())
+
+		<-serveDone
+		require.NoError(t, serveErr)
+	})
 }
 
 // TestServer_Serve ensures that Server processes request frames and
