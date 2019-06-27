@@ -2,7 +2,6 @@ package dmsg
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -39,7 +38,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// TestServerConn_AddNext ensures that `nextConns` for the remote drdrhdrh is being filled correctly.
+// TestServerConn_AddNext ensures that `nextConns` for the remote client is being filled correctly.
 func TestServerConn_AddNext(t *testing.T) {
 	type want struct {
 		id      uint16
@@ -146,12 +145,12 @@ func TestServerConn_AddNext(t *testing.T) {
 
 	for i := uint16(1); i < uint16(connsCount*2); i += 2 {
 		_, ok := serverConn.getNext(i)
-		require.Equal(t, true, ok)
+		require.True(t, ok)
 	}
 
 	for i := uint16(connsCount*2 + 1); i != 1; i += 2 {
 		_, ok := serverConn.getNext(i)
-		require.Equal(t, false, ok)
+		require.False(t, ok)
 	}
 }
 
@@ -165,21 +164,21 @@ func TestNewServer(t *testing.T) {
 
 	// When calling 'NewServer', if the provided net.Listener is already a noise.Listener,
 	// An error should be returned.
-	t.Run("fail_on_wrapped_listener", func(t *testing.T) {
+	t.Run("Already wrapped listener fails", func(t *testing.T) {
 		wrappedL := noise.WrapListener(l, sPK, sSK, false, noise.HandshakeXK)
 		s, err := NewServer(sPK, sSK, "", wrappedL, dc)
 		assert.Equal(t, ErrListenerAlreadyWrappedToNoise, err)
 		assert.Nil(t, s)
 	})
 
-	s, err := NewServer(sPK, sSK, "", l, dc)
+	srv, err := NewServer(sPK, sSK, "", l, dc)
 	require.NoError(t, err)
 
-	go s.Serve() //nolint:errcheck
+	go srv.Serve() //nolint:errcheck
 
 	time.Sleep(time.Second)
 
-	assert.NoError(t, s.Close())
+	assert.NoError(t, srv.Close())
 }
 
 // TestServer_Serve ensures that Server processes request frames and
@@ -191,136 +190,98 @@ func TestServer_Serve(t *testing.T) {
 	l, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
 
-	s, err := NewServer(sPK, sSK, "", l, dc)
+	srv, err := NewServer(sPK, sSK, "", l, dc)
 	require.NoError(t, err)
 
-	go s.Serve() //nolint:errcheck
+	go srv.Serve() //nolint:errcheck
 
 	// connect two clients, establish transport, check if there are
 	// two ServerConn's and that both conn's `nextConn` is filled correctly
-	t.Run("test transport establishment", func(t *testing.T) {
-		aPK, aSK := cipher.GenerateKeyPair()
-		bPK, bSK := cipher.GenerateKeyPair()
+	t.Run("Transport establishes", func(t *testing.T) {
+		responder := createClient(t, dc, "responder")
+		initiator := createClient(t, dc, "initiator")
 
-		a := NewClient(aPK, aSK, dc, SetLogger(logging.MustGetLogger("A")))
-		err := a.InitiateServerConnections(context.Background(), 1)
+		initiatorTransport, err := initiator.Dial(context.Background(), responder.pk)
 		require.NoError(t, err)
 
-		b := NewClient(bPK, bSK, dc, SetLogger(logging.MustGetLogger("B")))
-		err = b.InitiateServerConnections(context.Background(), 1)
-		require.NoError(t, err)
-
-		bTransport, err := b.Dial(context.Background(), aPK)
-		require.NoError(t, err)
-
-		aTransport, err := a.Accept(context.Background())
+		responderTransport, err := responder.Accept(context.Background())
 		require.NoError(t, err)
 
 		// must be 2 ServerConn's
-		require.Equal(t, 2, s.connCount())
+		checkConnCount(t, srv, 2, noDelay)
 
 		// must have ServerConn for A
-		aServerConn, ok := s.getConn(aPK)
-		require.Equal(t, true, ok)
-		require.Equal(t, aPK, aServerConn.PK())
+		responderServerConn, ok := srv.getConn(responder.pk)
+		require.True(t, ok)
+		require.Equal(t, responder.pk, responderServerConn.PK())
 
 		// must have ServerConn for B
-		bServerConn, ok := s.getConn(bPK)
-		require.Equal(t, true, ok)
-		require.Equal(t, bPK, bServerConn.PK())
+		initiatorServerConn, ok := srv.getConn(initiator.pk)
+		require.True(t, ok)
+		require.Equal(t, initiator.pk, initiatorServerConn.PK())
 
 		// must have a ClientConn
-		aClientConn, ok := a.getConn(sPK)
-		require.Equal(t, true, ok)
+		aClientConn, ok := responder.getConn(sPK)
+		require.True(t, ok)
 		require.Equal(t, sPK, aClientConn.RemotePK())
 
 		// must have a ClientConn
-		bClientConn, ok := b.getConn(sPK)
-		require.Equal(t, true, ok)
+		bClientConn, ok := initiator.getConn(sPK)
+		require.True(t, ok)
 		require.Equal(t, sPK, bClientConn.RemotePK())
 
 		// check whether nextConn's contents are as must be
 		bClientConn.mx.RLock()
 		nextInitID := bClientConn.nextInitID
 		bClientConn.mx.RUnlock()
-		bNextConn, ok := bServerConn.getNext(nextInitID - 2)
-		require.Equal(t, true, ok)
-		aServerConn.mx.RLock()
-		nextRespID := aServerConn.nextRespID
-		aServerConn.mx.RUnlock()
+		bNextConn, ok := initiatorServerConn.getNext(nextInitID - 2)
+		require.True(t, ok)
+		responderServerConn.mx.RLock()
+		nextRespID := responderServerConn.nextRespID
+		responderServerConn.mx.RUnlock()
 		require.Equal(t, bNextConn.id, nextRespID-2)
 
 		// check whether nextConn's contents are as must be
-		aServerConn.mx.RLock()
-		nextRespID = aServerConn.nextRespID
-		aServerConn.mx.RUnlock()
-		aNextConn, ok := aServerConn.getNext(nextRespID - 2)
-		require.Equal(t, true, ok)
+		responderServerConn.mx.RLock()
+		nextRespID = responderServerConn.nextRespID
+		responderServerConn.mx.RUnlock()
+		aNextConn, ok := responderServerConn.getNext(nextRespID - 2)
+		require.True(t, ok)
 		bClientConn.mx.RLock()
 		nextInitID = bClientConn.nextInitID
 		bClientConn.mx.RUnlock()
 		require.Equal(t, aNextConn.id, nextInitID-2)
 
-		err = aTransport.Close()
-		require.NoError(t, err)
+		require.NoError(t, closeClosers(responderTransport, initiatorTransport, responder, initiator))
 
-		err = bTransport.Close()
-		require.NoError(t, err)
-
-		err = a.Close()
-		require.NoError(t, err)
-
-		err = b.Close()
-		require.NoError(t, err)
-
-		require.NoError(t, testWithTimeout(5*time.Second, func() error {
-			if s.connCount() != 0 {
-				return errors.New("s.conns is not empty")
-			}
-
-			return nil
-		}))
-
-		require.NoError(t, testWithTimeout(5*time.Second, func() error {
-			if a.connCount() != 0 {
-				return errors.New("a.conns is not empty")
-			}
-
-			return nil
-		}))
-
-		require.NoError(t, testWithTimeout(5*time.Second, func() error {
-			if b.connCount() != 0 {
-				return errors.New("b.conns is not empty")
-			}
-
-			return nil
-		}))
+		checkConnCount(t, srv, 0, 5*time.Second)
+		checkConnCount(t, responder, 0, 5*time.Second)
+		checkConnCount(t, initiator, 0, 5*time.Second)
 	})
 
-	t.Run("test transport establishment concurrently", func(t *testing.T) {
+	t.Run("Transport establishes concurrently", func(t *testing.T) {
 		// this way we can control the tests' difficulty
 		initiatorsCount := 50
-		remotesCount := 50
+		respondersCount := 50
 
 		rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-		// store the number of transports each remote should handle
-		remotesTpCount := make(map[int]int)
-		// mapping initiators to remotes. one initiator performs a single connection,
-		// while remotes may handle from 0 to `initiatorsCount` connections
-		pickedRemotes := make([]int, 0, initiatorsCount)
+		// store the number of transports each responder should handle
+		respondersTpsCount := make(map[int]int)
+		// mapping initiators to responders; one initiator performs a single connection,
+		// while responders may handle from 0 to `initiatorsCount` connections
+		pickedResponders := make([]int, 0, initiatorsCount)
 		for i := 0; i < initiatorsCount; i++ {
-			// pick random remote, which the initiator will connect to
-			remote := rand.Intn(remotesCount)
-			// increment the number of connections picked remote will handle
-			remotesTpCount[remote] = remotesTpCount[remote] + 1
-			// map initiator to picked remote
-			pickedRemotes = append(pickedRemotes, remote)
+			// pick random responder, which the initiator will connect to
+			responder := rand.Intn(respondersCount)
+			// increment the number of connections picked responder will handle
+			respondersTpsCount[responder]++
+			// map initiator to picked responder
+			pickedResponders = append(pickedResponders, responder)
 		}
 
 		initiators := make([]*Client, 0, initiatorsCount)
-		remotes := make([]*Client, 0, remotesCount)
+		remotes := make([]*Client, 0, respondersCount)
 
 		// create initiators
 		for i := 0; i < initiatorsCount; i++ {
@@ -334,11 +295,11 @@ func TestServer_Serve(t *testing.T) {
 		}
 
 		// create remotes
-		for i := 0; i < remotesCount; i++ {
+		for i := 0; i < respondersCount; i++ {
 			pk, sk := cipher.GenerateKeyPair()
 
 			c := NewClient(pk, sk, dc, SetLogger(logging.MustGetLogger(fmt.Sprintf("remote_%d", i))))
-			if _, ok := remotesTpCount[i]; ok {
+			if _, ok := respondersTpsCount[i]; ok {
 				err := c.InitiateServerConnections(context.Background(), 1)
 				require.NoError(t, err)
 			}
@@ -346,7 +307,7 @@ func TestServer_Serve(t *testing.T) {
 		}
 
 		totalRemoteTpsCount := 0
-		for _, connectionsCount := range remotesTpCount {
+		for _, connectionsCount := range respondersTpsCount {
 			totalRemoteTpsCount += connectionsCount
 		}
 
@@ -354,33 +315,34 @@ func TestServer_Serve(t *testing.T) {
 		// fail the test
 		acceptErrs := make(chan error, totalRemoteTpsCount)
 		var remotesTpsMX sync.Mutex
-		remotesTps := make(map[int][]*Transport, len(remotesTpCount))
+		remotesTps := make(map[int][]*Transport, len(respondersTpsCount))
 		var remotesWG sync.WaitGroup
 		remotesWG.Add(totalRemoteTpsCount)
 		for i := range remotes {
 			// only run `Accept` in case the remote was picked before
-			if _, ok := remotesTpCount[i]; ok {
-				for connect := 0; connect < remotesTpCount[i]; connect++ {
-					// run remote
-					go func(remoteInd int) {
-						var (
-							transport *Transport
-							err       error
-						)
+			if _, ok := respondersTpsCount[i]; !ok {
+				continue
+			}
+			for connect := 0; connect < respondersTpsCount[i]; connect++ {
+				// run remote
+				go func(remoteInd int) {
+					var (
+						transport *Transport
+						err       error
+					)
 
-						transport, err = remotes[remoteInd].Accept(context.Background())
-						if err != nil {
-							acceptErrs <- err
-						}
+					transport, err = remotes[remoteInd].Accept(context.Background())
+					if err != nil {
+						acceptErrs <- err
+					}
 
-						// store transport
-						remotesTpsMX.Lock()
-						remotesTps[remoteInd] = append(remotesTps[remoteInd], transport)
-						remotesTpsMX.Unlock()
+					// store transport
+					remotesTpsMX.Lock()
+					remotesTps[remoteInd] = append(remotesTps[remoteInd], transport)
+					remotesTpsMX.Unlock()
 
-						remotesWG.Done()
-					}(i)
-				}
+					remotesWG.Done()
+				}(i)
 			}
 		}
 
@@ -399,7 +361,7 @@ func TestServer_Serve(t *testing.T) {
 					err       error
 				)
 
-				remote := remotes[pickedRemotes[initiatorInd]]
+				remote := remotes[pickedResponders[initiatorInd]]
 				transport, err = initiators[initiatorInd].Dial(context.Background(), remote.pk)
 				if err != nil {
 					dialErrs <- err
@@ -429,29 +391,29 @@ func TestServer_Serve(t *testing.T) {
 		require.NoError(t, err)
 
 		// check ServerConn's count
-		require.Equal(t, len(remotesTpCount)+initiatorsCount, s.connCount())
+		checkConnCount(t, srv, len(respondersTpsCount)+initiatorsCount, noDelay)
 
 		for i, initiator := range initiators {
 			// get and check initiator's ServerConn
-			initiatorServConn, ok := s.getConn(initiator.pk)
-			require.Equal(t, true, ok)
+			initiatorServConn, ok := srv.getConn(initiator.pk)
+			require.True(t, ok)
 			require.Equal(t, initiator.pk, initiatorServConn.PK())
 
 			// get and check initiator's ClientConn
 			initiatorClientConn, ok := initiator.getConn(sPK)
-			require.Equal(t, true, ok)
+			require.True(t, ok)
 			require.Equal(t, sPK, initiatorClientConn.RemotePK())
 
-			remote := remotes[pickedRemotes[i]]
+			remote := remotes[pickedResponders[i]]
 
 			// get and check remote's ServerConn
-			remoteServConn, ok := s.getConn(remote.pk)
-			require.Equal(t, true, ok)
+			remoteServConn, ok := srv.getConn(remote.pk)
+			require.True(t, ok)
 			require.Equal(t, remote.pk, remoteServConn.PK())
 
 			// get and check remote's ClientConn
 			remoteClientConn, ok := remote.getConn(sPK)
-			require.Equal(t, true, ok)
+			require.True(t, ok)
 			require.Equal(t, sPK, remoteClientConn.RemotePK())
 
 			// get initiator's nextConn
@@ -459,7 +421,7 @@ func TestServer_Serve(t *testing.T) {
 			nextInitID := initiatorClientConn.nextInitID
 			initiatorClientConn.mx.RUnlock()
 			initiatorNextConn, ok := initiatorServConn.getNext(nextInitID - 2)
-			require.Equal(t, true, ok)
+			require.True(t, ok)
 			require.NotNil(t, initiatorNextConn)
 		}
 
@@ -489,54 +451,25 @@ func TestServer_Serve(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		require.NoError(t, testWithTimeout(10*time.Second, func() error {
-			if s.connCount() != 0 {
-				return errors.New("s.conns is not empty")
-			}
+		checkConnCount(t, srv, 0, 10*time.Second)
 
-			return nil
-		}))
-
-		for i, remote := range remotes {
-			require.NoError(t, testWithTimeout(10*time.Second, func() error {
-				if remote.connCount() != 0 {
-					return fmt.Errorf("remotes[%v].conns is not empty", i)
-				}
-
-				return nil
-			}))
+		for _, remote := range remotes {
+			checkConnCount(t, remote, 0, 10*time.Second)
 		}
 
-		for i, initiator := range initiators {
-			require.NoError(t, testWithTimeout(10*time.Second, func() error {
-				if initiator.connCount() != 0 {
-					return fmt.Errorf("initiators[%v].conns is not empty", i)
-				}
-
-				return nil
-			}))
+		for _, initiator := range initiators {
+			checkConnCount(t, initiator, 0, 10*time.Second)
 		}
 	})
 
-	t.Run("failed_accepts_should_not_result_in_hang", func(t *testing.T) {
-		// generate keys for both clients
-		aPK, aSK := cipher.GenerateKeyPair()
-		bPK, bSK := cipher.GenerateKeyPair()
+	t.Run("Failed accepts do not result in hang", func(t *testing.T) {
+		responder := createClient(t, dc, "responder")
+		initiator := createClient(t, dc, "initiator")
 
-		// create remote
-		a := NewClient(aPK, aSK, dc, SetLogger(logging.MustGetLogger("A")))
-		err = a.InitiateServerConnections(context.Background(), 1)
+		initiatorTransport, err := initiator.Dial(context.Background(), responder.pk)
 		require.NoError(t, err)
 
-		// create initiator
-		b := NewClient(bPK, bSK, dc, SetLogger(logging.MustGetLogger("B")))
-		err = b.InitiateServerConnections(context.Background(), 1)
-		require.NoError(t, err)
-
-		bTransport, err := b.Dial(context.Background(), aPK)
-		require.NoError(t, err)
-
-		aTransport, err := a.Accept(context.Background())
+		responderTransport, err := responder.Accept(context.Background())
 		require.NoError(t, err)
 
 		readWriteStop := make(chan struct{})
@@ -552,11 +485,11 @@ func TestServer_Serve(t *testing.T) {
 					return
 				default:
 					msg := []byte("Hello there!")
-					if _, writeErr = bTransport.Write(msg); writeErr != nil {
+					if _, writeErr = initiatorTransport.Write(msg); writeErr != nil {
 						close(readWriteDone)
 						return
 					}
-					if _, readErr = aTransport.Read(msg); readErr != nil {
+					if _, readErr = responderTransport.Read(msg); readErr != nil {
 						close(readWriteDone)
 						return
 					}
@@ -567,17 +500,17 @@ func TestServer_Serve(t *testing.T) {
 		// continue creating transports until the error occurs
 		for {
 			ctx := context.Background()
-			if _, err = a.Dial(ctx, bPK); err != nil {
+			if _, err = responder.Dial(ctx, initiator.pk); err != nil {
 				break
 			}
 		}
 		// must be error
 		require.Error(t, err)
 
-		// the same as above, transport is created by another drdrhdrh
+		// the same as above, transport is created by another client
 		for {
 			ctx := context.Background()
-			if _, err = b.Dial(ctx, aPK); err != nil {
+			if _, err = initiator.Dial(ctx, responder.pk); err != nil {
 				break
 			}
 		}
@@ -587,11 +520,7 @@ func TestServer_Serve(t *testing.T) {
 		// wait more time to ensure that the initially created transport works
 		time.Sleep(2 * time.Second)
 
-		err = aTransport.Close()
-		require.NoError(t, err)
-
-		err = bTransport.Close()
-		require.NoError(t, err)
+		require.NoError(t, closeClosers(responderTransport, initiatorTransport))
 
 		// stop reading/writing goroutines
 		close(readWriteStop)
@@ -607,33 +536,17 @@ func TestServer_Serve(t *testing.T) {
 			require.NoError(t, writeErr)
 		}
 
-		err = a.Close()
-		require.NoError(t, err)
-
-		err = b.Close()
-		require.NoError(t, err)
+		require.NoError(t, closeClosers(responder, initiator))
 	})
 
-	t.Run("test sent/received message consistency", func(t *testing.T) {
-		// generate keys for both clients
-		aPK, aSK := cipher.GenerateKeyPair()
-		bPK, bSK := cipher.GenerateKeyPair()
+	t.Run("Sent/received message is consistent", func(t *testing.T) {
+		responder := createClient(t, dc, "responder")
+		initiator := createClient(t, dc, "initiator")
 
-		// create remote
-		a := NewClient(aPK, aSK, dc, SetLogger(logging.MustGetLogger("A")))
-		err = a.InitiateServerConnections(context.Background(), 1)
+		initiatorTransport, err := initiator.Dial(context.Background(), responder.pk)
 		require.NoError(t, err)
 
-		// create initiator
-		b := NewClient(bPK, bSK, dc, SetLogger(logging.MustGetLogger("B")))
-		err = b.InitiateServerConnections(context.Background(), 1)
-		require.NoError(t, err)
-
-		// create transports
-		bTransport, err := b.Dial(context.Background(), aPK)
-		require.NoError(t, err)
-
-		aTransport, err := a.Accept(context.Background())
+		responderTransport, err := responder.Accept(context.Background())
 		require.NoError(t, err)
 
 		msgCount := 100
@@ -641,28 +554,28 @@ func TestServer_Serve(t *testing.T) {
 			msg := "Hello there!"
 
 			// write message of 12 bytes
-			_, err := bTransport.Write([]byte(msg))
+			_, err := initiatorTransport.Write([]byte(msg))
 			require.NoError(t, err)
 
 			// create a receiving buffer of 5 bytes
 			recBuff := make([]byte, 5)
 
 			// read 5 bytes, 7 left
-			n, err := aTransport.Read(recBuff)
+			n, err := responderTransport.Read(recBuff)
 			require.NoError(t, err)
 			require.Equal(t, n, len(recBuff))
 
 			received := string(recBuff[:n])
 
 			// read 5 more, 2 left
-			n, err = aTransport.Read(recBuff)
+			n, err = responderTransport.Read(recBuff)
 			require.NoError(t, err)
 			require.Equal(t, n, len(recBuff))
 
 			received += string(recBuff[:n])
 
 			// read 2 bytes left
-			n, err = aTransport.Read(recBuff)
+			n, err = responderTransport.Read(recBuff)
 			require.NoError(t, err)
 			require.Equal(t, n, len(msg)-len(recBuff)*2)
 
@@ -672,39 +585,17 @@ func TestServer_Serve(t *testing.T) {
 			require.Equal(t, received, msg)
 		}
 
-		err = bTransport.Close()
-		require.NoError(t, err)
-
-		err = aTransport.Close()
-		require.NoError(t, err)
-
-		err = a.Close()
-		require.NoError(t, err)
-
-		err = b.Close()
-		require.NoError(t, err)
+		require.NoError(t, closeClosers(initiatorTransport, responderTransport, responder, initiator))
 	})
 
 	t.Run("capped_transport_buffer_should_not_result_in_hang", func(t *testing.T) {
-		// generate keys for both clients
-		aPK, aSK := cipher.GenerateKeyPair()
-		bPK, bSK := cipher.GenerateKeyPair()
+		responder := createClient(t, dc, "responder")
+		initiator := createClient(t, dc, "initiator")
 
-		// create remote
-		a := NewClient(aPK, aSK, dc, SetLogger(logging.MustGetLogger("A")))
-		err = a.InitiateServerConnections(context.Background(), 1)
+		responderWrTransport, err := responder.Dial(context.Background(), initiator.pk)
 		require.NoError(t, err)
 
-		// create initiator
-		b := NewClient(bPK, bSK, dc, SetLogger(logging.MustGetLogger("B")))
-		err = b.InitiateServerConnections(context.Background(), 1)
-		require.NoError(t, err)
-
-		// create transports
-		aWrTransport, err := a.Dial(context.Background(), bPK)
-		require.NoError(t, err)
-
-		_, err = b.Accept(context.Background())
+		_, err = initiator.Accept(context.Background())
 		require.NoError(t, err)
 
 		msg := []byte("Hello there!")
@@ -713,7 +604,7 @@ func TestServer_Serve(t *testing.T) {
 
 		// fill the buffer, but no block yet
 		for i := 0; i < iterationsToDo-1; i++ {
-			_, err = aWrTransport.Write(msg)
+			_, err = responderWrTransport.Write(msg)
 			require.NoError(t, err)
 		}
 
@@ -721,66 +612,50 @@ func TestServer_Serve(t *testing.T) {
 		var blockedWriteErr error
 		blockedWriteDone := make(chan struct{})
 		go func() {
-			_, blockedWriteErr = aWrTransport.Write(msg)
+			_, blockedWriteErr = responderWrTransport.Write(msg)
 			close(blockedWriteDone)
 		}()
 
 		// wait till it's definitely blocked
 		time.Sleep(1 * time.Second)
 
-		// create new transport from `B` to `A`
-		bWrTransport, err := b.Dial(context.Background(), aPK)
+		// create new transport from initiator to responder
+		initiatorWrTransport, err := initiator.Dial(context.Background(), responder.pk)
 		require.NoError(t, err)
 
-		aRdTransport, err := a.Accept(context.Background())
+		responderRdTransport, err := responder.Accept(context.Background())
 		require.NoError(t, err)
 
 		// try to write/read message via the new transports
 		for i := 0; i < 100; i++ {
-			_, err := bWrTransport.Write(msg)
+			_, err := initiatorWrTransport.Write(msg)
 			require.NoError(t, err)
 
 			recBuff := make([]byte, len(msg))
-			_, err = aRdTransport.Read(recBuff)
+			_, err = responderRdTransport.Read(recBuff)
 			require.NoError(t, err)
 
 			require.Equal(t, recBuff, msg)
 		}
 
-		err = aWrTransport.Close()
+		err = responderWrTransport.Close()
 		require.NoError(t, err)
 
 		<-blockedWriteDone
 		require.Error(t, blockedWriteErr)
 
-		err = bWrTransport.Close()
-		require.NoError(t, err)
-
-		err = aRdTransport.Close()
-		require.NoError(t, err)
-
-		err = a.Close()
-		require.NoError(t, err)
-
-		err = b.Close()
-		require.NoError(t, err)
+		require.NoError(t, closeClosers(initiatorWrTransport, responderRdTransport, responder, initiator))
 	})
 
-	t.Run("self_dial_should_work", func(t *testing.T) {
-		// generate keys for the drdrhdrh
-		aPK, aSK := cipher.GenerateKeyPair()
-
-		// create drdrhdrh
-		a := NewClient(aPK, aSK, dc, SetLogger(logging.MustGetLogger("A")))
-		err = a.InitiateServerConnections(context.Background(), 1)
-		require.NoError(t, err)
+	t.Run("Self dialing works", func(t *testing.T) {
+		client := createClient(t, dc, "client")
 
 		// self-dial
-		selfWrTp, err := a.Dial(context.Background(), aPK)
+		selfWrTp, err := client.Dial(context.Background(), client.pk)
 		require.NoError(t, err)
 
 		// self-accept
-		selfRdTp, err := a.Accept(context.Background())
+		selfRdTp, err := client.Accept(context.Background())
 		require.NoError(t, err)
 
 		// try to write/read message to/from self
@@ -803,19 +678,13 @@ func TestServer_Serve(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		err = selfRdTp.Close()
-		require.NoError(t, err)
+		require.NoError(t, closeClosers(selfRdTp, selfWrTp, client))
 
-		err = selfWrTp.Close()
-		require.NoError(t, err)
-
-		err = a.Close()
-		require.NoError(t, err)
 	})
 
 	t.Run("server_disconnect_should_close_transports", func(t *testing.T) {
 		// generate keys for server
-		sPK, sSK := cipher.GenerateKeyPair()
+		srvPK, srvSK := cipher.GenerateKeyPair()
 
 		dc := disc.NewMock()
 
@@ -823,59 +692,48 @@ func TestServer_Serve(t *testing.T) {
 		require.NoError(t, err)
 
 		// create a server separately from other tests, since this one should be closed
-		s, err := NewServer(sPK, sSK, "", l, dc)
+		srv, err := NewServer(srvPK, srvSK, "", l, dc)
 		require.NoError(t, err)
 
 		var sStartErr error
 		sDone := make(chan struct{})
 		go func() {
-			if err := s.Serve(); err != nil {
+			if err := srv.Serve(); err != nil {
 				sStartErr = err
 			}
 
-			sDone <- struct{}{}
+			close(sDone)
 		}()
 
-		// generate keys for both clients
-		aPK, aSK := cipher.GenerateKeyPair()
-		bPK, bSK := cipher.GenerateKeyPair()
+		responder := createClient(t, dc, "responder")
+		initiator := createClient(t, dc, "initiator")
 
-		// create remote
-		a := NewClient(aPK, aSK, dc, SetLogger(logging.MustGetLogger("A")))
-		err = a.InitiateServerConnections(context.Background(), 1)
+		initiatorTransport, err := initiator.Dial(context.Background(), responder.pk)
 		require.NoError(t, err)
 
-		// create initiator
-		b := NewClient(bPK, bSK, dc, SetLogger(logging.MustGetLogger("B")))
-		err = b.InitiateServerConnections(context.Background(), 1)
-		require.NoError(t, err)
-
-		bTransport, err := b.Dial(context.Background(), aPK)
-		require.NoError(t, err)
-
-		aTransport, err := a.Accept(context.Background())
+		responderTransport, err := responder.Accept(context.Background())
 		require.NoError(t, err)
 
 		msgCount := 100
 		for i := 0; i < msgCount; i++ {
 			msg := []byte("Hello there!")
 
-			_, err := bTransport.Write(msg)
+			_, err := initiatorTransport.Write(msg)
 			require.NoError(t, err)
 
 			recBuff := make([]byte, 5)
 
-			_, err = aTransport.Read(recBuff)
+			_, err = responderTransport.Read(recBuff)
 			require.NoError(t, err)
 
-			_, err = aTransport.Read(recBuff)
+			_, err = responderTransport.Read(recBuff)
 			require.NoError(t, err)
 
-			_, err = aTransport.Read(msg)
+			_, err = responderTransport.Read(msg)
 			require.NoError(t, err)
 		}
 
-		err = s.Close()
+		err = srv.Close()
 		require.NoError(t, err)
 
 		<-sDone
@@ -912,7 +770,6 @@ func TestServer_Serve(t *testing.T) {
 // Start the server again, check if clients reconnected and if `Dial()` and `Accept()` still work.
 // Second argument indicates if the server restarts not on the same address, but on the random one.
 func testReconnect(t *testing.T, randomAddr bool) {
-	const smallDelay = time.Second * 5
 	ctx := context.TODO()
 
 	serverPK, serverSK := cipher.GenerateKeyPair()
@@ -921,56 +778,30 @@ func testReconnect(t *testing.T, randomAddr bool) {
 	l, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
 
-	s, err := NewServer(serverPK, serverSK, "", l, dc)
+	srv, err := NewServer(serverPK, serverSK, "", l, dc)
 	require.NoError(t, err)
 
-	serverAddr := s.Addr()
+	serverAddr := srv.Addr()
 
-	go s.Serve() // nolint:errcheck
+	go srv.Serve() // nolint:errcheck
 
-	remotePK, remoteSK := cipher.GenerateKeyPair()
-	initiatorPK, initiatorSK := cipher.GenerateKeyPair()
+	checkConnCount(t, srv, 0, noDelay)
 
-	assert.Equal(t, 0, s.connCount())
+	responder := createClient(t, dc, "responder")
+	checkConnCount(t, srv, 1, smallDelay)
 
-	remote := NewClient(remotePK, remoteSK, dc, SetLogger(logging.MustGetLogger("remote")))
-	err = remote.InitiateServerConnections(ctx, 1)
+	initiator := createClient(t, dc, "initiator")
+	checkConnCount(t, srv, 2, smallDelay)
+
+	initiatorTransport, err := initiator.Dial(ctx, responder.pk)
 	require.NoError(t, err)
 
-	require.NoError(t, testWithTimeout(smallDelay, func() error {
-		if s.connCount() != 1 {
-			return errors.New("s.conns is not equal to 1")
-		}
-		return nil
-	}))
-
-	initiator := NewClient(initiatorPK, initiatorSK, dc, SetLogger(logging.MustGetLogger("initiator")))
-	err = initiator.InitiateServerConnections(ctx, 1)
+	responderTransport, err := responder.Accept(context.Background())
 	require.NoError(t, err)
 
-	initiatorTransport, err := initiator.Dial(ctx, remotePK)
-	require.NoError(t, err)
-
-	remoteTransport, err := remote.Accept(context.Background())
-	require.NoError(t, err)
-
-	require.NoError(t, testWithTimeout(smallDelay, func() error {
-		if s.connCount() != 2 {
-			return errors.New("s.conns is not equal to 2")
-		}
-		return nil
-	}))
-
-	err = s.Close()
-	assert.NoError(t, err)
-
-	assert.False(t, isDoneChannelOpen(initiatorTransport.done))
-	assert.False(t, isReadChannelOpen(initiatorTransport.inCh))
-
-	assert.False(t, isDoneChannelOpen(remoteTransport.done))
-	assert.False(t, isReadChannelOpen(remoteTransport.inCh))
-
-	assert.Equal(t, 0, s.connCount())
+	assert.NoError(t, srv.Close())
+	checkTransportsClosed(t, initiatorTransport, responderTransport)
+	checkConnCount(t, srv, 0, smallDelay)
 
 	addr := ""
 	if !randomAddr {
@@ -980,39 +811,32 @@ func testReconnect(t *testing.T, randomAddr bool) {
 	l, err = net.Listen("tcp", serverAddr)
 	require.NoError(t, err)
 
-	s, err = NewServer(serverPK, serverSK, addr, l, dc)
+	srv, err = NewServer(serverPK, serverSK, addr, l, dc)
 	require.NoError(t, err)
 
-	go s.Serve() // nolint:errcheck
+	go srv.Serve() // nolint:errcheck
 
-	require.NoError(t, testWithTimeout(clientReconnectInterval+smallDelay, func() error {
-		if s.connCount() != 2 {
-			return errors.New("s.conns is not equal to 2")
-		}
-		return nil
-	}))
+	checkConnCount(t, srv, 2, clientReconnectInterval+smallDelay)
+	checkDialAccept(t, initiator, responder)
 
-	require.NoError(t, testWithTimeout(smallDelay, func() error {
-		_, err = initiator.Dial(ctx, remotePK)
-		if err != nil {
-			return err
-		}
-
-		_, err = remote.Accept(context.Background())
-		return err
-	}))
-
-	err = s.Close()
-	assert.NoError(t, err)
+	assert.NoError(t, srv.Close())
 }
 
-// Given two drdrhdrh instances (a & b) and a server instance (s),
-// Client b should be able to dial a transport with drdrhdrh b
+func createClient(t *testing.T, dc disc.APIClient, name string) *Client {
+	pk, sk := cipher.GenerateKeyPair()
+
+	client := NewClient(pk, sk, dc, SetLogger(logging.MustGetLogger(name)))
+	require.NoError(t, client.InitiateServerConnections(context.Background(), 1))
+
+	return client
+}
+
+// TODO: update comments mentioning a & b
+// Given two client instances (a & b) and a server instance (s),
+// Client b should be able to dial a transport with client b
 // Data should be sent and delivered successfully via the transport.
 // TODO: fix this.
 func TestNewClient(t *testing.T) {
-	aPK, aSK := cipher.GenerateKeyPair()
-	bPK, bSK := cipher.GenerateKeyPair()
 	sPK, sSK := cipher.GenerateKeyPair()
 	sAddr := "127.0.0.1:8081"
 
@@ -1026,113 +850,79 @@ func TestNewClient(t *testing.T) {
 
 	log.Println(l.Addr().String())
 
-	s, err := NewServer(sPK, sSK, "", l, dc)
+	srv, err := NewServer(sPK, sSK, "", l, dc)
 	require.NoError(t, err)
 
-	go s.Serve() //nolint:errcheck
+	go srv.Serve() //nolint:errcheck
 
-	a := NewClient(aPK, aSK, dc, SetLogger(logging.MustGetLogger("A")))
-	require.NoError(t, a.InitiateServerConnections(context.Background(), 1))
-
-	b := NewClient(bPK, bSK, dc, SetLogger(logging.MustGetLogger("B")))
-	require.NoError(t, b.InitiateServerConnections(context.Background(), 1))
+	responder := createClient(t, dc, "responder")
+	initiator := createClient(t, dc, "initiator")
 
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for i := 0; i < tpCount; i++ {
-			aDone := make(chan struct{})
-			var aTp *Transport
+			responderDone := make(chan struct{})
+			var responderTp *Transport
 			go func() {
 				var err error
-				aTp, err = a.Accept(context.Background())
+				responderTp, err = responder.Accept(context.Background())
 				catch(err)
-				close(aDone)
+				close(responderDone)
 			}()
 
-			bTp, err := b.Dial(context.Background(), aPK)
+			initiatorTp, err := initiator.Dial(context.Background(), responder.pk)
 			catch(err)
 
-			<-aDone
+			<-responderDone
 			catch(err)
 
 			for j := 0; j < msgCount; j++ {
 				pay := []byte(fmt.Sprintf("This is message %d!", j))
-				_, err := aTp.Write(pay)
+				_, err := responderTp.Write(pay)
 				catch(err)
-				_, err = bTp.Read(pay)
+				_, err = initiatorTp.Read(pay)
 				catch(err)
 			}
 
-			// Close TPs
-			catch(aTp.Close())
-			catch(bTp.Close())
+			catch(closeClosers(responderTp, initiatorTp))
 		}
 	}()
 
 	for i := 0; i < tpCount; i++ {
-		bDone := make(chan struct{})
-		var bErr error
-		var bTp *Transport
+		initiatorDone := make(chan struct{})
+		var initiatorErr error
+		var initiatorTp *Transport
 		go func() {
-			bTp, bErr = b.Accept(context.Background())
-			close(bDone)
+			initiatorTp, initiatorErr = initiator.Accept(context.Background())
+			close(initiatorDone)
 		}()
 
-		aTp, err := a.Dial(context.Background(), bPK)
+		responderTp, err := responder.Dial(context.Background(), initiator.pk)
 		require.NoError(t, err)
 
-		<-bDone
-		require.NoError(t, bErr)
+		<-initiatorDone
+		require.NoError(t, initiatorErr)
 
 		for j := 0; j < msgCount; j++ {
 			pay := []byte(fmt.Sprintf("This is message %d!", j))
 
-			n, err := aTp.Write(pay)
+			n, err := responderTp.Write(pay)
 			require.NoError(t, err)
 			require.Equal(t, len(pay), n)
 
 			got := make([]byte, len(pay))
-			n, err = bTp.Read(got)
+			n, err = initiatorTp.Read(got)
 			require.Equal(t, len(pay), n)
 			require.NoError(t, err)
 			require.Equal(t, pay, got)
 		}
 
 		// Close TPs
-		require.NoError(t, aTp.Close())
-		require.NoError(t, bTp.Close())
+		require.NoError(t, closeClosers(responderTp, initiatorTp))
 	}
 	wg.Wait()
 
-	// Close server.
-	assert.NoError(t, s.Close())
-}
-
-func catch(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
-// intended to test some func of `func() error` signature with a given timeout.
-// Exeeding timeout results in error.
-func testWithTimeout(timeout time.Duration, run func() error) error {
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-
-	for {
-		if err := run(); err != nil {
-			select {
-			case <-timer.C:
-				return err
-			default:
-				time.Sleep(time.Millisecond * 5)
-				continue
-			}
-		}
-
-		return nil
-	}
+	assert.NoError(t, srv.Close())
 }

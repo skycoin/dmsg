@@ -4,16 +4,11 @@ import (
 	"context"
 	"net"
 	"testing"
-	"time"
 
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/skycoin/dmsg/cipher"
-)
-
-const (
-	chanReadThreshold = time.Second * 5
 )
 
 type transportWithError struct {
@@ -30,11 +25,8 @@ func TestClient(t *testing.T) {
 		p1, p2 := net.Pipe()
 		p1, p2 = invertedIDConn{p1}, invertedIDConn{p2}
 
-		var pk1, pk2 cipher.PubKey
-		err := pk1.Set("024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7")
-		assert.NoError(t, err)
-		err = pk2.Set("031b80cd5773143a39d940dc0710b93dcccc262a85108018a7a95ab9af734f8055")
-		assert.NoError(t, err)
+		pk1, _ := cipher.GenerateKeyPair()
+		pk2, _ := cipher.GenerateKeyPair()
 
 		conn1 := NewClientConn(logger, p1, pk1, pk2)
 		conn2 := NewClientConn(logger, p2, pk2, pk1)
@@ -68,19 +60,10 @@ func TestClient(t *testing.T) {
 		conn1.mx.RUnlock()
 		assert.Equal(t, initID+2, newInitID)
 
-		err = tr1.Close()
-		assert.NoError(t, err)
+		assert.NoError(t, closeClosers(tr1, conn1, conn2))
 
-		err = conn1.Close()
-		assert.NoError(t, err)
-
-		err = conn2.Close()
-		assert.NoError(t, err)
-
-		assert.False(t, isDoneChannelOpen(conn1.done))
-		assert.False(t, isDoneChannelOpen(conn2.done))
-		assert.False(t, isDoneChannelOpen(tr1.done))
-		assert.False(t, isReadChannelOpen(tr1.inCh))
+		checkClientConnsClosed(t, conn1, conn2)
+		checkTransportsClosed(t, tr1)
 	})
 
 	// Runs four ClientConn's and dials two transports between them.
@@ -92,13 +75,9 @@ func TestClient(t *testing.T) {
 		p3, p4 := net.Pipe()
 		p3, p4 = invertedIDConn{p3}, invertedIDConn{p4}
 
-		var pk1, pk2, pk3 cipher.PubKey
-		err := pk1.Set("024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7")
-		assert.NoError(t, err)
-		err = pk2.Set("031b80cd5773143a39d940dc0710b93dcccc262a85108018a7a95ab9af734f8055")
-		assert.NoError(t, err)
-		err = pk3.Set("035b57eef30b9a6be1effc2c3337a3a1ffedcd04ffbac6667cd822892cf56be24a")
-		assert.NoError(t, err)
+		pk1, _ := cipher.GenerateKeyPair()
+		pk2, _ := cipher.GenerateKeyPair()
+		pk3, _ := cipher.GenerateKeyPair()
 
 		conn1 := NewClientConn(logger, p1, pk1, pk2)
 		conn2 := NewClientConn(logger, p2, pk2, pk1)
@@ -201,78 +180,10 @@ func TestClient(t *testing.T) {
 		conn3.mx.RUnlock()
 		assert.Equal(t, initID3+2, newInitID3)
 
-		errCh1 := make(chan error)
-		errCh2 := make(chan error)
-		errCh3 := make(chan error)
-		errCh4 := make(chan error)
-
-		go func() {
-			errCh1 <- tr1.Close()
-		}()
-
-		go func() {
-			errCh2 <- tr2.Close()
-		}()
-
-		err = <-errCh1
-		assert.NoError(t, err)
-
-		err = <-errCh2
-		assert.NoError(t, err)
-
-		go func() {
-			errCh1 <- conn1.Close()
-		}()
-
-		go func() {
-			errCh2 <- conn2.Close()
-		}()
-
-		go func() {
-			errCh3 <- conn3.Close()
-		}()
-
-		go func() {
-			errCh4 <- conn4.Close()
-		}()
-
-		err = <-errCh1
-		assert.NoError(t, err)
-
-		err = <-errCh2
-		assert.NoError(t, err)
-
-		err = <-errCh3
-		assert.NoError(t, err)
-
-		err = <-errCh4
-		assert.NoError(t, err)
-
-		assert.False(t, isDoneChannelOpen(conn1.done))
-		assert.False(t, isDoneChannelOpen(conn3.done))
-		assert.False(t, isDoneChannelOpen(tr1.done))
-		assert.False(t, isReadChannelOpen(tr1.inCh))
-		assert.False(t, isDoneChannelOpen(tr2.done))
-		assert.False(t, isReadChannelOpen(tr2.inCh))
+		assert.NoError(t, closeClosers(tr1, tr2, conn1, conn2, conn3, conn4))
+		checkTransportsClosed(t, tr1, tr2)
+		checkClientConnsClosed(t, conn1, conn3)
 	})
-}
-
-func isDoneChannelOpen(ch chan struct{}) bool {
-	select {
-	case _, ok := <-ch:
-		return ok
-	case <-time.After(chanReadThreshold):
-		return false
-	}
-}
-
-func isReadChannelOpen(ch chan Frame) bool {
-	select {
-	case _, ok := <-ch:
-		return ok
-	case <-time.After(chanReadThreshold):
-		return false
-	}
 }
 
 // used so that we can get two 'ClientConn's directly communicating with one another.
