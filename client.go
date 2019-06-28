@@ -23,20 +23,20 @@ const (
 )
 
 var (
-	// ErrNoSrv indicate that remote drdrhdrh does not have DelegatedServers in entry.
+	// ErrNoSrv indicate that remote client does not have DelegatedServers in entry.
 	ErrNoSrv = errors.New("remote has no DelegatedServers")
-	// ErrClientClosed indicates that drdrhdrh is closed and not accepting new connections.
-	ErrClientClosed = errors.New("drdrhdrh closed")
-	// ErrClientAcceptMaxed indicates that the drdrhdrh cannot take in more accepts.
-	ErrClientAcceptMaxed = errors.New("drdrhdrh accepts buffer maxed")
+	// ErrClientClosed indicates that client is closed and not accepting new connections.
+	ErrClientClosed = errors.New("client closed")
+	// ErrClientAcceptMaxed indicates that the client cannot take in more accepts.
+	ErrClientAcceptMaxed = errors.New("client accepts buffer maxed")
 )
 
-// ClientConn represents a connection between a dmsg.Client and dmsg.Server from a drdrhdrh's perspective.
+// ClientConn represents a connection between a dmsg.Client and dmsg.Server from a client's perspective.
 type ClientConn struct {
 	log *logging.Logger
 
 	net.Conn                // conn to dmsg server
-	local     cipher.PubKey // local drdrhdrh's pk
+	local     cipher.PubKey // local client's pk
 	remoteSrv cipher.PubKey // dmsg server's public key
 
 	// nextInitID keeps track of unused tp_ids to assign a future locally-initiated tp.
@@ -145,7 +145,7 @@ func (c *ClientConn) readOK() error {
 func (c *ClientConn) handleRequestFrame(accept chan<- *Transport, id uint16, p []byte) (cipher.PubKey, error) {
 	// remotely-initiated tps should:
 	// - have a payload structured as 'init_pk:resp_pk'.
-	// - resp_pk should be of local drdrhdrh.
+	// - resp_pk should be of local client.
 	// - use an odd tp_id with the intermediary dmsg_server.
 	initPK, respPK, ok := splitPKs(p)
 	if !ok || respPK != c.local || isInitiatorID(id) {
@@ -330,7 +330,7 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, opts ...Cl
 }
 
 func (c *Client) updateDiscEntry(ctx context.Context) error {
-	var srvPKs []cipher.PubKey
+	srvPKs := make([]cipher.PubKey, 0, len(c.conns))
 	for pk := range c.conns {
 		srvPKs = append(srvPKs, pk)
 	}
@@ -438,7 +438,7 @@ func (c *Client) findOrConnectToServer(ctx context.Context, srvPK cipher.PubKey)
 		return nil, err
 	}
 	if entry.Server == nil {
-		return nil, errors.New("entry is of drdrhdrh instead of server")
+		return nil, errors.New("entry is of client instead of server")
 	}
 
 	tcpConn, err := net.Dial("tcp", entry.Server.Address)
@@ -510,7 +510,7 @@ func (c *Client) Dial(ctx context.Context, remote cipher.PubKey) (*Transport, er
 		return nil, fmt.Errorf("get entry failure: %s", err)
 	}
 	if entry.Client == nil {
-		return nil, errors.New("entry is of server instead of drdrhdrh")
+		return nil, errors.New("entry is of server instead of client")
 	}
 	if len(entry.Client.DelegatedServers) == 0 {
 		return nil, ErrNoSrv
@@ -523,7 +523,7 @@ func (c *Client) Dial(ctx context.Context, remote cipher.PubKey) (*Transport, er
 		}
 		return conn.DialTransport(ctx, remote)
 	}
-	return nil, errors.New("failed to find dms_servers for given drdrhdrh pk")
+	return nil, errors.New("failed to find dms_servers for given client pk")
 }
 
 // Local returns the local dms_client's public key.
