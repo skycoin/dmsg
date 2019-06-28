@@ -34,7 +34,7 @@ type connCounter interface {
 func checkConnCount(t *testing.T, cc connCounter, count int, delay time.Duration) {
 	require.NoError(t, testWithTimeout(delay, func() error {
 		if cc.connCount() != count {
-			return fmt.Errorf("connCount is not equal to %d", count)
+			return fmt.Errorf("connCount equals to %d, want %d", cc.connCount(), count)
 		}
 		return nil
 	}))

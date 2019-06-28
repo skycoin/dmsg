@@ -184,15 +184,9 @@ func TestNewServer(t *testing.T) {
 // TestServer_Serve ensures that Server processes request frames and
 // instantiates transports properly.
 func TestServer_Serve(t *testing.T) {
-	sPK, sSK := cipher.GenerateKeyPair()
 	dc := disc.NewMock()
 
-	l, err := nettest.NewLocalListener("tcp")
-	require.NoError(t, err)
-
-	srv, err := NewServer(sPK, sSK, "", l, dc)
-	require.NoError(t, err)
-
+	srv := createServer(t, dc, "")
 	go srv.Serve() //nolint:errcheck
 
 	// connect two clients, establish transport, check if there are
@@ -221,19 +215,19 @@ func TestServer_Serve(t *testing.T) {
 		require.Equal(t, initiator.pk, initiatorServerConn.PK())
 
 		// must have a ClientConn
-		aClientConn, ok := responder.getConn(sPK)
+		responderClientConn, ok := responder.getConn(srv.pk)
 		require.True(t, ok)
-		require.Equal(t, sPK, aClientConn.RemotePK())
+		require.Equal(t, srv.pk, responderClientConn.RemotePK())
 
 		// must have a ClientConn
-		bClientConn, ok := initiator.getConn(sPK)
+		initiatorClientConn, ok := initiator.getConn(srv.pk)
 		require.True(t, ok)
-		require.Equal(t, sPK, bClientConn.RemotePK())
+		require.Equal(t, srv.pk, initiatorClientConn.RemotePK())
 
 		// check whether nextConn's contents are as must be
-		bClientConn.mx.RLock()
-		nextInitID := bClientConn.nextInitID
-		bClientConn.mx.RUnlock()
+		initiatorClientConn.mx.RLock()
+		nextInitID := initiatorClientConn.nextInitID
+		initiatorClientConn.mx.RUnlock()
 		bNextConn, ok := initiatorServerConn.getNext(nextInitID - 2)
 		require.True(t, ok)
 		responderServerConn.mx.RLock()
@@ -247,9 +241,9 @@ func TestServer_Serve(t *testing.T) {
 		responderServerConn.mx.RUnlock()
 		aNextConn, ok := responderServerConn.getNext(nextRespID - 2)
 		require.True(t, ok)
-		bClientConn.mx.RLock()
-		nextInitID = bClientConn.nextInitID
-		bClientConn.mx.RUnlock()
+		initiatorClientConn.mx.RLock()
+		nextInitID = initiatorClientConn.nextInitID
+		initiatorClientConn.mx.RUnlock()
 		require.Equal(t, aNextConn.id, nextInitID-2)
 
 		require.NoError(t, closeClosers(responderTransport, initiatorTransport, responder, initiator))
@@ -281,20 +275,12 @@ func TestServer_Serve(t *testing.T) {
 		}
 
 		initiators := make([]*Client, 0, initiatorsCount)
-		remotes := make([]*Client, 0, respondersCount)
+		responders := make([]*Client, 0, respondersCount)
 
-		// create initiators
 		for i := 0; i < initiatorsCount; i++ {
-			pk, sk := cipher.GenerateKeyPair()
-
-			c := NewClient(pk, sk, dc, SetLogger(logging.MustGetLogger(fmt.Sprintf("initiator_%d", i))))
-			err := c.InitiateServerConnections(context.Background(), 1)
-			require.NoError(t, err)
-
-			initiators = append(initiators, c)
+			initiators = append(initiators, createClient(t, dc, fmt.Sprintf("initiator_%d", i)))
 		}
 
-		// create remotes
 		for i := 0; i < respondersCount; i++ {
 			pk, sk := cipher.GenerateKeyPair()
 
@@ -303,45 +289,45 @@ func TestServer_Serve(t *testing.T) {
 				err := c.InitiateServerConnections(context.Background(), 1)
 				require.NoError(t, err)
 			}
-			remotes = append(remotes, c)
+			responders = append(responders, c)
 		}
 
-		totalRemoteTpsCount := 0
+		totalResponderTpsCount := 0
 		for _, connectionsCount := range respondersTpsCount {
-			totalRemoteTpsCount += connectionsCount
+			totalResponderTpsCount += connectionsCount
 		}
 
 		// channel to listen for `Accept` errors. Any single error must
 		// fail the test
-		acceptErrs := make(chan error, totalRemoteTpsCount)
-		var remotesTpsMX sync.Mutex
-		remotesTps := make(map[int][]*Transport, len(respondersTpsCount))
-		var remotesWG sync.WaitGroup
-		remotesWG.Add(totalRemoteTpsCount)
-		for i := range remotes {
-			// only run `Accept` in case the remote was picked before
+		acceptErrs := make(chan error, totalResponderTpsCount)
+		var respondersTpsMX sync.Mutex
+		respondersTps := make(map[int][]*Transport, len(respondersTpsCount))
+		var respondersWG sync.WaitGroup
+		respondersWG.Add(totalResponderTpsCount)
+		for i := range responders {
+			// only run `Accept` in case the responder was picked before
 			if _, ok := respondersTpsCount[i]; !ok {
 				continue
 			}
 			for connect := 0; connect < respondersTpsCount[i]; connect++ {
-				// run remote
-				go func(remoteInd int) {
+				// run responder
+				go func(responderIndex int) {
 					var (
 						transport *Transport
 						err       error
 					)
 
-					transport, err = remotes[remoteInd].Accept(context.Background())
+					transport, err = responders[responderIndex].Accept(context.Background())
 					if err != nil {
 						acceptErrs <- err
 					}
 
 					// store transport
-					remotesTpsMX.Lock()
-					remotesTps[remoteInd] = append(remotesTps[remoteInd], transport)
-					remotesTpsMX.Unlock()
+					respondersTpsMX.Lock()
+					respondersTps[responderIndex] = append(respondersTps[responderIndex], transport)
+					respondersTpsMX.Unlock()
 
-					remotesWG.Done()
+					respondersWG.Done()
 				}(i)
 			}
 		}
@@ -361,8 +347,8 @@ func TestServer_Serve(t *testing.T) {
 					err       error
 				)
 
-				remote := remotes[pickedResponders[initiatorInd]]
-				transport, err = initiators[initiatorInd].Dial(context.Background(), remote.pk)
+				responder := responders[pickedResponders[initiatorInd]]
+				transport, err = initiators[initiatorInd].Dial(context.Background(), responder.pk)
 				if err != nil {
 					dialErrs <- err
 				}
@@ -379,54 +365,53 @@ func TestServer_Serve(t *testing.T) {
 		// wait for initiators
 		initiatorsWG.Wait()
 		close(dialErrs)
-		err = <-dialErrs
+		err := <-dialErrs
 		// single error should fail test
 		require.NoError(t, err)
 
-		// wait for remotes
-		remotesWG.Wait()
+		// wait for responders
+		respondersWG.Wait()
 		close(acceptErrs)
 		err = <-acceptErrs
 		// single error should fail test
 		require.NoError(t, err)
 
-		// check ServerConn's count
 		checkConnCount(t, srv, len(respondersTpsCount)+initiatorsCount, noDelay)
 
 		for i, initiator := range initiators {
 			// get and check initiator's ServerConn
-			initiatorServConn, ok := srv.getConn(initiator.pk)
+			initiatorSrvConn, ok := srv.getConn(initiator.pk)
 			require.True(t, ok)
-			require.Equal(t, initiator.pk, initiatorServConn.PK())
+			require.Equal(t, initiator.pk, initiatorSrvConn.PK())
 
 			// get and check initiator's ClientConn
-			initiatorClientConn, ok := initiator.getConn(sPK)
+			initiatorClientConn, ok := initiator.getConn(srv.pk)
 			require.True(t, ok)
-			require.Equal(t, sPK, initiatorClientConn.RemotePK())
+			require.Equal(t, srv.pk, initiatorClientConn.RemotePK())
 
-			remote := remotes[pickedResponders[i]]
+			responder := responders[pickedResponders[i]]
 
-			// get and check remote's ServerConn
-			remoteServConn, ok := srv.getConn(remote.pk)
+			// get and check responder's ServerConn
+			responderSrvConn, ok := srv.getConn(responder.pk)
 			require.True(t, ok)
-			require.Equal(t, remote.pk, remoteServConn.PK())
+			require.Equal(t, responder.pk, responderSrvConn.PK())
 
-			// get and check remote's ClientConn
-			remoteClientConn, ok := remote.getConn(sPK)
+			// get and check responder's ClientConn
+			responderClientConn, ok := responder.getConn(srv.pk)
 			require.True(t, ok)
-			require.Equal(t, sPK, remoteClientConn.RemotePK())
+			require.Equal(t, srv.pk, responderClientConn.RemotePK())
 
 			// get initiator's nextConn
 			initiatorClientConn.mx.RLock()
 			nextInitID := initiatorClientConn.nextInitID
 			initiatorClientConn.mx.RUnlock()
-			initiatorNextConn, ok := initiatorServConn.getNext(nextInitID - 2)
+			initiatorNextConn, ok := initiatorSrvConn.getNext(nextInitID - 2)
 			require.True(t, ok)
 			require.NotNil(t, initiatorNextConn)
 		}
 
-		// close transports for remotes
-		for _, tps := range remotesTps {
+		// close transports for responders
+		for _, tps := range respondersTps {
 			for _, tp := range tps {
 				err := tp.Close()
 				require.NoError(t, err)
@@ -439,9 +424,9 @@ func TestServer_Serve(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		// close remotes
-		for _, remote := range remotes {
-			err := remote.Close()
+		// close responders
+		for _, responder := range responders {
+			err := responder.Close()
 			require.NoError(t, err)
 		}
 
@@ -453,8 +438,8 @@ func TestServer_Serve(t *testing.T) {
 
 		checkConnCount(t, srv, 0, 10*time.Second)
 
-		for _, remote := range remotes {
-			checkConnCount(t, remote, 0, 10*time.Second)
+		for _, responder := range responders {
+			checkConnCount(t, responder, 0, 10*time.Second)
 		}
 
 		for _, initiator := range initiators {
@@ -683,17 +668,8 @@ func TestServer_Serve(t *testing.T) {
 	})
 
 	t.Run("server_disconnect_should_close_transports", func(t *testing.T) {
-		// generate keys for server
-		srvPK, srvSK := cipher.GenerateKeyPair()
-
 		dc := disc.NewMock()
-
-		l, err := nettest.NewLocalListener("tcp")
-		require.NoError(t, err)
-
-		// create a server separately from other tests, since this one should be closed
-		srv, err := NewServer(srvPK, srvSK, "", l, dc)
-		require.NoError(t, err)
+		srv := createServer(t, dc, "")
 
 		var sStartErr error
 		sDone := make(chan struct{})
@@ -772,14 +748,8 @@ func TestServer_Serve(t *testing.T) {
 func testReconnect(t *testing.T, randomAddr bool) {
 	ctx := context.TODO()
 
-	serverPK, serverSK := cipher.GenerateKeyPair()
 	dc := disc.NewMock()
-
-	l, err := nettest.NewLocalListener("tcp")
-	require.NoError(t, err)
-
-	srv, err := NewServer(serverPK, serverSK, "", l, dc)
-	require.NoError(t, err)
+	srv := createServer(t, dc, "")
 
 	serverAddr := srv.Addr()
 
@@ -808,10 +778,10 @@ func testReconnect(t *testing.T, randomAddr bool) {
 		addr = serverAddr
 	}
 
-	l, err = net.Listen("tcp", serverAddr)
+	l, err := net.Listen("tcp", serverAddr)
 	require.NoError(t, err)
 
-	srv, err = NewServer(serverPK, serverSK, addr, l, dc)
+	srv, err = NewServer(srv.pk, srv.sk, addr, l, dc)
 	require.NoError(t, err)
 
 	go srv.Serve() // nolint:errcheck
@@ -831,6 +801,18 @@ func createClient(t *testing.T, dc disc.APIClient, name string) *Client {
 	return client
 }
 
+func createServer(t *testing.T, dc disc.APIClient, addr string) *Server {
+	pk, sk := cipher.GenerateKeyPair()
+
+	l, err := nettest.NewLocalListener("tcp")
+	require.NoError(t, err)
+
+	srv, err := NewServer(pk, sk, addr, l, dc)
+	require.NoError(t, err)
+
+	return srv
+}
+
 // TODO: update comments mentioning a & b
 // Given two client instances (a & b) and a server instance (s),
 // Client b should be able to dial a transport with client b
@@ -848,10 +830,10 @@ func TestNewClient(t *testing.T) {
 	l, err := net.Listen("tcp", sAddr)
 	require.NoError(t, err)
 
-	log.Println(l.Addr().String())
-
 	srv, err := NewServer(sPK, sSK, "", l, dc)
 	require.NoError(t, err)
+
+	log.Println(srv.Addr())
 
 	go srv.Serve() //nolint:errcheck
 
