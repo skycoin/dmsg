@@ -1,7 +1,6 @@
 package dmsg
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"testing"
@@ -96,15 +95,4 @@ func isReadChannelOpen(ch chan Frame) bool {
 	case <-time.After(chanReadThreshold):
 		return false
 	}
-}
-
-func checkDialAccept(t *testing.T, initiator, responder *Client) {
-	require.NoError(t, testWithTimeout(smallDelay, func() error {
-		if _, err := initiator.Dial(context.TODO(), responder.pk); err != nil {
-			return err
-		}
-
-		_, err := responder.Accept(context.Background())
-		return err
-	}))
 }
