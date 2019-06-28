@@ -12,9 +12,9 @@ import (
 
 const (
 	noDelay           = time.Duration(0)
-	smallDelay        = time.Millisecond * 100
-	chanReadThreshold = time.Second * 5
-	testTimeout       = time.Second * 5
+	smallDelay        = 100 * time.Millisecond
+	chanReadThreshold = 5 * time.Second
+	testTimeout       = 5 * time.Second
 )
 
 func closeClosers(closers ...io.Closer) error {
@@ -95,4 +95,18 @@ func isReadChannelOpen(ch chan Frame) bool {
 	case <-time.After(chanReadThreshold):
 		return false
 	}
+}
+
+func getNextInitID(conn *ClientConn) uint16 {
+	conn.mx.Lock()
+	defer conn.mx.Unlock()
+
+	return conn.nextInitID
+}
+
+func getNextRespID(conn *ServerConn) uint16 {
+	conn.mx.Lock()
+	defer conn.mx.Unlock()
+
+	return conn.nextRespID
 }

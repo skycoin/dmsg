@@ -110,31 +110,19 @@ func TestClient(t *testing.T) {
 			_ = conn4.Serve(ctx, ch4) // nolint:errcheck
 		}()
 
-		conn1.mx.RLock()
-		initID1 := conn1.nextInitID
-		conn1.mx.RUnlock()
-
+		initID1 := getNextInitID(conn1)
 		_, ok := conn1.getTp(initID1)
 		assert.False(t, ok)
 
-		conn2.mx.RLock()
-		initID2 := conn2.nextInitID
-		conn2.mx.RUnlock()
-
+		initID2 := getNextInitID(conn2)
 		_, ok = conn2.getTp(initID2)
 		assert.False(t, ok)
 
-		conn3.mx.RLock()
-		initID3 := conn3.nextInitID
-		conn3.mx.RUnlock()
-
+		initID3 := getNextInitID(conn3)
 		_, ok = conn3.getTp(initID3)
 		assert.False(t, ok)
 
-		conn4.mx.RLock()
-		initID4 := conn4.nextInitID
-		conn4.mx.RUnlock()
-
+		initID4 := getNextInitID(conn4)
 		_, ok = conn4.getTp(initID4)
 		assert.False(t, ok)
 

@@ -58,7 +58,7 @@ func TestServerConn_AddNext(t *testing.T) {
 		fullNextConns[i] = &NextConn{}
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), smallDelay)
 	defer cancel()
 
 	cases := []struct {
@@ -181,7 +181,7 @@ func TestNewServer(t *testing.T) {
 
 	go srv.Serve() //nolint:errcheck
 
-	time.Sleep(time.Second)
+	time.Sleep(smallDelay)
 
 	assert.NoError(t, srv.Close())
 }
@@ -226,32 +226,26 @@ func TestServer_Serve(t *testing.T) {
 		require.Equal(t, srv.pk, initiatorClientConn.RemotePK())
 
 		// check whether nextConn's contents are as must be
-		initiatorClientConn.mx.RLock()
-		nextInitID := initiatorClientConn.nextInitID
-		initiatorClientConn.mx.RUnlock()
-		bNextConn, ok := initiatorServerConn.getNext(nextInitID - 2)
+		nextInitID := getNextInitID(initiatorClientConn)
+		initiatorNextConn, ok := initiatorServerConn.getNext(nextInitID - 2)
 		require.True(t, ok)
-		responderServerConn.mx.RLock()
-		nextRespID := responderServerConn.nextRespID
-		responderServerConn.mx.RUnlock()
-		require.Equal(t, bNextConn.id, nextRespID-2)
+
+		nextRespID := getNextRespID(responderServerConn)
+		require.Equal(t, initiatorNextConn.id, nextRespID-2)
 
 		// check whether nextConn's contents are as must be
-		responderServerConn.mx.RLock()
-		nextRespID = responderServerConn.nextRespID
-		responderServerConn.mx.RUnlock()
-		aNextConn, ok := responderServerConn.getNext(nextRespID - 2)
+		nextRespID = getNextRespID(responderServerConn)
+		responderNextConn, ok := responderServerConn.getNext(nextRespID - 2)
 		require.True(t, ok)
-		initiatorClientConn.mx.RLock()
-		nextInitID = initiatorClientConn.nextInitID
-		initiatorClientConn.mx.RUnlock()
-		require.Equal(t, aNextConn.id, nextInitID-2)
+
+		nextInitID = getNextInitID(initiatorClientConn)
+		require.Equal(t, responderNextConn.id, nextInitID-2)
 
 		require.NoError(t, closeClosers(responderTransport, initiatorTransport, responder, initiator))
 
-		checkConnCount(t, srv, 0, 5*time.Second)
-		checkConnCount(t, responder, 0, 5*time.Second)
-		checkConnCount(t, initiator, 0, 5*time.Second)
+		checkConnCount(t, srv, 0, smallDelay)
+		checkConnCount(t, responder, 0, smallDelay)
+		checkConnCount(t, initiator, 0, smallDelay)
 	})
 
 	t.Run("Transport establishes concurrently", func(t *testing.T) {
@@ -342,14 +336,14 @@ func TestServer_Serve(t *testing.T) {
 		initiatorsWG.Add(initiatorsCount)
 		for i := range initiators {
 			// run initiator
-			go func(initiatorInd int) {
+			go func(initiatorIndex int) {
 				var (
 					transport *Transport
 					err       error
 				)
 
-				responder := responders[pickedResponders[initiatorInd]]
-				transport, err = initiators[initiatorInd].Dial(context.Background(), responder.pk)
+				responder := responders[pickedResponders[initiatorIndex]]
+				transport, err = initiators[initiatorIndex].Dial(context.Background(), responder.pk)
 				if err != nil {
 					dialErrs <- err
 				}
@@ -403,9 +397,7 @@ func TestServer_Serve(t *testing.T) {
 			require.Equal(t, srv.pk, responderClientConn.RemotePK())
 
 			// get initiator's nextConn
-			initiatorClientConn.mx.RLock()
-			nextInitID := initiatorClientConn.nextInitID
-			initiatorClientConn.mx.RUnlock()
+			nextInitID := getNextInitID(initiatorClientConn)
 			initiatorNextConn, ok := initiatorSrvConn.getNext(nextInitID - 2)
 			require.True(t, ok)
 			require.NotNil(t, initiatorNextConn)
@@ -437,14 +429,14 @@ func TestServer_Serve(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		checkConnCount(t, srv, 0, 10*time.Second)
+		checkConnCount(t, srv, 0, smallDelay)
 
 		for _, responder := range responders {
-			checkConnCount(t, responder, 0, 10*time.Second)
+			checkConnCount(t, responder, 0, smallDelay)
 		}
 
 		for _, initiator := range initiators {
-			checkConnCount(t, initiator, 0, 10*time.Second)
+			checkConnCount(t, initiator, 0, smallDelay)
 		}
 	})
 
@@ -501,7 +493,7 @@ func TestServer_Serve(t *testing.T) {
 		require.Error(t, err)
 
 		// wait more time to ensure that the initially created transport works
-		time.Sleep(2 * time.Second)
+		time.Sleep(smallDelay)
 
 		require.NoError(t, closeClosers(responderTransport, initiatorTransport))
 
@@ -596,7 +588,7 @@ func TestServer_Serve(t *testing.T) {
 		}()
 
 		// wait till it's definitely blocked
-		initiatorWrTransport, responderRdTransport := dial(t, initiator, responder, 1*time.Second)
+		initiatorWrTransport, responderRdTransport := dial(t, initiator, responder, smallDelay)
 
 		// try to write/read message via the new transports
 		for i := 0; i < 100; i++ {
@@ -648,18 +640,18 @@ func TestServer_Serve(t *testing.T) {
 
 	})
 
-	t.Run("server_disconnect_should_close_transports", func(t *testing.T) {
+	t.Run("Server disconnection closes transports", func(t *testing.T) {
 		dc := disc.NewMock()
 		srv := createServer(t, dc, "")
 
-		var sStartErr error
-		sDone := make(chan struct{})
+		var srvStartErr error
+		srvDone := make(chan struct{})
 		go func() {
 			if err := srv.Serve(); err != nil {
-				sStartErr = err
+				srvStartErr = err
 			}
 
-			close(sDone)
+			close(srvDone)
 		}()
 
 		responder := createClient(t, dc, responderName)
@@ -689,12 +681,12 @@ func TestServer_Serve(t *testing.T) {
 		err := srv.Close()
 		require.NoError(t, err)
 
-		<-sDone
+		<-srvDone
 		// TODO: remove log, uncomment when bug is fixed
-		log.Printf("SERVE ERR: %v", sStartErr)
+		log.Printf("SERVE ERR: %v", srvStartErr)
 		//require.NoError(t, sStartErr)
 
-		/*time.Sleep(10 * time.Second)
+		/*time.Sleep(largeDelay)
 
 		tp, ok := bTransport.(*Transport)
 		require.Equal(t, true, ok)
@@ -705,7 +697,7 @@ func TestServer_Serve(t *testing.T) {
 		require.Equal(t, true, tp.IsClosed())*/
 	})
 
-	t.Run("Reconnect to server should succeed", func(t *testing.T) {
+	t.Run("Reconnection to server succeeds", func(t *testing.T) {
 		t.Run("Same address", func(t *testing.T) {
 			t.Parallel()
 			testReconnect(t, false)
