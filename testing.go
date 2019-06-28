@@ -15,7 +15,6 @@ const (
 	smallDelay        = 100 * time.Millisecond
 	chanReadThreshold = 5 * time.Second
 	testTimeout       = 5 * time.Second
-	message           = "Hello there!"
 )
 
 func closeClosers(closers ...io.Closer) error {

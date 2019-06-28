@@ -26,6 +26,9 @@ import (
 const (
 	responderName = "responder"
 	initiatorName = "initiator"
+	message       = "Hello there!"
+	msgCount      = 100
+	bufSize       = 5
 )
 
 func TestMain(m *testing.M) {
@@ -205,22 +208,27 @@ func TestServer_Serve(t *testing.T) {
 	})
 
 	t.Run("Failed accepts do not result in hang", func(t *testing.T) {
+		t.Parallel()
 		testFailedAccepts(t, dc)
 	})
 
 	t.Run("Sent/received message is consistent", func(t *testing.T) {
+		t.Parallel()
 		testMessageConsistency(t, dc)
 	})
 
 	t.Run("Capped transport buffer does not result in hang", func(t *testing.T) {
+		t.Parallel()
 		testCappedTransport(t, dc)
 	})
 
 	t.Run("Self dialing works", func(t *testing.T) {
+		t.Parallel()
 		testSelfDialing(t, dc)
 	})
 
 	t.Run("Server disconnection closes transports", func(t *testing.T) {
+		t.Parallel()
 		testServerDisconnection(t)
 	})
 
@@ -252,22 +260,7 @@ func testServerDisconnection(t *testing.T) {
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
 	initiatorTransport, responderTransport := dial(t, initiator, responder, noDelay)
-	msgCount := 100
-	for i := 0; i < msgCount; i++ {
-		_, err := initiatorTransport.Write([]byte(message))
-		require.NoError(t, err)
-
-		recBuff := make([]byte, 5)
-
-		_, err = responderTransport.Read(recBuff)
-		require.NoError(t, err)
-
-		_, err = responderTransport.Read(recBuff)
-		require.NoError(t, err)
-
-		_, err = responderTransport.Read([]byte(message))
-		require.NoError(t, err)
-	}
+	testTransportMessaging(t, initiatorTransport, responderTransport)
 	err := srv.Close()
 	require.NoError(t, err)
 	<-srvDone
@@ -289,23 +282,21 @@ func testSelfDialing(t *testing.T, dc disc.APIClient) {
 	client := createClient(t, dc, "client")
 	selfWrTp, selfRdTp := dial(t, client, client, noDelay)
 	// try to write/read message to/from self
-	msgCount := 100
-	for i := 0; i < msgCount; i++ {
-		_, err := selfWrTp.Write([]byte(message))
-		require.NoError(t, err)
-
-		recBuf := make([]byte, 5)
-
-		_, err = selfRdTp.Read(recBuf)
-		require.NoError(t, err)
-
-		_, err = selfRdTp.Read(recBuf)
-		require.NoError(t, err)
-
-		_, err = selfRdTp.Read(recBuf)
-		require.NoError(t, err)
-	}
+	testTransportMessaging(t, selfWrTp, selfRdTp)
 	require.NoError(t, closeClosers(selfRdTp, selfWrTp, client))
+}
+
+func testTransportMessaging(t *testing.T, init *Transport, resp *Transport) {
+	for i := 0; i < msgCount; i++ {
+		_, err := init.Write([]byte(message))
+		require.NoError(t, err)
+
+		recvBuf := make([]byte, bufSize)
+		for i := 0; i < len(message); i += bufSize {
+			_, err := resp.Read(recvBuf)
+			require.NoError(t, err)
+		}
+	}
 }
 
 func testCappedTransport(t *testing.T, dc disc.APIClient) {
@@ -333,7 +324,7 @@ func testCappedTransport(t *testing.T, dc disc.APIClient) {
 	// wait till it's definitely blocked
 	initiatorWrTransport, responderRdTransport := dial(t, initiator, responder, smallDelay)
 	// try to write/read message via the new transports
-	for i := 0; i < 100; i++ {
+	for i := 0; i < msgCount; i++ {
 		_, err := initiatorWrTransport.Write(msg)
 		require.NoError(t, err)
 
@@ -630,7 +621,6 @@ func testMessageConsistency(t *testing.T, dc disc.APIClient) {
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
 	initiatorTransport, responderTransport := dial(t, initiator, responder, noDelay)
-	msgCount := 100
 	for i := 0; i < msgCount; i++ {
 		// write message of 12 bytes
 		_, err := initiatorTransport.Write([]byte(message))
@@ -742,7 +732,6 @@ func TestNewClient(t *testing.T) {
 	sAddr := "127.0.0.1:8081"
 
 	const tpCount = 10
-	const msgCount = 100
 
 	dc := disc.NewMock()
 
