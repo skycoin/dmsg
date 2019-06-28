@@ -16,6 +16,19 @@ type transportWithError struct {
 	err error
 }
 
+func BenchmarkNewClientConn(b *testing.B) {
+	log := logging.MustGetLogger("dmsg_test")
+
+	p1, _ := net.Pipe()
+
+	pk1, _ := cipher.GenerateKeyPair()
+	pk2, _ := cipher.GenerateKeyPair()
+
+	for i := 0; i < b.N; i++ {
+		NewClientConn(log, p1, pk1, pk2)
+	}
+}
+
 func TestClient(t *testing.T) {
 	logger := logging.MustGetLogger("dms_client")
 

@@ -190,6 +190,25 @@ func TestNewServer(t *testing.T) {
 	assert.NoError(t, srv.Close())
 }
 
+func BenchmarkNewServer(b *testing.B) {
+	dc := disc.NewMock()
+
+	for i := 0; i < b.N; i++ {
+		pk, sk := cipher.GenerateKeyPair()
+
+		l, err := net.Listen("tcp", "")
+		if err != nil {
+			b.Error(err)
+		}
+
+		srv, err := NewServer(pk, sk, "", l, dc)
+		if err != nil {
+			b.Error(err)
+		}
+		go srv.Serve() //nolint:errcheck
+	}
+}
+
 // TestServer_Serve ensures that Server processes request frames and
 // instantiates transports properly.
 func TestServer_Serve(t *testing.T) {
