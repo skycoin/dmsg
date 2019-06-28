@@ -197,11 +197,11 @@ func TestServer_Serve(t *testing.T) {
 	// connect two clients, establish transport, check if there are
 	// two ServerConn's and that both conn's `nextConn` is filled correctly
 	t.Run("Transport establishes", func(t *testing.T) {
-		testTransportEstabilishment(t, dc, srv)
+		testTransportEstablishment(t, dc, srv)
 	})
 
 	t.Run("Transport establishes concurrently", func(t *testing.T) {
-		testConcurrentTransportEstabilishment(t, dc, srv)
+		testConcurrentTransportEstablishment(t, dc, srv)
 	})
 
 	t.Run("Failed accepts do not result in hang", func(t *testing.T) {
@@ -254,9 +254,7 @@ func testServerDisconnection(t *testing.T) {
 	initiatorTransport, responderTransport := dial(t, initiator, responder, noDelay)
 	msgCount := 100
 	for i := 0; i < msgCount; i++ {
-		msg := []byte("Hello there!")
-
-		_, err := initiatorTransport.Write(msg)
+		_, err := initiatorTransport.Write([]byte(message))
 		require.NoError(t, err)
 
 		recBuff := make([]byte, 5)
@@ -267,7 +265,7 @@ func testServerDisconnection(t *testing.T) {
 		_, err = responderTransport.Read(recBuff)
 		require.NoError(t, err)
 
-		_, err = responderTransport.Read(msg)
+		_, err = responderTransport.Read([]byte(message))
 		require.NoError(t, err)
 	}
 	err := srv.Close()
@@ -293,9 +291,7 @@ func testSelfDialing(t *testing.T, dc disc.APIClient) {
 	// try to write/read message to/from self
 	msgCount := 100
 	for i := 0; i < msgCount; i++ {
-		msg := []byte("Hello there!")
-
-		_, err := selfWrTp.Write(msg)
+		_, err := selfWrTp.Write([]byte(message))
 		require.NoError(t, err)
 
 		recBuf := make([]byte, 5)
@@ -319,7 +315,7 @@ func testCappedTransport(t *testing.T, dc disc.APIClient) {
 	require.NoError(t, err)
 	_, err = initiator.Accept(context.Background())
 	require.NoError(t, err)
-	msg := []byte("Hello there!")
+	msg := []byte(message)
 	// exact iterations to fill the receiving buffer and hang `Write`
 	iterationsToDo := tpBufCap/len(msg) + 1
 	// fill the buffer, but no block yet
@@ -369,12 +365,11 @@ func testFailedAccepts(t *testing.T, dc disc.APIClient) {
 				close(readWriteDone)
 				return
 			default:
-				msg := []byte("Hello there!")
-				if _, writeErr = initiatorTransport.Write(msg); writeErr != nil {
+				if _, writeErr = initiatorTransport.Write([]byte(message)); writeErr != nil {
 					close(readWriteDone)
 					return
 				}
-				if _, readErr = responderTransport.Read(msg); readErr != nil {
+				if _, readErr = responderTransport.Read([]byte(message)); readErr != nil {
 					close(readWriteDone)
 					return
 				}
@@ -418,7 +413,47 @@ func testFailedAccepts(t *testing.T, dc disc.APIClient) {
 	require.NoError(t, closeClosers(responder, initiator))
 }
 
-func testConcurrentTransportEstabilishment(t *testing.T, dc disc.APIClient, srv *Server) {
+func testTransportEstablishment(t *testing.T, dc disc.APIClient, srv *Server) {
+	responder := createClient(t, dc, responderName)
+	initiator := createClient(t, dc, initiatorName)
+	initiatorTransport, responderTransport := dial(t, initiator, responder, noDelay)
+	// must be 2 ServerConn's
+	checkConnCount(t, srv, 2, noDelay)
+	// must have ServerConn for A
+	responderServerConn, ok := srv.getConn(responder.pk)
+	require.True(t, ok)
+	require.Equal(t, responder.pk, responderServerConn.PK())
+	// must have ServerConn for B
+	initiatorServerConn, ok := srv.getConn(initiator.pk)
+	require.True(t, ok)
+	require.Equal(t, initiator.pk, initiatorServerConn.PK())
+	// must have a ClientConn
+	responderClientConn, ok := responder.getConn(srv.pk)
+	require.True(t, ok)
+	require.Equal(t, srv.pk, responderClientConn.RemotePK())
+	// must have a ClientConn
+	initiatorClientConn, ok := initiator.getConn(srv.pk)
+	require.True(t, ok)
+	require.Equal(t, srv.pk, initiatorClientConn.RemotePK())
+	// check whether nextConn's contents are as must be
+	nextInitID := getNextInitID(initiatorClientConn)
+	initiatorNextConn, ok := initiatorServerConn.getNext(nextInitID - 2)
+	require.True(t, ok)
+	nextRespID := getNextRespID(responderServerConn)
+	require.Equal(t, initiatorNextConn.id, nextRespID-2)
+	// check whether nextConn's contents are as must be
+	nextRespID = getNextRespID(responderServerConn)
+	responderNextConn, ok := responderServerConn.getNext(nextRespID - 2)
+	require.True(t, ok)
+	nextInitID = getNextInitID(initiatorClientConn)
+	require.Equal(t, responderNextConn.id, nextInitID-2)
+	require.NoError(t, closeClosers(responderTransport, initiatorTransport, responder, initiator))
+	checkConnCount(t, srv, 0, smallDelay)
+	checkConnCount(t, responder, 0, smallDelay)
+	checkConnCount(t, initiator, 0, smallDelay)
+}
+
+func testConcurrentTransportEstablishment(t *testing.T, dc disc.APIClient, srv *Server) {
 	// this way we can control the tests' difficulty
 	initiatorsCount := 50
 	respondersCount := 50
@@ -591,56 +626,14 @@ func testConcurrentTransportEstabilishment(t *testing.T, dc disc.APIClient, srv 
 	}
 }
 
-func testTransportEstabilishment(t *testing.T, dc disc.APIClient, srv *Server) {
-	responder := createClient(t, dc, responderName)
-	initiator := createClient(t, dc, initiatorName)
-	initiatorTransport, responderTransport := dial(t, initiator, responder, noDelay)
-	// must be 2 ServerConn's
-	checkConnCount(t, srv, 2, noDelay)
-	// must have ServerConn for A
-	responderServerConn, ok := srv.getConn(responder.pk)
-	require.True(t, ok)
-	require.Equal(t, responder.pk, responderServerConn.PK())
-	// must have ServerConn for B
-	initiatorServerConn, ok := srv.getConn(initiator.pk)
-	require.True(t, ok)
-	require.Equal(t, initiator.pk, initiatorServerConn.PK())
-	// must have a ClientConn
-	responderClientConn, ok := responder.getConn(srv.pk)
-	require.True(t, ok)
-	require.Equal(t, srv.pk, responderClientConn.RemotePK())
-	// must have a ClientConn
-	initiatorClientConn, ok := initiator.getConn(srv.pk)
-	require.True(t, ok)
-	require.Equal(t, srv.pk, initiatorClientConn.RemotePK())
-	// check whether nextConn's contents are as must be
-	nextInitID := getNextInitID(initiatorClientConn)
-	initiatorNextConn, ok := initiatorServerConn.getNext(nextInitID - 2)
-	require.True(t, ok)
-	nextRespID := getNextRespID(responderServerConn)
-	require.Equal(t, initiatorNextConn.id, nextRespID-2)
-	// check whether nextConn's contents are as must be
-	nextRespID = getNextRespID(responderServerConn)
-	responderNextConn, ok := responderServerConn.getNext(nextRespID - 2)
-	require.True(t, ok)
-	nextInitID = getNextInitID(initiatorClientConn)
-	require.Equal(t, responderNextConn.id, nextInitID-2)
-	require.NoError(t, closeClosers(responderTransport, initiatorTransport, responder, initiator))
-	checkConnCount(t, srv, 0, smallDelay)
-	checkConnCount(t, responder, 0, smallDelay)
-	checkConnCount(t, initiator, 0, smallDelay)
-}
-
 func testMessageConsistency(t *testing.T, dc disc.APIClient) {
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
 	initiatorTransport, responderTransport := dial(t, initiator, responder, noDelay)
 	msgCount := 100
 	for i := 0; i < msgCount; i++ {
-		msg := "Hello there!"
-
 		// write message of 12 bytes
-		_, err := initiatorTransport.Write([]byte(msg))
+		_, err := initiatorTransport.Write([]byte(message))
 		require.NoError(t, err)
 
 		// create a receiving buffer of 5 bytes
@@ -663,12 +656,12 @@ func testMessageConsistency(t *testing.T, dc disc.APIClient) {
 		// read 2 bytes left
 		n, err = responderTransport.Read(recBuff)
 		require.NoError(t, err)
-		require.Equal(t, n, len(msg)-len(recBuff)*2)
+		require.Equal(t, n, len(message)-len(recBuff)*2)
 
 		received += string(recBuff[:n])
 
 		// received string must be equal to the sent one
-		require.Equal(t, received, msg)
+		require.Equal(t, received, message)
 	}
 	require.NoError(t, closeClosers(initiatorTransport, responderTransport, responder, initiator))
 }
