@@ -973,7 +973,7 @@ func TestServer_Serve(t *testing.T) {
 					_, communicationErr = bTransport.Write(msg)
 					if communicationErr != nil {
 						if bTransport.IsClosed() {
-							// if tp is closed, error is usual here, supress
+							// if tp is closed, error is usual here, suppress
 							communicationErr = nil
 						}
 
@@ -985,7 +985,7 @@ func TestServer_Serve(t *testing.T) {
 					_, communicationErr = aTransport.Read(recBuff)
 					if communicationErr != nil {
 						if aTransport.IsClosed() {
-							// if tp is closed, error is usual here, supress
+							// if tp is closed, error is usual here, suppress
 							communicationErr = nil
 						}
 
@@ -995,7 +995,7 @@ func TestServer_Serve(t *testing.T) {
 					_, err = aTransport.Read(recBuff)
 					if communicationErr != nil {
 						if aTransport.IsClosed() {
-							// if tp is closed, error is usual here, supress
+							// if tp is closed, error is usual here, suppress
 							communicationErr = nil
 						}
 
@@ -1005,7 +1005,7 @@ func TestServer_Serve(t *testing.T) {
 					_, err = aTransport.Read(recBuff)
 					if communicationErr != nil {
 						if aTransport.IsClosed() {
-							// if tp is closed, error is usual here, supress
+							// if tp is closed, error is usual here, suppress
 							communicationErr = nil
 						}
 
