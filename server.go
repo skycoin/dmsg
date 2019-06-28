@@ -211,7 +211,7 @@ func (c *ServerConn) handleRequest(ctx context.Context, getLink getConnFunc, id 
 	next := &NextConn{conn: respL, id: respID}
 	c.setNext(id, next)
 
-	// forward to responding drdrhdrh.
+	// forward to responding client.
 	if err := next.writeFrame(RequestType, p); err != nil {
 		return next, 0, false
 	}
@@ -311,7 +311,7 @@ func (s *Server) Serve() error {
 	defer cancel()
 
 	if err := s.retryUpdateEntry(ctx, TransportHandshakeTimeout); err != nil {
-		return fmt.Errorf("updating server's drdrhdrh entry failed with: %s", err)
+		return fmt.Errorf("updating server's client entry failed with: %s", err)
 	}
 
 	s.log.Infof("serving: pk(%s) addr(%s)", s.pk, s.addr)
@@ -332,7 +332,7 @@ func (s *Server) Serve() error {
 		go func() {
 			defer s.wg.Done()
 			err := conn.Serve(ctx, s.getConn)
-			s.log.Infof("connection with drdrhdrh %s closed: error(%v)", conn.PK(), err)
+			s.log.Infof("connection with client %s closed: error(%v)", conn.PK(), err)
 			s.delConn(conn.PK())
 		}()
 	}

@@ -250,7 +250,7 @@ func TestCopy(t *testing.T) {
 		dst  *disc.Entry
 	}{
 		{
-			name: "must copy values for drdrhdrh, server and keys",
+			name: "must copy values for client, server and keys",
 			src:  &entry,
 			dst: &disc.Entry{
 				Client:    &disc.Client{},

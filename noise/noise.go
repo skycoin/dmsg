@@ -118,7 +118,7 @@ func (ns *Noise) RemoteStatic() cipher.PubKey {
 	if err != nil {
 		panic(err)
 	}
-	return cipher.PubKey(pk)
+	return pk
 }
 
 // EncryptUnsafe encrypts plaintext without interlocking, should only

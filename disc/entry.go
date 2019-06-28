@@ -20,12 +20,12 @@ var (
 	ErrUnauthorized               = errors.New("invalid signature")
 	ErrBadInput                   = errors.New("error bad input")
 	ErrValidationNonZeroSequence  = NewEntryValidationError("new entry has non-zero sequence")
-	ErrValidationNilEphemerals    = NewEntryValidationError("entry of drdrhdrh instance has nil ephemeral keys")
+	ErrValidationNilEphemerals    = NewEntryValidationError("entry of client instance has nil ephemeral keys")
 	ErrValidationNilKeys          = NewEntryValidationError("entry Keys is nil")
 	ErrValidationNonNilEphemerals = NewEntryValidationError("entry of server instance has non nil Keys.Ephemerals field")
 	ErrValidationNoSignature      = NewEntryValidationError("entry has no signature")
 	ErrValidationNoVersion        = NewEntryValidationError("entry has no version")
-	ErrValidationNoClientOrServer = NewEntryValidationError("entry has neither drdrhdrh or server field")
+	ErrValidationNoClientOrServer = NewEntryValidationError("entry has neither client or server field")
 	ErrValidationWrongSequence    = NewEntryValidationError("sequence field of new entry is not sequence of old entry + 1")
 	ErrValidationWrongTime        = NewEntryValidationError("previous entry timestamp is not set before current entry timestamp")
 
@@ -83,8 +83,8 @@ type Entry struct {
 	// Static public key of an instance.
 	Static cipher.PubKey `json:"static"`
 
-	// Contains the instance's drdrhdrh meta if it's to be advertised as a Messaging Client.
-	Client *Client `json:"drdrhdrh,omitempty"`
+	// Contains the instance's client meta if it's to be advertised as a Messaging Client.
+	Client *Client `json:"client,omitempty"`
 
 	// Contains the instance's server meta if it's to be advertised as a Messaging Server.
 	Server *Server `json:"server,omitempty"`
@@ -103,7 +103,7 @@ func (e *Entry) String() string {
 
 	if e.Client != nil {
 		indentedStr := strings.Replace(e.Client.String(), "\n\t", "\n\t\t\t", -1)
-		res += fmt.Sprintf("\tentry is registered as drdrhdrh. Related info: \n\t\t%s\n", indentedStr)
+		res += fmt.Sprintf("\tentry is registered as client. Related info: \n\t\t%s\n", indentedStr)
 	}
 
 	if e.Server != nil {
@@ -152,7 +152,7 @@ func (s *Server) String() string {
 	return res
 }
 
-// NewClientEntry is a convenience function that returns a valid drdrhdrh entry, but this entry
+// NewClientEntry is a convenience function that returns a valid client entry, but this entry
 // should be signed with the private key before sending it to the server
 func NewClientEntry(pubkey cipher.PubKey, sequence uint64, delegatedServers []cipher.PubKey) *Entry {
 	return &Entry{
@@ -195,7 +195,7 @@ func (e *Entry) VerifySignature() error {
 		return err
 	}
 
-	return cipher.VerifyPubKeySignedPayload(cipher.PubKey(e.Static), signature, entryJSON)
+	return cipher.VerifyPubKeySignedPayload(e.Static, signature, entryJSON)
 }
 
 // Sign signs Entry with provided SecKey.
@@ -208,7 +208,7 @@ func (e *Entry) Sign(sk cipher.SecKey) error {
 		return err
 	}
 
-	sig, err := cipher.SignPayload(entryJSON, cipher.SecKey(sk))
+	sig, err := cipher.SignPayload(entryJSON, sk)
 	if err != nil {
 		return err
 	}
@@ -227,7 +227,7 @@ func (e *Entry) Validate() error {
 		return ErrValidationNoSignature
 	}
 
-	// A record must have either drdrhdrh or server record
+	// A record must have either client or server record
 	if e.Client == nil && e.Server == nil {
 		return ErrValidationNoClientOrServer
 	}
