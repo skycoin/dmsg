@@ -298,14 +298,15 @@ func (s *Server) connCount() int {
 // Close closes the dms_server.
 func (s *Server) Close() (err error) {
 	s.doneMx.Lock()
-	defer func() {
-		close(s.done)
-		s.doneMx.Unlock()
-	}()
 
 	if err = s.lis.Close(); err != nil {
+		close(s.done)
+		s.doneMx.Unlock()
 		return err
 	}
+
+	close(s.done)
+	s.doneMx.Unlock()
 
 	s.mx.Lock()
 	s.conns = make(map[cipher.PubKey]*ServerConn)
