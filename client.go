@@ -218,18 +218,18 @@ func (c *ClientConn) Serve(ctx context.Context, accept chan<- *Transport) (err e
 				defer c.wg.Done()
 				initPK, err := c.handleRequestFrame(accept, id, p)
 				if err != nil {
-					log.WithField("remoteClient", initPK).WithError(err).Infoln("Rejected [REQUEST]")
+					log.WithField("remoteClient", initPK).WithError(err).Debugln("Rejected [REQUEST]")
 					if isWriteError(err) || err == ErrClientClosed {
 						err := c.Close()
 						log.WithError(err).Warn("ClosingConnection")
 					}
 					return
 				}
-				log.WithField("remoteClient", initPK).Infoln("Accepted [REQUEST]")
+				log.WithField("remoteClient", initPK).Debugln("Accepted [REQUEST]")
 			}(log)
 
 		default:
-			log.Infof("Ignored [%s]: No transport of given ID.", ft)
+			log.Debugf("Ignored [%s]: No transport of given ID.", ft)
 			if ft != CloseType {
 				if err := writeCloseFrame(c.Conn, id, 0); err != nil {
 					return err
