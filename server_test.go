@@ -914,6 +914,139 @@ func TestServer_Serve(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("server_disconnect_should_close_transports_while_communication_is_going_on", func(t *testing.T) {
+		// generate keys for server
+		sPK, sSK := cipher.GenerateKeyPair()
+
+		dc := disc.NewMock()
+
+		l, err := nettest.NewLocalListener("tcp")
+		require.NoError(t, err)
+
+		// create a server separately from other tests, since this one should be closed
+		s, err := NewServer(sPK, sSK, "", l, dc)
+		require.NoError(t, err)
+
+		var sStartErr error
+		sDone := make(chan struct{})
+		go func() {
+			if err := s.Serve(); err != nil {
+				sStartErr = err
+			}
+
+			sDone <- struct{}{}
+		}()
+
+		// generate keys for both clients
+		aPK, aSK := cipher.GenerateKeyPair()
+		bPK, bSK := cipher.GenerateKeyPair()
+
+		// create responder
+		a := NewClient(aPK, aSK, dc, SetLogger(logging.MustGetLogger("A")))
+		err = a.InitiateServerConnections(context.Background(), 1)
+		require.NoError(t, err)
+
+		// create initiator
+		b := NewClient(bPK, bSK, dc, SetLogger(logging.MustGetLogger("B")))
+		err = b.InitiateServerConnections(context.Background(), 1)
+		require.NoError(t, err)
+
+		bTransport, err := b.Dial(context.Background(), aPK)
+		require.NoError(t, err)
+
+		aTransport, err := a.Accept(context.Background())
+		require.NoError(t, err)
+
+		var communicationErr error
+		communicationStop := make(chan struct{})
+		communicationDone := make(chan struct{})
+		go func() {
+			defer close(communicationDone)
+
+			for {
+				select {
+				case <-communicationStop:
+					return
+				default:
+					msg := []byte("Hello there!")
+
+					_, communicationErr = bTransport.Write(msg)
+					if communicationErr != nil {
+						if bTransport.IsClosed() {
+							// if tp is closed, error is usual here, supress
+							communicationErr = nil
+						}
+
+						return
+					}
+
+					recBuff := make([]byte, 5)
+
+					_, communicationErr = aTransport.Read(recBuff)
+					if communicationErr != nil {
+						if aTransport.IsClosed() {
+							// if tp is closed, error is usual here, supress
+							communicationErr = nil
+						}
+
+						return
+					}
+
+					_, err = aTransport.Read(recBuff)
+					if communicationErr != nil {
+						if aTransport.IsClosed() {
+							// if tp is closed, error is usual here, supress
+							communicationErr = nil
+						}
+
+						return
+					}
+
+					_, err = aTransport.Read(recBuff)
+					if communicationErr != nil {
+						if aTransport.IsClosed() {
+							// if tp is closed, error is usual here, supress
+							communicationErr = nil
+						}
+
+						return
+					}
+				}
+			}
+		}()
+
+		err = s.Close()
+		require.NoError(t, err)
+
+		<-sDone
+		require.NoError(t, sStartErr)
+
+		<-communicationDone
+		require.NoError(t, communicationErr)
+
+		require.NoError(t, testWithTimeout(10*time.Second, func() error {
+			if !bTransport.IsClosed() {
+				return errors.New("bTransport is not closed")
+			}
+
+			return nil
+		}))
+
+		require.NoError(t, testWithTimeout(10*time.Second, func() error {
+			if !aTransport.IsClosed() {
+				return errors.New("aTransport is not closed")
+			}
+
+			return nil
+		}))
+
+		err = a.Close()
+		require.NoError(t, err)
+
+		err = b.Close()
+		require.NoError(t, err)
+	})
+
 	t.Run("Reconnect to server should succeed", func(t *testing.T) {
 		t.Run("Same address", func(t *testing.T) {
 			t.Parallel()
