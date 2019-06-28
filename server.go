@@ -233,8 +233,8 @@ type Server struct {
 
 	wg sync.WaitGroup
 
-	done   chan struct{}
 	doneMx sync.Mutex
+	done   chan struct{}
 }
 
 // NewServer creates a new dms_server.
@@ -317,6 +317,10 @@ func (s *Server) Close() (err error) {
 
 // IsClosed returns whether dmsg_server is closed.
 func (s *Server) IsClosed() bool {
+	// protection from concurrent read/close operations
+	s.doneMx.Lock()
+	defer s.doneMx.Unlock()
+
 	select {
 	case <-s.done:
 		return true
