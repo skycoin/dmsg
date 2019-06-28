@@ -297,23 +297,31 @@ func (s *Server) connCount() int {
 
 // Close closes the dms_server.
 func (s *Server) Close() (err error) {
-	s.doneMx.Lock()
-
-	if err = s.lis.Close(); err != nil {
-		close(s.done)
-		s.doneMx.Unlock()
+	if err := s.closeListener(); err != nil {
 		return err
 	}
 
-	close(s.done)
-	s.doneMx.Unlock()
-
-	s.mx.Lock()
-	s.conns = make(map[cipher.PubKey]*ServerConn)
-	s.mx.Unlock()
+	s.clearConns()
 
 	s.wg.Wait()
 	return nil
+}
+
+func (s *Server) closeListener() error {
+	s.doneMx.Lock()
+	defer func() {
+		close(s.done)
+		s.doneMx.Unlock()
+	}()
+
+	return s.lis.Close()
+}
+
+func (s *Server) clearConns() {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	s.conns = make(map[cipher.PubKey]*ServerConn)
 }
 
 // IsClosed returns whether dmsg_server is closed.
