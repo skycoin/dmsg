@@ -2,6 +2,8 @@ package dmsg
 
 import (
 	"context"
+	"math"
+	"math/rand"
 	"net"
 	"testing"
 	"time"
@@ -19,6 +21,130 @@ const (
 type transportWithError struct {
 	tr  *Transport
 	err error
+}
+
+func BenchmarkNewClientConn(b *testing.B) {
+	log := logging.MustGetLogger("dmsg_test")
+
+	p1, _ := net.Pipe()
+
+	pk1, _ := cipher.GenerateKeyPair()
+	pk2, _ := cipher.GenerateKeyPair()
+
+	for i := 0; i < b.N; i++ {
+		NewClientConn(log, p1, pk1, pk2)
+	}
+}
+
+func BenchmarkGetNextInitID_1(b *testing.B) {
+	benchmarkGetNextInitID(b, 1)
+}
+
+func BenchmarkGetNextInitID_10(b *testing.B) {
+	benchmarkGetNextInitID(b, 10)
+}
+
+func BenchmarkGetNextInitID_100(b *testing.B) {
+	benchmarkGetNextInitID(b, 100)
+}
+
+func BenchmarkGetNextInitID_1000(b *testing.B) {
+	benchmarkGetNextInitID(b, 1000)
+}
+
+func benchmarkGetNextInitID(b *testing.B, n int) {
+	cc, _ := clientConnWithTps(n)
+	ctx := context.TODO()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := cc.getNextInitID(ctx); err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+func BenchmarkGetTp_1(b *testing.B) {
+	benchmarkGetTp(b, 1)
+}
+
+func BenchmarkGetTp_10(b *testing.B) {
+	benchmarkGetTp(b, 10)
+}
+
+func BenchmarkGetTp_100(b *testing.B) {
+	benchmarkGetTp(b, 100)
+}
+
+func BenchmarkGetTp_1000(b *testing.B) {
+	benchmarkGetTp(b, 1000)
+}
+
+func benchmarkGetTp(b *testing.B, n int) {
+	cc, ids := clientConnWithTps(n)
+
+	for i := 0; i < b.N; i++ {
+		cc.getTp(ids[i%len(ids)])
+	}
+}
+
+func BenchmarkCloseTp_1(b *testing.B) {
+	benchmarkCloseTp(b, 1)
+}
+
+func BenchmarkCloseTp_10(b *testing.B) {
+	benchmarkCloseTp(b, 10)
+}
+
+func BenchmarkCloseTp_100(b *testing.B) {
+	benchmarkCloseTp(b, 100)
+}
+
+func BenchmarkCloseTp_1000(b *testing.B) {
+	benchmarkCloseTp(b, 1000)
+}
+
+func benchmarkCloseTp(b *testing.B, n int) {
+	cc, _ := clientConnWithTps(n)
+
+	for i := 0; i < b.N; i++ {
+		cc.close()
+	}
+}
+
+func clientConnWithTps(n int) (*ClientConn, []uint16) {
+	log := logging.MustGetLogger("dmsg_test")
+
+	p1, _ := net.Pipe()
+	pk1, _ := cipher.GenerateKeyPair()
+	pk2, _ := cipher.GenerateKeyPair()
+
+	cc := NewClientConn(log, p1, pk1, pk2)
+	ids := make([]uint16, 0, n)
+	for i := 0; i < n; i++ {
+		id := uint16(rand.Intn(math.MaxUint16))
+		ids = append(ids, id)
+		tp := NewTransport(p1, log, cipher.PubKey{}, cipher.PubKey{}, id, cc.delTp)
+		cc.setTp(tp)
+	}
+
+	return cc, ids
+}
+
+func BenchmarkSetTp(b *testing.B) {
+	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
+	log := logging.MustGetLogger("dmsg_test")
+
+	p1, _ := net.Pipe()
+	pk1, _ := cipher.GenerateKeyPair()
+	pk2, _ := cipher.GenerateKeyPair()
+
+	cc := NewClientConnMap(log, p1, pk1, pk2)
+
+	for i := 0; i < b.N; i++ {
+		id := uint16(rand.Intn(math.MaxUint16))
+		tp := NewTransport(p1, log, cipher.PubKey{}, cipher.PubKey{}, id, cc.delTp)
+		cc.setTp(tp)
+	}
 }
 
 func TestClient(t *testing.T) {
