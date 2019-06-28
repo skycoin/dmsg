@@ -30,10 +30,12 @@ type connCounter interface {
 	connCount() int
 }
 
-func checkConnCount(t *testing.T, cc connCounter, count int, delay time.Duration) {
+func checkConnCount(t *testing.T, delay time.Duration, count int, ccs ...connCounter) {
 	require.NoError(t, testWithTimeout(delay, func() error {
-		if cc.connCount() != count {
-			return fmt.Errorf("connCount equals to %d, want %d", cc.connCount(), count)
+		for _, cc := range ccs {
+			if cc.connCount() != count {
+				return fmt.Errorf("connCount equals to %d, want %d", cc.connCount(), count)
+			}
 		}
 		return nil
 	}))

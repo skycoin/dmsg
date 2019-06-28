@@ -143,10 +143,10 @@ func TestServerConn_AddNext(t *testing.T) {
 	wg.Add(connsCount)
 	for i := 0; i < connsCount; i++ {
 		go func() {
+			defer wg.Done()
+
 			_, err := serverConn.addNext(context.Background(), &NextConn{})
 			require.NoError(t, err)
-
-			wg.Done()
 		}()
 	}
 
@@ -322,16 +322,14 @@ func testTransportMessaging(t *testing.T, init *Transport, resp *Transport) {
 func testCappedTransport(t *testing.T, dc disc.APIClient) {
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
-	responderWrTransport, err := responder.Dial(context.Background(), initiator.pk)
-	require.NoError(t, err)
-	_, err = initiator.Accept(context.Background())
-	require.NoError(t, err)
+	// responder calls initiator
+	responderWrTransport, _ := dial(t, responder, initiator, noDelay)
 	msg := []byte(message)
 	// exact iterations to fill the receiving buffer and hang `Write`
 	iterationsToDo := tpBufCap/len(msg) + 1
 	// fill the buffer, but no block yet
 	for i := 0; i < iterationsToDo-1; i++ {
-		_, err = responderWrTransport.Write(msg)
+		_, err := responderWrTransport.Write(msg)
 		require.NoError(t, err)
 	}
 	// block on `Write`
@@ -354,7 +352,7 @@ func testCappedTransport(t *testing.T, dc disc.APIClient) {
 
 		require.Equal(t, recBuff, msg)
 	}
-	err = responderWrTransport.Close()
+	err := responderWrTransport.Close()
 	require.NoError(t, err)
 	<-blockedWriteDone
 	require.Error(t, blockedWriteErr)
@@ -429,7 +427,7 @@ func testTransportEstablishment(t *testing.T, dc disc.APIClient, srv *Server) {
 	initiator := createClient(t, dc, initiatorName)
 	initiatorTransport, responderTransport := dial(t, initiator, responder, noDelay)
 	// must be 2 ServerConn's
-	checkConnCount(t, srv, 2, noDelay)
+	checkConnCount(t, noDelay, 2, srv)
 	// must have ServerConn for A
 	responderServerConn, ok := srv.getConn(responder.pk)
 	require.True(t, ok)
@@ -459,9 +457,7 @@ func testTransportEstablishment(t *testing.T, dc disc.APIClient, srv *Server) {
 	nextInitID = getNextInitID(initiatorClientConn)
 	require.Equal(t, responderNextConn.id, nextInitID-2)
 	require.NoError(t, closeClosers(responderTransport, initiatorTransport, responder, initiator))
-	checkConnCount(t, srv, 0, smallDelay)
-	checkConnCount(t, responder, 0, smallDelay)
-	checkConnCount(t, initiator, 0, smallDelay)
+	checkConnCount(t, smallDelay, 0, srv, responder, initiator)
 }
 
 func testConcurrentTransportEstablishment(t *testing.T, dc disc.APIClient, srv *Server) {
@@ -516,12 +512,9 @@ func testConcurrentTransportEstablishment(t *testing.T, dc disc.APIClient, srv *
 		for connect := 0; connect < respondersTpsCount[i]; connect++ {
 			// run responder
 			go func(responderIndex int) {
-				var (
-					transport *Transport
-					err       error
-				)
+				defer respondersWG.Done()
 
-				transport, err = responders[responderIndex].Accept(context.Background())
+				transport, err := responders[responderIndex].Accept(context.Background())
 				if err != nil {
 					acceptErrs <- err
 				}
@@ -530,8 +523,6 @@ func testConcurrentTransportEstablishment(t *testing.T, dc disc.APIClient, srv *
 				respondersTpsMX.Lock()
 				respondersTps[responderIndex] = append(respondersTps[responderIndex], transport)
 				respondersTpsMX.Unlock()
-
-				respondersWG.Done()
 			}(i)
 		}
 	}
@@ -545,13 +536,10 @@ func testConcurrentTransportEstablishment(t *testing.T, dc disc.APIClient, srv *
 	for i := range initiators {
 		// run initiator
 		go func(initiatorIndex int) {
-			var (
-				transport *Transport
-				err       error
-			)
+			defer initiatorsWG.Done()
 
 			responder := responders[pickedResponders[initiatorIndex]]
-			transport, err = initiators[initiatorIndex].Dial(context.Background(), responder.pk)
+			transport, err := initiators[initiatorIndex].Dial(context.Background(), responder.pk)
 			if err != nil {
 				dialErrs <- err
 			}
@@ -560,8 +548,6 @@ func testConcurrentTransportEstablishment(t *testing.T, dc disc.APIClient, srv *
 			initiatorsTpsMx.Lock()
 			initiatorsTps = append(initiatorsTps, transport)
 			initiatorsTpsMx.Unlock()
-
-			initiatorsWG.Done()
 		}(i)
 	}
 	// wait for initiators
@@ -576,7 +562,7 @@ func testConcurrentTransportEstablishment(t *testing.T, dc disc.APIClient, srv *
 	err = <-acceptErrs
 	// single error should fail test
 	require.NoError(t, err)
-	checkConnCount(t, srv, len(respondersTpsCount)+initiatorsCount, noDelay)
+	checkConnCount(t, noDelay, len(respondersTpsCount)+initiatorsCount, srv)
 	for i, initiator := range initiators {
 		// get and check initiator's ServerConn
 		initiatorSrvConn, ok := srv.getConn(initiator.pk)
@@ -628,12 +614,12 @@ func testConcurrentTransportEstablishment(t *testing.T, dc disc.APIClient, srv *
 		err := initiator.Close()
 		require.NoError(t, err)
 	}
-	checkConnCount(t, srv, 0, smallDelay)
+	checkConnCount(t, smallDelay, 0, srv)
 	for _, responder := range responders {
-		checkConnCount(t, responder, 0, smallDelay)
+		checkConnCount(t, smallDelay, 0, responder)
 	}
 	for _, initiator := range initiators {
-		checkConnCount(t, initiator, 0, smallDelay)
+		checkConnCount(t, smallDelay, 0, initiator)
 	}
 }
 
@@ -688,19 +674,19 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 
 	go srv.Serve() // nolint:errcheck
 
-	checkConnCount(t, srv, 0, noDelay)
+	checkConnCount(t, noDelay, 0, srv)
 
 	responder := createClient(t, dc, responderName)
-	checkConnCount(t, srv, 1, smallDelay)
+	checkConnCount(t, smallDelay, 1, srv)
 
 	initiator := createClient(t, dc, initiatorName)
-	checkConnCount(t, srv, 2, smallDelay)
+	checkConnCount(t, smallDelay, 2, srv)
 
 	initiatorTransport, responderTransport := dial(t, initiator, responder, noDelay)
 
 	assert.NoError(t, srv.Close())
 	checkTransportsClosed(t, initiatorTransport, responderTransport)
-	checkConnCount(t, srv, 0, smallDelay)
+	checkConnCount(t, smallDelay, 0, srv)
 
 	addr := ""
 	if !randomAddr {
@@ -715,7 +701,7 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 
 	go srv.Serve() // nolint:errcheck
 
-	checkConnCount(t, srv, 2, clientReconnectInterval+smallDelay)
+	checkConnCount(t, clientReconnectInterval+smallDelay, 2, srv)
 	_, _ = dial(t, initiator, responder, smallDelay)
 
 	assert.NoError(t, srv.Close())
@@ -772,6 +758,7 @@ func TestNewClient(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+
 		for i := 0; i < tpCount; i++ {
 			responderDone := make(chan struct{})
 			var responderTp *Transport
