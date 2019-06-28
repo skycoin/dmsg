@@ -30,8 +30,8 @@ format: ## Formats the code. Must have goimports installed (use make install-lin
 	${OPTS} goimports -w -local github.com/skycoin/dmsg ./...
 
 dep: ## Sorts dependencies
-	${OPTS} go mod vendor -v
+	${OPTS} go mod download
+	${OPTS} go mod tidy -v
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-	
