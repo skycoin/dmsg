@@ -74,57 +74,6 @@ func Test_randID(t *testing.T) {
 	}
 }
 
-func TestFrameType_String(t *testing.T) {
-	cases := []struct {
-		name string
-		ft   FrameType
-		want string
-	}{
-		{
-			name: "Request type",
-			ft:   RequestType,
-			want: "REQUEST",
-		},
-		{
-			name: "Accept type",
-			ft:   AcceptType,
-			want: "ACCEPT",
-		},
-		{
-			name: "Close type",
-			ft:   CloseType,
-			want: "CLOSE",
-		},
-		{
-			name: "Fwd type",
-			ft:   FwdType,
-			want: "FWD",
-		},
-		{
-			name: "Ack type",
-			ft:   AckType,
-			want: "ACK",
-		},
-		{
-			name: "Ok type",
-			ft:   OkType,
-			want: "OK",
-		},
-		{
-			name: "Unknown type",
-			ft:   255,
-			want: "UNKNOWN:255",
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := tc.ft.String()
-			assert.Equal(t, tc.want, got)
-		})
-	}
-}
-
 func TestMakeFrame(t *testing.T) {
 	type args struct {
 		ft   FrameType
@@ -169,52 +118,6 @@ func TestMakeFrame(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := MakeFrame(tc.args.ft, tc.args.chID, tc.args.pay)
-			assert.Equal(t, tc.want, got)
-		})
-	}
-}
-
-func TestFrame_Type(t *testing.T) {
-	cases := []struct {
-		name string
-		f    Frame
-		want FrameType
-	}{
-		{
-			name: "Request type",
-			f:    Frame{1},
-			want: RequestType,
-		},
-		{
-			name: "Accept type",
-			f:    Frame{2},
-			want: AcceptType,
-		},
-		{
-			name: "Close type",
-			f:    Frame{3},
-			want: CloseType,
-		},
-		{
-			name: "Fwd type",
-			f:    Frame{10},
-			want: FwdType,
-		},
-		{
-			name: "Ack type",
-			f:    Frame{11},
-			want: AckType,
-		},
-		{
-			name: "Unknown type",
-			f:    Frame{255},
-			want: FrameType(255),
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := tc.f.Type()
 			assert.Equal(t, tc.want, got)
 		})
 	}
