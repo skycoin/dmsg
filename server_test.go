@@ -113,6 +113,7 @@ func TestServerConn_AddNext(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			id, err := tc.conn.addNext(tc.ctx, &NextConn{})
 

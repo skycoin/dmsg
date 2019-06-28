@@ -35,6 +35,7 @@ func Test_isInitiatorID(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			got := isInitiatorID(tc.args.tpID)
 			assert.Equal(t, tc.want, got)
@@ -65,6 +66,7 @@ func Test_randID(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			got := randID(tc.args.initiator)
 			isEven := got%2 == 0
@@ -116,6 +118,7 @@ func TestMakeFrame(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			got := MakeFrame(tc.args.ft, tc.args.chID, tc.args.pay)
 			assert.Equal(t, tc.want, got)
@@ -142,6 +145,7 @@ func TestFrame_TpID(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.f.TpID()
 			assert.Equal(t, tc.want, got)
@@ -168,6 +172,7 @@ func TestFrame_PayLen(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.f.PayLen()
 			assert.Equal(t, tc.want, got)
@@ -194,6 +199,7 @@ func TestFrame_Pay(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.f.Pay()
 			assert.Equal(t, tc.want, got)
@@ -226,6 +232,7 @@ func TestFrame_Disassemble(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			gotFT, gotID, gotP := tc.f.Disassemble()
 
@@ -268,6 +275,7 @@ func Test_readFrame(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := readFrame(tc.args.r)
 
@@ -297,6 +305,7 @@ func Test_writeFrame(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			w := &bytes.Buffer{}
 
@@ -333,6 +342,7 @@ func Test_writeCloseFrame(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			w := &bytes.Buffer{}
 
@@ -371,6 +381,7 @@ func Test_writeFwdFrame(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			w := &bytes.Buffer{}
 
@@ -400,11 +411,13 @@ func Test_combinePKs(t *testing.T) {
 				initPK: "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7",
 				respPK: "031b80cd5773143a39d940dc0710b93dcccc262a85108018a7a95ab9af734f8055",
 			},
-			want: "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7031b80cd5773143a39d940dc0710b93dcccc262a85108018a7a95ab9af734f8055",
+			want: "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7" +
+				"031b80cd5773143a39d940dc0710b93dcccc262a85108018a7a95ab9af734f8055",
 		},
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			var initPK, respPK cipher.PubKey
 
@@ -433,8 +446,9 @@ func Test_splitPKs(t *testing.T) {
 		wantOk     bool
 	}{
 		{
-			name:       "OK",
-			args:       args{s: "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7031b80cd5773143a39d940dc0710b93dcccc262a85108018a7a95ab9af734f8055"},
+			name: "OK",
+			args: args{s: "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7" +
+				"031b80cd5773143a39d940dc0710b93dcccc262a85108018a7a95ab9af734f8055"},
 			wantInitPK: "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7",
 			wantRespPK: "031b80cd5773143a39d940dc0710b93dcccc262a85108018a7a95ab9af734f8055",
 			wantOk:     true,
@@ -449,6 +463,7 @@ func Test_splitPKs(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			pks, err := hex.DecodeString(tc.args.s)
 			assert.NoError(t, err)

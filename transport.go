@@ -81,7 +81,8 @@ func (tp *Transport) serve() (started bool) {
 // 1. `done` is always closed before `inCh`/`bufCh` is closed.
 // 2. mutexes protect `inCh`/`bufCh` to ensure that closing and writing to these chans does not happen concurrently.
 // 3. Our worry now, is writing to `inCh`/`bufCh` AFTER they have been closed.
-// 4. But as, under the mutexes protecting `inCh`/`bufCh`, checking `done` comes first, and we know that `done` is closed before `inCh`/`bufCh`, we can guarantee that it avoids writing to closed chan.
+// 4. But as, under the mutexes protecting `inCh`/`bufCh`, checking `done` comes first,
+// and we know that `done` is closed before `inCh`/`bufCh`, we can guarantee that it avoids writing to closed chan.
 func (tp *Transport) close() (closed bool) {
 	tp.doneOnce.Do(func() {
 		closed = true
@@ -233,7 +234,6 @@ func (tp *Transport) ReadAccept(ctx context.Context) (err error) {
 
 // Serve handles received frames.
 func (tp *Transport) Serve() {
-
 	// return is transport is already being served, or is closed
 	if !tp.serve() {
 		return
