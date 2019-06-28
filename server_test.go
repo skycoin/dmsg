@@ -850,7 +850,7 @@ func TestServer_Serve(t *testing.T) {
 		aPK, aSK := cipher.GenerateKeyPair()
 		bPK, bSK := cipher.GenerateKeyPair()
 
-		// create remote
+		// create responder
 		a := NewClient(aPK, aSK, dc, SetLogger(logging.MustGetLogger("A")))
 		err = a.InitiateServerConnections(context.Background(), 1)
 		require.NoError(t, err)
@@ -881,7 +881,7 @@ func TestServer_Serve(t *testing.T) {
 			_, err = aTransport.Read(recBuff)
 			require.NoError(t, err)
 
-			_, err = aTransport.Read(msg)
+			_, err = aTransport.Read(recBuff)
 			require.NoError(t, err)
 		}
 
@@ -889,19 +889,29 @@ func TestServer_Serve(t *testing.T) {
 		require.NoError(t, err)
 
 		<-sDone
-		// TODO: remove log, uncomment when bug is fixed
-		log.Printf("SERVE ERR: %v", sStartErr)
-		//require.NoError(t, sStartErr)
+		require.NoError(t, sStartErr)
 
-		/*time.Sleep(10 * time.Second)
+		require.NoError(t, testWithTimeout(10*time.Second, func() error {
+			if !bTransport.IsClosed() {
+				return errors.New("bTransport is not closed")
+			}
 
-		tp, ok := bTransport.(*Transport)
-		require.Equal(t, true, ok)
-		require.Equal(t, true, tp.IsClosed())
+			return nil
+		}))
 
-		tp, ok = aTransport.(*Transport)
-		require.Equal(t, true, ok)
-		require.Equal(t, true, tp.IsClosed())*/
+		require.NoError(t, testWithTimeout(10*time.Second, func() error {
+			if !aTransport.IsClosed() {
+				return errors.New("aTransport is not closed")
+			}
+
+			return nil
+		}))
+
+		err = a.Close()
+		require.NoError(t, err)
+
+		err = b.Close()
+		require.NoError(t, err)
 	})
 
 	t.Run("Reconnect to server should succeed", func(t *testing.T) {
