@@ -760,20 +760,7 @@ func TestNewClient(t *testing.T) {
 		defer wg.Done()
 
 		for i := 0; i < tpCount; i++ {
-			responderDone := make(chan struct{})
-			var responderTp *Transport
-			go func() {
-				var err error
-				responderTp, err = responder.Accept(context.Background())
-				catch(err)
-				close(responderDone)
-			}()
-
-			initiatorTp, err := initiator.Dial(context.Background(), responder.pk)
-			catch(err)
-
-			<-responderDone
-			catch(err)
+			initiatorTp, responderTp := dial(t, initiator, responder, noDelay)
 
 			for j := 0; j < msgCount; j++ {
 				pay := []byte(fmt.Sprintf("This is message %d!", j))
@@ -788,19 +775,7 @@ func TestNewClient(t *testing.T) {
 	}()
 
 	for i := 0; i < tpCount; i++ {
-		initiatorDone := make(chan struct{})
-		var initiatorErr error
-		var initiatorTp *Transport
-		go func() {
-			initiatorTp, initiatorErr = initiator.Accept(context.Background())
-			close(initiatorDone)
-		}()
-
-		responderTp, err := responder.Dial(context.Background(), initiator.pk)
-		require.NoError(t, err)
-
-		<-initiatorDone
-		require.NoError(t, initiatorErr)
+		initiatorTp, responderTp := dial(t, initiator, responder, noDelay)
 
 		for j := 0; j < msgCount; j++ {
 			pay := []byte(fmt.Sprintf("This is message %d!", j))
@@ -839,4 +814,13 @@ func dial(t *testing.T, initiator, responder *Client, delay time.Duration) (init
 		return err
 	}))
 	return initTp, respTp
+}
+
+func testReadWrite(t *testing.T, initiatorTransport, responderTransport *Transport) {
+	if _, err := initiatorTransport.Write([]byte(message)); err != nil {
+		return
+	}
+	if _, err := responderTransport.Read([]byte(message)); err != nil {
+		return
+	}
 }
