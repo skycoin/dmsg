@@ -799,7 +799,7 @@ func TestNewClient(t *testing.T) {
 	assert.NoError(t, srv.Close())
 }
 
-func dial(t *testing.T, initiator, responder *Client, delay time.Duration) (initTp *Transport, respTp *Transport) {
+func dial(t *testing.T, initiator, responder *Client, delay time.Duration) (initTp, respTp *Transport) {
 	var err error
 
 	require.NoError(t, testWithTimeout(delay, func() error {
