@@ -31,31 +31,33 @@ func BenchmarkNewClientConn(b *testing.B) {
 	pk1, _ := cipher.GenerateKeyPair()
 	pk2, _ := cipher.GenerateKeyPair()
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		NewClientConn(log, p1, pk1, pk2)
 	}
 }
 
-func BenchmarkGetNextInitID_1(b *testing.B) {
-	benchmarkGetNextInitID(b, 1)
+func BenchmarkClientConn_getNextInitID_1(b *testing.B) {
+	benchmarkClientConnGetNextInitID(b, 1)
 }
 
-func BenchmarkGetNextInitID_10(b *testing.B) {
-	benchmarkGetNextInitID(b, 10)
+func BenchmarkClientConn_getNextInitID_10(b *testing.B) {
+	benchmarkClientConnGetNextInitID(b, 10)
 }
 
-func BenchmarkGetNextInitID_100(b *testing.B) {
-	benchmarkGetNextInitID(b, 100)
+func BenchmarkClientConn_getNextInitID_100(b *testing.B) {
+	benchmarkClientConnGetNextInitID(b, 100)
 }
 
-func BenchmarkGetNextInitID_1000(b *testing.B) {
-	benchmarkGetNextInitID(b, 1000)
+func BenchmarkClientConn_getNextInitID_1000(b *testing.B) {
+	benchmarkClientConnGetNextInitID(b, 1000)
 }
 
-func benchmarkGetNextInitID(b *testing.B, n int) {
+func benchmarkClientConnGetNextInitID(b *testing.B, n int) {
 	cc, _ := clientConnWithTps(n)
 	ctx := context.TODO()
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		if _, err := cc.getNextInitID(ctx); err != nil {
 			b.Error(err)
@@ -63,51 +65,28 @@ func benchmarkGetNextInitID(b *testing.B, n int) {
 	}
 }
 
-func BenchmarkGetTp_1(b *testing.B) {
-	benchmarkGetTp(b, 1)
+func BenchmarkClientConn_getTp_1(b *testing.B) {
+	benchmarkClientConnGetTp(b, 1)
 }
 
-func BenchmarkGetTp_10(b *testing.B) {
-	benchmarkGetTp(b, 10)
+func BenchmarkClientConn_getTp_10(b *testing.B) {
+	benchmarkClientConnGetTp(b, 10)
 }
 
-func BenchmarkGetTp_100(b *testing.B) {
-	benchmarkGetTp(b, 100)
+func BenchmarkClientConn_getTp_100(b *testing.B) {
+	benchmarkClientConnGetTp(b, 100)
 }
 
-func BenchmarkGetTp_1000(b *testing.B) {
-	benchmarkGetTp(b, 1000)
+func BenchmarkClientConn_getTp_1000(b *testing.B) {
+	benchmarkClientConnGetTp(b, 1000)
 }
 
-func benchmarkGetTp(b *testing.B, n int) {
+func benchmarkClientConnGetTp(b *testing.B, n int) {
 	cc, ids := clientConnWithTps(n)
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		cc.getTp(ids[i%len(ids)])
-	}
-}
-
-func BenchmarkCloseTp_1(b *testing.B) {
-	benchmarkCloseTp(b, 1)
-}
-
-func BenchmarkCloseTp_10(b *testing.B) {
-	benchmarkCloseTp(b, 10)
-}
-
-func BenchmarkCloseTp_100(b *testing.B) {
-	benchmarkCloseTp(b, 100)
-}
-
-func BenchmarkCloseTp_1000(b *testing.B) {
-	benchmarkCloseTp(b, 1000)
-}
-
-func benchmarkCloseTp(b *testing.B, n int) {
-	cc, _ := clientConnWithTps(n)
-
-	for i := 0; i < b.N; i++ {
-		cc.close()
 	}
 }
 
@@ -130,7 +109,7 @@ func clientConnWithTps(n int) (*ClientConn, []uint16) {
 	return cc, ids
 }
 
-func BenchmarkSetTp(b *testing.B) {
+func BenchmarkClientConn_setTp(b *testing.B) {
 	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	log := logging.MustGetLogger("dmsg_test")
 
@@ -140,9 +119,10 @@ func BenchmarkSetTp(b *testing.B) {
 
 	cc := NewClientConnMap(log, p1, pk1, pk2)
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		id := uint16(rand.Intn(math.MaxUint16))
-		tp := NewTransport(p1, log, cipher.PubKey{}, cipher.PubKey{}, id, cc.delTp)
+		tp := NewTransportMap(p1, log, cipher.PubKey{}, cipher.PubKey{}, id, cc.delTp)
 		cc.setTp(tp)
 	}
 }
