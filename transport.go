@@ -81,7 +81,7 @@ func (tp *Transport) serve() (started bool) {
 // 1. `done` is always closed before `inCh`/`bufCh` is closed.
 // 2. mutexes protect `inCh`/`bufCh` to ensure that closing and writing to these chans does not happen concurrently.
 // 3. Our worry now, is writing to `inCh`/`bufCh` AFTER they have been closed.
-// 4. But as, under the mutexes protecting `inCh`/`bufCh`, checking `done` comes first, and we know that `done` is closed before `inCh`/`bufCh`, we can gurantee that it avoids writing to closed chan.
+// 4. But as, under the mutexes protecting `inCh`/`bufCh`, checking `done` comes first, and we know that `done` is closed before `inCh`/`bufCh`, we can guarantee that it avoids writing to closed chan.
 func (tp *Transport) close() (closed bool) {
 	tp.doneOnce.Do(func() {
 		closed = true
@@ -152,7 +152,7 @@ func (tp *Transport) HandleFrame(f Frame) error {
 	}
 }
 
-// WriteRequest writes a REQUEST frame to dmsg_server to be forwarded to associated drdrhdrh.
+// WriteRequest writes a REQUEST frame to dmsg_server to be forwarded to associated client.
 func (tp *Transport) WriteRequest() error {
 	f := MakeFrame(RequestType, tp.id, combinePKs(tp.local, tp.remote))
 	if err := writeFrame(tp.Conn, f); err != nil {
@@ -163,7 +163,7 @@ func (tp *Transport) WriteRequest() error {
 	return nil
 }
 
-// WriteAccept writes an ACCEPT frame to dmsg_server to be forwarded to associated drdrhdrh.
+// WriteAccept writes an ACCEPT frame to dmsg_server to be forwarded to associated client.
 func (tp *Transport) WriteAccept() (err error) {
 	defer func() {
 		if err != nil {
@@ -181,7 +181,7 @@ func (tp *Transport) WriteAccept() (err error) {
 	return nil
 }
 
-// ReadAccept awaits for an ACCEPT frame to be read from the remote drdrhdrh.
+// ReadAccept awaits for an ACCEPT frame to be read from the remote client.
 // TODO(evanlinjin): Cleanup errors.
 func (tp *Transport) ReadAccept(ctx context.Context) (err error) {
 	defer func() {
@@ -210,8 +210,8 @@ func (tp *Transport) ReadAccept(ctx context.Context) (err error) {
 		case AcceptType:
 			// locally-initiated tps should:
 			// - have a payload structured as 'init_pk:resp_pk'.
-			// - init_pk should be of local drdrhdrh.
-			// - resp_pk should be of remote drdrhdrh.
+			// - init_pk should be of local client.
+			// - resp_pk should be of remote client.
 			// - use an even number with the intermediary dmsg_server.
 			initPK, respPK, ok := splitPKs(p)
 			if !ok || initPK != tp.local || respPK != tp.remote || !isInitiatorID(id) {
