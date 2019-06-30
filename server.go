@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -233,8 +233,7 @@ type Server struct {
 
 	wg sync.WaitGroup
 
-	doneMx sync.Mutex
-	done   chan struct{}
+	lisDone int32
 }
 
 // NewServer creates a new dms_server.
@@ -255,7 +254,6 @@ func NewServer(pk cipher.PubKey, sk cipher.SecKey, addr string, l net.Listener, 
 		lis:   noise.WrapListener(l, pk, sk, false, noise.HandshakeXK),
 		dc:    dc,
 		conns: make(map[cipher.PubKey]*ServerConn),
-		done:  make(chan struct{}),
 	}, nil
 }
 
@@ -297,45 +295,22 @@ func (s *Server) connCount() int {
 
 // Close closes the dms_server.
 func (s *Server) Close() (err error) {
-	if err := s.closeListener(); err != nil {
-		return err
+	if atomic.CompareAndSwapInt32(&s.lisDone, 0, 1) {
+		if err := s.lis.Close(); err != nil {
+			return err
+		}
 	}
 
-	s.clearConns()
+	s.mx.Lock()
+	s.conns = make(map[cipher.PubKey]*ServerConn)
+	s.mx.Unlock()
 
 	s.wg.Wait()
 	return nil
 }
 
-func (s *Server) closeListener() error {
-	s.doneMx.Lock()
-	defer func() {
-		close(s.done)
-		s.doneMx.Unlock()
-	}()
-
-	return s.lis.Close()
-}
-
-func (s *Server) clearConns() {
-	s.mx.Lock()
-	defer s.mx.Unlock()
-
-	s.conns = make(map[cipher.PubKey]*ServerConn)
-}
-
-// IsClosed returns whether dmsg_server is closed.
-func (s *Server) IsClosed() bool {
-	// protection from concurrent read/close operations
-	s.doneMx.Lock()
-	defer s.doneMx.Unlock()
-
-	select {
-	case <-s.done:
-		return true
-	default:
-		return false
-	}
+func (s *Server) isLisClosed() bool {
+	return atomic.LoadInt32(&s.lisDone) == 1
 }
 
 // Serve serves the dmsg_server.
@@ -352,13 +327,10 @@ func (s *Server) Serve() error {
 	for {
 		rawConn, err := s.lis.Accept()
 		if err != nil {
-			// if the server is closed, it means that this error is not interesting
+			// if the listener is closed, it means that this error is not interesting
 			// for the outer client
-			if s.IsClosed() {
+			if s.isLisClosed() {
 				return nil
-			}
-			if err == io.ErrUnexpectedEOF {
-				continue
 			}
 			return err
 		}
