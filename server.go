@@ -233,7 +233,8 @@ type Server struct {
 
 	wg sync.WaitGroup
 
-	lisDone int32
+	lisDone  int32
+	doneOnce sync.Once
 }
 
 // NewServer creates a new dms_server.
@@ -293,17 +294,32 @@ func (s *Server) connCount() int {
 	return n
 }
 
-// Close closes the dms_server.
-func (s *Server) Close() (err error) {
-	if atomic.CompareAndSwapInt32(&s.lisDone, 0, 1) {
-		if err := s.lis.Close(); err != nil {
-			return err
-		}
-	}
+func (s *Server) close() (closed bool, err error) {
+	s.doneOnce.Do(func() {
+		closed = true
+		atomic.StoreInt32(&s.lisDone, 1)
 
-	s.mx.Lock()
-	s.conns = make(map[cipher.PubKey]*ServerConn)
-	s.mx.Unlock()
+		if err = s.lis.Close(); err != nil {
+			return
+		}
+
+		s.mx.Lock()
+		s.conns = make(map[cipher.PubKey]*ServerConn)
+		s.mx.Unlock()
+	})
+
+	return closed, err
+}
+
+// Close closes the dms_server.
+func (s *Server) Close() error {
+	closed, err := s.close()
+	if !closed {
+		return errors.New("server is already closed")
+	}
+	if err != nil {
+		return err
+	}
 
 	s.wg.Wait()
 	return nil
