@@ -43,14 +43,14 @@ func checkConnCount(t *testing.T, delay time.Duration, count int, ccs ...connCou
 
 func checkTransportsClosed(t *testing.T, transports ...*Transport) {
 	for _, transport := range transports {
-		assert.False(t, isDoneChannelOpen(transport.done))
-		assert.False(t, isReadChannelOpen(transport.inCh))
+		assert.False(t, isDoneChanOpen(transport.done))
+		assert.False(t, isReadChanOpen(transport.inCh))
 	}
 }
 
 func checkClientConnsClosed(t *testing.T, conns ...*ClientConn) {
 	for _, conn := range conns {
-		assert.False(t, isDoneChannelOpen(conn.done))
+		assert.False(t, isDoneChanOpen(conn.done))
 	}
 }
 
@@ -81,7 +81,7 @@ func testWithTimeout(timeout time.Duration, run func() error) error {
 	}
 }
 
-func isDoneChannelOpen(ch chan struct{}) bool {
+func isDoneChanOpen(ch chan struct{}) bool {
 	select {
 	case _, ok := <-ch:
 		return ok
@@ -90,7 +90,7 @@ func isDoneChannelOpen(ch chan struct{}) bool {
 	}
 }
 
-func isReadChannelOpen(ch chan Frame) bool {
+func isReadChanOpen(ch chan Frame) bool {
 	select {
 	case _, ok := <-ch:
 		return ok

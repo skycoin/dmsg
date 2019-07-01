@@ -201,82 +201,53 @@ func TestNewServer(t *testing.T) {
 	})
 }
 
-func BenchmarkNewServer(b *testing.B) {
-	dc := disc.NewMock()
-
-	for i := 0; i < b.N; i++ {
-		pk, sk := cipher.GenerateKeyPair()
-
-		l, err := net.Listen("tcp", "")
-		if err != nil {
-			b.Error(err)
-		}
-
-		srv, err := NewServer(pk, sk, "", l, dc)
-		if err != nil {
-			b.Error(err)
-		}
-		go srv.Serve() //nolint:errcheck
-	}
-}
-
 // TestServer_Serve ensures that Server processes request frames and
 // instantiates transports properly.
 func TestServer_Serve(t *testing.T) {
-	dc := disc.NewMock()
-
-	srv := createServer(t, dc, "")
-	go srv.Serve() //nolint:errcheck
-
-	// connect two clients, establish transport, check if there are
-	// two ServerConn's and that both conn's `nextConn` is filled correctly
 	t.Run("Transport establishes", func(t *testing.T) {
-		testTransportEstablishment(t, dc, srv)
+		testServerTransportEstablishment(t)
 	})
 
 	t.Run("Transport establishes concurrently", func(t *testing.T) {
-		testConcurrentTransportEstablishment(t, dc, srv)
+		testServerConcurrentTransportEstablishment(t)
 	})
 
 	t.Run("Failed accepts do not result in hang", func(t *testing.T) {
-		t.Parallel()
-		testFailedAccepts(t, dc)
+		testServerFailedAccepts(t)
 	})
 
 	t.Run("Sent/received message is consistent", func(t *testing.T) {
-		t.Parallel()
-		testMessageConsistency(t, dc)
+		testServerMessageConsistency(t)
 	})
 
 	t.Run("Capped transport buffer does not result in hang", func(t *testing.T) {
-		t.Parallel()
-		testCappedTransport(t, dc)
+		testServerCappedTransport(t)
 	})
 
 	t.Run("Self dialing works", func(t *testing.T) {
-		t.Parallel()
-		testSelfDialing(t, dc)
+		testServerSelfDialing(t)
 	})
 
 	t.Run("Server disconnection closes transports", func(t *testing.T) {
-		t.Parallel()
 		testServerDisconnection(t)
 	})
 
 	t.Run("Reconnection to server succeeds", func(t *testing.T) {
+		t.Parallel()
+
 		t.Run("Same address", func(t *testing.T) {
-			t.Parallel()
 			testServerReconnection(t, false)
 		})
 
 		t.Run("Random address", func(t *testing.T) {
-			t.Parallel()
 			testServerReconnection(t, true)
 		})
 	})
 }
 
 func testServerDisconnection(t *testing.T) {
+	t.Parallel()
+
 	dc := disc.NewMock()
 	srv := createServer(t, dc, "")
 	var srvStartErr error
@@ -288,33 +259,44 @@ func testServerDisconnection(t *testing.T) {
 
 		close(srvDone)
 	}()
+
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
 	initiatorTransport, responderTransport := dial(t, initiator, responder, noDelay)
 	testTransportMessaging(t, initiatorTransport, responderTransport)
-	err := srv.Close()
-	require.NoError(t, err)
+
+	require.NoError(t, srv.Close())
 	<-srvDone
-	// TODO: remove log, uncomment when bug is fixed
-	log.Printf("SERVE ERR: %v", srvStartErr)
-	// require.NoError(t, sStartErr)
-	/*time.Sleep(largeDelay)
+	require.NoError(t, srvStartErr)
 
-	tp, ok := bTransport.(*Transport)
-	require.Equal(t, true, ok)
-	require.Equal(t, true, tp.IsClosed())
+	time.Sleep(smallDelay)
 
-	tp, ok = aTransport.(*Transport)
-	require.Equal(t, true, ok)
-	require.Equal(t, true, tp.IsClosed())*/
+	require.Equal(t, true, responderTransport.IsClosed())
+	require.Equal(t, true, initiatorTransport.IsClosed())
 }
 
-func testSelfDialing(t *testing.T, dc disc.APIClient) {
+func testServerSelfDialing(t *testing.T) {
+	t.Parallel()
+
+	dc := disc.NewMock()
+
+	srv := createServer(t, dc, "")
+	var serveErr error
+	serveDone := make(chan struct{})
+	go func() {
+		serveErr = srv.Serve()
+		close(serveDone)
+	}()
+
 	client := createClient(t, dc, "client")
 	selfWrTp, selfRdTp := dial(t, client, client, noDelay)
 	// try to write/read message to/from self
 	testTransportMessaging(t, selfWrTp, selfRdTp)
 	require.NoError(t, closeClosers(selfRdTp, selfWrTp, client))
+
+	assert.NoError(t, srv.Close())
+	<-serveDone
+	assert.NoError(t, serveErr)
 }
 
 func testTransportMessaging(t *testing.T, init *Transport, resp *Transport) {
@@ -330,7 +312,19 @@ func testTransportMessaging(t *testing.T, init *Transport, resp *Transport) {
 	}
 }
 
-func testCappedTransport(t *testing.T, dc disc.APIClient) {
+func testServerCappedTransport(t *testing.T) {
+	t.Parallel()
+
+	dc := disc.NewMock()
+
+	srv := createServer(t, dc, "")
+	var serveErr error
+	serveDone := make(chan struct{})
+	go func() {
+		serveErr = srv.Serve()
+		close(serveDone)
+	}()
+
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
 	// responder calls initiator
@@ -368,9 +362,25 @@ func testCappedTransport(t *testing.T, dc disc.APIClient) {
 	<-blockedWriteDone
 	require.Error(t, blockedWriteErr)
 	require.NoError(t, closeClosers(initiatorWrTransport, responderRdTransport, responder, initiator))
+
+	assert.NoError(t, srv.Close())
+	<-serveDone
+	assert.NoError(t, serveErr)
 }
 
-func testFailedAccepts(t *testing.T, dc disc.APIClient) {
+func testServerFailedAccepts(t *testing.T) {
+	t.Parallel()
+
+	dc := disc.NewMock()
+
+	srv := createServer(t, dc, "")
+	var serveErr error
+	serveDone := make(chan struct{})
+	go func() {
+		serveErr = srv.Serve()
+		close(serveDone)
+	}()
+
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
 	initiatorTransport, responderTransport := dial(t, initiator, responder, noDelay)
@@ -431,14 +441,32 @@ func testFailedAccepts(t *testing.T, dc disc.APIClient) {
 		require.NoError(t, writeErr)
 	}
 	require.NoError(t, closeClosers(responder, initiator))
+
+	assert.NoError(t, srv.Close())
+	<-serveDone
+	assert.NoError(t, serveErr)
 }
 
-func testTransportEstablishment(t *testing.T, dc disc.APIClient, srv *Server) {
+// connect two clients, establish transport, check if there are
+// two ServerConn's and that both conn's `nextConn` is filled correctly
+func testServerTransportEstablishment(t *testing.T) {
+	t.Parallel()
+
+	dc := disc.NewMock()
+
+	srv := createServer(t, dc, "")
+	var serveErr error
+	serveDone := make(chan struct{})
+	go func() {
+		serveErr = srv.Serve()
+		close(serveDone)
+	}()
+
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
 	initiatorTransport, responderTransport := dial(t, initiator, responder, noDelay)
 	// must be 2 ServerConn's
-	checkConnCount(t, noDelay, 2, srv)
+	checkConnCount(t, smallDelay, 2, srv)
 	// must have ServerConn for A
 	responderServerConn, ok := srv.getConn(responder.pk)
 	require.True(t, ok)
@@ -469,9 +497,25 @@ func testTransportEstablishment(t *testing.T, dc disc.APIClient, srv *Server) {
 	require.Equal(t, responderNextConn.id, nextInitID-2)
 	require.NoError(t, closeClosers(responderTransport, initiatorTransport, responder, initiator))
 	checkConnCount(t, smallDelay, 0, srv, responder, initiator)
+
+	assert.NoError(t, srv.Close())
+	<-serveDone
+	assert.NoError(t, serveErr)
 }
 
-func testConcurrentTransportEstablishment(t *testing.T, dc disc.APIClient, srv *Server) {
+func testServerConcurrentTransportEstablishment(t *testing.T) {
+	t.Parallel()
+
+	dc := disc.NewMock()
+
+	srv := createServer(t, dc, "")
+	var serveErr error
+	serveDone := make(chan struct{})
+	go func() {
+		serveErr = srv.Serve()
+		close(serveDone)
+	}()
+
 	// this way we can control the tests' difficulty
 	initiatorsCount := 50
 	respondersCount := 50
@@ -632,9 +676,25 @@ func testConcurrentTransportEstablishment(t *testing.T, dc disc.APIClient, srv *
 	for _, initiator := range initiators {
 		checkConnCount(t, smallDelay, 0, initiator)
 	}
+
+	assert.NoError(t, srv.Close())
+	<-serveDone
+	assert.NoError(t, serveErr)
 }
 
-func testMessageConsistency(t *testing.T, dc disc.APIClient) {
+func testServerMessageConsistency(t *testing.T) {
+	t.Parallel()
+
+	dc := disc.NewMock()
+
+	srv := createServer(t, dc, "")
+	var serveErr error
+	serveDone := make(chan struct{})
+	go func() {
+		serveErr = srv.Serve()
+		close(serveDone)
+	}()
+
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
 	initiatorTransport, responderTransport := dial(t, initiator, responder, noDelay)
@@ -644,7 +704,7 @@ func testMessageConsistency(t *testing.T, dc disc.APIClient) {
 		require.NoError(t, err)
 
 		// create a receiving buffer of 5 bytes
-		recBuff := make([]byte, 5)
+		recBuff := make([]byte, bufSize)
 
 		// read 5 bytes, 7 left
 		n, err := responderTransport.Read(recBuff)
@@ -671,6 +731,10 @@ func testMessageConsistency(t *testing.T, dc disc.APIClient) {
 		require.Equal(t, received, message)
 	}
 	require.NoError(t, closeClosers(initiatorTransport, responderTransport, responder, initiator))
+
+	assert.NoError(t, srv.Close())
+	<-serveDone
+	assert.NoError(t, serveErr)
 }
 
 // Create a server, initiator, responder and transport between them then check if clients are connected to the server.
@@ -678,12 +742,19 @@ func testMessageConsistency(t *testing.T, dc disc.APIClient) {
 // Start the server again, check if clients reconnected and if `Dial()` and `Accept()` still work.
 // Second argument indicates if the server restarts not on the same address, but on the random one.
 func testServerReconnection(t *testing.T, randomAddr bool) {
+	t.Parallel()
+
 	dc := disc.NewMock()
 	srv := createServer(t, dc, "")
 
-	serverAddr := srv.Addr()
+	var serveErr error
+	serveDone := make(chan struct{})
+	go func() {
+		serveErr = srv.Serve()
+		close(serveDone)
+	}()
 
-	go srv.Serve() // nolint:errcheck
+	serverAddr := srv.Addr()
 
 	checkConnCount(t, noDelay, 0, srv)
 
@@ -696,6 +767,9 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 	initiatorTransport, responderTransport := dial(t, initiator, responder, noDelay)
 
 	assert.NoError(t, srv.Close())
+	<-serveDone
+	assert.NoError(t, serveErr)
+
 	checkTransportsClosed(t, initiatorTransport, responderTransport)
 	checkConnCount(t, smallDelay, 0, srv)
 
@@ -710,12 +784,19 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 	srv, err = NewServer(srv.pk, srv.sk, addr, l, dc)
 	require.NoError(t, err)
 
-	go srv.Serve() // nolint:errcheck
+	serveErr = nil
+	serveDone = make(chan struct{})
+	go func() {
+		serveErr = srv.Serve()
+		close(serveDone)
+	}()
 
 	checkConnCount(t, clientReconnectInterval+smallDelay, 2, srv)
 	_, _ = dial(t, initiator, responder, smallDelay)
 
 	assert.NoError(t, srv.Close())
+	<-serveDone
+	assert.NoError(t, serveErr)
 }
 
 func createClient(t *testing.T, dc disc.APIClient, name string) *Client {
@@ -760,7 +841,12 @@ func TestNewClient(t *testing.T) {
 
 	log.Println(srv.Addr())
 
-	go srv.Serve() //nolint:errcheck
+	var serveErr error
+	serveDone := make(chan struct{})
+	go func() {
+		serveErr = srv.Serve()
+		close(serveDone)
+	}()
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
@@ -808,6 +894,8 @@ func TestNewClient(t *testing.T) {
 	wg.Wait()
 
 	assert.NoError(t, srv.Close())
+	<-serveDone
+	assert.NoError(t, serveErr)
 }
 
 func dial(t *testing.T, initiator, responder *Client, delay time.Duration) (initTp, respTp *Transport) {
