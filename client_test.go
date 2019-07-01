@@ -117,12 +117,12 @@ func BenchmarkClientConn_setTp(b *testing.B) {
 	pk1, _ := cipher.GenerateKeyPair()
 	pk2, _ := cipher.GenerateKeyPair()
 
-	cc := NewClientConnMap(log, p1, pk1, pk2)
+	cc := NewClientConn(log, p1, pk1, pk2)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		id := uint16(rand.Intn(math.MaxUint16))
-		tp := NewTransportMap(p1, log, cipher.PubKey{}, cipher.PubKey{}, id, cc.delTp)
+		tp := NewTransport(p1, log, cipher.PubKey{}, cipher.PubKey{}, id, cc.delTp)
 		cc.setTp(tp)
 	}
 }

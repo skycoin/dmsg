@@ -3,6 +3,7 @@ package dmsg
 import (
 	"bytes"
 	"context"
+	"net"
 	"testing"
 	"time"
 
@@ -130,4 +131,21 @@ func createClients() (initTp, respTp *Transport, err error) {
 	}
 
 	return initTp, respTp, nil
+}
+
+func createServer(dc disc.APIClient) error {
+	serverPK, serverSK := cipher.GenerateKeyPair()
+
+	l, err := net.Listen("tcp", "")
+	if err != nil {
+		return err
+	}
+
+	s, err := NewServer(serverPK, serverSK, "", l, dc)
+	if err != nil {
+		return err
+	}
+
+	go s.Serve() //nolint:errcheck
+	return nil
 }
