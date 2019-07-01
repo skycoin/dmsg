@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"math/rand"
 	"net"
 	"os"
@@ -55,7 +54,7 @@ func TestServerConn_AddNext(t *testing.T) {
 
 	pk, _ := cipher.GenerateKeyPair()
 
-	var fullNextConns [math.MaxUint16 + 1]*NextConn
+	fullNextConns := make(map[uint16]*NextConn)
 	fullNextConns[1] = &NextConn{}
 	for i := uint16(3); i != 1; i += 2 {
 		fullNextConns[i] = &NextConn{}
@@ -76,6 +75,7 @@ func TestServerConn_AddNext(t *testing.T) {
 				remoteClient: pk,
 				log:          logging.MustGetLogger("ServerConn"),
 				nextRespID:   1,
+				nextConns:    map[uint16]*NextConn{},
 			},
 			ctx: context.Background(),
 			want: want{
@@ -88,7 +88,7 @@ func TestServerConn_AddNext(t *testing.T) {
 				remoteClient: pk,
 				log:          logging.MustGetLogger("ServerConn"),
 				nextRespID:   1,
-				nextConns: [math.MaxUint16 + 1]*NextConn{
+				nextConns: map[uint16]*NextConn{
 					1: {},
 				},
 			},
@@ -137,6 +137,7 @@ func TestServerConn_AddNext(t *testing.T) {
 		log:          logging.MustGetLogger("ServerConn"),
 		remoteClient: pk,
 		nextRespID:   1,
+		nextConns:    map[uint16]*NextConn{},
 	}
 
 	var wg sync.WaitGroup
@@ -180,14 +181,24 @@ func TestNewServer(t *testing.T) {
 		assert.Nil(t, s)
 	})
 
-	srv, err := NewServer(sPK, sSK, "", l, dc)
-	require.NoError(t, err)
+	t.Run("should_start_and_stop_okay", func(t *testing.T) {
+		s, err := NewServer(sPK, sSK, "", l, dc)
+		require.NoError(t, err)
 
-	go srv.Serve() //nolint:errcheck
+		var serveErr error
+		serveDone := make(chan struct{})
+		go func() {
+			serveErr = s.Serve()
+			close(serveDone)
+		}()
 
-	time.Sleep(smallDelay)
+		time.Sleep(smallDelay)
 
-	assert.NoError(t, srv.Close())
+		require.NoError(t, s.Close())
+
+		<-serveDone
+		require.NoError(t, serveErr)
+	})
 }
 
 func BenchmarkNewServer(b *testing.B) {

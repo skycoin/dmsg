@@ -50,18 +50,19 @@ type Transport struct {
 // NewTransport creates a new dms_tp.
 func NewTransport(conn net.Conn, log *logging.Logger, local, remote cipher.PubKey, id uint16, doneFunc func(id uint16)) *Transport {
 	tp := &Transport{
-		Conn:     conn,
-		log:      log,
-		id:       id,
-		local:    local,
-		remote:   remote,
-		inCh:     make(chan Frame),
-		ackBuf:   make([]byte, 0, tpAckCap),
-		buf:      make(net.Buffers, 0, tpBufFrameCap),
-		bufCh:    make(chan struct{}, 1),
-		serving:  make(chan struct{}),
-		done:     make(chan struct{}),
-		doneFunc: doneFunc,
+		Conn:      conn,
+		log:       log,
+		id:        id,
+		local:     local,
+		remote:    remote,
+		inCh:      make(chan Frame),
+		ackWaiter: ioutil.NewUint16AckWaiter(),
+		ackBuf:    make([]byte, 0, tpAckCap),
+		buf:       make(net.Buffers, 0, tpBufFrameCap),
+		bufCh:     make(chan struct{}, 1),
+		serving:   make(chan struct{}),
+		done:      make(chan struct{}),
+		doneFunc:  doneFunc,
 	}
 	if err := tp.ackWaiter.RandSeq(); err != nil {
 		log.Fatalln("failed to set ack_waiter seq:", err)
@@ -84,6 +85,10 @@ func (tp *Transport) serve() (started bool) {
 // 4. But as, under the mutexes protecting `inCh`/`bufCh`, checking `done` comes first,
 // and we know that `done` is closed before `inCh`/`bufCh`, we can guarantee that it avoids writing to closed chan.
 func (tp *Transport) close() (closed bool) {
+	if tp == nil {
+		return false
+	}
+
 	tp.doneOnce.Do(func() {
 		closed = true
 

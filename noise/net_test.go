@@ -52,10 +52,8 @@ func TestRPCClientDialer(t *testing.T) {
 	}
 
 	teardown := func() {
-		if l != nil {
-			require.NoError(t, l.Close())
-			l = nil
-		}
+		require.NoError(t, l.Close())
+		l = nil
 	}
 
 	t.Run("RunRetry", func(t *testing.T) {
