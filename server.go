@@ -134,24 +134,24 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 			_, why, ok := c.handleRequest(ctx, getConn, id, p)
 			cancel()
 			if !ok {
-				log.Infoln("FrameRejected: Erroneous request or unresponsive dstClient.")
+				log.Debugln("FrameRejected: Erroneous request or unresponsive dstClient.")
 				if err := c.delChan(id, why); err != nil {
 					return err
 				}
 			}
-			log.Infoln("FrameForwarded")
+			log.Debugln("FrameForwarded")
 
 		case AcceptType, FwdType, AckType, CloseType:
 			next, why, ok := c.forwardFrame(ft, id, p)
 			if !ok {
-				log.Infoln("FrameRejected: Failed to forward to dstClient.")
+				log.Debugln("FrameRejected: Failed to forward to dstClient.")
 				// Delete channel (and associations) on failure.
 				if err := c.delChan(id, why); err != nil {
 					return err
 				}
 				continue
 			}
-			log.Infoln("FrameForwarded")
+			log.Debugln("FrameForwarded")
 
 			// On success, if Close frame, delete the associations.
 			if ft == CloseType {
@@ -160,7 +160,7 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 			}
 
 		default:
-			log.Infoln("FrameRejected: Unknown frame type.")
+			log.Debugln("FrameRejected: Unknown frame type.")
 			// Unknown frame type.
 			return errors.New("unknown frame of type received")
 		}

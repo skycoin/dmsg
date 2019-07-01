@@ -229,7 +229,7 @@ func (c *ClientConn) Serve(ctx context.Context, accept chan<- *Transport) (err e
 			}(log)
 
 		default:
-			log.Infof("Ignored [%s]: No transport of given ID.", ft)
+			log.Debugf("Ignored [%s]: No transport of given ID.", ft)
 			if ft != CloseType {
 				if err := writeCloseFrame(c.Conn, id, 0); err != nil {
 					return err
