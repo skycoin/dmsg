@@ -815,12 +815,3 @@ func dial(t *testing.T, initiator, responder *Client, delay time.Duration) (init
 	}))
 	return initTp, respTp
 }
-
-func testReadWrite(t *testing.T, initiatorTransport, responderTransport *Transport) {
-	if _, err := initiatorTransport.Write([]byte(message)); err != nil {
-		return
-	}
-	if _, err := responderTransport.Read([]byte(message)); err != nil {
-		return
-	}
-}
