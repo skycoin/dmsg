@@ -55,12 +55,6 @@ func checkClientConnsClosed(t *testing.T, conns ...*ClientConn) {
 	}
 }
 
-func catch(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 // intended to test some func of `func() error` signature with a given timeout.
 // Exceeding timeout results in error.
 func testWithTimeout(timeout time.Duration, run func() error) error {

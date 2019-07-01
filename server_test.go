@@ -802,6 +802,8 @@ func TestNewClient(t *testing.T) {
 
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
+
+	var closureErr error
 	go func() {
 		defer wg.Done()
 
@@ -810,13 +812,20 @@ func TestNewClient(t *testing.T) {
 
 			for j := 0; j < msgCount; j++ {
 				pay := []byte(fmt.Sprintf("This is message %d!", j))
-				_, err := responderTp.Write(pay)
-				catch(err)
-				_, err = initiatorTp.Read(pay)
-				catch(err)
+				_, closureErr = responderTp.Write(pay)
+				if closureErr != nil {
+					return
+				}
+				_, closureErr = initiatorTp.Read(pay)
+				if closureErr != nil {
+					return
+				}
 			}
 
-			catch(closeClosers(responderTp, initiatorTp))
+			closureErr = closeClosers(responderTp, initiatorTp)
+			if closureErr != nil {
+				return
+			}
 		}
 	}()
 
@@ -841,6 +850,7 @@ func TestNewClient(t *testing.T) {
 		require.NoError(t, closeClosers(responderTp, initiatorTp))
 	}
 	wg.Wait()
+	assert.NoError(t, closureErr)
 
 	assert.NoError(t, srv.Close())
 	<-serveDone
