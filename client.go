@@ -278,9 +278,6 @@ func (c *ClientConn) close() (closed bool) {
 
 // Close closes the connection to dms_server.
 func (c *ClientConn) Close() error {
-	if c == nil {
-		return nil
-	}
 	if c.close() {
 		c.wg.Wait()
 	}

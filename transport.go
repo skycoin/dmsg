@@ -109,10 +109,6 @@ func (tp *Transport) close() (closed bool) {
 
 // Close closes the dmsg_tp.
 func (tp *Transport) Close() error {
-	if tp == nil {
-		return nil
-	}
-
 	if tp.close() {
 		_ = writeFrame(tp.Conn, MakeFrame(CloseType, tp.id, []byte{0})) //nolint:errcheck
 	}
