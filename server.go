@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -237,6 +237,9 @@ type Server struct {
 	mx    sync.RWMutex
 
 	wg sync.WaitGroup
+
+	lisDone  int32
+	doneOnce sync.Once
 }
 
 // NewServer creates a new dms_server.
@@ -296,22 +299,39 @@ func (s *Server) connCount() int {
 	return n
 }
 
-// Close closes the dms_server.
-func (s *Server) Close() (err error) {
-	if s == nil {
-		return nil
-	}
+func (s *Server) close() (closed bool, err error) {
+	s.doneOnce.Do(func() {
+		closed = true
+		atomic.StoreInt32(&s.lisDone, 1)
 
-	if err = s.lis.Close(); err != nil {
+		if err = s.lis.Close(); err != nil {
+			return
+		}
+
+		s.mx.Lock()
+		s.conns = make(map[cipher.PubKey]*ServerConn)
+		s.mx.Unlock()
+	})
+
+	return closed, err
+}
+
+// Close closes the dms_server.
+func (s *Server) Close() error {
+	closed, err := s.close()
+	if !closed {
+		return errors.New("server is already closed")
+	}
+	if err != nil {
 		return err
 	}
 
-	s.mx.Lock()
-	s.conns = make(map[cipher.PubKey]*ServerConn)
-	s.mx.Unlock()
-
 	s.wg.Wait()
 	return nil
+}
+
+func (s *Server) isLisClosed() bool {
+	return atomic.LoadInt32(&s.lisDone) == 1
 }
 
 // Serve serves the dmsg_server.
@@ -328,8 +348,10 @@ func (s *Server) Serve() error {
 	for {
 		rawConn, err := s.lis.Accept()
 		if err != nil {
-			if err == io.ErrUnexpectedEOF {
-				continue
+			// if the listener is closed, it means that this error is not interesting
+			// for the outer client
+			if s.isLisClosed() {
+				return nil
 			}
 			return err
 		}
