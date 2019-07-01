@@ -1,6 +1,7 @@
 package dmsg
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"testing"
@@ -81,7 +82,7 @@ func testWithTimeout(timeout time.Duration, run func() error) error {
 	}
 }
 
-func isDoneChanOpen(ch chan struct{}) bool {
+func isDoneChanOpen(ch <-chan struct{}) bool {
 	select {
 	case _, ok := <-ch:
 		return ok
@@ -90,12 +91,21 @@ func isDoneChanOpen(ch chan struct{}) bool {
 	}
 }
 
-func isReadChanOpen(ch chan Frame) bool {
+func isReadChanOpen(ch <-chan Frame) bool {
 	select {
 	case _, ok := <-ch:
 		return ok
 	case <-time.After(chanReadThreshold):
 		return false
+	}
+}
+
+func errWithTimeout(ch <-chan error) error {
+	select {
+	case err := <-ch:
+		return err
+	case <-time.After(5 * time.Second):
+		return errors.New("timeout")
 	}
 }
 

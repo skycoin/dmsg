@@ -249,16 +249,7 @@ func testServerDisconnection(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-	srv := createServer(t, dc, "")
-	var srvStartErr error
-	srvDone := make(chan struct{})
-	go func() {
-		if err := srv.Serve(); err != nil {
-			srvStartErr = err
-		}
-
-		close(srvDone)
-	}()
+	srv, srvErrCh := createServer(t, dc)
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
@@ -266,8 +257,7 @@ func testServerDisconnection(t *testing.T) {
 	testTransportMessaging(t, initiatorTransport, responderTransport)
 
 	require.NoError(t, srv.Close())
-	<-srvDone
-	require.NoError(t, srvStartErr)
+	require.NoError(t, errWithTimeout(srvErrCh))
 
 	time.Sleep(smallDelay)
 
@@ -279,14 +269,7 @@ func testServerSelfDialing(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-
-	srv := createServer(t, dc, "")
-	var serveErr error
-	serveDone := make(chan struct{})
-	go func() {
-		serveErr = srv.Serve()
-		close(serveDone)
-	}()
+	srv, srvErrCh := createServer(t, dc)
 
 	client := createClient(t, dc, "client")
 	selfWrTp, selfRdTp := dial(t, client, client, noDelay)
@@ -295,8 +278,7 @@ func testServerSelfDialing(t *testing.T) {
 	require.NoError(t, closeClosers(selfRdTp, selfWrTp, client))
 
 	assert.NoError(t, srv.Close())
-	<-serveDone
-	assert.NoError(t, serveErr)
+	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
 func testTransportMessaging(t *testing.T, init *Transport, resp *Transport) {
@@ -316,14 +298,7 @@ func testServerCappedTransport(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-
-	srv := createServer(t, dc, "")
-	var serveErr error
-	serveDone := make(chan struct{})
-	go func() {
-		serveErr = srv.Serve()
-		close(serveDone)
-	}()
+	srv, srvErrCh := createServer(t, dc)
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
@@ -364,22 +339,14 @@ func testServerCappedTransport(t *testing.T) {
 	require.NoError(t, closeClosers(initiatorWrTransport, responderRdTransport, responder, initiator))
 
 	assert.NoError(t, srv.Close())
-	<-serveDone
-	assert.NoError(t, serveErr)
+	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
 func testServerFailedAccepts(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-
-	srv := createServer(t, dc, "")
-	var serveErr error
-	serveDone := make(chan struct{})
-	go func() {
-		serveErr = srv.Serve()
-		close(serveDone)
-	}()
+	srv, srvErrCh := createServer(t, dc)
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
@@ -443,8 +410,7 @@ func testServerFailedAccepts(t *testing.T) {
 	require.NoError(t, closeClosers(responder, initiator))
 
 	assert.NoError(t, srv.Close())
-	<-serveDone
-	assert.NoError(t, serveErr)
+	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
 // connect two clients, establish transport, check if there are
@@ -453,14 +419,7 @@ func testServerTransportEstablishment(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-
-	srv := createServer(t, dc, "")
-	var serveErr error
-	serveDone := make(chan struct{})
-	go func() {
-		serveErr = srv.Serve()
-		close(serveDone)
-	}()
+	srv, srvErrCh := createServer(t, dc)
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
@@ -499,22 +458,14 @@ func testServerTransportEstablishment(t *testing.T) {
 	checkConnCount(t, smallDelay, 0, srv, responder, initiator)
 
 	assert.NoError(t, srv.Close())
-	<-serveDone
-	assert.NoError(t, serveErr)
+	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
 func testServerConcurrentTransportEstablishment(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-
-	srv := createServer(t, dc, "")
-	var serveErr error
-	serveDone := make(chan struct{})
-	go func() {
-		serveErr = srv.Serve()
-		close(serveDone)
-	}()
+	srv, srvErrCh := createServer(t, dc)
 
 	// this way we can control the tests' difficulty
 	initiatorsCount := 50
@@ -678,22 +629,14 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 	}
 
 	assert.NoError(t, srv.Close())
-	<-serveDone
-	assert.NoError(t, serveErr)
+	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
 func testServerMessageConsistency(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-
-	srv := createServer(t, dc, "")
-	var serveErr error
-	serveDone := make(chan struct{})
-	go func() {
-		serveErr = srv.Serve()
-		close(serveDone)
-	}()
+	srv, srvErrCh := createServer(t, dc)
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
@@ -733,8 +676,7 @@ func testServerMessageConsistency(t *testing.T) {
 	require.NoError(t, closeClosers(initiatorTransport, responderTransport, responder, initiator))
 
 	assert.NoError(t, srv.Close())
-	<-serveDone
-	assert.NoError(t, serveErr)
+	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
 // Create a server, initiator, responder and transport between them then check if clients are connected to the server.
@@ -745,14 +687,7 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-	srv := createServer(t, dc, "")
-
-	var serveErr error
-	serveDone := make(chan struct{})
-	go func() {
-		serveErr = srv.Serve()
-		close(serveDone)
-	}()
+	srv, srvErrCh := createServer(t, dc)
 
 	serverAddr := srv.Addr()
 
@@ -767,8 +702,7 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 	initiatorTransport, responderTransport := dial(t, initiator, responder, noDelay)
 
 	assert.NoError(t, srv.Close())
-	<-serveDone
-	assert.NoError(t, serveErr)
+	assert.NoError(t, errWithTimeout(srvErrCh))
 
 	checkTransportsClosed(t, initiatorTransport, responderTransport)
 	checkConnCount(t, smallDelay, 0, srv)
@@ -784,19 +718,16 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 	srv, err = NewServer(srv.pk, srv.sk, addr, l, dc)
 	require.NoError(t, err)
 
-	serveErr = nil
-	serveDone = make(chan struct{})
+	errCh := make(chan error, 1)
 	go func() {
-		serveErr = srv.Serve()
-		close(serveDone)
+		errCh <- srv.Serve()
 	}()
 
 	checkConnCount(t, clientReconnectInterval+smallDelay, 2, srv)
 	_, _ = dial(t, initiator, responder, smallDelay)
 
 	assert.NoError(t, srv.Close())
-	<-serveDone
-	assert.NoError(t, serveErr)
+	assert.NoError(t, errWithTimeout(errCh))
 }
 
 func createClient(t *testing.T, dc disc.APIClient, name string) *Client {
@@ -808,16 +739,21 @@ func createClient(t *testing.T, dc disc.APIClient, name string) *Client {
 	return client
 }
 
-func createServer(t *testing.T, dc disc.APIClient, addr string) *Server {
+func createServer(t *testing.T, dc disc.APIClient) (*Server, <-chan error) {
 	pk, sk := cipher.GenerateKeyPair()
 
 	l, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
 
-	srv, err := NewServer(pk, sk, addr, l, dc)
+	srv, err := NewServer(pk, sk, "", l, dc)
 	require.NoError(t, err)
 
-	return srv
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- srv.Serve()
+	}()
+
+	return srv, errCh
 }
 
 // TODO: update comments mentioning a & b
