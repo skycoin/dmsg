@@ -13,7 +13,7 @@ import (
 
 const (
 	noDelay           = time.Duration(0)
-	smallDelay        = 100 * time.Millisecond
+	smallDelay        = 300 * time.Millisecond
 	chanReadThreshold = 5 * time.Second
 	testTimeout       = 5 * time.Second
 )
