@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"sync"
 	"time"
@@ -42,13 +41,19 @@ type ServerConn struct {
 	remoteClient cipher.PubKey
 
 	nextRespID uint16
-	nextConns  [math.MaxUint16 + 1]*NextConn
+	nextConns  map[uint16]*NextConn
 	mx         sync.RWMutex
 }
 
 // NewServerConn creates a new connection from the perspective of a dms_server.
 func NewServerConn(log *logging.Logger, conn net.Conn, remoteClient cipher.PubKey) *ServerConn {
-	return &ServerConn{log: log, Conn: conn, remoteClient: remoteClient, nextRespID: randID(false)}
+	return &ServerConn{
+		log:          log,
+		Conn:         conn,
+		remoteClient: remoteClient,
+		nextRespID:   randID(false),
+		nextConns:    make(map[uint16]*NextConn),
+	}
 }
 
 func (c *ServerConn) delNext(id uint16) {
