@@ -249,7 +249,8 @@ func testServerDisconnection(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-	srv, srvErrCh := createServer(t, dc)
+	srv, srvErrCh, err := createServer(dc)
+	require.NoError(t, err)
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
@@ -269,7 +270,8 @@ func testServerSelfDialing(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-	srv, srvErrCh := createServer(t, dc)
+	srv, srvErrCh, err := createServer(dc)
+	require.NoError(t, err)
 
 	client := createClient(t, dc, "client")
 	selfWrTp, selfRdTp := dial(t, client, client, noDelay)
@@ -298,7 +300,8 @@ func testServerCappedTransport(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-	srv, srvErrCh := createServer(t, dc)
+	srv, srvErrCh, err := createServer(dc)
+	require.NoError(t, err)
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
@@ -332,7 +335,7 @@ func testServerCappedTransport(t *testing.T) {
 
 		require.Equal(t, recBuff, msg)
 	}
-	err := responderWrTransport.Close()
+	err = responderWrTransport.Close()
 	require.NoError(t, err)
 	<-blockedWriteDone
 	require.Error(t, blockedWriteErr)
@@ -346,7 +349,8 @@ func testServerFailedAccepts(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-	srv, srvErrCh := createServer(t, dc)
+	srv, srvErrCh, err := createServer(dc)
+	require.NoError(t, err)
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
@@ -373,7 +377,6 @@ func testServerFailedAccepts(t *testing.T) {
 			}
 		}
 	}()
-	var err error
 	// continue creating transports until the error occurs
 	for {
 		ctx := context.Background()
@@ -419,7 +422,8 @@ func testServerTransportEstablishment(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-	srv, srvErrCh := createServer(t, dc)
+	srv, srvErrCh, err := createServer(dc)
+	require.NoError(t, err)
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
@@ -465,7 +469,8 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-	srv, srvErrCh := createServer(t, dc)
+	srv, srvErrCh, err := createServer(dc)
+	require.NoError(t, err)
 
 	// this way we can control the tests' difficulty
 	initiatorsCount := 50
@@ -559,7 +564,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 	// wait for initiators
 	initiatorsWG.Wait()
 	close(dialErrs)
-	err := <-dialErrs
+	err = <-dialErrs
 	// single error should fail test
 	require.NoError(t, err)
 	// wait for responders
@@ -636,7 +641,8 @@ func testServerMessageConsistency(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-	srv, srvErrCh := createServer(t, dc)
+	srv, srvErrCh, err := createServer(dc)
+	require.NoError(t, err)
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
@@ -687,7 +693,8 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 	t.Parallel()
 
 	dc := disc.NewMock()
-	srv, srvErrCh := createServer(t, dc)
+	srv, srvErrCh, err := createServer(dc)
+	require.NoError(t, err)
 
 	serverAddr := srv.Addr()
 
@@ -739,21 +746,25 @@ func createClient(t *testing.T, dc disc.APIClient, name string) *Client {
 	return client
 }
 
-func createServer(t *testing.T, dc disc.APIClient) (*Server, <-chan error) {
+func createServer(dc disc.APIClient) (srv *Server, srvErr <-chan error, err error) {
 	pk, sk := cipher.GenerateKeyPair()
 
 	l, err := nettest.NewLocalListener("tcp")
-	require.NoError(t, err)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	srv, err := NewServer(pk, sk, "", l, dc)
-	require.NoError(t, err)
+	srv, err = NewServer(pk, sk, "", l, dc)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- srv.Serve()
 	}()
 
-	return srv, errCh
+	return srv, errCh, nil
 }
 
 // TODO: update comments mentioning a & b
