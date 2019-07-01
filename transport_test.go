@@ -55,7 +55,7 @@ func TestTransport_close(t *testing.T) {
 func BenchmarkTransport_Read(b *testing.B) {
 	initTr, respTr, err := createClients()
 	if err != nil {
-		b.Fatal(err)
+		b.Error(err)
 	}
 
 	const messageSize = 50000
@@ -63,9 +63,8 @@ func BenchmarkTransport_Read(b *testing.B) {
 	message := bytes.Repeat([]byte("a"), messageSize)
 	go func() {
 		for {
-			_, err := initTr.Write(message)
-			if err != nil {
-				b.Fatal(err)
+			if _, err := initTr.Write(message); err != nil {
+				b.Error(err)
 			}
 		}
 	}()
@@ -74,7 +73,7 @@ func BenchmarkTransport_Read(b *testing.B) {
 	buf := make([]byte, bufSize)
 	for i := 0; i < b.N; i++ {
 		if _, err := respTr.Read(buf); err != nil {
-			b.Fatal(err)
+			b.Error(err)
 		}
 	}
 }
@@ -82,7 +81,7 @@ func BenchmarkTransport_Read(b *testing.B) {
 func BenchmarkTransport_Write(b *testing.B) {
 	initTr, _, err := createClients()
 	if err != nil {
-		b.Fatal(err)
+		b.Error(err)
 	}
 
 	const bufSize = 50000
@@ -90,7 +89,7 @@ func BenchmarkTransport_Write(b *testing.B) {
 	go func() {
 		for {
 			if _, err := initTr.Read(buf); err != nil {
-				b.Fatal(err)
+				b.Error(err)
 			}
 		}
 	}()
@@ -99,7 +98,7 @@ func BenchmarkTransport_Write(b *testing.B) {
 	message := []byte("a")
 	for i := 0; i < b.N; i++ {
 		if _, err := initTr.Write(message); err != nil {
-			b.Fatal(err)
+			b.Error(err)
 		}
 	}
 }
