@@ -803,7 +803,7 @@ func TestNewClient(t *testing.T) {
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 
-	var closureErr error
+	errCh := make(chan error, 1)
 	go func() {
 		defer wg.Done()
 
@@ -812,21 +812,25 @@ func TestNewClient(t *testing.T) {
 
 			for j := 0; j < msgCount; j++ {
 				pay := []byte(fmt.Sprintf("This is message %d!", j))
-				_, closureErr = responderTp.Write(pay)
-				if closureErr != nil {
+
+				if _, err := responderTp.Write(pay); err != nil {
+					errCh <- err
 					return
 				}
-				_, closureErr = initiatorTp.Read(pay)
-				if closureErr != nil {
+
+				if _, err := initiatorTp.Read(pay); err != nil {
+					errCh <- err
 					return
 				}
 			}
 
-			closureErr = closeClosers(responderTp, initiatorTp)
-			if closureErr != nil {
+			if err := closeClosers(responderTp, initiatorTp); err != nil {
+				errCh <- err
 				return
 			}
 		}
+
+		errCh <- nil
 	}()
 
 	for i := 0; i < tpCount; i++ {
@@ -849,8 +853,9 @@ func TestNewClient(t *testing.T) {
 		// Close TPs
 		require.NoError(t, closeClosers(responderTp, initiatorTp))
 	}
+
 	wg.Wait()
-	assert.NoError(t, closureErr)
+	assert.NoError(t, <-errCh)
 
 	assert.NoError(t, srv.Close())
 	<-serveDone
