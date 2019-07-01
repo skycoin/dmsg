@@ -44,6 +44,12 @@ func TestTransport_close(t *testing.T) {
 		_, ok := <-tr.done
 		assert.False(t, ok)
 	})
+
+	t.Run("No panic with nil pointer receiver", func(t *testing.T) {
+		var tr1, tr2 *Transport
+		assert.Nil(t, tr1.Close())
+		assert.False(t, tr2.close())
+	})
 }
 
 func BenchmarkTransport_Read(b *testing.B) {

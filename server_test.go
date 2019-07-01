@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"math/rand"
 	"net"
 	"os"
@@ -48,7 +47,7 @@ func TestServerConn_AddNext(t *testing.T) {
 
 	pk, _ := cipher.GenerateKeyPair()
 
-	var fullNextConns [math.MaxUint16 + 1]*NextConn
+	fullNextConns := make(map[uint16]*NextConn)
 	fullNextConns[1] = &NextConn{}
 	for i := uint16(3); i != 1; i += 2 {
 		fullNextConns[i] = &NextConn{}
@@ -69,6 +68,7 @@ func TestServerConn_AddNext(t *testing.T) {
 				remoteClient: pk,
 				log:          logging.MustGetLogger("ServerConn"),
 				nextRespID:   1,
+				nextConns:    map[uint16]*NextConn{},
 			},
 			ctx: context.Background(),
 			want: want{
@@ -81,7 +81,7 @@ func TestServerConn_AddNext(t *testing.T) {
 				remoteClient: pk,
 				log:          logging.MustGetLogger("ServerConn"),
 				nextRespID:   1,
-				nextConns: [math.MaxUint16 + 1]*NextConn{
+				nextConns: map[uint16]*NextConn{
 					1: {},
 				},
 			},
@@ -129,6 +129,7 @@ func TestServerConn_AddNext(t *testing.T) {
 		log:          logging.MustGetLogger("ServerConn"),
 		remoteClient: pk,
 		nextRespID:   1,
+		nextConns:    map[uint16]*NextConn{},
 	}
 
 	var wg sync.WaitGroup
@@ -172,14 +173,24 @@ func TestNewServer(t *testing.T) {
 		assert.Nil(t, s)
 	})
 
-	s, err := NewServer(sPK, sSK, "", l, dc)
-	require.NoError(t, err)
+	t.Run("should_start_and_stop_okay", func(t *testing.T) {
+		s, err := NewServer(sPK, sSK, "", l, dc)
+		require.NoError(t, err)
 
-	go s.Serve() //nolint:errcheck
+		var serveErr error
+		serveDone := make(chan struct{})
+		go func() {
+			serveErr = s.Serve()
+			close(serveDone)
+		}()
 
-	time.Sleep(time.Second)
+		time.Sleep(time.Second)
 
-	assert.NoError(t, s.Close())
+		require.NoError(t, s.Close())
+
+		<-serveDone
+		require.NoError(t, serveErr)
+	})
 }
 
 // TestServer_Serve ensures that Server processes request frames and
@@ -840,7 +851,7 @@ func TestServer_Serve(t *testing.T) {
 		aPK, aSK := cipher.GenerateKeyPair()
 		bPK, bSK := cipher.GenerateKeyPair()
 
-		// create remote
+		// create responder
 		a := NewClient(aPK, aSK, dc, SetLogger(logging.MustGetLogger("A")))
 		err = a.InitiateServerConnections(context.Background(), 1)
 		require.NoError(t, err)
@@ -871,7 +882,7 @@ func TestServer_Serve(t *testing.T) {
 			_, err = aTransport.Read(recBuff)
 			require.NoError(t, err)
 
-			_, err = aTransport.Read(msg)
+			_, err = aTransport.Read(recBuff)
 			require.NoError(t, err)
 		}
 
@@ -879,19 +890,162 @@ func TestServer_Serve(t *testing.T) {
 		require.NoError(t, err)
 
 		<-sDone
-		// TODO: remove log, uncomment when bug is fixed
-		log.Printf("SERVE ERR: %v", sStartErr)
-		//require.NoError(t, sStartErr)
+		require.NoError(t, sStartErr)
 
-		/*time.Sleep(10 * time.Second)
+		require.NoError(t, testWithTimeout(10*time.Second, func() error {
+			if !bTransport.IsClosed() {
+				return errors.New("bTransport is not closed")
+			}
 
-		tp, ok := bTransport.(*Transport)
-		require.Equal(t, true, ok)
-		require.Equal(t, true, tp.IsClosed())
+			return nil
+		}))
 
-		tp, ok = aTransport.(*Transport)
-		require.Equal(t, true, ok)
-		require.Equal(t, true, tp.IsClosed())*/
+		require.NoError(t, testWithTimeout(10*time.Second, func() error {
+			if !aTransport.IsClosed() {
+				return errors.New("aTransport is not closed")
+			}
+
+			return nil
+		}))
+
+		err = a.Close()
+		require.NoError(t, err)
+
+		err = b.Close()
+		require.NoError(t, err)
+	})
+
+	t.Run("server_disconnect_should_close_transports_while_communication_is_going_on", func(t *testing.T) {
+		// generate keys for server
+		sPK, sSK := cipher.GenerateKeyPair()
+
+		dc := disc.NewMock()
+
+		l, err := nettest.NewLocalListener("tcp")
+		require.NoError(t, err)
+
+		// create a server separately from other tests, since this one should be closed
+		s, err := NewServer(sPK, sSK, "", l, dc)
+		require.NoError(t, err)
+
+		var sStartErr error
+		sDone := make(chan struct{})
+		go func() {
+			if err := s.Serve(); err != nil {
+				sStartErr = err
+			}
+
+			sDone <- struct{}{}
+		}()
+
+		// generate keys for both clients
+		aPK, aSK := cipher.GenerateKeyPair()
+		bPK, bSK := cipher.GenerateKeyPair()
+
+		// create responder
+		a := NewClient(aPK, aSK, dc, SetLogger(logging.MustGetLogger("A")))
+		err = a.InitiateServerConnections(context.Background(), 1)
+		require.NoError(t, err)
+
+		// create initiator
+		b := NewClient(bPK, bSK, dc, SetLogger(logging.MustGetLogger("B")))
+		err = b.InitiateServerConnections(context.Background(), 1)
+		require.NoError(t, err)
+
+		bTransport, err := b.Dial(context.Background(), aPK)
+		require.NoError(t, err)
+
+		aTransport, err := a.Accept(context.Background())
+		require.NoError(t, err)
+
+		var communicationErr error
+		communicationStop := make(chan struct{})
+		communicationDone := make(chan struct{})
+		go func() {
+			defer close(communicationDone)
+
+			for {
+				select {
+				case <-communicationStop:
+					return
+				default:
+					msg := []byte("Hello there!")
+
+					_, communicationErr = bTransport.Write(msg)
+					if communicationErr != nil {
+						if bTransport.IsClosed() {
+							// if tp is closed, error is usual here, suppress
+							communicationErr = nil
+						}
+
+						return
+					}
+
+					recBuff := make([]byte, 5)
+
+					_, communicationErr = aTransport.Read(recBuff)
+					if communicationErr != nil {
+						if aTransport.IsClosed() {
+							// if tp is closed, error is usual here, suppress
+							communicationErr = nil
+						}
+
+						return
+					}
+
+					_, err = aTransport.Read(recBuff)
+					if communicationErr != nil {
+						if aTransport.IsClosed() {
+							// if tp is closed, error is usual here, suppress
+							communicationErr = nil
+						}
+
+						return
+					}
+
+					_, err = aTransport.Read(recBuff)
+					if communicationErr != nil {
+						if aTransport.IsClosed() {
+							// if tp is closed, error is usual here, suppress
+							communicationErr = nil
+						}
+
+						return
+					}
+				}
+			}
+		}()
+
+		err = s.Close()
+		require.NoError(t, err)
+
+		<-sDone
+		require.NoError(t, sStartErr)
+
+		<-communicationDone
+		require.NoError(t, communicationErr)
+
+		require.NoError(t, testWithTimeout(10*time.Second, func() error {
+			if !bTransport.IsClosed() {
+				return errors.New("bTransport is not closed")
+			}
+
+			return nil
+		}))
+
+		require.NoError(t, testWithTimeout(10*time.Second, func() error {
+			if !aTransport.IsClosed() {
+				return errors.New("aTransport is not closed")
+			}
+
+			return nil
+		}))
+
+		err = a.Close()
+		require.NoError(t, err)
+
+		err = b.Close()
+		require.NoError(t, err)
 	})
 
 	t.Run("Reconnect to server should succeed", func(t *testing.T) {
