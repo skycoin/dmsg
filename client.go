@@ -218,14 +218,14 @@ func (c *ClientConn) Serve(ctx context.Context, accept chan<- *Transport) (err e
 				defer c.wg.Done()
 				initPK, err := c.handleRequestFrame(accept, id, p)
 				if err != nil {
-					log.WithField("remoteClient", initPK).WithError(err).Debugln("Rejected [REQUEST]")
+					log.WithField("remoteClient", initPK).WithError(err).Infoln("Rejected [REQUEST]")
 					if isWriteError(err) || err == ErrClientClosed {
 						err := c.Close()
 						log.WithError(err).Warn("ClosingConnection")
 					}
 					return
 				}
-				log.WithField("remoteClient", initPK).Debugln("Accepted [REQUEST]")
+				log.WithField("remoteClient", initPK).Infoln("Accepted [REQUEST]")
 			}(log)
 
 		default:
