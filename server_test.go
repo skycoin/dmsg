@@ -377,7 +377,9 @@ func testServerFailedAccepts(t *testing.T) {
 			}
 		}
 	}()
-	// continue creating transports until the error occurs
+
+	// Waiting for error on Dial which happens when the buffer is being filled with the incoming dials.
+	// Call Dial in a loop without any Accepts until an error occurs.
 	for {
 		ctx := context.Background()
 		if _, err = responder.Dial(ctx, initiator.pk); err != nil {
