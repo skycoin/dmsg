@@ -5,7 +5,6 @@ import (
 	"context"
 	"net"
 	"testing"
-	"time"
 
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/stretchr/testify/assert"
@@ -64,15 +63,19 @@ func BenchmarkTransport_Read(b *testing.B) {
 	message := bytes.Repeat([]byte("a"), messageSize)
 	go func() {
 		for {
-			initTr.Write(message) // nolint:errcheck
-			time.Sleep(10 * time.Microsecond)
+			_, err := initTr.Write(message)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	}()
 
 	b.ResetTimer()
 	buf := make([]byte, bufSize)
 	for i := 0; i < b.N; i++ {
-		respTr.Read(buf) // nolint:errcheck
+		if _, err := respTr.Read(buf); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -86,15 +89,18 @@ func BenchmarkTransport_Write(b *testing.B) {
 	buf := make([]byte, bufSize)
 	go func() {
 		for {
-			initTr.Read(buf) // nolint:errcheck
-			time.Sleep(10 * time.Microsecond)
+			if _, err := initTr.Read(buf); err != nil {
+				b.Fatal(err)
+			}
 		}
 	}()
 
 	b.ResetTimer()
 	message := []byte("a")
 	for i := 0; i < b.N; i++ {
-		initTr.Write(message) // nolint:errcheck
+		if _, err := initTr.Write(message); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
