@@ -166,7 +166,7 @@ func TestServerConn_AddNext(t *testing.T) {
 
 // TestNewServer ensures Server starts and quits with no error.
 func TestNewServer(t *testing.T) {
-	sPK, sSK := cipher.GenerateKeyPair()
+	srvPK, srvSK := cipher.GenerateKeyPair()
 	dc := disc.NewMock()
 
 	l, err := net.Listen("tcp", "")
@@ -175,14 +175,14 @@ func TestNewServer(t *testing.T) {
 	// When calling 'NewServer', if the provided net.Listener is already a noise.Listener,
 	// An error should be returned.
 	t.Run("Already wrapped listener fails", func(t *testing.T) {
-		wrappedL := noise.WrapListener(l, sPK, sSK, false, noise.HandshakeXK)
-		s, err := NewServer(sPK, sSK, "", wrappedL, dc)
+		wrappedL := noise.WrapListener(l, srvPK, srvSK, false, noise.HandshakeXK)
+		s, err := NewServer(srvPK, srvSK, "", wrappedL, dc)
 		assert.Equal(t, ErrListenerAlreadyWrappedToNoise, err)
 		assert.Nil(t, s)
 	})
 
 	t.Run("should_start_and_stop_okay", func(t *testing.T) {
-		s, err := NewServer(sPK, sSK, "", l, dc)
+		s, err := NewServer(srvPK, srvSK, "", l, dc)
 		require.NoError(t, err)
 
 		var serveErr error
@@ -745,7 +745,7 @@ func createServer(t *testing.T, dc disc.APIClient, addr string) *Server {
 // Data should be sent and delivered successfully via the transport.
 // TODO: fix this.
 func TestNewClient(t *testing.T) {
-	sPK, sSK := cipher.GenerateKeyPair()
+	srvPK, srvSK := cipher.GenerateKeyPair()
 	sAddr := "127.0.0.1:8081"
 
 	const tpCount = 10
@@ -755,7 +755,7 @@ func TestNewClient(t *testing.T) {
 	l, err := net.Listen("tcp", sAddr)
 	require.NoError(t, err)
 
-	srv, err := NewServer(sPK, sSK, "", l, dc)
+	srv, err := NewServer(srvPK, srvSK, "", l, dc)
 	require.NoError(t, err)
 
 	log.Println(srv.Addr())
