@@ -14,7 +14,7 @@ func TestUint16AckWaiter_Wait(t *testing.T) {
 	// each concurrent call to 'Uint16AckWaiter.Wait()' is met with
 	// multiple concurrent calls to 'Uint16AckWaiter.Done()' with the same seq.
 	t.Run("ensure_no_race_conditions", func(*testing.T) {
-		w := new(ioutil.Uint16AckWaiter)
+		w := ioutil.NewUint16AckWaiter()
 		defer w.StopAll()
 
 		seqChan := make(chan ioutil.Uint16Seq)

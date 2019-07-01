@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"math/rand"
 	"net"
 	"os"
@@ -48,7 +47,7 @@ func TestServerConn_AddNext(t *testing.T) {
 
 	pk, _ := cipher.GenerateKeyPair()
 
-	var fullNextConns [math.MaxUint16 + 1]*NextConn
+	fullNextConns := make(map[uint16]*NextConn)
 	fullNextConns[1] = &NextConn{}
 	for i := uint16(3); i != 1; i += 2 {
 		fullNextConns[i] = &NextConn{}
@@ -69,6 +68,7 @@ func TestServerConn_AddNext(t *testing.T) {
 				remoteClient: pk,
 				log:          logging.MustGetLogger("ServerConn"),
 				nextRespID:   1,
+				nextConns:    map[uint16]*NextConn{},
 			},
 			ctx: context.Background(),
 			want: want{
@@ -81,7 +81,7 @@ func TestServerConn_AddNext(t *testing.T) {
 				remoteClient: pk,
 				log:          logging.MustGetLogger("ServerConn"),
 				nextRespID:   1,
-				nextConns: [math.MaxUint16 + 1]*NextConn{
+				nextConns: map[uint16]*NextConn{
 					1: {},
 				},
 			},
@@ -129,6 +129,7 @@ func TestServerConn_AddNext(t *testing.T) {
 		log:          logging.MustGetLogger("ServerConn"),
 		remoteClient: pk,
 		nextRespID:   1,
+		nextConns:    map[uint16]*NextConn{},
 	}
 
 	var wg sync.WaitGroup
