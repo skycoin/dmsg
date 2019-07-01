@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -42,13 +41,19 @@ type ServerConn struct {
 	remoteClient cipher.PubKey
 
 	nextRespID uint16
-	nextConns  [math.MaxUint16 + 1]*NextConn
+	nextConns  map[uint16]*NextConn
 	mx         sync.RWMutex
 }
 
 // NewServerConn creates a new connection from the perspective of a dms_server.
 func NewServerConn(log *logging.Logger, conn net.Conn, remoteClient cipher.PubKey) *ServerConn {
-	return &ServerConn{log: log, Conn: conn, remoteClient: remoteClient, nextRespID: randID(false)}
+	return &ServerConn{
+		log:          log,
+		Conn:         conn,
+		remoteClient: remoteClient,
+		nextRespID:   randID(false),
+		nextConns:    make(map[uint16]*NextConn),
+	}
 }
 
 func (c *ServerConn) delNext(id uint16) {
@@ -134,24 +139,24 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 			_, why, ok := c.handleRequest(ctx, getConn, id, p)
 			cancel()
 			if !ok {
-				log.Infoln("FrameRejected: Erroneous request or unresponsive dstClient.")
+				log.Debugln("FrameRejected: Erroneous request or unresponsive dstClient.")
 				if err := c.delChan(id, why); err != nil {
 					return err
 				}
 			}
-			log.Infoln("FrameForwarded")
+			log.Debugln("FrameForwarded")
 
 		case AcceptType, FwdType, AckType, CloseType:
 			next, why, ok := c.forwardFrame(ft, id, p)
 			if !ok {
-				log.Infoln("FrameRejected: Failed to forward to dstClient.")
+				log.Debugln("FrameRejected: Failed to forward to dstClient.")
 				// Delete channel (and associations) on failure.
 				if err := c.delChan(id, why); err != nil {
 					return err
 				}
 				continue
 			}
-			log.Infoln("FrameForwarded")
+			log.Debugln("FrameForwarded")
 
 			// On success, if Close frame, delete the associations.
 			if ft == CloseType {
@@ -160,7 +165,7 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 			}
 
 		default:
-			log.Infoln("FrameRejected: Unknown frame type.")
+			log.Debugln("FrameRejected: Unknown frame type.")
 			// Unknown frame type.
 			return errors.New("unknown frame of type received")
 		}
