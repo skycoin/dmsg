@@ -3,7 +3,6 @@ package dmsg
 import (
 	"bytes"
 	"context"
-	"net"
 	"testing"
 
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -17,6 +16,13 @@ func TestNewTransport(t *testing.T) {
 	log := logging.MustGetLogger("dmsg_test")
 	tr := NewTransport(nil, log, cipher.PubKey{}, cipher.PubKey{}, 0, func(id uint16) {})
 	assert.NotNil(t, tr)
+}
+
+func BenchmarkNewTransport(b *testing.B) {
+	log := logging.MustGetLogger("dmsg_test")
+	for i := 0; i < b.N; i++ {
+		NewTransport(nil, log, cipher.PubKey{}, cipher.PubKey{}, 0, func(id uint16) {})
+	}
 }
 
 func TestTransport_close(t *testing.T) {
@@ -53,7 +59,7 @@ func TestTransport_close(t *testing.T) {
 }
 
 func BenchmarkTransport_Read(b *testing.B) {
-	initTr, respTr, err := createClients()
+	initTr, respTr, err := createBenchmarkClients()
 	if err != nil {
 		b.Error(err)
 	}
@@ -79,7 +85,7 @@ func BenchmarkTransport_Read(b *testing.B) {
 }
 
 func BenchmarkTransport_Write(b *testing.B) {
-	initTr, _, err := createClients()
+	initTr, _, err := createBenchmarkClients()
 	if err != nil {
 		b.Error(err)
 	}
@@ -103,11 +109,11 @@ func BenchmarkTransport_Write(b *testing.B) {
 	}
 }
 
-func createClients() (initTp, respTp *Transport, err error) {
+func createBenchmarkClients() (initTp, respTp *Transport, err error) {
 	dc := disc.NewMock()
 	ctx := context.TODO()
 
-	if err := createServer(dc); err != nil {
+	if _, _, err := createServer(dc); err != nil {
 		return nil, nil, err
 	}
 
@@ -136,21 +142,4 @@ func createClients() (initTp, respTp *Transport, err error) {
 	}
 
 	return initTp, respTp, nil
-}
-
-func createServer(dc disc.APIClient) error {
-	serverPK, serverSK := cipher.GenerateKeyPair()
-
-	l, err := net.Listen("tcp", "")
-	if err != nil {
-		return err
-	}
-
-	s, err := NewServer(serverPK, serverSK, "", l, dc)
-	if err != nil {
-		return err
-	}
-
-	go s.Serve() //nolint:errcheck
-	return nil
 }
