@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -262,8 +261,8 @@ func testServerDisconnection(t *testing.T) {
 
 	time.Sleep(smallDelay)
 
-	require.Equal(t, true, responderTransport.IsClosed())
-	require.Equal(t, true, initiatorTransport.IsClosed())
+	require.True(t, responderTransport.IsClosed())
+	require.True(t, initiatorTransport.IsClosed())
 }
 
 func testServerSelfDialing(t *testing.T) {

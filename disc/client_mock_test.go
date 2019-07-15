@@ -75,7 +75,7 @@ func TestNewMockGetAvailableServers(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			clientServer := disc.NewMock()
-			expectedEntries := []*disc.Entry{}
+			expectedEntries := make([]*disc.Entry, 0)
 
 			if tc.databaseAndEntriesPrehook != nil {
 				tc.databaseAndEntriesPrehook(t, clientServer, &expectedEntries)
@@ -87,6 +87,7 @@ func TestNewMockGetAvailableServers(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, expectedEntries, entries)
 			} else {
+				require.Error(t, err)
 				assert.Equal(t, tc.errorMessage.String(), err.Error())
 			}
 		})
@@ -147,6 +148,7 @@ func TestNewMockEntriesEndpoint(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, &tc.entry, entry)
 			} else {
+				require.Error(t, err)
 				assert.Equal(t, tc.httpResponse.String(), err.Error())
 			}
 
@@ -291,7 +293,7 @@ func TestNewMockUpdateEntriesEndpoint(t *testing.T) {
 			},
 		},
 		{
-			name:                "udpate retries on wrong sequence",
+			name:                "update retries on wrong sequence",
 			responseShouldError: false,
 			secretKey:           sk,
 			entryPreHook: func(entry *disc.Entry) {

@@ -91,7 +91,7 @@ func TestRPCClientDialer(t *testing.T) {
 			require.NoError(t, conn.Close())
 		}
 
-		_ = d.Close()
+		require.NoError(t, d.Close())
 		require.NoError(t, <-dDone)
 	})
 }
@@ -113,7 +113,10 @@ func TestConn(t *testing.T) {
 	require.NoError(t, err)
 
 	aConn, bConn := net.Pipe()
-	defer func() { _, _ = aConn.Close(), bConn.Close() }()
+	defer func() {
+		require.NoError(t, aConn.Close())
+		require.NoError(t, bConn.Close())
+	}()
 
 	aRW := NewReadWriter(aConn, aNs)
 	bRW := NewReadWriter(bConn, bNs)
@@ -307,7 +310,9 @@ func TestListener(t *testing.T) {
 	lPK, lSK := cipher.GenerateKeyPair()
 	l, err := net.Listen("tcp", "")
 	require.NoError(t, err)
-	defer l.Close()
+	defer func() {
+		require.NoError(t, l.Close())
+	}()
 
 	l = WrapListener(l, lPK, lSK, false, pattern)
 	addr := l.Addr().(*Addr)

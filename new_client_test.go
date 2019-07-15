@@ -4,15 +4,15 @@ package dmsg
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"sync"
 	"testing"
 
-	"github.com/skycoin/dmsg/cipher"
-	"github.com/skycoin/dmsg/disc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/disc"
 )
 
 // TODO: update comments mentioning a & b
@@ -34,13 +34,9 @@ func TestNewClient(t *testing.T) {
 	srv, err := NewServer(srvPK, srvSK, "", l, dc)
 	require.NoError(t, err)
 
-	log.Println(srv.Addr())
-
-	var serveErr error
-	serveDone := make(chan struct{})
+	serveErr := make(chan error, 1)
 	go func() {
-		serveErr = srv.Serve()
-		close(serveDone)
+		serveErr <- srv.Serve()
 	}()
 
 	responder := createClient(t, dc, responderName)
@@ -104,6 +100,5 @@ func TestNewClient(t *testing.T) {
 	assert.NoError(t, <-errCh)
 
 	assert.NoError(t, srv.Close())
-	<-serveDone
-	assert.NoError(t, serveErr)
+	assert.NoError(t, errWithTimeout(serveErr))
 }
