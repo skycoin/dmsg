@@ -124,7 +124,7 @@ func BenchmarkClientConn_setTp(b *testing.B) {
 }
 
 func TestClient(t *testing.T) {
-	logger := logging.MustGetLogger("dms_client")
+	logger := logging.MustGetLogger("dmsg_client")
 
 	// Runs two ClientConn's and dials a transport from one to another.
 	// Checks if states change properly and if closing of transport and connections works.
@@ -143,12 +143,16 @@ func TestClient(t *testing.T) {
 
 		ctx := context.TODO()
 
+		serveErrCh1 := make(chan error, 1)
 		go func() {
-			_ = conn1.Serve(ctx, ch1) // nolint:errcheck
+			serveErrCh1 <- conn1.Serve(ctx, ch1)
+			close(serveErrCh1)
 		}()
 
+		serveErrCh2 := make(chan error, 1)
 		go func() {
-			_ = conn2.Serve(ctx, ch2) // nolint:errcheck
+			serveErrCh2 <- conn2.Serve(ctx, ch2)
+			close(serveErrCh2)
 		}()
 
 		conn1.mx.RLock()
@@ -167,10 +171,13 @@ func TestClient(t *testing.T) {
 		conn1.mx.RUnlock()
 		assert.Equal(t, initID+2, newInitID)
 
-		assert.NoError(t, closeClosers(tr1, conn1, conn2))
-
+		assert.NoError(t, closeClosers(conn1, conn2))
 		checkClientConnsClosed(t, conn1, conn2)
-		checkTransportsClosed(t, tr1)
+
+		assert.Error(t, errWithTimeout(serveErrCh1))
+		assert.Error(t, errWithTimeout(serveErrCh2))
+
+		assert.True(t, tr1.IsClosed())
 	})
 
 	// Runs four ClientConn's and dials two transports between them.
@@ -201,20 +208,28 @@ func TestClient(t *testing.T) {
 
 		ctx := context.TODO()
 
+		serveErrCh1 := make(chan error, 1)
 		go func() {
-			_ = conn1.Serve(ctx, ch1) // nolint:errcheck
+			serveErrCh1 <- conn1.Serve(ctx, ch1)
+			close(serveErrCh1)
 		}()
 
+		serveErrCh2 := make(chan error, 1)
 		go func() {
-			_ = conn2.Serve(ctx, ch2) // nolint:errcheck
+			serveErrCh2 <- conn2.Serve(ctx, ch2)
+			close(serveErrCh2)
 		}()
 
+		serveErrCh3 := make(chan error, 1)
 		go func() {
-			_ = conn3.Serve(ctx, ch3) // nolint:errcheck
+			serveErrCh3 <- conn3.Serve(ctx, ch3)
+			close(serveErrCh3)
 		}()
 
+		serveErrCh4 := make(chan error, 1)
 		go func() {
-			_ = conn4.Serve(ctx, ch4) // nolint:errcheck
+			serveErrCh4 <- conn4.Serve(ctx, ch4)
+			close(serveErrCh4)
 		}()
 
 		initID1 := getNextInitID(conn1)
@@ -278,6 +293,11 @@ func TestClient(t *testing.T) {
 		assert.NoError(t, closeClosers(tr1, tr2, conn1, conn2, conn3, conn4))
 		checkTransportsClosed(t, tr1, tr2)
 		checkClientConnsClosed(t, conn1, conn3)
+
+		assert.Error(t, errWithTimeout(serveErrCh1))
+		assert.Error(t, errWithTimeout(serveErrCh2))
+		assert.Error(t, errWithTimeout(serveErrCh3))
+		assert.Error(t, errWithTimeout(serveErrCh4))
 	})
 }
 

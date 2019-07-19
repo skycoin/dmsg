@@ -88,10 +88,11 @@ func TestRPCClientDialer(t *testing.T) {
 			in, out := &AddIn{A: i, B: i}, new(int)
 			require.NoError(t, rpc.NewClient(conn).Call("TestRPC.Add", in, out))
 			require.Equal(t, in.A+in.B, *out)
-			require.NoError(t, conn.Close())
+			require.NoError(t, conn.Close()) // NOTE: also closes d, as it's the same connection
 		}
 
-		_ = d.Close()
+		// The same connection is closed above (conn.Close()), and hence, this may return an error.
+		_ = d.Close() // nolint: errcheck
 		require.NoError(t, <-dDone)
 	})
 }
@@ -113,7 +114,10 @@ func TestConn(t *testing.T) {
 	require.NoError(t, err)
 
 	aConn, bConn := net.Pipe()
-	defer func() { _, _ = aConn.Close(), bConn.Close() }()
+	defer func() {
+		require.NoError(t, aConn.Close())
+		require.NoError(t, bConn.Close())
+	}()
 
 	aRW := NewReadWriter(aConn, aNs)
 	bRW := NewReadWriter(bConn, bNs)
@@ -307,7 +311,9 @@ func TestListener(t *testing.T) {
 	lPK, lSK := cipher.GenerateKeyPair()
 	l, err := net.Listen("tcp", "")
 	require.NoError(t, err)
-	defer l.Close()
+	defer func() {
+		require.NoError(t, l.Close())
+	}()
 
 	l = WrapListener(l, lPK, lSK, false, pattern)
 	addr := l.Addr().(*Addr)

@@ -26,10 +26,13 @@ func TestUint16AckWaiter_Wait(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_ = w.Wait(context.TODO(), func(seq ioutil.Uint16Seq) error { //nolint:errcheck,unparam
+				err := w.Wait(context.TODO(), func(seq ioutil.Uint16Seq) error {
 					seqChan <- seq
 					return nil
 				})
+				if err != nil {
+					t.Error(err)
+				}
 			}()
 
 			seq := <-seqChan

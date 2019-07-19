@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -262,8 +261,8 @@ func testServerDisconnection(t *testing.T) {
 
 	time.Sleep(smallDelay)
 
-	require.Equal(t, true, responderTransport.IsClosed())
-	require.Equal(t, true, initiatorTransport.IsClosed())
+	require.True(t, responderTransport.IsClosed())
+	require.True(t, initiatorTransport.IsClosed())
 }
 
 func testServerSelfDialing(t *testing.T) {
@@ -730,6 +729,7 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- srv.Serve()
+		close(errCh)
 	}()
 
 	checkConnCount(t, clientReconnectInterval+smallDelay, 2, srv)
@@ -764,6 +764,7 @@ func createServer(dc disc.APIClient) (srv *Server, srvErr <-chan error, err erro
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- srv.Serve()
+		close(errCh)
 	}()
 
 	return srv, errCh, nil

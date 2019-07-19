@@ -42,8 +42,8 @@ func TestNewReadWriter(t *testing.T) {
 
 		aConn, bConn := net.Pipe()
 		defer func() {
-			_ = aConn.Close() //nolint:errcheck
-			_ = bConn.Close() //nolint:errcheck
+			require.NoError(t, aConn.Close())
+			require.NoError(t, bConn.Close())
 		}()
 
 		aRW := NewReadWriter(aConn, aNs)
