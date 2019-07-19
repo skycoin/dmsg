@@ -37,6 +37,7 @@ func TestNewClient(t *testing.T) {
 	serveErr := make(chan error, 1)
 	go func() {
 		serveErr <- srv.Serve()
+		close(serveErr)
 	}()
 
 	responder := createClient(t, dc, responderName)

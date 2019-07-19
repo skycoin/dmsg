@@ -729,6 +729,7 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- srv.Serve()
+		close(errCh)
 	}()
 
 	checkConnCount(t, clientReconnectInterval+smallDelay, 2, srv)
@@ -763,6 +764,7 @@ func createServer(dc disc.APIClient) (srv *Server, srvErr <-chan error, err erro
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- srv.Serve()
+		close(errCh)
 	}()
 
 	return srv, errCh, nil

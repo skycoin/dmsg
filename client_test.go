@@ -146,11 +146,13 @@ func TestClient(t *testing.T) {
 		serveErrCh1 := make(chan error, 1)
 		go func() {
 			serveErrCh1 <- conn1.Serve(ctx, ch1)
+			close(serveErrCh1)
 		}()
 
 		serveErrCh2 := make(chan error, 1)
 		go func() {
 			serveErrCh2 <- conn2.Serve(ctx, ch2)
+			close(serveErrCh2)
 		}()
 
 		conn1.mx.RLock()
@@ -209,21 +211,25 @@ func TestClient(t *testing.T) {
 		serveErrCh1 := make(chan error, 1)
 		go func() {
 			serveErrCh1 <- conn1.Serve(ctx, ch1)
+			close(serveErrCh1)
 		}()
 
 		serveErrCh2 := make(chan error, 1)
 		go func() {
 			serveErrCh2 <- conn2.Serve(ctx, ch2)
+			close(serveErrCh2)
 		}()
 
 		serveErrCh3 := make(chan error, 1)
 		go func() {
 			serveErrCh3 <- conn3.Serve(ctx, ch3)
+			close(serveErrCh3)
 		}()
 
 		serveErrCh4 := make(chan error, 1)
 		go func() {
 			serveErrCh4 <- conn4.Serve(ctx, ch4)
+			close(serveErrCh4)
 		}()
 
 		initID1 := getNextInitID(conn1)
