@@ -88,10 +88,11 @@ func TestRPCClientDialer(t *testing.T) {
 			in, out := &AddIn{A: i, B: i}, new(int)
 			require.NoError(t, rpc.NewClient(conn).Call("TestRPC.Add", in, out))
 			require.Equal(t, in.A+in.B, *out)
-			require.NoError(t, conn.Close())
+			require.NoError(t, conn.Close()) // NOTE: also closes d, as it's the same connection
 		}
 
-		require.NoError(t, d.Close())
+		// The same connection is closed above (conn.Close()), and hence, this may return an error.
+		_ = d.Close() // nolint: errcheck
 		require.NoError(t, <-dDone)
 	})
 }
