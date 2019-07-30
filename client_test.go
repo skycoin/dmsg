@@ -2,11 +2,14 @@ package dmsg
 
 import (
 	"context"
+	"io"
 	"math"
 	"math/rand"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/stretchr/testify/assert"
@@ -298,6 +301,57 @@ func TestClient(t *testing.T) {
 		assert.Error(t, errWithTimeout(serveErrCh2))
 		assert.Error(t, errWithTimeout(serveErrCh3))
 		assert.Error(t, errWithTimeout(serveErrCh4))
+	})
+
+	// After a transport is established, attempt and single write and close.
+	// The reading edge should read the message correctly.
+	t.Run("close_tp_after_single_write", func(t *testing.T) {
+		p1, p2 := net.Pipe()
+		p1, p2 = invertedIDConn{p1}, invertedIDConn{p2}
+
+		pk1, _ := cipher.GenerateKeyPair()
+		pk2, _ := cipher.GenerateKeyPair()
+
+		conn1 := NewClientConn(logging.MustGetLogger("conn1"), p1, pk1, pk2)
+		ch1 := make(chan *Transport, AcceptBufferSize)
+		serveErrCh1 := make(chan error, 1)
+		go func() {
+			serveErrCh1 <- conn1.Serve(context.TODO(), ch1)
+			close(serveErrCh1)
+		}()
+		defer func() { require.NoError(t, conn1.Close()) }()
+
+		conn2 := NewClientConn(logging.MustGetLogger("conn2"), p2, pk2, pk1)
+		ch2 := make(chan *Transport, AcceptBufferSize)
+		serveErrCh2 := make(chan error, 1)
+		go func() {
+			serveErrCh2 <- conn2.Serve(context.TODO(), ch2)
+			close(serveErrCh2)
+		}()
+		defer func() { require.NoError(t, conn2.Close()) }()
+
+		tp1, err := conn1.DialTransport(context.TODO(), pk2)
+		require.NoError(t, err)
+		defer func() { require.NoError(t, tp1.Close()) }()
+
+		tp2, ok := <-ch2
+		require.True(t, ok)
+		defer func() { require.NoError(t, tp2.Close()) }()
+
+		for i, count := range []int{75, 3, 75 - 3} {
+			if i%3 == 0 {
+				write := cipher.RandByte(count)
+				n, err := tp1.Write(write)
+
+				require.NoError(t, err)
+				require.Equal(t, count, n)
+			} else {
+				read := make([]byte, count)
+				n, err := io.ReadFull(tp2, read)
+				require.NoError(t, err)
+				require.Equal(t, count, n)
+			}
+		}
 	})
 }
 
