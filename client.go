@@ -164,20 +164,22 @@ func (c *ClientConn) handleRequestFrame(accept chan<- *Transport, id uint16, p [
 			log.WithError(err).Warn("Failed to close transport")
 		}
 		return initPK, ErrClientClosed
-
-	case accept <- tp:
-		c.setTp(tp)
-		if err := tp.WriteAccept(); err != nil {
-			return initPK, err
-		}
-		go tp.Serve()
-		return initPK, nil
-
 	default:
-		if err := tp.Close(); err != nil {
-			log.WithError(err).Warn("Failed to close transport")
+		select {
+		case accept <- tp:
+			c.setTp(tp)
+			if err := tp.WriteAccept(); err != nil {
+				return initPK, err
+			}
+			go tp.Serve()
+			return initPK, nil
+
+		default:
+			if err := tp.Close(); err != nil {
+				log.WithError(err).Warn("Failed to close transport")
+			}
+			return initPK, ErrClientAcceptMaxed
 		}
-		return initPK, ErrClientAcceptMaxed
 	}
 }
 
@@ -558,23 +560,24 @@ func (c *Client) Close() error {
 
 	c.once.Do(func() {
 		close(c.done)
+
+		c.mx.Lock()
+		for _, conn := range c.conns {
+			if err := conn.Close(); err != nil {
+				log.WithError(err).Warn("Failed to close connection")
+			}
+		}
+		c.conns = make(map[cipher.PubKey]*ClientConn)
+		c.mx.Unlock()
+
 		for {
 			select {
 			case <-c.accept:
 			default:
-				close(c.accept)
+				close(c.accept) // TODO: data race.
 				return
 			}
 		}
 	})
-
-	c.mx.Lock()
-	for _, conn := range c.conns {
-		if err := conn.Close(); err != nil {
-			log.WithError(err).Warn("Failed to close connection")
-		}
-	}
-	c.conns = make(map[cipher.PubKey]*ClientConn)
-	c.mx.Unlock()
 	return nil
 }
