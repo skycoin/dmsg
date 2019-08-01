@@ -574,7 +574,7 @@ func (c *Client) Close() error {
 			select {
 			case <-c.accept:
 			default:
-				close(c.accept) // TODO: data race.
+				close(c.accept)
 				return
 			}
 		}
