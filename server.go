@@ -113,9 +113,9 @@ type getConnFunc func(pk cipher.PubKey) (*ServerConn, bool)
 func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error) {
 	log := c.log.WithField("srcClient", c.remoteClient)
 
+	// Only manually close the underlying net.Conn when the done signal is context-initiated.
 	done := make(chan struct{})
 	defer close(done)
-
 	go func() {
 		select {
 		case <-done:
@@ -127,15 +127,16 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 	}()
 
 	defer func() {
+		// Send CLOSE frames to all transports which are established with this dmsg.Client
+		// This ensures that all parties are informed about the transport closing.
 		c.mx.Lock()
-		defer c.mx.Unlock()
-
 		for _, conn := range c.nextConns {
 			why := byte(0)
 			if err := conn.writeFrame(CloseType, []byte{why}); err != nil {
 				log.WithError(err).Warnf("failed to write frame: %s", err)
 			}
 		}
+		c.mx.Unlock()
 
 		log.WithError(err).WithField("connCount", decrementServeCount()).Infoln("ClosingConn")
 		if err := c.Conn.Close(); err != nil {
