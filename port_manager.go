@@ -11,6 +11,7 @@ const (
 	lastEphemeralPort  = 65535
 )
 
+// PortManager manages ports of nodes.
 type PortManager struct {
 	mu        sync.RWMutex
 	rand      *rand.Rand
@@ -24,6 +25,7 @@ func newPortManager() *PortManager {
 	}
 }
 
+// Listener returns a listener assigned to a given port.
 func (pm *PortManager) Listener(port uint16) (Listener, bool) {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
@@ -32,6 +34,7 @@ func (pm *PortManager) Listener(port uint16) (Listener, bool) {
 	return l, ok
 }
 
+// AddListener assigns listener to port.
 func (pm *PortManager) AddListener(l Listener, port uint16) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
@@ -39,6 +42,8 @@ func (pm *PortManager) AddListener(l Listener, port uint16) {
 	pm.listeners[port] = l
 }
 
+// NextEmptyEphemeralPort returns next random ephemeral port.
+// It has a value between firstEphemeralPort and lastEphemeralPort.
 func (pm *PortManager) NextEmptyEphemeralPort() uint16 {
 	for {
 		port := pm.randomEphemeralPort()

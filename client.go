@@ -261,6 +261,7 @@ func (c *Client) findOrConnectToServer(ctx context.Context, srvPK cipher.PubKey)
 	return conn, nil
 }
 
+// Listen creates a listener on a given port, adds it to port manager and returns the listener.
 func (c *Client) Listen(port uint16) (Listener, error) {
 	if _, ok := c.pm.Listener(port); ok {
 		return nil, errors.New("port is busy")

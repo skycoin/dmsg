@@ -15,7 +15,9 @@ import (
 
 const (
 	// Type returns the transport type string.
-	Type                    = "dmsg"
+	Type = "dmsg"
+	// HandshakePayloadVersion contains payload version to maintain compatibility with future versions
+	// of HandshakePayload format.
 	HandshakePayloadVersion = "1"
 
 	tpBufCap      = math.MaxUint16
@@ -32,6 +34,7 @@ var (
 	AcceptBufferSize = 20
 )
 
+// HandshakePayload represents format of payload sent with REQUEST frames.
 type HandshakePayload struct {
 	Version string        `json:"version"` // just in case the struct changes.
 	InitPK  cipher.PubKey `json:"init_pk"`

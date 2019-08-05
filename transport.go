@@ -21,7 +21,7 @@ var (
 	ErrAcceptCheckFailed  = errors.New("failed to create transport: accept check failed")
 )
 
-// Transport represents communication between two nodes via a single hop.
+// TransportInterface represents communication between two nodes via a single hop.
 type TransportInterface interface {
 	net.Conn
 
