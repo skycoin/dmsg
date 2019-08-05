@@ -47,6 +47,7 @@ type Transport struct {
 	bufCh     chan struct{}          // chan for indicating whether this is a new FWD frame
 	bufSize   int                    // keeps track of the total size of 'buf'
 	bufMx     sync.Mutex             // protects fields responsible for handling FWD and ACK frames
+	rMx       sync.Mutex             // TODO: (WORKAROUND) concurrent reads seem problematic right now.
 
 	serving     chan struct{}   // chan which closes when serving begins
 	servingOnce sync.Once       // ensures 'serving' only closes once
@@ -313,7 +314,8 @@ func (tp *Transport) Serve() {
 				}
 
 				// add payload to 'buf'
-				tp.buf = append(tp.buf, p[2:])
+				pay := p[2:]
+				tp.buf = append(tp.buf, pay)
 
 				// notify of new data via 'bufCh' (only if not closed)
 				if !tp.IsClosed() {
@@ -358,6 +360,9 @@ func (tp *Transport) Serve() {
 func (tp *Transport) Read(p []byte) (n int, err error) {
 	<-tp.serving
 
+	tp.rMx.Lock()
+	defer tp.rMx.Unlock()
+
 startRead:
 	tp.bufMx.Lock()
 	n, err = tp.buf.Read(p)
@@ -372,14 +377,16 @@ startRead:
 	}
 	tp.bufMx.Unlock()
 
-	if tp.IsClosed() {
+	if n > 0 || len(p) == 0 {
+		if !tp.IsClosed() {
+			err = nil
+		}
 		return n, err
 	}
-	if n > 0 || len(p) == 0 {
-		return n, nil
-	}
 
-	<-tp.bufCh
+	if _, ok := <-tp.bufCh; !ok {
+		return n, err
+	}
 	goto startRead
 }
 

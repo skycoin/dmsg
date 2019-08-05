@@ -53,7 +53,7 @@ func TestTransport_close(t *testing.T) {
 
 	t.Run("No panic with nil pointer receiver", func(t *testing.T) {
 		var tr1, tr2 *Transport
-		assert.Nil(t, tr1.Close())
+		assert.NoError(t, tr1.Close())
 		assert.False(t, tr2.close())
 	})
 }

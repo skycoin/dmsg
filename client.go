@@ -326,6 +326,16 @@ func (c *Client) Close() error {
 
 	c.once.Do(func() {
 		close(c.done)
+
+		c.mx.Lock()
+		for _, conn := range c.conns {
+			if err := conn.Close(); err != nil {
+				log.WithError(err).Warn("Failed to close connection")
+			}
+		}
+		c.conns = make(map[cipher.PubKey]*ClientConn)
+		c.mx.Unlock()
+
 		c.pm.mu.Lock()
 		defer c.pm.mu.Unlock()
 		for _, ch := range c.pm.listeners {
@@ -340,13 +350,5 @@ func (c *Client) Close() error {
 		}
 	})
 
-	c.mx.Lock()
-	for _, conn := range c.conns {
-		if err := conn.Close(); err != nil {
-			log.WithError(err).Warn("Failed to close connection")
-		}
-	}
-	c.conns = make(map[cipher.PubKey]*ClientConn)
-	c.mx.Unlock()
 	return nil
 }
