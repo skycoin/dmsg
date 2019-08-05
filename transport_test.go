@@ -109,7 +109,7 @@ func BenchmarkTransport_Write(b *testing.B) {
 	}
 }
 
-func createBenchmarkClients() (initTp, respTp *Transport, err error) {
+func createBenchmarkClients() (initTp, respTp TransportInterface, err error) {
 	dc := disc.NewMock()
 	ctx := context.TODO()
 
@@ -131,12 +131,17 @@ func createBenchmarkClients() (initTp, respTp *Transport, err error) {
 		return nil, nil, err
 	}
 
-	initTp, err = initiator.Dial(ctx, responder.pk)
+	initTp, err = initiator.Dial(ctx, responder.pk, port)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	respTp, err = responder.Accept(ctx)
+	listener, err := responder.Listen(port)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	respTp, err = listener.AcceptTransport()
 	if err != nil {
 		return nil, nil, err
 	}

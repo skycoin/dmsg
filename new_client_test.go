@@ -51,7 +51,7 @@ func TestNewClient(t *testing.T) {
 		defer wg.Done()
 
 		for i := 0; i < tpCount; i++ {
-			initiatorTp, responderTp := dial(t, initiator, responder, noDelay)
+			initiatorTp, responderTp := dial(t, initiator, responder, port, noDelay)
 
 			for j := 0; j < msgCount; j++ {
 				pay := []byte(fmt.Sprintf("This is message %d!", j))
@@ -77,7 +77,7 @@ func TestNewClient(t *testing.T) {
 	}()
 
 	for i := 0; i < tpCount; i++ {
-		initiatorTp, responderTp := dial(t, initiator, responder, noDelay)
+		initiatorTp, responderTp := dial(t, initiator, responder, port, noDelay)
 
 		for j := 0; j < msgCount; j++ {
 			pay := []byte(fmt.Sprintf("This is message %d!", j))

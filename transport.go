@@ -21,6 +21,14 @@ var (
 	ErrAcceptCheckFailed  = errors.New("failed to create transport: accept check failed")
 )
 
+// Transport represents communication between two nodes via a single hop.
+type TransportInterface interface {
+	net.Conn
+
+	// Type returns the string representation of the transport type.
+	Type() string
+}
+
 // Transport represents a connection from dmsg.Client to remote dmsg.Client (via dmsg.Server intermediary).
 type Transport struct {
 	net.Conn // underlying connection to dmsg.Server
@@ -112,7 +120,7 @@ func (tp *Transport) close() (closed bool) {
 // Close closes the dmsg_tp.
 func (tp *Transport) Close() error {
 	if tp.close() {
-		if err := writeFrame(tp.Conn, MakeFrame(CloseType, tp.id, []byte{0})); err != nil {
+		if err := writeCloseFrame(tp.Conn, tp.id, ReasonErr); err != nil {
 			log.WithError(err).Warn("Failed to write frame")
 		}
 	}
@@ -161,8 +169,18 @@ func (tp *Transport) HandleFrame(f Frame) error {
 }
 
 // WriteRequest writes a REQUEST frame to dmsg_server to be forwarded to associated client.
-func (tp *Transport) WriteRequest() error {
-	f := MakeFrame(RequestType, tp.id, combinePKs(tp.local, tp.remote))
+func (tp *Transport) WriteRequest(port uint16) error {
+	payload := HandshakePayload{
+		Version: HandshakePayloadVersion,
+		InitPK:  tp.local,
+		RespPK:  tp.remote,
+		Port:    port,
+	}
+	payloadBytes, err := marshalHandshakePayload(payload)
+	if err != nil {
+		return err
+	}
+	f := MakeFrame(RequestType, tp.id, payloadBytes)
 	if err := writeFrame(tp.Conn, f); err != nil {
 		tp.log.WithError(err).Error("HandshakeFailed")
 		tp.close()
@@ -256,7 +274,7 @@ func (tp *Transport) Serve() {
 	// also write CLOSE frame if this is the first time 'close' is triggered
 	defer func() {
 		if tp.close() {
-			if err := writeCloseFrame(tp.Conn, tp.id, 0); err != nil {
+			if err := writeCloseFrame(tp.Conn, tp.id, ReasonErr); err != nil {
 				log.WithError(err).Warn("Failed to write close frame")
 			}
 		}

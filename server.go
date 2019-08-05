@@ -182,7 +182,7 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 
 func (c *ServerConn) delChan(id uint16, why byte) error {
 	c.delNext(id)
-	if err := writeFrame(c.Conn, MakeFrame(CloseType, id, []byte{why})); err != nil {
+	if err := writeCloseFrame(c.Conn, id, why); err != nil {
 		return fmt.Errorf("failed to write frame: %s", err)
 	}
 	return nil

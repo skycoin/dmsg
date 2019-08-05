@@ -15,7 +15,8 @@ import (
 
 const (
 	// Type returns the transport type string.
-	Type = "dmsg"
+	Type                    = "dmsg"
+	HandshakePayloadVersion = "1"
 
 	tpBufCap      = math.MaxUint16
 	tpBufFrameCap = math.MaxUint8
@@ -30,6 +31,13 @@ var (
 	// AcceptBufferSize defines the size of the accepts buffer.
 	AcceptBufferSize = 20
 )
+
+type HandshakePayload struct {
+	Version string        `json:"version"` // just in case the struct changes.
+	InitPK  cipher.PubKey `json:"init_pk"`
+	RespPK  cipher.PubKey `json:"resp_pk"`
+	Port    uint16        `json:"port"`
+}
 
 func isInitiatorID(tpID uint16) bool { return tpID%2 == 0 }
 
@@ -74,6 +82,11 @@ const (
 	CloseType   = FrameType(0x3)
 	FwdType     = FrameType(0xa)
 	AckType     = FrameType(0xb)
+)
+
+// Reasons for closing frames
+const (
+	ReasonErr = iota
 )
 
 // Frame is the dmsg data unit.
