@@ -254,16 +254,16 @@ func testServerDisconnection(t *testing.T) {
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
-	initiatorTransport, responderTransport := dial(t, initiator, responder, port, noDelay)
-	testTransportMessaging(t, initiatorTransport, responderTransport)
+	initConn, respConns := dial(t, initiator, responder, port, noDelay)
+	testTransportMessaging(t, initConn, respConns)
 
 	require.NoError(t, srv.Close())
 	require.NoError(t, errWithTimeout(srvErrCh))
 
 	time.Sleep(smallDelay)
 
-	require.True(t, responderTransport.(*transport).IsClosed())
-	require.True(t, initiatorTransport.(*transport).IsClosed())
+	require.True(t, initConn.(*transport).IsClosed())
+	require.True(t, respConns.(*transport).IsClosed())
 }
 
 func testServerSelfDialing(t *testing.T) {
@@ -283,7 +283,7 @@ func testServerSelfDialing(t *testing.T) {
 	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
-func testTransportMessaging(t *testing.T, init, resp Transport) {
+func testTransportMessaging(t *testing.T, init, resp io.ReadWriter) {
 	for i := 0; i < msgCount; i++ {
 		_, err := init.Write([]byte(message))
 		require.NoError(t, err)
@@ -306,40 +306,40 @@ func testServerCappedTransport(t *testing.T) {
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
 	// responder calls initiator
-	responderWrTransport, _ := dial(t, responder, initiator, port, noDelay)
+	responderWrConn, _ := dial(t, responder, initiator, port, noDelay)
 	msg := []byte(message)
 	// exact iterations to fill the receiving buffer and hang `Write`
 	iterationsToDo := tpBufCap/len(msg) + 1
 	// fill the buffer, but no block yet
 	for i := 0; i < iterationsToDo-1; i++ {
-		_, err := responderWrTransport.Write(msg)
+		_, err := responderWrConn.Write(msg)
 		require.NoError(t, err)
 	}
 	// block on `Write`
 	var blockedWriteErr error
 	blockedWriteDone := make(chan struct{})
 	go func() {
-		_, blockedWriteErr = responderWrTransport.Write(msg)
+		_, blockedWriteErr = responderWrConn.Write(msg)
 		close(blockedWriteDone)
 	}()
 	// wait till it's definitely blocked
-	initiatorWrTransport, responderRdTransport := dial(t, initiator, responder, port, smallDelay)
+	initiatorWrConn, responderRdConn := dial(t, initiator, responder, port, smallDelay)
 	// try to write/read message via the new transports
 	for i := 0; i < msgCount; i++ {
-		_, err := initiatorWrTransport.Write(msg)
+		_, err := initiatorWrConn.Write(msg)
 		require.NoError(t, err)
 
 		recBuff := make([]byte, len(msg))
-		_, err = responderRdTransport.Read(recBuff)
+		_, err = responderRdConn.Read(recBuff)
 		require.NoError(t, err)
 
 		require.Equal(t, recBuff, msg)
 	}
-	err = responderWrTransport.Close()
+	err = responderWrConn.Close()
 	require.NoError(t, err)
 	<-blockedWriteDone
 	require.Error(t, blockedWriteErr)
-	require.NoError(t, closeClosers(initiatorWrTransport, responderRdTransport, responder, initiator))
+	require.NoError(t, closeClosers(initiatorWrConn, responderRdConn, responder, initiator))
 
 	assert.NoError(t, srv.Close())
 	assert.NoError(t, errWithTimeout(srvErrCh))
@@ -354,23 +354,23 @@ func testServerFailedAccepts(t *testing.T) {
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
-	initiatorTransport, responderTransport := dial(t, initiator, responder, port, noDelay)
+	initiatorConn, responderConn := dial(t, initiator, responder, port, noDelay)
 	readWriteStop := make(chan struct{})
 	readWriteDone := make(chan struct{})
 	var readErr, writeErr error
 	go func() {
-		// read/write to/from transport until the stop signal arrives
+		// read/write to/from connection until the stop signal arrives
 		for {
 			select {
 			case <-readWriteStop:
 				close(readWriteDone)
 				return
 			default:
-				if _, writeErr = initiatorTransport.Write([]byte(message)); writeErr != nil {
+				if _, writeErr = initiatorConn.Write([]byte(message)); writeErr != nil {
 					close(readWriteDone)
 					return
 				}
-				if _, readErr = responderTransport.Read([]byte(message)); readErr != nil {
+				if _, readErr = responderConn.Read([]byte(message)); readErr != nil {
 					close(readWriteDone)
 					return
 				}
@@ -388,7 +388,7 @@ func testServerFailedAccepts(t *testing.T) {
 	}
 	// must be error
 	require.Error(t, err)
-	// the same as above, transport is created by another client
+	// the same as above, connection is created by another client
 	for {
 		ctx := context.Background()
 		if _, err = initiator.Dial(ctx, responder.pk, port); err != nil {
@@ -397,13 +397,13 @@ func testServerFailedAccepts(t *testing.T) {
 	}
 	// must be error
 	require.Error(t, err)
-	// wait more time to ensure that the initially created transport works
+	// wait more time to ensure that the initially created connection works
 	time.Sleep(smallDelay)
-	require.NoError(t, closeClosers(responderTransport, initiatorTransport))
+	require.NoError(t, closeClosers(responderConn, initiatorConn))
 	// stop reading/writing goroutines
 	close(readWriteStop)
 	<-readWriteDone
-	// check that the initial transport had been working properly all the time
+	// check that the initial connection had been working properly all the time
 	// if any error, it must be `io.EOF` for reader
 	if readErr != io.EOF {
 		require.NoError(t, readErr)
@@ -429,7 +429,7 @@ func testServerTransportEstablishment(t *testing.T) {
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
-	initiatorTransport, responderTransport := dial(t, initiator, responder, port, noDelay)
+	initConn, respConn := dial(t, initiator, responder, port, noDelay)
 	// must be 2 ServerConn's
 	checkConnCount(t, smallDelay, 2, srv)
 	// must have ServerConn for A
@@ -460,7 +460,7 @@ func testServerTransportEstablishment(t *testing.T) {
 	require.True(t, ok)
 	nextInitID = getNextInitID(initiatorClientConn)
 	require.Equal(t, responderNextConn.id, nextInitID-2)
-	require.NoError(t, closeClosers(responderTransport, initiatorTransport, responder, initiator))
+	require.NoError(t, closeClosers(respConn, initConn, responder, initiator))
 	checkConnCount(t, smallDelay, 0, srv, responder, initiator)
 
 	assert.NoError(t, srv.Close())
@@ -479,7 +479,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 	respondersCount := 50
 	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// store the number of transports each responder should handle
-	listenersTpsCount := make(map[int]int)
+	listenersConnsCount := make(map[int]int)
 	// mapping initiators to responders; one initiator performs a single connection,
 	// while responders may handle from 0 to `initiatorsCount` connections
 	pickedListeners := make([]int, 0, initiatorsCount)
@@ -487,7 +487,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 		// pick random responder, which the initiator will connect to
 		listener := rand.Intn(respondersCount)
 		// increment the number of connections picked responder will handle
-		listenersTpsCount[listener]++
+		listenersConnsCount[listener]++
 		// map initiator to picked responder
 		pickedListeners = append(pickedListeners, listener)
 	}
@@ -501,7 +501,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 		pk, sk := cipher.GenerateKeyPair()
 
 		c := NewClient(pk, sk, dc, SetLogger(logging.MustGetLogger(fmt.Sprintf("responder_%d", i))))
-		if _, ok := listenersTpsCount[i]; ok {
+		if _, ok := listenersConnsCount[i]; ok {
 			err := c.InitiateServerConnections(context.Background(), 1)
 			require.NoError(t, err)
 		}
@@ -512,23 +512,23 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 		listeners = append(listeners, lis.(*listener))
 	}
 	totalListenerTpsCount := 0
-	for _, connectionsCount := range listenersTpsCount {
+	for _, connectionsCount := range listenersConnsCount {
 		totalListenerTpsCount += connectionsCount
 	}
 	// channel to listen for `Accept` errors. Any single error must
 	// fail the test
 	acceptErrs := make(chan error, totalListenerTpsCount)
 	var listenersTpsMX sync.Mutex
-	listenersTps := make(map[int][]Transport, len(listenersTpsCount))
+	listenersConns := make(map[int][]net.Conn, len(listenersConnsCount))
 	var listenersWG sync.WaitGroup
 	listenersWG.Add(totalListenerTpsCount)
 	for i := range listeners {
-		// only run `AcceptTransport` in case the responder was picked before
-		if _, ok := listenersTpsCount[i]; !ok {
+		// only run `Accept` in case the responder was picked before
+		if _, ok := listenersConnsCount[i]; !ok {
 			continue
 		}
 
-		for connect := 0; connect < listenersTpsCount[i]; connect++ {
+		for connect := 0; connect < listenersConnsCount[i]; connect++ {
 			// run responder
 			go func(listenerIndex int) {
 				defer listenersWG.Done()
@@ -537,24 +537,24 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 				defer cancel()
 
 				type result struct {
-					Transport Transport
-					Err       error
+					Conn net.Conn
+					Err  error
 				}
 				resultCh := make(chan result)
 
 				go func() {
-					transport, err := listeners[listenerIndex].AcceptTransport()
-					resultCh <- result{transport, err}
+					conn, err := listeners[listenerIndex].Accept()
+					resultCh <- result{conn, err}
 				}()
 
-				var transport Transport
+				var conn net.Conn
 				var err error
 
 				select {
 				case result := <-resultCh:
-					transport, err = result.Transport, result.Err
+					conn, err = result.Conn, result.Err
 				case <-ctx.Done():
-					transport, err = nil, nil
+					conn, err = nil, nil
 				}
 
 				if err != nil {
@@ -562,10 +562,10 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 					return
 				}
 
-				if transport != nil {
-					// store transport
+				if conn != nil {
+					// store connection
 					listenersTpsMX.Lock()
-					listenersTps[listenerIndex] = append(listenersTps[listenerIndex], transport)
+					listenersConns[listenerIndex] = append(listenersConns[listenerIndex], conn)
 					listenersTpsMX.Unlock()
 				}
 			}(i)
@@ -576,7 +576,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 	// fail the test
 	dialErrs := make(chan error, initiatorsCount)
 	var initiatorsTpsMx sync.Mutex
-	initiatorsTps := make([]Transport, 0, initiatorsCount)
+	initiatorsTps := make([]net.Conn, 0, initiatorsCount)
 	var initiatorsWG sync.WaitGroup
 	initiatorsWG.Add(initiatorsCount)
 	for i := range initiators {
@@ -585,14 +585,14 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 			defer initiatorsWG.Done()
 
 			responder := listeners[pickedListeners[initiatorIndex]]
-			transport, err := initiators[initiatorIndex].Dial(context.Background(), responder.pk, responder.port)
+			conn, err := initiators[initiatorIndex].Dial(context.Background(), responder.pk, responder.port)
 			if err != nil {
 				dialErrs <- err
 			}
 
-			// store transport
+			// store conn
 			initiatorsTpsMx.Lock()
-			initiatorsTps = append(initiatorsTps, transport)
+			initiatorsTps = append(initiatorsTps, conn)
 			initiatorsTpsMx.Unlock()
 		}(i)
 	}
@@ -608,7 +608,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 	err = <-acceptErrs
 	// single error should fail test
 	require.NoError(t, err)
-	checkConnCount(t, noDelay, len(listenersTpsCount)+initiatorsCount, srv)
+	checkConnCount(t, noDelay, len(listenersConnsCount)+initiatorsCount, srv)
 	for i, initiator := range initiators {
 		// get and check initiator's ServerConn
 		initiatorSrvConn, ok := srv.getConn(initiator.pk)
@@ -638,14 +638,14 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 		require.True(t, ok)
 		require.NotNil(t, initiatorNextConn)
 	}
-	// close transports for responders
-	for _, tps := range listenersTps {
+	// close connections for responders
+	for _, tps := range listenersConns {
 		for _, tp := range tps {
 			err := tp.Close()
 			require.NoError(t, err)
 		}
 	}
-	// close transports for initiators
+	// close connections for initiators
 	for _, tp := range initiatorsTps {
 		err := tp.Close()
 		require.NoError(t, err)
@@ -681,31 +681,31 @@ func testServerMessageConsistency(t *testing.T) {
 
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
-	initiatorTransport, responderTransport := dial(t, initiator, responder, port, noDelay)
+	initConn, respConn := dial(t, initiator, responder, port, noDelay)
 	for i := 0; i < msgCount; i++ {
 		// write message of 12 bytes
-		_, err := initiatorTransport.Write([]byte(message))
+		_, err := initConn.Write([]byte(message))
 		require.NoError(t, err)
 
 		// create a receiving buffer of 5 bytes
 		recBuff := make([]byte, bufSize)
 
 		// read 5 bytes, 7 left
-		n, err := responderTransport.Read(recBuff)
+		n, err := respConn.Read(recBuff)
 		require.NoError(t, err)
 		require.Equal(t, n, len(recBuff))
 
 		received := string(recBuff[:n])
 
 		// read 5 more, 2 left
-		n, err = responderTransport.Read(recBuff)
+		n, err = respConn.Read(recBuff)
 		require.NoError(t, err)
 		require.Equal(t, n, len(recBuff))
 
 		received += string(recBuff[:n])
 
 		// read 2 bytes left
-		n, err = responderTransport.Read(recBuff)
+		n, err = respConn.Read(recBuff)
 		require.NoError(t, err)
 		require.Equal(t, n, len(message)-len(recBuff)*2)
 
@@ -714,14 +714,14 @@ func testServerMessageConsistency(t *testing.T) {
 		// received string must be equal to the sent one
 		require.Equal(t, received, message)
 	}
-	require.NoError(t, closeClosers(initiatorTransport, responderTransport, responder, initiator))
+	require.NoError(t, closeClosers(initConn, respConn, responder, initiator))
 
 	assert.NoError(t, srv.Close())
 	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
-// Create a server, initiator, responder and transport between them then check if clients are connected to the server.
-// Stop the server, then check if no client is connected and if transport is closed.
+// Create a server, initiator, responder and connection between them then check if clients are connected to the server.
+// Stop the server, then check if no client is connected and if connection is closed.
 // Start the server again, check if clients reconnected and if `Dial()` and `Accept()` still work.
 // Second argument indicates if the server restarts not on the same address, but on the random one.
 func testServerReconnection(t *testing.T, randomAddr bool) {
@@ -741,12 +741,12 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 	initiator := createClient(t, dc, initiatorName)
 	checkConnCount(t, smallDelay, 2, srv)
 
-	initiatorTransport, responderTransport := dial(t, initiator, responder, port, noDelay)
+	initConn, respConn := dial(t, initiator, responder, port, noDelay)
 
 	assert.NoError(t, srv.Close())
 	assert.NoError(t, errWithTimeout(srvErrCh))
 
-	checkTransportsClosed(t, initiatorTransport, responderTransport)
+	checkTransportsClosed(t, initConn, respConn)
 	checkConnCount(t, smallDelay, 0, srv)
 
 	addr := ""
@@ -805,7 +805,7 @@ func createServer(dc disc.APIClient) (srv *Server, srvErr <-chan error, err erro
 	return srv, errCh, nil
 }
 
-func dial(t *testing.T, initiator, responder *Client, port uint16, delay time.Duration) (initTp, respTp Transport) {
+func dial(t *testing.T, initiator, responder *Client, port uint16, delay time.Duration) (initTp, respTp net.Conn) {
 	require.NoError(t, testWithTimeout(delay, func() error {
 		ctx := context.TODO()
 
@@ -819,7 +819,7 @@ func dial(t *testing.T, initiator, responder *Client, port uint16, delay time.Du
 			return err
 		}
 
-		respTp, err = listener.AcceptTransport()
+		respTp, err = listener.Accept()
 		return err
 	}))
 	return initTp, respTp
