@@ -156,7 +156,7 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 		}
 		return payload.InitPK, ErrClientClosed
 
-	case lis.(listener).accept <- tp:
+	case lis.(*listener).accept <- tp:
 		c.setTp(tp)
 		if err := tp.WriteAccept(); err != nil {
 			return payload.InitPK, err
@@ -166,7 +166,7 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 
 	default:
 		select {
-		case lis.(listener).accept <- tp:
+		case lis.(*listener).accept <- tp:
 			c.setTp(tp)
 			if err := tp.WriteAccept(); err != nil {
 				return payload.InitPK, err

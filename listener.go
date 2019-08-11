@@ -27,11 +27,11 @@ type listener struct {
 	once   sync.Once
 }
 
-func (l listener) Accept() (net.Conn, error) {
+func (l *listener) Accept() (net.Conn, error) {
 	return l.AcceptTransport()
 }
 
-func (l listener) Close() error {
+func (l *listener) Close() error {
 	l.once.Do(func() {
 		close(l.done)
 		for {
@@ -47,14 +47,14 @@ func (l listener) Close() error {
 	return nil
 }
 
-func (l listener) Addr() net.Addr {
+func (l *listener) Addr() net.Addr {
 	return Addr{
 		pk:   l.pk,
 		port: &l.port,
 	}
 }
 
-func (l listener) AcceptTransport() (TransportInterface, error) {
+func (l *listener) AcceptTransport() (TransportInterface, error) {
 	select {
 	case tp, ok := <-l.accept:
 		if !ok {
@@ -66,6 +66,6 @@ func (l listener) AcceptTransport() (TransportInterface, error) {
 	}
 }
 
-func (l listener) Type() string {
+func (l *listener) Type() string {
 	return Type
 }

@@ -271,7 +271,7 @@ func (c *Client) Listen(port uint16) (Listener, error) {
 		return nil, errors.New("already listening")
 	}
 
-	l := listener{
+	l := &listener{
 		pk:     c.pk,
 		port:   port,
 		accept: make(chan TransportInterface, AcceptBufferSize),
@@ -342,9 +342,9 @@ func (c *Client) Close() error {
 		for _, ch := range c.pm.listeners {
 			for {
 				select {
-				case <-ch.(listener).accept:
+				case <-ch.(*listener).accept:
 				default:
-					close(ch.(listener).accept)
+					close(ch.(*listener).accept)
 					return
 				}
 			}

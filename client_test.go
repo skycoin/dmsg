@@ -151,10 +151,10 @@ func TestClient(t *testing.T) {
 		ch1 := make(chan TransportInterface, AcceptBufferSize)
 		ch2 := make(chan TransportInterface, AcceptBufferSize)
 
-		l1 := listener{accept: ch1}
+		l1 := &listener{accept: ch1}
 		conn1.pm.AddListener(l1, port)
 
-		l2 := listener{accept: ch2}
+		l2 := &listener{accept: ch2}
 		conn2.pm.AddListener(l2, port)
 
 		ctx := context.TODO()
@@ -224,16 +224,16 @@ func TestClient(t *testing.T) {
 		ch3 := make(chan TransportInterface, AcceptBufferSize)
 		ch4 := make(chan TransportInterface, AcceptBufferSize)
 
-		l1 := listener{accept: ch1}
+		l1 := &listener{accept: ch1}
 		conn1.pm.AddListener(l1, port)
 
-		l2 := listener{accept: ch2}
+		l2 := &listener{accept: ch2}
 		conn2.pm.AddListener(l2, port)
 
-		l3 := listener{accept: ch3}
+		l3 := &listener{accept: ch3}
 		conn3.pm.AddListener(l3, port)
 
-		l4 := listener{accept: ch4}
+		l4 := &listener{accept: ch4}
 		conn4.pm.AddListener(l4, port)
 
 		ctx := context.TODO()
@@ -343,7 +343,7 @@ func TestClient(t *testing.T) {
 
 		conn1 := NewClientConn(logging.MustGetLogger("conn1"), p1, pk1, pk2, pm)
 		ch1 := make(chan TransportInterface, AcceptBufferSize)
-		l1 := listener{accept: ch1}
+		l1 := &listener{accept: ch1}
 		conn1.pm.AddListener(l1, port)
 
 		serveErrCh1 := make(chan error, 1)
@@ -355,7 +355,7 @@ func TestClient(t *testing.T) {
 
 		conn2 := NewClientConn(logging.MustGetLogger("conn2"), p2, pk2, pk1, pm)
 		ch2 := make(chan TransportInterface, AcceptBufferSize)
-		l2 := listener{accept: ch2}
+		l2 := &listener{accept: ch2}
 		conn2.pm.AddListener(l2, port)
 
 		serveErrCh2 := make(chan error, 1)

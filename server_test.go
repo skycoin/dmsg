@@ -493,7 +493,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 	}
 	initiators := make([]*Client, 0, initiatorsCount)
 	responders := make([]*Client, 0, respondersCount)
-	listeners := make([]listener, 0, respondersCount)
+	listeners := make([]*listener, 0, respondersCount)
 	for i := 0; i < initiatorsCount; i++ {
 		initiators = append(initiators, createClient(t, dc, fmt.Sprintf("initiator_%d", i)))
 	}
@@ -509,7 +509,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 		require.NoError(t, err)
 
 		responders = append(responders, c)
-		listeners = append(listeners, lis.(listener))
+		listeners = append(listeners, lis.(*listener))
 	}
 	totalListenerTpsCount := 0
 	for _, connectionsCount := range listenersTpsCount {
