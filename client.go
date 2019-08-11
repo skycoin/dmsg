@@ -50,8 +50,8 @@ type Factory interface {
 	// Listen creates a transport.Listener
 	Listen(port uint16) (Listener, error)
 
-	// Dial initiates a Transport with a remote node.
-	Dial(ctx context.Context, remote cipher.PubKey, port uint16) (TransportInterface, error)
+	// Dial initiates a transport with a remote node.
+	Dial(ctx context.Context, remote cipher.PubKey, port uint16) (Transport, error)
 
 	// Close implements io.Closer
 	Close() error
@@ -59,7 +59,7 @@ type Factory interface {
 	// Local returns the local public key.
 	Addr() net.Addr
 
-	// Type returns the Transport type.
+	// Type returns the transport type.
 	Type() string
 }
 
@@ -76,7 +76,7 @@ type Client struct {
 
 	pm *PortManager
 
-	// accept map[uint16]chan *Transport
+	// accept map[uint16]chan *transport
 	done chan struct{}
 	once sync.Once
 }
@@ -90,8 +90,8 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, opts ...Cl
 		dc:    dc,
 		conns: make(map[cipher.PubKey]*ClientConn),
 		pm:    newPortManager(),
-		// accept: make(chan *Transport, AcceptBufferSize),
-		// accept: make(map[uint16]chan *Transport),
+		// accept: make(chan *transport, AcceptBufferSize),
+		// accept: make(map[uint16]chan *transport),
 		done: make(chan struct{}),
 	}
 	for _, opt := range opts {
@@ -274,7 +274,7 @@ func (c *Client) Listen(port uint16) (Listener, error) {
 	l := &listener{
 		pk:     c.pk,
 		port:   port,
-		accept: make(chan TransportInterface, AcceptBufferSize),
+		accept: make(chan Transport, AcceptBufferSize),
 		done:   c.done,
 	}
 
@@ -284,7 +284,7 @@ func (c *Client) Listen(port uint16) (Listener, error) {
 }
 
 // Dial dials a transport to remote dms_client.
-func (c *Client) Dial(ctx context.Context, remote cipher.PubKey, port uint16) (TransportInterface, error) {
+func (c *Client) Dial(ctx context.Context, remote cipher.PubKey, port uint16) (Transport, error) {
 	entry, err := c.dc.Entry(ctx, remote)
 	if err != nil {
 		return nil, fmt.Errorf("get entry failure: %s", err)

@@ -21,20 +21,20 @@ var (
 	ErrAcceptCheckFailed  = errors.New("failed to create transport: accept check failed")
 )
 
-// TransportInterface represents communication between two nodes via a single hop.
-type TransportInterface interface {
+// Transport represents communication between two nodes via a single hop:
+// a connection from dmsg.Client to remote dmsg.Client (via dmsg.Server intermediary).
+type Transport interface {
 	net.Conn
 
 	// Type returns the string representation of the transport type.
 	Type() string
 }
 
-// Transport represents a connection from dmsg.Client to remote dmsg.Client (via dmsg.Server intermediary).
-type Transport struct {
+type transport struct {
 	net.Conn // underlying connection to dmsg.Server
 	log      *logging.Logger
 
-	id     uint16        // tp ID that identifies this dmsg.Transport
+	id     uint16        // tp ID that identifies this dmsg.transport
 	local  cipher.PubKey // local PK
 	remote cipher.PubKey // remote PK
 
@@ -57,8 +57,8 @@ type Transport struct {
 }
 
 // NewTransport creates a new dms_tp.
-func NewTransport(conn net.Conn, log *logging.Logger, local, remote cipher.PubKey, id uint16, doneFunc func(id uint16)) *Transport {
-	tp := &Transport{
+func NewTransport(conn net.Conn, log *logging.Logger, local, remote cipher.PubKey, id uint16, doneFunc func(id uint16)) Transport {
+	tp := &transport{
 		Conn:      conn,
 		log:       log,
 		id:        id,
@@ -79,7 +79,7 @@ func NewTransport(conn net.Conn, log *logging.Logger, local, remote cipher.PubKe
 	return tp
 }
 
-func (tp *Transport) serve() (started bool) {
+func (tp *transport) serve() (started bool) {
 	tp.servingOnce.Do(func() {
 		started = true
 		close(tp.serving)
@@ -93,7 +93,7 @@ func (tp *Transport) serve() (started bool) {
 // 3. Our worry now, is writing to `inCh`/`bufCh` AFTER they have been closed.
 // 4. But as, under the mutexes protecting `inCh`/`bufCh`, checking `done` comes first,
 // and we know that `done` is closed before `inCh`/`bufCh`, we can guarantee that it avoids writing to closed chan.
-func (tp *Transport) close() (closed bool) {
+func (tp *transport) close() (closed bool) {
 	if tp == nil {
 		return false
 	}
@@ -119,7 +119,7 @@ func (tp *Transport) close() (closed bool) {
 }
 
 // Close closes the dmsg_tp.
-func (tp *Transport) Close() error {
+func (tp *transport) Close() error {
 	if tp.close() {
 		if err := writeCloseFrame(tp.Conn, tp.id, ReasonErr); err != nil {
 			log.WithError(err).Warn("Failed to write frame")
@@ -129,7 +129,7 @@ func (tp *Transport) Close() error {
 }
 
 // IsClosed returns whether dms_tp is closed.
-func (tp *Transport) IsClosed() bool {
+func (tp *transport) IsClosed() bool {
 	select {
 	case <-tp.done:
 		return true
@@ -139,22 +139,22 @@ func (tp *Transport) IsClosed() bool {
 }
 
 // LocalPK returns the local public key of the transport.
-func (tp *Transport) LocalPK() cipher.PubKey {
+func (tp *transport) LocalPK() cipher.PubKey {
 	return tp.local
 }
 
 // RemotePK returns the remote public key of the transport.
-func (tp *Transport) RemotePK() cipher.PubKey {
+func (tp *transport) RemotePK() cipher.PubKey {
 	return tp.remote
 }
 
 // Type returns the transport type.
-func (tp *Transport) Type() string {
+func (tp *transport) Type() string {
 	return Type
 }
 
 // HandleFrame allows 'tp.Serve' to handle the frame (typically from 'ClientConn').
-func (tp *Transport) HandleFrame(f Frame) error {
+func (tp *transport) HandleFrame(f Frame) error {
 	tp.inMx.Lock()
 	defer tp.inMx.Unlock()
 	for {
@@ -170,7 +170,7 @@ func (tp *Transport) HandleFrame(f Frame) error {
 }
 
 // WriteRequest writes a REQUEST frame to dmsg_server to be forwarded to associated client.
-func (tp *Transport) WriteRequest(port uint16) error {
+func (tp *transport) WriteRequest(port uint16) error {
 	payload := HandshakePayload{
 		Version: HandshakePayloadVersion,
 		InitPK:  tp.local,
@@ -191,7 +191,7 @@ func (tp *Transport) WriteRequest(port uint16) error {
 }
 
 // WriteAccept writes an ACCEPT frame to dmsg_server to be forwarded to associated client.
-func (tp *Transport) WriteAccept() (err error) {
+func (tp *transport) WriteAccept() (err error) {
 	defer func() {
 		if err != nil {
 			tp.log.WithError(err).WithField("remote", tp.remote).Warnln("(HANDSHAKE) Rejected locally.")
@@ -210,7 +210,7 @@ func (tp *Transport) WriteAccept() (err error) {
 
 // ReadAccept awaits for an ACCEPT frame to be read from the remote client.
 // TODO(evanlinjin): Cleanup errors.
-func (tp *Transport) ReadAccept(ctx context.Context) (err error) {
+func (tp *transport) ReadAccept(ctx context.Context) (err error) {
 	defer func() {
 		if err != nil {
 			tp.log.WithError(err).WithField("remote", tp.remote).Warnln("(HANDSHAKE) Rejected by remote.")
@@ -265,7 +265,7 @@ func (tp *Transport) ReadAccept(ctx context.Context) (err error) {
 }
 
 // Serve handles received frames.
-func (tp *Transport) Serve() {
+func (tp *transport) Serve() {
 	// return is transport is already being served, or is closed
 	if !tp.serve() {
 		return
@@ -357,7 +357,7 @@ func (tp *Transport) Serve() {
 
 // Read implements io.Reader
 // TODO(evanlinjin): read deadline.
-func (tp *Transport) Read(p []byte) (n int, err error) {
+func (tp *transport) Read(p []byte) (n int, err error) {
 	<-tp.serving
 
 	tp.rMx.Lock()
@@ -392,7 +392,7 @@ startRead:
 
 // Write implements io.Writer
 // TODO(evanlinjin): write deadline.
-func (tp *Transport) Write(p []byte) (int, error) {
+func (tp *transport) Write(p []byte) (int, error) {
 	<-tp.serving
 
 	if tp.IsClosed() {

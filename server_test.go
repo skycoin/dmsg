@@ -262,8 +262,8 @@ func testServerDisconnection(t *testing.T) {
 
 	time.Sleep(smallDelay)
 
-	require.True(t, responderTransport.(*Transport).IsClosed())
-	require.True(t, initiatorTransport.(*Transport).IsClosed())
+	require.True(t, responderTransport.(*transport).IsClosed())
+	require.True(t, initiatorTransport.(*transport).IsClosed())
 }
 
 func testServerSelfDialing(t *testing.T) {
@@ -283,7 +283,7 @@ func testServerSelfDialing(t *testing.T) {
 	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
-func testTransportMessaging(t *testing.T, init, resp TransportInterface) {
+func testTransportMessaging(t *testing.T, init, resp Transport) {
 	for i := 0; i < msgCount; i++ {
 		_, err := init.Write([]byte(message))
 		require.NoError(t, err)
@@ -519,7 +519,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 	// fail the test
 	acceptErrs := make(chan error, totalListenerTpsCount)
 	var listenersTpsMX sync.Mutex
-	listenersTps := make(map[int][]TransportInterface, len(listenersTpsCount))
+	listenersTps := make(map[int][]Transport, len(listenersTpsCount))
 	var listenersWG sync.WaitGroup
 	listenersWG.Add(totalListenerTpsCount)
 	for i := range listeners {
@@ -537,7 +537,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 				defer cancel()
 
 				type result struct {
-					Transport TransportInterface
+					Transport Transport
 					Err       error
 				}
 				resultCh := make(chan result)
@@ -547,7 +547,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 					resultCh <- result{transport, err}
 				}()
 
-				var transport TransportInterface
+				var transport Transport
 				var err error
 
 				select {
@@ -576,7 +576,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 	// fail the test
 	dialErrs := make(chan error, initiatorsCount)
 	var initiatorsTpsMx sync.Mutex
-	initiatorsTps := make([]TransportInterface, 0, initiatorsCount)
+	initiatorsTps := make([]Transport, 0, initiatorsCount)
 	var initiatorsWG sync.WaitGroup
 	initiatorsWG.Add(initiatorsCount)
 	for i := range initiators {
@@ -805,7 +805,7 @@ func createServer(dc disc.APIClient) (srv *Server, srvErr <-chan error, err erro
 	return srv, errCh, nil
 }
 
-func dial(t *testing.T, initiator, responder *Client, port uint16, delay time.Duration) (initTp, respTp TransportInterface) {
+func dial(t *testing.T, initiator, responder *Client, port uint16, delay time.Duration) (initTp, respTp Transport) {
 	require.NoError(t, testWithTimeout(delay, func() error {
 		ctx := context.TODO()
 

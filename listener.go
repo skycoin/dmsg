@@ -12,8 +12,8 @@ type Listener interface {
 	net.Listener
 
 	// AcceptTransport is similar to (net.Listener).Accept,
-	// except that it returns a TransportInterface instead of a net.Conn.
-	AcceptTransport() (TransportInterface, error)
+	// except that it returns a Transport instead of a net.Conn.
+	AcceptTransport() (Transport, error)
 
 	// Type returns the Transport type.
 	Type() string
@@ -22,7 +22,7 @@ type Listener interface {
 type listener struct {
 	pk     cipher.PubKey
 	port   uint16
-	accept chan TransportInterface
+	accept chan Transport
 	done   chan struct{}
 	once   sync.Once
 }
@@ -54,7 +54,7 @@ func (l *listener) Addr() net.Addr {
 	}
 }
 
-func (l *listener) AcceptTransport() (TransportInterface, error) {
+func (l *listener) AcceptTransport() (Transport, error) {
 	select {
 	case tp, ok := <-l.accept:
 		if !ok {
