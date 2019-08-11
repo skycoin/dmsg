@@ -274,7 +274,7 @@ func (c *Client) Listen(port uint16) (Listener, error) {
 	l := listener{
 		pk:     c.pk,
 		port:   port,
-		accept: make(chan *Transport, AcceptBufferSize),
+		accept: make(chan TransportInterface, AcceptBufferSize),
 		done:   c.done,
 	}
 

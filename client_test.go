@@ -148,8 +148,8 @@ func TestClient(t *testing.T) {
 		conn1 := NewClientConn(logger, p1, pk1, pk2, pm)
 		conn2 := NewClientConn(logger, p2, pk2, pk1, pm)
 
-		ch1 := make(chan *Transport, AcceptBufferSize)
-		ch2 := make(chan *Transport, AcceptBufferSize)
+		ch1 := make(chan TransportInterface, AcceptBufferSize)
+		ch2 := make(chan TransportInterface, AcceptBufferSize)
 
 		l1 := listener{accept: ch1}
 		conn1.pm.AddListener(l1, port)
@@ -219,10 +219,10 @@ func TestClient(t *testing.T) {
 		conn2.setNextInitID(randID(false))
 		conn4.setNextInitID(randID(false))
 
-		ch1 := make(chan *Transport, AcceptBufferSize)
-		ch2 := make(chan *Transport, AcceptBufferSize)
-		ch3 := make(chan *Transport, AcceptBufferSize)
-		ch4 := make(chan *Transport, AcceptBufferSize)
+		ch1 := make(chan TransportInterface, AcceptBufferSize)
+		ch2 := make(chan TransportInterface, AcceptBufferSize)
+		ch3 := make(chan TransportInterface, AcceptBufferSize)
+		ch4 := make(chan TransportInterface, AcceptBufferSize)
 
 		l1 := listener{accept: ch1}
 		conn1.pm.AddListener(l1, port)
@@ -342,7 +342,7 @@ func TestClient(t *testing.T) {
 		pm := newPortManager()
 
 		conn1 := NewClientConn(logging.MustGetLogger("conn1"), p1, pk1, pk2, pm)
-		ch1 := make(chan *Transport, AcceptBufferSize)
+		ch1 := make(chan TransportInterface, AcceptBufferSize)
 		l1 := listener{accept: ch1}
 		conn1.pm.AddListener(l1, port)
 
@@ -354,7 +354,7 @@ func TestClient(t *testing.T) {
 		defer func() { require.NoError(t, conn1.Close()) }()
 
 		conn2 := NewClientConn(logging.MustGetLogger("conn2"), p2, pk2, pk1, pm)
-		ch2 := make(chan *Transport, AcceptBufferSize)
+		ch2 := make(chan TransportInterface, AcceptBufferSize)
 		l2 := listener{accept: ch2}
 		conn2.pm.AddListener(l2, port)
 

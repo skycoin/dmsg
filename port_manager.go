@@ -42,6 +42,14 @@ func (pm *PortManager) AddListener(l Listener, port uint16) {
 	pm.listeners[port] = l
 }
 
+// RemoveListener removes listener assigned to port.
+func (pm *PortManager) RemoveListener(port uint16) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
+	delete(pm.listeners, port)
+}
+
 // NextEmptyEphemeralPort returns next random ephemeral port.
 // It has a value between firstEphemeralPort and lastEphemeralPort.
 func (pm *PortManager) NextEmptyEphemeralPort() uint16 {
