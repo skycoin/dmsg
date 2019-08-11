@@ -485,15 +485,15 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 	pickedListeners := make([]int, 0, initiatorsCount)
 	for i := 0; i < initiatorsCount; i++ {
 		// pick random responder, which the initiator will connect to
-		listener := rand.Intn(respondersCount)
+		listenerIndex := rand.Intn(respondersCount)
 		// increment the number of connections picked responder will handle
-		listenersConnsCount[listener]++
+		listenersConnsCount[listenerIndex]++
 		// map initiator to picked responder
-		pickedListeners = append(pickedListeners, listener)
+		pickedListeners = append(pickedListeners, listenerIndex)
 	}
 	initiators := make([]*Client, 0, initiatorsCount)
 	responders := make([]*Client, 0, respondersCount)
-	listeners := make([]*listener, 0, respondersCount)
+	listeners := make([]net.Listener, 0, respondersCount)
 	for i := 0; i < initiatorsCount; i++ {
 		initiators = append(initiators, createClient(t, dc, fmt.Sprintf("initiator_%d", i)))
 	}
@@ -509,7 +509,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 		require.NoError(t, err)
 
 		responders = append(responders, c)
-		listeners = append(listeners, lis.(*listener))
+		listeners = append(listeners, lis)
 	}
 	totalListenerTpsCount := 0
 	for _, connectionsCount := range listenersConnsCount {
@@ -584,7 +584,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 		go func(initiatorIndex int) {
 			defer initiatorsWG.Done()
 
-			responder := listeners[pickedListeners[initiatorIndex]]
+			responder := listeners[pickedListeners[initiatorIndex]].(*listener)
 			conn, err := initiators[initiatorIndex].Dial(context.Background(), responder.pk, responder.port)
 			if err != nil {
 				dialErrs <- err
