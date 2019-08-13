@@ -141,7 +141,7 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 		lis, ok = c.pm.Listener(payload.Port)
 	}
 	if err != nil || !ok || payload.RespPK != c.local || isInitiatorID(id) {
-		if err := writeCloseFrame(c.Conn, id, ReasonErr); err != nil {
+		if err := writeCloseFrame(c.Conn, id, PlaceholderReason); err != nil {
 			return payload.InitPK, err
 		}
 		return payload.InitPK, ErrRequestCheckFailed
@@ -230,7 +230,7 @@ func (c *ClientConn) Serve(ctx context.Context) (err error) {
 		default:
 			log.Debugf("Ignored [%s]: No transport of given ID.", ft)
 			if ft != CloseType {
-				if err := writeCloseFrame(c.Conn, id, ReasonErr); err != nil {
+				if err := writeCloseFrame(c.Conn, id, PlaceholderReason); err != nil {
 					return err
 				}
 			}

@@ -89,7 +89,7 @@ const (
 
 // Reasons for closing frames
 const (
-	ReasonErr = iota
+	PlaceholderReason = iota
 )
 
 // Frame is the dmsg data unit.

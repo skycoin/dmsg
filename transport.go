@@ -114,7 +114,7 @@ func (tp *Transport) close() (closed bool) {
 // Close closes the dmsg_tp.
 func (tp *Transport) Close() error {
 	if tp.close() {
-		if err := writeCloseFrame(tp.Conn, tp.id, ReasonErr); err != nil {
+		if err := writeCloseFrame(tp.Conn, tp.id, PlaceholderReason); err != nil {
 			log.WithError(err).Warn("Failed to write frame")
 		}
 	}
@@ -268,7 +268,7 @@ func (tp *Transport) Serve() {
 	// also write CLOSE frame if this is the first time 'close' is triggered
 	defer func() {
 		if tp.close() {
-			if err := writeCloseFrame(tp.Conn, tp.id, ReasonErr); err != nil {
+			if err := writeCloseFrame(tp.Conn, tp.id, PlaceholderReason); err != nil {
 				log.WithError(err).Warn("Failed to write close frame")
 			}
 		}
