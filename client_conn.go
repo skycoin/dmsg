@@ -27,7 +27,7 @@ type ClientConn struct {
 	nextInitID uint16
 
 	// Transports: map of transports to remote dms_clients (key: tp_id, val: transport).
-	tps map[uint16]*transport
+	tps map[uint16]*Transport
 	mx  sync.RWMutex // to protect tps
 
 	pm *PortManager
@@ -45,7 +45,7 @@ func NewClientConn(log *logging.Logger, conn net.Conn, local, remote cipher.PubK
 		local:      local,
 		remoteSrv:  remote,
 		nextInitID: randID(true),
-		tps:        make(map[uint16]*transport),
+		tps:        make(map[uint16]*Transport),
 		pm:         pm,
 		done:       make(chan struct{}),
 	}
@@ -76,7 +76,7 @@ func (c *ClientConn) getNextInitID(ctx context.Context) (uint16, error) {
 	}
 }
 
-func (c *ClientConn) addTp(ctx context.Context, clientPK cipher.PubKey) (*transport, error) {
+func (c *ClientConn) addTp(ctx context.Context, clientPK cipher.PubKey) (*Transport, error) {
 	c.mx.Lock()
 	defer c.mx.Unlock()
 
@@ -84,12 +84,12 @@ func (c *ClientConn) addTp(ctx context.Context, clientPK cipher.PubKey) (*transp
 	if err != nil {
 		return nil, err
 	}
-	tp := NewTransport(c.Conn, c.log, c.local, clientPK, id, c.delTp).(*transport)
+	tp := NewTransport(c.Conn, c.log, c.local, clientPK, id, c.delTp)
 	c.tps[id] = tp
 	return tp, nil
 }
 
-func (c *ClientConn) setTp(tp *transport) {
+func (c *ClientConn) setTp(tp *Transport) {
 	c.mx.Lock()
 	c.tps[tp.id] = tp
 	c.mx.Unlock()
@@ -101,7 +101,7 @@ func (c *ClientConn) delTp(id uint16) {
 	c.mx.Unlock()
 }
 
-func (c *ClientConn) getTp(id uint16) (*transport, bool) {
+func (c *ClientConn) getTp(id uint16) (*Transport, bool) {
 	c.mx.RLock()
 	tp := c.tps[id]
 	c.mx.RUnlock()
@@ -136,7 +136,7 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 	// - use an odd tp_id with the intermediary dmsg_server.
 	payload, err := unmarshalHandshakePayload(p)
 	ok := false
-	var lis Listener
+	var lis *Listener
 	if err == nil {
 		lis, ok = c.pm.Listener(payload.Port)
 	}
@@ -147,7 +147,7 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 		return payload.InitPK, ErrRequestCheckFailed
 	}
 
-	tp := NewTransport(c.Conn, c.log, c.local, payload.InitPK, id, c.delTp).(*transport)
+	tp := NewTransport(c.Conn, c.log, c.local, payload.InitPK, id, c.delTp)
 
 	select {
 	case <-c.done:
@@ -158,7 +158,7 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 
 	default:
 		select {
-		case lis.(*listener).accept <- tp:
+		case lis.accept <- tp:
 			c.setTp(tp)
 			if err := tp.WriteAccept(); err != nil {
 				return payload.InitPK, err
@@ -239,7 +239,7 @@ func (c *ClientConn) Serve(ctx context.Context) (err error) {
 }
 
 // DialTransport dials a transport to remote dms_client.
-func (c *ClientConn) DialTransport(ctx context.Context, clientPK cipher.PubKey, port uint16) (Transport, error) {
+func (c *ClientConn) DialTransport(ctx context.Context, clientPK cipher.PubKey, port uint16) (*Transport, error) {
 	tp, err := c.addTp(ctx, clientPK)
 	if err != nil {
 		return nil, err

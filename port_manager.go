@@ -15,18 +15,18 @@ const (
 type PortManager struct {
 	mu        sync.RWMutex
 	rand      *rand.Rand
-	listeners map[uint16]Listener
+	listeners map[uint16]*Listener
 }
 
 func newPortManager() *PortManager {
 	return &PortManager{
 		rand:      rand.New(rand.NewSource(time.Now().UnixNano())),
-		listeners: make(map[uint16]Listener),
+		listeners: make(map[uint16]*Listener),
 	}
 }
 
 // Listener returns a listener assigned to a given port.
-func (pm *PortManager) Listener(port uint16) (Listener, bool) {
+func (pm *PortManager) Listener(port uint16) (*Listener, bool) {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
 
@@ -35,7 +35,7 @@ func (pm *PortManager) Listener(port uint16) (Listener, bool) {
 }
 
 // AddListener assigns listener to port.
-func (pm *PortManager) AddListener(l Listener, port uint16) {
+func (pm *PortManager) AddListener(l *Listener, port uint16) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 

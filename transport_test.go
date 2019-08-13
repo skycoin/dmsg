@@ -27,7 +27,7 @@ func BenchmarkNewTransport(b *testing.B) {
 
 func TestTransport_close(t *testing.T) {
 	log := logging.MustGetLogger("dmsg_test")
-	tr := NewTransport(nil, log, cipher.PubKey{}, cipher.PubKey{}, 0, func(id uint16) {}).(*transport)
+	tr := NewTransport(nil, log, cipher.PubKey{}, cipher.PubKey{}, 0, func(id uint16) {})
 
 	closed := tr.close()
 
@@ -52,7 +52,7 @@ func TestTransport_close(t *testing.T) {
 	})
 
 	t.Run("No panic with nil pointer receiver", func(t *testing.T) {
-		var tr1, tr2 *transport
+		var tr1, tr2 *Transport
 		assert.NoError(t, tr1.Close())
 		assert.False(t, tr2.close())
 	})
@@ -109,7 +109,7 @@ func BenchmarkTransport_Write(b *testing.B) {
 	}
 }
 
-func createBenchmarkClients() (initTp, respTp Transport, err error) {
+func createBenchmarkClients() (initTp, respTp *Transport, err error) {
 	dc := disc.NewMock()
 	ctx := context.TODO()
 

@@ -17,7 +17,7 @@ import (
 )
 
 type transportWithError struct {
-	tr  *transport
+	tr  *Transport
 	err error
 }
 
@@ -104,7 +104,7 @@ func clientConnWithTps(n int) (*ClientConn, []uint16) {
 	for i := 0; i < n; i++ {
 		id := uint16(rand.Intn(math.MaxUint16))
 		ids = append(ids, id)
-		tp := NewTransport(p1, log, cipher.PubKey{}, cipher.PubKey{}, id, cc.delTp).(*transport)
+		tp := NewTransport(p1, log, cipher.PubKey{}, cipher.PubKey{}, id, cc.delTp)
 		cc.setTp(tp)
 	}
 
@@ -126,7 +126,7 @@ func BenchmarkClientConn_setTp(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		id := uint16(rand.Intn(math.MaxUint16))
-		tp := NewTransport(p1, log, cipher.PubKey{}, cipher.PubKey{}, id, cc.delTp).(*transport)
+		tp := NewTransport(p1, log, cipher.PubKey{}, cipher.PubKey{}, id, cc.delTp)
 		cc.setTp(tp)
 	}
 }
@@ -148,13 +148,13 @@ func TestClient(t *testing.T) {
 		conn1 := NewClientConn(logger, p1, pk1, pk2, pm)
 		conn2 := NewClientConn(logger, p2, pk2, pk1, pm)
 
-		ch1 := make(chan Transport, AcceptBufferSize)
-		ch2 := make(chan Transport, AcceptBufferSize)
+		ch1 := make(chan *Transport, AcceptBufferSize)
+		ch2 := make(chan *Transport, AcceptBufferSize)
 
-		l1 := &listener{accept: ch1}
+		l1 := &Listener{accept: ch1}
 		conn1.pm.AddListener(l1, port)
 
-		l2 := &listener{accept: ch2}
+		l2 := &Listener{accept: ch2}
 		conn2.pm.AddListener(l2, port)
 
 		ctx := context.TODO()
@@ -193,7 +193,7 @@ func TestClient(t *testing.T) {
 		assert.Error(t, errWithTimeout(serveErrCh1))
 		assert.Error(t, errWithTimeout(serveErrCh2))
 
-		assert.True(t, tr1.(*transport).IsClosed())
+		assert.True(t, tr1.IsClosed())
 	})
 
 	// Runs four ClientConn's and dials two transports between them.
@@ -219,21 +219,21 @@ func TestClient(t *testing.T) {
 		conn2.setNextInitID(randID(false))
 		conn4.setNextInitID(randID(false))
 
-		ch1 := make(chan Transport, AcceptBufferSize)
-		ch2 := make(chan Transport, AcceptBufferSize)
-		ch3 := make(chan Transport, AcceptBufferSize)
-		ch4 := make(chan Transport, AcceptBufferSize)
+		ch1 := make(chan *Transport, AcceptBufferSize)
+		ch2 := make(chan *Transport, AcceptBufferSize)
+		ch3 := make(chan *Transport, AcceptBufferSize)
+		ch4 := make(chan *Transport, AcceptBufferSize)
 
-		l1 := &listener{accept: ch1}
+		l1 := &Listener{accept: ch1}
 		conn1.pm.AddListener(l1, port)
 
-		l2 := &listener{accept: ch2}
+		l2 := &Listener{accept: ch2}
 		conn2.pm.AddListener(l2, port)
 
-		l3 := &listener{accept: ch3}
+		l3 := &Listener{accept: ch3}
 		conn3.pm.AddListener(l3, port)
 
-		l4 := &listener{accept: ch4}
+		l4 := &Listener{accept: ch4}
 		conn4.pm.AddListener(l4, port)
 
 		ctx := context.TODO()
@@ -284,7 +284,7 @@ func TestClient(t *testing.T) {
 		go func() {
 			tr, err := conn1.DialTransport(ctx, pk2, port)
 			trCh1 <- transportWithError{
-				tr:  tr.(*transport),
+				tr:  tr,
 				err: err,
 			}
 		}()
@@ -292,7 +292,7 @@ func TestClient(t *testing.T) {
 		go func() {
 			tr, err := conn3.DialTransport(ctx, pk3, port)
 			trCh2 <- transportWithError{
-				tr:  tr.(*transport),
+				tr:  tr,
 				err: err,
 			}
 		}()
@@ -342,8 +342,8 @@ func TestClient(t *testing.T) {
 		pm := newPortManager()
 
 		conn1 := NewClientConn(logging.MustGetLogger("conn1"), p1, pk1, pk2, pm)
-		ch1 := make(chan Transport, AcceptBufferSize)
-		l1 := &listener{accept: ch1}
+		ch1 := make(chan *Transport, AcceptBufferSize)
+		l1 := &Listener{accept: ch1}
 		conn1.pm.AddListener(l1, port)
 
 		serveErrCh1 := make(chan error, 1)
@@ -354,8 +354,8 @@ func TestClient(t *testing.T) {
 		defer func() { require.NoError(t, conn1.Close()) }()
 
 		conn2 := NewClientConn(logging.MustGetLogger("conn2"), p2, pk2, pk1, pm)
-		ch2 := make(chan Transport, AcceptBufferSize)
-		l2 := &listener{accept: ch2}
+		ch2 := make(chan *Transport, AcceptBufferSize)
+		l2 := &Listener{accept: ch2}
 		conn2.pm.AddListener(l2, port)
 
 		serveErrCh2 := make(chan error, 1)

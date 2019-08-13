@@ -44,25 +44,6 @@ func SetLogger(log *logging.Logger) ClientOption {
 	}
 }
 
-// Factory generates Transports of a certain type.
-type Factory interface {
-
-	// Listen creates a transport.Listener
-	Listen(port uint16) (Listener, error)
-
-	// Dial initiates a transport with a remote node.
-	Dial(ctx context.Context, remote cipher.PubKey, port uint16) (Transport, error)
-
-	// Close implements io.Closer
-	Close() error
-
-	// Local returns the local public key.
-	Addr() net.Addr
-
-	// Type returns the transport type.
-	Type() string
-}
-
 // Client implements transport.Factory
 type Client struct {
 	log *logging.Logger
@@ -262,7 +243,7 @@ func (c *Client) findOrConnectToServer(ctx context.Context, srvPK cipher.PubKey)
 }
 
 // Listen creates a listener on a given port, adds it to port manager and returns the listener.
-func (c *Client) Listen(port uint16) (Listener, error) {
+func (c *Client) Listen(port uint16) (*Listener, error) {
 	if _, ok := c.pm.Listener(port); ok {
 		return nil, errors.New("port is busy")
 	}
@@ -271,10 +252,10 @@ func (c *Client) Listen(port uint16) (Listener, error) {
 		return nil, errors.New("already listening")
 	}
 
-	l := &listener{
+	l := &Listener{
 		pk:     c.pk,
 		port:   port,
-		accept: make(chan Transport, AcceptBufferSize),
+		accept: make(chan *Transport, AcceptBufferSize),
 		done:   c.done,
 	}
 
@@ -284,7 +265,7 @@ func (c *Client) Listen(port uint16) (Listener, error) {
 }
 
 // Dial dials a transport to remote dms_client.
-func (c *Client) Dial(ctx context.Context, remote cipher.PubKey, port uint16) (Transport, error) {
+func (c *Client) Dial(ctx context.Context, remote cipher.PubKey, port uint16) (*Transport, error) {
 	entry, err := c.dc.Entry(ctx, remote)
 	if err != nil {
 		return nil, fmt.Errorf("get entry failure: %s", err)
@@ -342,9 +323,9 @@ func (c *Client) Close() error {
 		for _, ch := range c.pm.listeners {
 			for {
 				select {
-				case <-ch.(*listener).accept:
+				case <-ch.accept:
 				default:
-					close(ch.(*listener).accept)
+					close(ch.accept)
 					return
 				}
 			}

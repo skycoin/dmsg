@@ -8,30 +8,21 @@ import (
 )
 
 // Listener listens for remote-initiated transports.
-type Listener interface {
-	net.Listener
-
-	// AcceptTransport is similar to (net.Listener).Accept,
-	// except that it returns a Transport instead of a net.Conn.
-	AcceptTransport() (Transport, error)
-
-	// Type returns the Transport type.
-	Type() string
-}
-
-type listener struct {
+type Listener struct {
 	pk     cipher.PubKey
 	port   uint16
-	accept chan Transport
+	accept chan *Transport
 	done   chan struct{}
 	once   sync.Once
 }
 
-func (l *listener) Accept() (net.Conn, error) {
+// Accept accepts a connection.
+func (l *Listener) Accept() (net.Conn, error) {
 	return l.AcceptTransport()
 }
 
-func (l *listener) Close() error {
+// Close closes the listener.
+func (l *Listener) Close() error {
 	l.once.Do(func() {
 		close(l.done)
 		for {
@@ -47,14 +38,16 @@ func (l *listener) Close() error {
 	return nil
 }
 
-func (l *listener) Addr() net.Addr {
+// Addr returns the listener's address.
+func (l *Listener) Addr() net.Addr {
 	return Addr{
 		pk:   l.pk,
 		port: &l.port,
 	}
 }
 
-func (l *listener) AcceptTransport() (Transport, error) {
+// AcceptTransport accepts a transport connection.
+func (l *Listener) AcceptTransport() (*Transport, error) {
 	select {
 	case tp, ok := <-l.accept:
 		if !ok {
@@ -66,6 +59,7 @@ func (l *listener) AcceptTransport() (Transport, error) {
 	}
 }
 
-func (l *listener) Type() string {
+// Type returns the transport type.
+func (l *Listener) Type() string {
 	return Type
 }

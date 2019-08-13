@@ -262,8 +262,8 @@ func testServerDisconnection(t *testing.T) {
 
 	time.Sleep(smallDelay)
 
-	require.True(t, initConn.(*transport).IsClosed())
-	require.True(t, respConns.(*transport).IsClosed())
+	require.True(t, initConn.(*Transport).IsClosed())
+	require.True(t, respConns.(*Transport).IsClosed())
 }
 
 func testServerSelfDialing(t *testing.T) {
@@ -584,7 +584,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 		go func(initiatorIndex int) {
 			defer initiatorsWG.Done()
 
-			responder := listeners[pickedListeners[initiatorIndex]].(*listener)
+			responder := listeners[pickedListeners[initiatorIndex]].(*Listener)
 			conn, err := initiators[initiatorIndex].Dial(context.Background(), responder.pk, responder.port)
 			if err != nil {
 				dialErrs <- err
