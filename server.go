@@ -112,7 +112,6 @@ type getConnFunc func(pk cipher.PubKey) (*ServerConn, bool)
 // Serve handles (and forwards when necessary) incoming frames.
 func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error) {
 	log := c.log.WithField("srcClient", c.remoteClient)
-	var logMu sync.RWMutex // TODO: avoid data races in a more beautiful way
 
 	// Only manually close the underlying net.Conn when the done signal is context-initiated.
 	done := make(chan struct{})
@@ -121,11 +120,9 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 		select {
 		case <-done:
 		case <-ctx.Done():
-			logMu.RLock()
 			if err := c.Conn.Close(); err != nil {
 				log.WithError(err).Warn("failed to close underlying connection")
 			}
-			logMu.RUnlock()
 		}
 	}()
 
@@ -135,25 +132,19 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 		c.mx.Lock()
 		for _, conn := range c.nextConns {
 			why := byte(0)
-			logMu.RLock()
 			if err := conn.writeFrame(CloseType, []byte{why}); err != nil {
 				log.WithError(err).Warnf("failed to write frame: %s", err)
 			}
-			logMu.RUnlock()
 		}
 		c.mx.Unlock()
 
-		logMu.RLock()
 		log.WithError(err).WithField("connCount", decrementServeCount()).Infoln("ClosingConn")
 		if err := c.Conn.Close(); err != nil {
 			log.WithError(err).Warn("Failed to close connection")
 		}
-		logMu.RUnlock()
 	}()
 
-	logMu.RLock()
 	log.WithField("connCount", incrementServeCount()).Infoln("ServingConn")
-	logMu.RUnlock()
 
 	err = c.writeOK()
 	if err != nil {
@@ -165,9 +156,7 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 		if err != nil {
 			return fmt.Errorf("read failed: %s", err)
 		}
-		logMu.Lock()
-		log = log.WithField("received", f)
-		logMu.Unlock()
+		log := log.WithField("received", f)
 
 		ft, id, p := f.Disassemble()
 
@@ -177,32 +166,24 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 			_, why, ok := c.handleRequest(ctx, getConn, id, p)
 			cancel()
 			if !ok {
-				logMu.RLock()
 				log.Debugln("FrameRejected: Erroneous request or unresponsive dstClient.")
-				logMu.RUnlock()
 				if err := c.delChan(id, why); err != nil {
 					return err
 				}
 			}
-			logMu.RLock()
 			log.Debugln("FrameForwarded")
-			logMu.RUnlock()
 
 		case AcceptType, FwdType, AckType, CloseType:
 			next, why, ok := c.forwardFrame(ft, id, p)
 			if !ok {
-				logMu.RLock()
 				log.Debugln("FrameRejected: Failed to forward to dstClient.")
-				logMu.RUnlock()
 				// Delete channel (and associations) on failure.
 				if err := c.delChan(id, why); err != nil {
 					return err
 				}
 				continue
 			}
-			logMu.RLock()
 			log.Debugln("FrameForwarded")
-			logMu.RUnlock()
 
 			// On success, if Close frame, delete the associations.
 			if ft == CloseType {
@@ -211,9 +192,7 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 			}
 
 		default:
-			logMu.RLock()
 			log.Debugln("FrameRejected: Unknown frame type.")
-			logMu.RUnlock()
 			// Unknown frame type.
 			return errors.New("unknown frame of type received")
 		}
