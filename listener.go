@@ -72,6 +72,7 @@ func (l *Listener) Type() string {
 	return Type
 }
 
+// IntroduceTransport handles a transport after receiving a REQUEST frame.
 func (l *Listener) IntroduceTransport(tp *Transport) error {
 	l.acceptMu.Lock()
 	defer l.acceptMu.Unlock()
