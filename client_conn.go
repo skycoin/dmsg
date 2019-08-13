@@ -157,21 +157,11 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 		return payload.InitPK, ErrClientClosed
 
 	default:
-		select {
-		case lis.accept <- tp:
+		err := lis.IntroduceTransport(tp)
+		if err == nil || err == ErrClientAcceptMaxed {
 			c.setTp(tp)
-			if err := tp.WriteAccept(); err != nil {
-				return payload.InitPK, err
-			}
-			go tp.Serve()
-			return payload.InitPK, nil
-
-		default:
-			if err := tp.Close(); err != nil {
-				log.WithError(err).Warn("Failed to close transport")
-			}
-			return payload.InitPK, ErrClientAcceptMaxed
 		}
+		return payload.InitPK, err
 	}
 }
 

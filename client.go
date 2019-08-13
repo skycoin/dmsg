@@ -320,15 +320,9 @@ func (c *Client) Close() error {
 
 		c.pm.mu.Lock()
 		defer c.pm.mu.Unlock()
-		for _, ch := range c.pm.listeners {
-			for {
-				select {
-				case <-ch.accept:
-				default:
-					close(ch.accept)
-					return
-				}
-			}
+
+		for _, lis := range c.pm.listeners {
+			lis.close()
 		}
 	})
 

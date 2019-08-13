@@ -9,11 +9,12 @@ import (
 
 // Listener listens for remote-initiated transports.
 type Listener struct {
-	pk     cipher.PubKey
-	port   uint16
-	accept chan *Transport
-	done   chan struct{}
-	once   sync.Once
+	pk       cipher.PubKey
+	port     uint16
+	acceptMu sync.Mutex // protects 'accept'
+	accept   chan *Transport
+	done     chan struct{}
+	once     sync.Once
 }
 
 // Accept accepts a connection.
@@ -25,17 +26,24 @@ func (l *Listener) Accept() (net.Conn, error) {
 func (l *Listener) Close() error {
 	l.once.Do(func() {
 		close(l.done)
-		for {
-			select {
-			case <-l.accept:
-			default:
-				close(l.accept)
-				return
-			}
-		}
+		l.close()
 	})
 
 	return nil
+}
+
+func (l *Listener) close() {
+	l.acceptMu.Lock()
+	defer l.acceptMu.Unlock()
+
+	for {
+		select {
+		case <-l.accept:
+		default:
+			close(l.accept)
+			return
+		}
+	}
 }
 
 // Addr returns the listener's address.
@@ -62,4 +70,24 @@ func (l *Listener) AcceptTransport() (*Transport, error) {
 // Type returns the transport type.
 func (l *Listener) Type() string {
 	return Type
+}
+
+func (l *Listener) IntroduceTransport(tp *Transport) error {
+	l.acceptMu.Lock()
+	defer l.acceptMu.Unlock()
+
+	select {
+	case l.accept <- tp:
+		if err := tp.WriteAccept(); err != nil {
+			return err
+		}
+		go tp.Serve()
+		return nil
+
+	default:
+		if err := tp.Close(); err != nil {
+			log.WithError(err).Warn("Failed to close transport")
+		}
+		return ErrClientAcceptMaxed
+	}
 }
