@@ -19,7 +19,7 @@ var (
 	ErrRequestRejected    = errors.New("failed to create transport: request rejected")
 	ErrRequestCheckFailed = errors.New("failed to create transport: request check failed")
 	ErrAcceptCheckFailed  = errors.New("failed to create transport: accept check failed")
-	ErrPortIsNotListening = errors.New("failed to create transport: port is not listening")
+	ErrPortNotListening   = errors.New("failed to create transport: port not listening")
 )
 
 // Transport represents communication between two nodes via a single hop:

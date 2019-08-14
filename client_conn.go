@@ -157,7 +157,7 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 		if err := writeCloseFrame(c.Conn, id, PlaceholderReason); err != nil {
 			return payload.InitPK, err
 		}
-		return payload.InitPK, ErrPortIsNotListening
+		return payload.InitPK, ErrPortNotListening
 	}
 
 	tp := NewTransport(c.Conn, c.log, c.local, payload.InitPK, id, c.delTp)
