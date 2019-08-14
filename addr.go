@@ -9,7 +9,7 @@ import (
 // Addr implements net.Addr for skywire addresses.
 type Addr struct {
 	PK   cipher.PubKey
-	Port *uint16
+	Port uint16
 }
 
 // Network returns "dmsg"
@@ -19,8 +19,5 @@ func (Addr) Network() string {
 
 // String returns public key and port of node split by colon.
 func (a Addr) String() string {
-	if a.Port == nil {
-		return a.PK.String()
-	}
 	return fmt.Sprintf("%s:%d", a.PK, a.Port)
 }

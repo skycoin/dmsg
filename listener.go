@@ -50,7 +50,7 @@ func (l *Listener) close() {
 func (l *Listener) Addr() net.Addr {
 	return Addr{
 		PK:   l.pk,
-		Port: &l.port,
+		Port: l.port,
 	}
 }
 
