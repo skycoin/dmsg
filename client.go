@@ -290,7 +290,7 @@ func (c *Client) Dial(ctx context.Context, remote cipher.PubKey, port uint16) (*
 // Addr returns the local dms_client's public key.
 func (c *Client) Addr() net.Addr {
 	return Addr{
-		pk: c.pk,
+		PK: c.pk,
 	}
 }
 

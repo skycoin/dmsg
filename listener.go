@@ -49,8 +49,8 @@ func (l *Listener) close() {
 // Addr returns the listener's address.
 func (l *Listener) Addr() net.Addr {
 	return Addr{
-		pk:   l.pk,
-		port: &l.port,
+		PK:   l.pk,
+		Port: &l.port,
 	}
 }
 
