@@ -135,16 +135,29 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 	// - resp_pk should be of local client.
 	// - use an odd tp_id with the intermediary dmsg_server.
 	payload, err := unmarshalHandshakePayload(p)
-	ok := false
-	var lis *Listener
-	if err == nil {
-		lis, ok = c.pm.Listener(payload.Port)
+	if err != nil {
+		// TODO(nkryuchkov): When implementing reasons, send that payload format is incorrect.
+		if err := writeCloseFrame(c.Conn, id, PlaceholderReason); err != nil {
+			return cipher.PubKey{}, err
+		}
+		return cipher.PubKey{}, ErrRequestCheckFailed
 	}
-	if err != nil || !ok || payload.RespPK != c.local || isInitiatorID(id) {
+
+	if payload.RespPK != c.local || isInitiatorID(id) {
+		// TODO(nkryuchkov): When implementing reasons, send that payload is malformed.
 		if err := writeCloseFrame(c.Conn, id, PlaceholderReason); err != nil {
 			return payload.InitPK, err
 		}
 		return payload.InitPK, ErrRequestCheckFailed
+	}
+
+	lis, ok := c.pm.Listener(payload.Port)
+	if !ok {
+		// TODO(nkryuchkov): When implementing reasons, send that port is not listening
+		if err := writeCloseFrame(c.Conn, id, PlaceholderReason); err != nil {
+			return payload.InitPK, err
+		}
+		return payload.InitPK, ErrPortIsNotListening
 	}
 
 	tp := NewTransport(c.Conn, c.log, c.local, payload.InitPK, id, c.delTp)
