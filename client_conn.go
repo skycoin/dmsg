@@ -76,7 +76,7 @@ func (c *ClientConn) getNextInitID(ctx context.Context) (uint16, error) {
 	}
 }
 
-func (c *ClientConn) addTp(ctx context.Context, clientPK cipher.PubKey) (*Transport, error) {
+func (c *ClientConn) addTp(ctx context.Context, rPK cipher.PubKey, lPort, rPort uint16) (*Transport, error) {
 	c.mx.Lock()
 	defer c.mx.Unlock()
 
@@ -84,7 +84,7 @@ func (c *ClientConn) addTp(ctx context.Context, clientPK cipher.PubKey) (*Transp
 	if err != nil {
 		return nil, err
 	}
-	tp := NewTransport(c.Conn, c.log, c.local, clientPK, id, c.delTp)
+	tp := NewTransport(c.Conn, c.log, Addr{c.local, lPort}, Addr{rPK, rPort}, id, c.delTp)
 	c.tps[id] = tp
 	return tp, nil
 }
@@ -160,7 +160,7 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 		return payload.InitPK, ErrPortNotListening
 	}
 
-	tp := NewTransport(c.Conn, c.log, c.local, payload.InitPK, id, c.delTp)
+	tp := NewTransport(c.Conn, c.log, Addr{c.local, payload.Port}, Addr{payload.InitPK, 0}, id, c.delTp) // TODO: Have proper remote port.
 
 	select {
 	case <-c.done:
@@ -243,7 +243,7 @@ func (c *ClientConn) Serve(ctx context.Context) (err error) {
 
 // DialTransport dials a transport to remote dms_client.
 func (c *ClientConn) DialTransport(ctx context.Context, clientPK cipher.PubKey, port uint16) (*Transport, error) {
-	tp, err := c.addTp(ctx, clientPK)
+	tp, err := c.addTp(ctx, clientPK, 0, port) // TODO: Have proper local port.
 	if err != nil {
 		return nil, err
 	}

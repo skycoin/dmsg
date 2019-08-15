@@ -28,9 +28,9 @@ type Transport struct {
 	net.Conn // underlying connection to dmsg.Server
 	log      *logging.Logger
 
-	id     uint16        // tp ID that identifies this dmsg.transport
-	local  cipher.PubKey // local PK
-	remote cipher.PubKey // remote PK
+	id     uint16 // tp ID that identifies this dmsg.transport
+	local  Addr   // local PK
+	remote Addr   // remote PK
 
 	inCh chan Frame // handles incoming frames (from dmsg.Client)
 	inMx sync.Mutex // protects 'inCh'
@@ -51,7 +51,7 @@ type Transport struct {
 }
 
 // NewTransport creates a new dms_tp.
-func NewTransport(conn net.Conn, log *logging.Logger, local, remote cipher.PubKey, id uint16, doneFunc func(id uint16)) *Transport {
+func NewTransport(conn net.Conn, log *logging.Logger, local, remote Addr, id uint16, doneFunc func(id uint16)) *Transport {
 	tp := &Transport{
 		Conn:      conn,
 		log:       log,
@@ -134,13 +134,19 @@ func (tp *Transport) IsClosed() bool {
 
 // LocalPK returns the local public key of the transport.
 func (tp *Transport) LocalPK() cipher.PubKey {
-	return tp.local
+	return tp.local.PK
 }
 
 // RemotePK returns the remote public key of the transport.
 func (tp *Transport) RemotePK() cipher.PubKey {
-	return tp.remote
+	return tp.remote.PK
 }
+
+// Local returns local address in from <public-key>:<port>
+func (tp *Transport) LocalAddr() net.Addr { return tp.local }
+
+// Remote returns remote address in form <public-key>:<port>
+func (tp *Transport) RemoteAddr() net.Addr { return tp.remote }
 
 // Type returns the transport type.
 func (tp *Transport) Type() string {
@@ -167,8 +173,8 @@ func (tp *Transport) HandleFrame(f Frame) error {
 func (tp *Transport) WriteRequest(port uint16) error {
 	payload := HandshakePayload{
 		Version: HandshakePayloadVersion,
-		InitPK:  tp.local,
-		RespPK:  tp.remote,
+		InitPK:  tp.local.PK,
+		RespPK:  tp.remote.PK,
 		Port:    port,
 	}
 	payloadBytes, err := marshalHandshakePayload(payload)
@@ -194,7 +200,7 @@ func (tp *Transport) WriteAccept() (err error) {
 		}
 	}()
 
-	f := MakeFrame(AcceptType, tp.id, combinePKs(tp.remote, tp.local))
+	f := MakeFrame(AcceptType, tp.id, combinePKs(tp.remote.PK, tp.local.PK))
 	if err = writeFrame(tp.Conn, f); err != nil {
 		tp.close()
 		return err
@@ -237,7 +243,7 @@ func (tp *Transport) ReadAccept(ctx context.Context) (err error) {
 			// - resp_pk should be of remote client.
 			// - use an even number with the intermediary dmsg_server.
 			initPK, respPK, ok := splitPKs(p)
-			if !ok || initPK != tp.local || respPK != tp.remote || !isInitiatorID(id) {
+			if !ok || initPK != tp.local.PK || respPK != tp.remote.PK || !isInitiatorID(id) {
 				if err := tp.Close(); err != nil {
 					log.WithError(err).Warn("Failed to close transport")
 				}

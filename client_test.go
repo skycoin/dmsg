@@ -103,7 +103,7 @@ func clientConnWithTps(n int) (*ClientConn, []uint16) {
 	for i := 0; i < n; i++ {
 		id := uint16(rand.Intn(math.MaxUint16))
 		ids = append(ids, id)
-		tp := NewTransport(p1, log, cipher.PubKey{}, cipher.PubKey{}, id, cc.delTp)
+		tp := NewTransport(p1, log, Addr{}, Addr{}, id, cc.delTp)
 		cc.setTp(tp)
 	}
 
@@ -125,7 +125,7 @@ func BenchmarkClientConn_setTp(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		id := uint16(rand.Intn(math.MaxUint16))
-		tp := NewTransport(p1, log, cipher.PubKey{}, cipher.PubKey{}, id, cc.delTp)
+		tp := NewTransport(p1, log, Addr{}, Addr{}, id, cc.delTp)
 		cc.setTp(tp)
 	}
 }

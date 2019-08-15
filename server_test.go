@@ -286,7 +286,7 @@ func testServerSelfDialing(t *testing.T) {
 func testTransportMessaging(t *testing.T, init, resp io.ReadWriter) {
 	for i := 0; i < msgCount; i++ {
 		_, err := init.Write([]byte(message))
-		require.NoError(t, err)
+		require.NoError(t, err) // TODO: Sometimes this returns error: "io: read/write on closed pipe"
 
 		recvBuf := make([]byte, bufSize)
 		for i := 0; i < len(message); i += bufSize {

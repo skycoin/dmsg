@@ -35,6 +35,7 @@ var (
 )
 
 // HandshakePayload represents format of payload sent with REQUEST frames.
+// TODO(evanlinjin): Use 'dmsg.Addr' for PK:Port pair.
 type HandshakePayload struct {
 	Version string        `json:"version"` // just in case the struct changes.
 	InitPK  cipher.PubKey `json:"init_pk"`
