@@ -4,6 +4,8 @@ import (
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/skycoin/dmsg/cipher"
 )
 
 const (
@@ -34,12 +36,16 @@ func (pm *PortManager) Listener(port uint16) (*Listener, bool) {
 	return l, ok
 }
 
-// AddListener assigns listener to port.
-func (pm *PortManager) AddListener(l *Listener, port uint16) {
+// NewListener assigns listener to port if port is available.
+func (pm *PortManager) NewListener(pk cipher.PubKey, port uint16) (*Listener, bool) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
-
+	if _, ok := pm.listeners[port]; ok {
+		return nil, false
+	}
+	l := newListener(pk, port)
 	pm.listeners[port] = l
+	return l, true
 }
 
 // RemoveListener removes listener assigned to port.

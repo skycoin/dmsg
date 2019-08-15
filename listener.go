@@ -9,12 +9,21 @@ import (
 
 // Listener listens for remote-initiated transports.
 type Listener struct {
-	pk       cipher.PubKey
-	port     uint16
-	acceptMu sync.Mutex // protects 'accept'
-	accept   chan *Transport
-	done     chan struct{}
-	once     sync.Once
+	pk     cipher.PubKey
+	port   uint16
+	mx     sync.Mutex // protects 'accept'
+	accept chan *Transport
+	done   chan struct{}
+	once   sync.Once
+}
+
+func newListener(pk cipher.PubKey, port uint16) *Listener {
+	return &Listener{
+		pk:     pk,
+		port:   port,
+		accept: make(chan *Transport, AcceptBufferSize),
+		done:   make(chan struct{}),
+	}
 }
 
 // Accept accepts a connection.
@@ -24,18 +33,21 @@ func (l *Listener) Accept() (net.Conn, error) {
 
 // Close closes the listener.
 func (l *Listener) Close() error {
+	closed := false
 	l.once.Do(func() {
-		close(l.done)
+		closed = true
 		l.close()
 	})
-
+	if !closed {
+		return ErrClientClosed
+	}
 	return nil
 }
 
 func (l *Listener) close() {
-	l.acceptMu.Lock()
-	defer l.acceptMu.Unlock()
-
+	l.mx.Lock()
+	defer l.mx.Unlock()
+	close(l.done)
 	for {
 		select {
 		case <-l.accept:
@@ -43,6 +55,15 @@ func (l *Listener) close() {
 			close(l.accept)
 			return
 		}
+	}
+}
+
+func (l *Listener) isClosed() bool {
+	select {
+	case <-l.done:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -57,13 +78,13 @@ func (l *Listener) Addr() net.Addr {
 // AcceptTransport accepts a transport connection.
 func (l *Listener) AcceptTransport() (*Transport, error) {
 	select {
+	case <-l.done:
+		return nil, ErrClientClosed
 	case tp, ok := <-l.accept:
 		if !ok {
 			return nil, ErrClientClosed
 		}
 		return tp, nil
-	case <-l.done:
-		return nil, ErrClientClosed
 	}
 }
 
@@ -74,10 +95,17 @@ func (l *Listener) Type() string {
 
 // IntroduceTransport handles a transport after receiving a REQUEST frame.
 func (l *Listener) IntroduceTransport(tp *Transport) error {
-	l.acceptMu.Lock()
-	defer l.acceptMu.Unlock()
+	l.mx.Lock()
+	defer l.mx.Unlock()
+
+	if l.isClosed() {
+		return ErrClientClosed
+	}
 
 	select {
+	case <-l.done:
+		return ErrClientClosed
+
 	case l.accept <- tp:
 		if err := tp.WriteAccept(); err != nil {
 			return err

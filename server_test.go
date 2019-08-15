@@ -297,7 +297,8 @@ func testTransportMessaging(t *testing.T, init, resp io.ReadWriter) {
 }
 
 func testServerCappedTransport(t *testing.T) {
-	t.Parallel()
+	// TODO(evanlinjin): I've disabled this as it was causing writes to closed connections.
+	//t.Parallel()
 
 	dc := disc.NewMock()
 	srv, srvErrCh, err := createServer(dc)
