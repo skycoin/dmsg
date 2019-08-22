@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 
+	"golang.org/x/net/nettest"
+
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/disc"
@@ -18,7 +20,15 @@ func main() {
 	var initPort, respPort uint16 = 1563, 1563
 
 	// instantiate discovery
-	dc := disc.NewHTTP("https://messaging.discovery.skywire.skycoin.net")
+	// dc := disc.NewHTTP("https://messaging.discovery.skywire.skycoin.net")
+	dc := disc.NewMock()
+
+	// instantiate server
+	srv, err := createDmsgSrv(dc)
+	if err != nil {
+		log.Fatalf("Error initiating server: %v", err)
+	}
+	defer func() { _ = srv.Close() }() //nolint:errcheck
 
 	// instantiate clients
 	respC := dmsg.NewClient(respPK, respSK, dc)
@@ -60,13 +70,14 @@ func main() {
 	}
 
 	// initiator writes to it's transport
-	_, err = initTp.Write([]byte("Hello there!"))
+	payload := "Hello there!"
+	_, err = initTp.Write([]byte(payload))
 	if err != nil {
 		log.Fatalf("Error writing to initiator's transport: %v", err)
 	}
 
 	// responder reads from it's transport
-	recvBuf := make([]byte, 12)
+	recvBuf := make([]byte, len(payload))
 	_, err = respTp.Read(recvBuf)
 	if err != nil {
 		log.Fatalf("Error reading from responder's transport: %v", err)
@@ -75,13 +86,14 @@ func main() {
 	log.Printf("Responder accepted: %s", string(recvBuf))
 
 	// responder writes to it's transport
-	_, err = respTp.Write([]byte("General Kenobi"))
+	payload = "General Kenobi"
+	_, err = respTp.Write([]byte(payload))
 	if err != nil {
 		log.Fatalf("Error writing response: %v", err)
 	}
 
 	// initiator reads from it's transport
-	initRecvBuf := make([]byte, 14)
+	initRecvBuf := make([]byte, len(payload))
 	_, err = initTp.Read(initRecvBuf)
 	if err != nil {
 		log.Fatalf("Error reading response: %v", err)
@@ -118,4 +130,21 @@ func main() {
 	if err := respC.Close(); err != nil {
 		log.Fatalf("Error closing responder: %v", err)
 	}
+}
+
+func createDmsgSrv(dc disc.APIClient) (*dmsg.Server, error) {
+	pk, sk, err := cipher.GenerateDeterministicKeyPair([]byte("s"))
+	if err != nil {
+		return nil, err
+	}
+	l, err := nettest.NewLocalListener("tcp")
+	if err != nil {
+		return nil, err
+	}
+	srv, err := dmsg.NewServer(pk, sk, "", l, dc)
+	if err != nil {
+		return nil, err
+	}
+	go func() { _ = srv.Serve() }() //nolint:errcheck
+	return srv, nil
 }
