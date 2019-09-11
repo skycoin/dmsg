@@ -76,7 +76,7 @@ func (c *ClientConn) getNextInitID(ctx context.Context) (uint16, error) {
 	}
 }
 
-func (c *ClientConn) addTp(ctx context.Context, rPK cipher.PubKey, lPort, rPort uint16) (*Transport, error) {
+func (c *ClientConn) addTp(ctx context.Context, rPK cipher.PubKey, lPort, rPort uint16, closeCB func()) (*Transport, error) {
 	c.mx.Lock()
 	defer c.mx.Unlock()
 
@@ -84,7 +84,10 @@ func (c *ClientConn) addTp(ctx context.Context, rPK cipher.PubKey, lPort, rPort 
 	if err != nil {
 		return nil, err
 	}
-	tp := NewTransport(c.Conn, c.log, Addr{c.local, lPort}, Addr{rPK, rPort}, id, c.delTp)
+	tp := NewTransport(c.Conn, c.log, Addr{c.local, lPort}, Addr{rPK, rPort}, id, func(id uint16) {
+		c.delTp(id)
+		closeCB()
+	})
 	c.tps[id] = tp
 	return tp, nil
 }
@@ -143,38 +146,38 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 		return cipher.PubKey{}, ErrRequestCheckFailed
 	}
 
-	if payload.RespPK != c.local || isInitiatorID(id) {
+	if payload.RespAddr.PK != c.local || isInitiatorID(id) {
 		// TODO(nkryuchkov): When implementing reasons, send that payload is malformed.
 		if err := writeCloseFrame(c.Conn, id, PlaceholderReason); err != nil {
-			return payload.InitPK, err
+			return payload.InitAddr.PK, err
 		}
-		return payload.InitPK, ErrRequestCheckFailed
+		return payload.InitAddr.PK, ErrRequestCheckFailed
 	}
 
-	lis, ok := c.pm.Listener(payload.Port)
+	lis, ok := c.pm.Listener(payload.RespAddr.Port)
 	if !ok {
 		// TODO(nkryuchkov): When implementing reasons, send that port is not listening
 		if err := writeCloseFrame(c.Conn, id, PlaceholderReason); err != nil {
-			return payload.InitPK, err
+			return payload.InitAddr.PK, err
 		}
-		return payload.InitPK, ErrPortNotListening
+		return payload.InitAddr.PK, ErrPortNotListening
 	}
 
-	tp := NewTransport(c.Conn, c.log, Addr{c.local, payload.Port}, Addr{payload.InitPK, 0}, id, c.delTp) // TODO: Have proper remote port.
+	tp := NewTransport(c.Conn, c.log, payload.RespAddr, payload.InitAddr, id, c.delTp) // TODO: Have proper remote port.
 
 	select {
 	case <-c.done:
 		if err := tp.Close(); err != nil {
 			log.WithError(err).Warn("Failed to close transport")
 		}
-		return payload.InitPK, ErrClientClosed
+		return payload.InitAddr.PK, ErrClientClosed
 
 	default:
 		err := lis.IntroduceTransport(tp)
 		if err == nil || err == ErrClientAcceptMaxed {
 			c.setTp(tp)
 		}
-		return payload.InitPK, err
+		return payload.InitAddr.PK, err
 	}
 }
 
@@ -242,12 +245,16 @@ func (c *ClientConn) Serve(ctx context.Context) (err error) {
 }
 
 // DialTransport dials a transport to remote dms_client.
-func (c *ClientConn) DialTransport(ctx context.Context, clientPK cipher.PubKey, port uint16) (*Transport, error) {
-	tp, err := c.addTp(ctx, clientPK, 0, port) // TODO: Have proper local port.
+func (c *ClientConn) DialTransport(ctx context.Context, rPK cipher.PubKey, rPort uint16) (*Transport, error) {
+	lPort, closeCB, err := c.pm.ReserveEphemeral(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if err := tp.WriteRequest(port); err != nil {
+	tp, err := c.addTp(ctx, rPK, lPort, rPort, closeCB) // TODO: Have proper local port.
+	if err != nil {
+		return nil, err
+	}
+	if err := tp.WriteRequest(); err != nil {
 		return nil, err
 	}
 	if err := tp.ReadAccept(ctx); err != nil {

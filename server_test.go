@@ -767,7 +767,11 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 		close(errCh)
 	}()
 
-	responder.pm.RemoveListener(port)
+	//responder.pm.RemoveListener(port)
+	if l, ok := responder.pm.Listener(port); ok {
+		l.close()
+	}
+
 	checkConnCount(t, clientReconnectInterval+smallDelay, 2, srv)
 	_, _ = dial(t, initiator, responder, port, smallDelay)
 

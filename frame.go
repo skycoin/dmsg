@@ -18,7 +18,7 @@ const (
 	Type = "dmsg"
 	// HandshakePayloadVersion contains payload version to maintain compatibility with future versions
 	// of HandshakePayload format.
-	HandshakePayloadVersion = "1"
+	HandshakePayloadVersion = "2.0"
 
 	tpBufCap      = math.MaxUint16
 	tpBufFrameCap = math.MaxUint8
@@ -37,10 +37,9 @@ var (
 // HandshakePayload represents format of payload sent with REQUEST frames.
 // TODO(evanlinjin): Use 'dmsg.Addr' for PK:Port pair.
 type HandshakePayload struct {
-	Version string        `json:"version"` // just in case the struct changes.
-	InitPK  cipher.PubKey `json:"init_pk"`
-	RespPK  cipher.PubKey `json:"resp_pk"`
-	Port    uint16        `json:"port"`
+	Version  string `json:"version"` // just in case the struct changes.
+	InitAddr Addr   `json:"init_address"`
+	RespAddr Addr   `json:"resp_address"`
 }
 
 func isInitiatorID(tpID uint16) bool { return tpID%2 == 0 }

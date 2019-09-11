@@ -142,7 +142,7 @@ func (c *Client) InitiateServerConnections(ctx context.Context, min int) error {
 	if err != nil {
 		return err
 	}
-	c.log.Info("found dms_server entries:", entries)
+	c.log.Info("found dmsg.Server entries:", entries)
 	if err := c.findOrConnectToServers(ctx, entries, min); err != nil {
 		return err
 	}
@@ -304,14 +304,7 @@ func (c *Client) Close() error {
 		}
 		c.conns = make(map[cipher.PubKey]*ClientConn)
 		c.mx.Unlock()
-
-		c.pm.mu.Lock()
-		defer c.pm.mu.Unlock()
-
-		for _, lis := range c.pm.listeners {
-			lis.close()
-		}
 	})
 
-	return nil
+	return c.pm.Close()
 }

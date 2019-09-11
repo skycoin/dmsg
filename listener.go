@@ -9,10 +9,13 @@ import (
 
 // Listener listens for remote-initiated transports.
 type Listener struct {
-	pk     cipher.PubKey
-	port   uint16
-	mx     sync.Mutex // protects 'accept'
+	pk   cipher.PubKey
+	port uint16
+
 	accept chan *Transport
+	mx     sync.Mutex // protects 'accept'
+
+	doneCB func() // callback when done.
 	done   chan struct{}
 	once   sync.Once
 }
@@ -29,6 +32,19 @@ func newListener(pk cipher.PubKey, port uint16) *Listener {
 // Accept accepts a connection.
 func (l *Listener) Accept() (net.Conn, error) {
 	return l.AcceptTransport()
+}
+
+// AcceptTransport accepts a transport connection.
+func (l *Listener) AcceptTransport() (*Transport, error) {
+	select {
+	case <-l.done:
+		return nil, ErrClientClosed
+	case tp, ok := <-l.accept:
+		if !ok {
+			return nil, ErrClientClosed
+		}
+		return tp, nil
+	}
 }
 
 // Close closes the listener.
@@ -68,31 +84,7 @@ func (l *Listener) isClosed() bool {
 	}
 }
 
-// Addr returns the listener's address.
-func (l *Listener) Addr() net.Addr {
-	return Addr{
-		PK:   l.pk,
-		Port: l.port,
-	}
-}
-
-// AcceptTransport accepts a transport connection.
-func (l *Listener) AcceptTransport() (*Transport, error) {
-	select {
-	case <-l.done:
-		return nil, ErrClientClosed
-	case tp, ok := <-l.accept:
-		if !ok {
-			return nil, ErrClientClosed
-		}
-		return tp, nil
-	}
-}
-
-// Type returns the transport type.
-func (l *Listener) Type() string {
-	return Type
-}
+func (l *Listener) AddCloseCallback(cb func()) { l.doneCB = cb }
 
 // IntroduceTransport handles a transport after receiving a REQUEST frame.
 func (l *Listener) IntroduceTransport(tp *Transport) error {
@@ -121,3 +113,9 @@ func (l *Listener) IntroduceTransport(tp *Transport) error {
 		return ErrClientAcceptMaxed
 	}
 }
+
+// Addr returns the listener's address.
+func (l *Listener) Addr() net.Addr { return Addr{PK: l.pk, Port: l.port} }
+
+// Type returns the transport type.
+func (l *Listener) Type() string { return Type }

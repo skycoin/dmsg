@@ -170,12 +170,11 @@ func (tp *Transport) HandleFrame(f Frame) error {
 }
 
 // WriteRequest writes a REQUEST frame to dmsg_server to be forwarded to associated client.
-func (tp *Transport) WriteRequest(port uint16) error {
+func (tp *Transport) WriteRequest() error {
 	payload := HandshakePayload{
-		Version: HandshakePayloadVersion,
-		InitPK:  tp.local.PK,
-		RespPK:  tp.remote.PK,
-		Port:    port,
+		Version:  HandshakePayloadVersion,
+		InitAddr: tp.local,
+		RespAddr: tp.remote,
 	}
 	payloadBytes, err := marshalHandshakePayload(payload)
 	if err != nil {
