@@ -173,10 +173,6 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 
 	default:
 		if err := lis.IntroduceTransport(tp); err != nil {
-			// TODO(evanlinjin): The next few lines is probably not needed.
-			if err == ErrClientAcceptMaxed {
-				c.setTp(tp)
-			}
 			return payload.InitAddr.PK, err
 		}
 		c.setTp(tp)
