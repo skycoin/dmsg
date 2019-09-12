@@ -18,6 +18,7 @@ type Porter struct {
 	ports  map[uint16]interface{}
 }
 
+// NewPorter creates a new Porter with a given minimum ephemeral port value.
 func NewPorter(minEph uint16) *Porter {
 	ports := make(map[uint16]interface{})
 	ports[0] = struct{}{} // port 0 is invalid
@@ -66,6 +67,7 @@ func (p *Porter) ReserveEphemeral(ctx context.Context, v interface{}) (uint16, f
 	}
 }
 
+// PortValue returns the value stored under a given port.
 func (p *Porter) PortValue(port uint16) (interface{}, bool) {
 	p.RLock()
 	defer p.RUnlock()
@@ -74,6 +76,7 @@ func (p *Porter) PortValue(port uint16) (interface{}, bool) {
 	return v, ok
 }
 
+// RangePortValues ranges all ports that are currently reserved.
 func (p *Porter) RangePortValues(fn func(port uint16, v interface{}) (next bool)) {
 	p.RLock()
 	defer p.RUnlock()
@@ -85,6 +88,8 @@ func (p *Porter) RangePortValues(fn func(port uint16, v interface{}) (next bool)
 	}
 }
 
+// This returns a function that frees a given port.
+// It is ensured that the function's action is only performed once.
 func (p *Porter) makePortFreer(port uint16) func() {
 	once := new(sync.Once)
 	return func() {

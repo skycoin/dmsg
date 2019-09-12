@@ -10,12 +10,14 @@ import (
 
 // PortManager manages ports of nodes.
 type PortManager struct {
-	p *netutil.Porter
+	lPK cipher.PubKey
+	p   *netutil.Porter
 }
 
-func newPortManager() *PortManager {
+func newPortManager(lPK cipher.PubKey) *PortManager {
 	return &PortManager{
-		p: netutil.NewPorter(netutil.PorterMinEphemeral),
+		lPK: lPK,
+		p:   netutil.NewPorter(netutil.PorterMinEphemeral),
 	}
 }
 
@@ -30,8 +32,8 @@ func (pm *PortManager) Listener(port uint16) (*Listener, bool) {
 }
 
 // NewListener assigns listener to port if port is available.
-func (pm *PortManager) NewListener(pk cipher.PubKey, port uint16) (*Listener, bool) {
-	l := newListener(pk, port)
+func (pm *PortManager) NewListener(port uint16) (*Listener, bool) {
+	l := newListener(Addr{pm.lPK, port})
 	ok, clear := pm.p.Reserve(port, l)
 	if !ok {
 		return nil, false
@@ -40,10 +42,13 @@ func (pm *PortManager) NewListener(pk cipher.PubKey, port uint16) (*Listener, bo
 	return l, true
 }
 
+// ReserveEphemeral reserves an ephemeral port.
+// TODO(evanlinjin): Let PortManager create the dmsg.Transport for more elegant management.
 func (pm *PortManager) ReserveEphemeral(ctx context.Context) (uint16, func(), error) {
 	return pm.p.ReserveEphemeral(ctx, nil)
 }
 
+// Close closes all listeners.
 func (pm *PortManager) Close() error {
 	wg := new(sync.WaitGroup)
 	pm.p.RangePortValues(func(_ uint16, v interface{}) (next bool) {

@@ -18,9 +18,9 @@ import (
 type ClientConn struct {
 	log *logging.Logger
 
-	net.Conn                // conn to dmsg server
-	local     cipher.PubKey // local client's pk
-	remoteSrv cipher.PubKey // dmsg server's public key
+	net.Conn               // conn to dmsg server
+	lPK      cipher.PubKey // local client's pk
+	srvPK    cipher.PubKey // dmsg server's public key
 
 	// nextInitID keeps track of unused tp_ids to assign a future locally-initiated tp.
 	// locally-initiated tps use an even tp_id between local and intermediary dms_server.
@@ -38,12 +38,12 @@ type ClientConn struct {
 }
 
 // NewClientConn creates a new ClientConn.
-func NewClientConn(log *logging.Logger, conn net.Conn, local, remote cipher.PubKey, pm *PortManager) *ClientConn {
+func NewClientConn(log *logging.Logger, pm *PortManager, conn net.Conn, lPK, rPK cipher.PubKey) *ClientConn {
 	cc := &ClientConn{
 		log:        log,
 		Conn:       conn,
-		local:      local,
-		remoteSrv:  remote,
+		lPK:        lPK,
+		srvPK:      rPK,
 		nextInitID: randID(true),
 		tps:        make(map[uint16]*Transport),
 		pm:         pm,
@@ -54,7 +54,7 @@ func NewClientConn(log *logging.Logger, conn net.Conn, local, remote cipher.PubK
 }
 
 // RemotePK returns the remote Server's PK that the ClientConn is connected to.
-func (c *ClientConn) RemotePK() cipher.PubKey { return c.remoteSrv }
+func (c *ClientConn) RemotePK() cipher.PubKey { return c.srvPK }
 
 func (c *ClientConn) getNextInitID(ctx context.Context) (uint16, error) {
 	for {
@@ -84,7 +84,7 @@ func (c *ClientConn) addTp(ctx context.Context, rPK cipher.PubKey, lPort, rPort 
 	if err != nil {
 		return nil, err
 	}
-	tp := NewTransport(c.Conn, c.log, Addr{c.local, lPort}, Addr{rPK, rPort}, id, func(id uint16) {
+	tp := NewTransport(c.Conn, c.log, Addr{c.lPK, lPort}, Addr{rPK, rPort}, id, func(id uint16) {
 		c.delTp(id)
 		closeCB()
 	})
@@ -146,7 +146,7 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 		return cipher.PubKey{}, ErrRequestCheckFailed
 	}
 
-	if payload.RespAddr.PK != c.local || isInitiatorID(id) {
+	if payload.RespAddr.PK != c.lPK || isInitiatorID(id) {
 		// TODO(nkryuchkov): When implementing reasons, send that payload is malformed.
 		if err := writeCloseFrame(c.Conn, id, PlaceholderReason); err != nil {
 			return payload.InitAddr.PK, err
@@ -163,8 +163,7 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 		return payload.InitAddr.PK, ErrPortNotListening
 	}
 
-	tp := NewTransport(c.Conn, c.log, payload.RespAddr, payload.InitAddr, id, c.delTp) // TODO: Have proper remote port.
-
+	tp := NewTransport(c.Conn, c.log, payload.RespAddr, payload.InitAddr, id, c.delTp)
 	select {
 	case <-c.done:
 		if err := tp.Close(); err != nil {
@@ -173,18 +172,22 @@ func (c *ClientConn) handleRequestFrame(id uint16, p []byte) (cipher.PubKey, err
 		return payload.InitAddr.PK, ErrClientClosed
 
 	default:
-		err := lis.IntroduceTransport(tp)
-		if err == nil || err == ErrClientAcceptMaxed {
-			c.setTp(tp)
+		if err := lis.IntroduceTransport(tp); err != nil {
+			// TODO(evanlinjin): The next few lines is probably not needed.
+			if err == ErrClientAcceptMaxed {
+				c.setTp(tp)
+			}
+			return payload.InitAddr.PK, err
 		}
-		return payload.InitAddr.PK, err
+		c.setTp(tp)
+		return payload.InitAddr.PK, nil
 	}
 }
 
 // Serve handles incoming frames.
 // Remote-initiated tps that are successfully created are pushing into 'accept' and exposed via 'Client.Accept()'.
 func (c *ClientConn) Serve(ctx context.Context) (err error) {
-	log := c.log.WithField("remoteServer", c.remoteSrv)
+	log := c.log.WithField("remoteServer", c.srvPK)
 	log.WithField("connCount", incrementServeCount()).Infoln("ServingConn")
 	defer func() {
 		c.close()
@@ -270,7 +273,7 @@ func (c *ClientConn) close() (closed bool) {
 	}
 	c.once.Do(func() {
 		closed = true
-		c.log.WithField("remoteServer", c.remoteSrv).Infoln("ClosingConnection")
+		c.log.WithField("remoteServer", c.srvPK).Infoln("ClosingConnection")
 		close(c.done)
 		c.mx.Lock()
 		for _, tp := range c.tps {

@@ -1,31 +1,65 @@
 package dmsg
 
 import (
+	"fmt"
 	"net"
 	"sync"
-
-	"github.com/skycoin/dmsg/cipher"
 )
 
 // Listener listens for remote-initiated transports.
 type Listener struct {
-	pk   cipher.PubKey
-	port uint16
+	addr Addr // local listening address
 
 	accept chan *Transport
 	mx     sync.Mutex // protects 'accept'
 
-	doneCB func() // callback when done.
+	doneCB func() // callback when done
 	done   chan struct{}
 	once   sync.Once
 }
 
-func newListener(pk cipher.PubKey, port uint16) *Listener {
+func newListener(addr Addr) *Listener {
 	return &Listener{
-		pk:     pk,
-		port:   port,
+		addr:   addr,
 		accept: make(chan *Transport, AcceptBufferSize),
 		done:   make(chan struct{}),
+	}
+}
+
+// AddCloseCallback adds a function that triggers when listener is closed.
+// This should be called right after the listener is created and is not thread safe.
+func (l *Listener) AddCloseCallback(cb func()) { l.doneCB = cb }
+
+// IntroduceTransport handles a transport after receiving a REQUEST frame.
+func (l *Listener) IntroduceTransport(tp *Transport) error {
+	if tp.LocalAddr() != l.addr {
+		return fmt.Errorf("failed to accept transport as local addresses does not match: we expected %s but got %s",
+			l.addr, tp.LocalAddr())
+	}
+
+	l.mx.Lock()
+	defer l.mx.Unlock()
+
+	if l.isClosed() {
+		return ErrClientClosed
+	}
+
+	select {
+	case <-l.done:
+		return ErrClientClosed
+
+	case l.accept <- tp:
+		if err := tp.WriteAccept(); err != nil {
+			return err
+		}
+		go tp.Serve()
+		return nil
+
+	default:
+		if err := tp.Close(); err != nil {
+			log.WithError(err).Warn("Failed to close transport")
+		}
+		return ErrClientAcceptMaxed
 	}
 }
 
@@ -58,6 +92,7 @@ func (l *Listener) Close() error {
 func (l *Listener) close() (closed bool) {
 	l.once.Do(func() {
 		closed = true
+		l.doneCB()
 
 		l.mx.Lock()
 		defer l.mx.Unlock()
@@ -84,38 +119,8 @@ func (l *Listener) isClosed() bool {
 	}
 }
 
-func (l *Listener) AddCloseCallback(cb func()) { l.doneCB = cb }
-
-// IntroduceTransport handles a transport after receiving a REQUEST frame.
-func (l *Listener) IntroduceTransport(tp *Transport) error {
-	l.mx.Lock()
-	defer l.mx.Unlock()
-
-	if l.isClosed() {
-		return ErrClientClosed
-	}
-
-	select {
-	case <-l.done:
-		return ErrClientClosed
-
-	case l.accept <- tp:
-		if err := tp.WriteAccept(); err != nil {
-			return err
-		}
-		go tp.Serve()
-		return nil
-
-	default:
-		if err := tp.Close(); err != nil {
-			log.WithError(err).Warn("Failed to close transport")
-		}
-		return ErrClientAcceptMaxed
-	}
-}
-
 // Addr returns the listener's address.
-func (l *Listener) Addr() net.Addr { return Addr{PK: l.pk, Port: l.port} }
+func (l *Listener) Addr() net.Addr { return l.addr }
 
 // Type returns the transport type.
 func (l *Listener) Type() string { return Type }

@@ -34,8 +34,26 @@ var (
 	AcceptBufferSize = 20
 )
 
+// Addr implements net.Addr for dmsg addresses.
+type Addr struct {
+	PK   cipher.PubKey `json:"public_key"`
+	Port uint16        `json:"port"`
+}
+
+// Network returns "dmsg"
+func (Addr) Network() string {
+	return Type
+}
+
+// String returns public key and port of node split by colon.
+func (a Addr) String() string {
+	if a.Port == 0 {
+		return fmt.Sprintf("%s:~", a.PK)
+	}
+	return fmt.Sprintf("%s:%d", a.PK, a.Port)
+}
+
 // HandshakePayload represents format of payload sent with REQUEST frames.
-// TODO(evanlinjin): Use 'dmsg.Addr' for PK:Port pair.
 type HandshakePayload struct {
 	Version  string `json:"version"` // just in case the struct changes.
 	InitAddr Addr   `json:"init_address"`
@@ -54,6 +72,7 @@ func randID(initiator bool) uint16 {
 	}
 }
 
+// serveCount records the number of dmsg.Servers connected
 var serveCount int64
 
 func incrementServeCount() int64 { return atomic.AddInt64(&serveCount, 1) }
