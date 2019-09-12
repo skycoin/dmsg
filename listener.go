@@ -13,9 +13,9 @@ type Listener struct {
 	accept chan *Transport
 	mx     sync.Mutex // protects 'accept'
 
-	doneCB func() // callback when done
-	done   chan struct{}
-	once   sync.Once
+	doneFunc func() // callback when done
+	done     chan struct{}
+	once     sync.Once
 }
 
 func newListener(addr Addr) *Listener {
@@ -28,7 +28,7 @@ func newListener(addr Addr) *Listener {
 
 // AddCloseCallback adds a function that triggers when listener is closed.
 // This should be called right after the listener is created and is not thread safe.
-func (l *Listener) AddCloseCallback(cb func()) { l.doneCB = cb }
+func (l *Listener) AddCloseCallback(cb func()) { l.doneFunc = cb }
 
 // IntroduceTransport handles a transport after receiving a REQUEST frame.
 func (l *Listener) IntroduceTransport(tp *Transport) error {
@@ -56,9 +56,7 @@ func (l *Listener) IntroduceTransport(tp *Transport) error {
 		return nil
 
 	default:
-		if err := tp.Close(); err != nil {
-			log.WithError(err).Warn("Failed to close transport")
-		}
+		_ = tp.Close() //nolint:errcheck
 		return ErrClientAcceptMaxed
 	}
 }
@@ -92,7 +90,7 @@ func (l *Listener) Close() error {
 func (l *Listener) close() (closed bool) {
 	l.once.Do(func() {
 		closed = true
-		l.doneCB()
+		l.doneFunc()
 
 		l.mx.Lock()
 		defer l.mx.Unlock()

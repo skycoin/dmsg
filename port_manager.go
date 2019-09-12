@@ -43,7 +43,6 @@ func (pm *PortManager) NewListener(port uint16) (*Listener, bool) {
 }
 
 // ReserveEphemeral reserves an ephemeral port.
-// TODO(evanlinjin): Let PortManager create the dmsg.Transport for more elegant management.
 func (pm *PortManager) ReserveEphemeral(ctx context.Context) (uint16, func(), error) {
 	return pm.p.ReserveEphemeral(ctx, nil)
 }

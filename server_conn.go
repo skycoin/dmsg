@@ -145,33 +145,31 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 	}
 
 	for {
-		f, err := readFrame(c.Conn)
+		f, df, err := readFrame(c.Conn)
 		if err != nil {
 			return fmt.Errorf("read failed: %s", err)
 		}
 		log := log.WithField("received", f)
 
-		ft, id, p := f.Disassemble()
-
-		switch ft {
+		switch df.Type {
 		case RequestType:
 			ctx, cancel := context.WithTimeout(ctx, TransportHandshakeTimeout)
-			_, why, ok := c.handleRequest(ctx, getConn, id, p)
+			_, why, ok := c.handleRequest(ctx, getConn, df.TpID, df.Pay)
 			cancel()
 			if !ok {
 				log.Debugln("FrameRejected: Erroneous request or unresponsive dstClient.")
-				if err := c.delChan(id, why); err != nil {
+				if err := c.delChan(df.TpID, why); err != nil {
 					return err
 				}
 			}
 			log.Debugln("FrameForwarded")
 
 		case AcceptType, FwdType, AckType, CloseType:
-			next, why, ok := c.forwardFrame(ft, id, p)
+			next, why, ok := c.forwardFrame(df.Type, df.TpID, df.Pay)
 			if !ok {
 				log.Debugln("FrameRejected: Failed to forward to dstClient.")
 				// Delete channel (and associations) on failure.
-				if err := c.delChan(id, why); err != nil {
+				if err := c.delChan(df.TpID, why); err != nil {
 					return err
 				}
 				continue
@@ -179,14 +177,13 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 			log.Debugln("FrameForwarded")
 
 			// On success, if Close frame, delete the associations.
-			if ft == CloseType {
-				c.delNext(id)
+			if df.Type == CloseType {
+				c.delNext(df.TpID)
 				next.conn.delNext(next.id)
 			}
 
 		default:
 			log.Debugln("FrameRejected: Unknown frame type.")
-			// Unknown frame type.
 			return errors.New("unknown frame of type received")
 		}
 	}
