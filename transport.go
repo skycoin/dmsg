@@ -41,7 +41,6 @@ type Transport struct {
 	bufCh     chan struct{}          // chan for indicating whether this is a new FWD frame
 	bufSize   int                    // keeps track of the total size of 'buf'
 	bufMx     sync.Mutex             // protects fields responsible for handling FWD and ACK frames
-	//rMx       sync.Mutex             // TODO: (WORKAROUND) concurrent reads seem problematic right now.
 
 	serving     chan struct{} // chan which closes when serving begins
 	servingOnce sync.Once     // ensures 'serving' only closes once
@@ -358,9 +357,6 @@ func (tp *Transport) Serve() {
 // TODO(evanlinjin): read deadline.
 func (tp *Transport) Read(p []byte) (n int, err error) {
 	<-tp.serving
-
-	//tp.rMx.Lock()
-	//defer tp.rMx.Unlock()
 
 startRead:
 	tp.bufMx.Lock()

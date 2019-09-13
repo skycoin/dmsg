@@ -285,7 +285,7 @@ func (c *Client) Type() string {
 
 // Close closes the dms_client and associated connections.
 // TODO(evaninjin): proper error handling.
-func (c *Client) Close() error {
+func (c *Client) Close() (err error) {
 	if c == nil {
 		return nil
 	}
@@ -301,7 +301,9 @@ func (c *Client) Close() error {
 		}
 		c.conns = make(map[cipher.PubKey]*ClientConn)
 		c.mx.Unlock()
+
+		err = c.pm.Close()
 	})
 
-	return c.pm.Close()
+	return err
 }
