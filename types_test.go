@@ -277,7 +277,7 @@ func Test_readFrame(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := readFrame(tc.args.r)
+			got, _, err := readFrame(tc.args.r)
 
 			assert.Equal(t, tc.wantErr, err)
 			assert.Equal(t, tc.want, got)

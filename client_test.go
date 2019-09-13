@@ -2,6 +2,7 @@ package dmsg
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"math/rand"
 	"net"
@@ -28,11 +29,9 @@ func BenchmarkNewClientConn(b *testing.B) {
 	pk1, _ := cipher.GenerateKeyPair()
 	pk2, _ := cipher.GenerateKeyPair()
 
-	pm := newPortManager()
-
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		NewClientConn(log, p1, pk1, pk2, pm)
+		NewClientConn(log, newPortManager(pk1), p1, pk1, pk2)
 	}
 }
 
@@ -96,14 +95,12 @@ func clientConnWithTps(n int) (*ClientConn, []uint16) {
 	pk1, _ := cipher.GenerateKeyPair()
 	pk2, _ := cipher.GenerateKeyPair()
 
-	pm := newPortManager()
-
-	cc := NewClientConn(log, p1, pk1, pk2, pm)
+	cc := NewClientConn(log, newPortManager(pk1), p1, pk1, pk2)
 	ids := make([]uint16, 0, n)
 	for i := 0; i < n; i++ {
 		id := uint16(rand.Intn(math.MaxUint16))
 		ids = append(ids, id)
-		tp := NewTransport(p1, log, Addr{}, Addr{}, id, cc.delTp)
+		tp := NewTransport(p1, log, Addr{}, Addr{}, id, func() { cc.delTp(id) })
 		cc.setTp(tp)
 	}
 
@@ -118,14 +115,12 @@ func BenchmarkClientConn_setTp(b *testing.B) {
 	pk1, _ := cipher.GenerateKeyPair()
 	pk2, _ := cipher.GenerateKeyPair()
 
-	pm := newPortManager()
-
-	cc := NewClientConn(log, p1, pk1, pk2, pm)
+	cc := NewClientConn(log, newPortManager(pk1), p1, pk1, pk2)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		id := uint16(rand.Intn(math.MaxUint16))
-		tp := NewTransport(p1, log, Addr{}, Addr{}, id, cc.delTp)
+		tp := NewTransport(p1, log, Addr{}, Addr{}, id, func() { cc.delTp(id) })
 		cc.setTp(tp)
 	}
 }
@@ -142,13 +137,21 @@ func TestClient(t *testing.T) {
 		pk1, _ := cipher.GenerateKeyPair()
 		pk2, _ := cipher.GenerateKeyPair()
 
-		pm := newPortManager()
+		pm1 := newPortManager(pk1)
+		pm2 := newPortManager(pk2)
 
-		conn1 := NewClientConn(logger, p1, pk1, pk2, pm)
-		conn2 := NewClientConn(logger, p2, pk2, pk1, pm)
+		conn1 := NewClientConn(logger, pm1, p1, pk1, pk2)
+		conn2 := NewClientConn(logger, pm2, p2, pk2, pk1)
 
-		conn1.pm.NewListener(pk1, port)
-		conn2.pm.NewListener(pk2, port)
+		lis1, ok := conn1.pm.NewListener(port)
+		require.True(t, ok)
+		require.Equal(t, Addr{pk1, port}, lis1.addr)
+
+		lis2, ok := conn2.pm.NewListener(port)
+		require.True(t, ok)
+		require.Equal(t, Addr{pk2, port}, lis2.addr)
+
+		fmt.Println("Created zstuf")
 
 		ctx := context.TODO()
 
@@ -167,11 +170,15 @@ func TestClient(t *testing.T) {
 		conn1.mx.RLock()
 		initID := conn1.nextInitID
 		conn1.mx.RUnlock()
-		_, ok := conn1.getTp(initID)
+		_, ok = conn1.getTp(initID)
 		assert.False(t, ok)
+
+		fmt.Println("dialing...")
 
 		tr1, err := conn1.DialTransport(ctx, pk2, port)
 		require.NoError(t, err)
+
+		fmt.Println("Dialed")
 
 		_, ok = conn1.getTp(initID)
 		assert.True(t, ok)
@@ -180,7 +187,7 @@ func TestClient(t *testing.T) {
 		conn1.mx.RUnlock()
 		assert.Equal(t, initID+2, newInitID)
 
-		assert.NoError(t, closeClosers(conn1, conn2))
+		assert.NoError(t, closeClosers(conn1, conn2, pm1, pm2))
 		checkClientConnsClosed(t, conn1, conn2)
 
 		assert.Error(t, errWithTimeout(serveErrCh1))
@@ -192,30 +199,32 @@ func TestClient(t *testing.T) {
 	// Runs four ClientConn's and dials two transports between them.
 	// Checks if states change properly and if closing of transports and connections works.
 	t.Run("Four connections", func(t *testing.T) {
-		p1, p2 := net.Pipe()
-		p1, p2 = invertedIDConn{p1}, invertedIDConn{p2}
+		pipe1, pipe2 := net.Pipe()
+		pipe1, pipe2 = invertedIDConn{pipe1}, invertedIDConn{pipe2}
 
-		p3, p4 := net.Pipe()
-		p3, p4 = invertedIDConn{p3}, invertedIDConn{p4}
+		pipe3, pipe4 := net.Pipe()
+		pipe3, pipe4 = invertedIDConn{pipe3}, invertedIDConn{pipe4}
 
 		pk1, _ := cipher.GenerateKeyPair()
 		pk2, _ := cipher.GenerateKeyPair()
 		pk3, _ := cipher.GenerateKeyPair()
 
-		pm := newPortManager()
+		pm1 := newPortManager(pk1)
+		pm2 := newPortManager(pk2)
+		pm3 := newPortManager(pk3)
 
-		conn1 := NewClientConn(logger, p1, pk1, pk2, pm)
-		conn2 := NewClientConn(logger, p2, pk2, pk1, pm)
-		conn3 := NewClientConn(logger, p3, pk2, pk3, pm)
-		conn4 := NewClientConn(logger, p4, pk3, pk2, pm)
+		conn1 := NewClientConn(logger, pm1, pipe1, pk1, pk2)
+		conn2 := NewClientConn(logger, pm2, pipe2, pk2, pk1)
+		conn3 := NewClientConn(logger, pm2, pipe3, pk2, pk3)
+		conn4 := NewClientConn(logger, pm3, pipe4, pk3, pk2)
 
 		conn2.setNextInitID(randID(false))
 		conn4.setNextInitID(randID(false))
 
-		conn1.pm.NewListener(pk1, port)
-		conn2.pm.NewListener(pk2, port)
-		conn3.pm.NewListener(pk3, port)
-		conn4.pm.NewListener(pk3, port)
+		conn1.pm.NewListener(port)
+		conn2.pm.NewListener(port)
+		conn3.pm.NewListener(port)
+		conn4.pm.NewListener(port)
 
 		ctx := context.TODO()
 
@@ -301,7 +310,7 @@ func TestClient(t *testing.T) {
 		conn3.mx.RUnlock()
 		assert.Equal(t, initID3+2, newInitID3)
 
-		assert.NoError(t, closeClosers(tr1, tr2, conn1, conn2, conn3, conn4))
+		assert.NoError(t, closeClosers(tr1, tr2, conn1, conn2, conn3, conn4, pm1, pm2, pm3))
 		checkTransportsClosed(t, tr1, tr2)
 		checkClientConnsClosed(t, conn1, conn3)
 
@@ -320,10 +329,14 @@ func TestClient(t *testing.T) {
 		pk1, _ := cipher.GenerateKeyPair()
 		pk2, _ := cipher.GenerateKeyPair()
 
-		pm := newPortManager()
+		pm1 := newPortManager(pk1)
+		defer func() { require.NoError(t, pm1.Close()) }()
 
-		conn1 := NewClientConn(logging.MustGetLogger("conn1"), p1, pk1, pk2, pm)
-		conn1.pm.NewListener(pk1, port)
+		pm2 := newPortManager(pk2)
+		defer func() { require.NoError(t, pm2.Close()) }()
+
+		conn1 := NewClientConn(logging.MustGetLogger("conn1"), pm1, p1, pk1, pk2)
+		conn1.pm.NewListener(port)
 
 		serveErrCh1 := make(chan error, 1)
 		go func() {
@@ -332,8 +345,8 @@ func TestClient(t *testing.T) {
 		}()
 		defer func() { require.NoError(t, conn1.Close()) }()
 
-		conn2 := NewClientConn(logging.MustGetLogger("conn2"), p2, pk2, pk1, pm)
-		conn2.pm.NewListener(pk2, port)
+		conn2 := NewClientConn(logging.MustGetLogger("conn2"), pm2, p2, pk2, pk1)
+		conn2.pm.NewListener(port)
 
 		serveErrCh2 := make(chan error, 1)
 		go func() {
@@ -350,7 +363,7 @@ func TestClient(t *testing.T) {
 		//tp2, ok := <-ch2
 		//require.True(t, ok)
 		//defer func() { require.NoError(t, tp2.Close()) }()
-
+		//
 		//for i, count := range []int{75, 3, 75 - 3} {
 		//	if i%3 == 0 {
 		//		write := cipher.RandByte(count)

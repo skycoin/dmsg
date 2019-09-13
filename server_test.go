@@ -586,7 +586,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 			defer initiatorsWG.Done()
 
 			responder := listeners[pickedListeners[initiatorIndex]].(*Listener)
-			conn, err := initiators[initiatorIndex].Dial(context.Background(), responder.pk, responder.port)
+			conn, err := initiators[initiatorIndex].Dial(context.Background(), responder.addr.PK, responder.addr.Port)
 			if err != nil {
 				dialErrs <- err
 			}
@@ -721,13 +721,15 @@ func testServerMessageConsistency(t *testing.T) {
 	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
-// Create a server, initiator, responder and connection between them then check if clients are connected to the server.
-// Stop the server, then check if no client is connected and if connection is closed.
-// Start the server again, check if clients reconnected and if `Dial()` and `Accept()` still work.
-// Second argument indicates if the server restarts not on the same address, but on the random one.
+// Create a dmsg.Server and two dmsg.Clients. Connect the two dmsg.Clients via the dmsg.Server.
+// When we restart the dmsg.Server:
+// - Clients should disconnect when server closes.
+// - Clients should reconnect when server starts again. `Dial()` and `Accept()` between dmsg.Clients should still work.
+// 'randomAddr' indicates whether the server should restart on a random new address, or use the original address.
 func testServerReconnection(t *testing.T, randomAddr bool) {
 	t.Parallel()
 
+	// Create discovery and server.
 	dc := disc.NewMock()
 	srv, srvErrCh, err := createServer(dc)
 	require.NoError(t, err)
@@ -736,13 +738,13 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 
 	checkConnCount(t, noDelay, 0, srv)
 
-	responder := createClient(t, dc, responderName)
+	respClient := createClient(t, dc, responderName)
 	checkConnCount(t, smallDelay, 1, srv)
 
-	initiator := createClient(t, dc, initiatorName)
+	initClient := createClient(t, dc, initiatorName)
 	checkConnCount(t, smallDelay, 2, srv)
 
-	initConn, respConn := dial(t, initiator, responder, port, noDelay)
+	initConn, respConn := dial(t, initClient, respClient, port, noDelay)
 
 	assert.NoError(t, srv.Close())
 	assert.NoError(t, errWithTimeout(srvErrCh))
@@ -767,9 +769,8 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 		close(errCh)
 	}()
 
-	responder.pm.RemoveListener(port)
 	checkConnCount(t, clientReconnectInterval+smallDelay, 2, srv)
-	_, _ = dial(t, initiator, responder, port, smallDelay)
+	_, _ = dial(t, initClient, respClient, port, smallDelay)
 
 	assert.NoError(t, srv.Close())
 	assert.NoError(t, errWithTimeout(errCh))
@@ -810,17 +811,18 @@ func dial(t *testing.T, initiator, responder *Client, port uint16, delay time.Du
 	require.NoError(t, testWithTimeout(delay, func() error {
 		ctx := context.TODO()
 
-		listener, err := responder.Listen(port)
+		lis, err := responder.Listen(port)
 		if err != nil {
 			return err
 		}
+		defer lis.close()
 
 		initTp, err = initiator.Dial(ctx, responder.pk, port)
 		if err != nil {
 			return err
 		}
 
-		respTp, err = listener.Accept()
+		respTp, err = lis.Accept()
 		return err
 	}))
 	return initTp, respTp
