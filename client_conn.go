@@ -83,7 +83,7 @@ func (c *ClientConn) addTp(ctx context.Context, rPK cipher.PubKey, lPort, rPort 
 	if err != nil {
 		return nil, err
 	}
-	tp := NewTransport(c.Conn, c.log, Addr{c.lPK, lPort}, Addr{rPK, rPort}, id, func() {
+	tp := NewTransport(c.Conn, c.log, Addr{c.lPK, lPort}, Addr{rPK, rPort}, id, tpBufCap, func() {
 		c.delTp(id)
 		closeCB()
 	})
@@ -171,7 +171,12 @@ func (c *ClientConn) handleRequestFrame(log *logrus.Entry, id uint16, p []byte) 
 		return closeTp(ErrClientClosed) // TODO(nkryuchkov): reason = client is closed.
 	}
 
-	tp := NewTransport(c.Conn, c.log, pay.RespAddr, pay.InitAddr, id, func() { c.delTp(id) })
+	tp := NewTransport(c.Conn, c.log, pay.RespAddr, pay.InitAddr, id, tpBufCap, func() { c.delTp(id) })
+	if err := tp.WriteAccept(int(pay.Window)); err != nil {
+		return initPK, err
+	}
+	go tp.Serve()
+
 	if err := lis.IntroduceTransport(tp); err != nil {
 		return initPK, err
 	}

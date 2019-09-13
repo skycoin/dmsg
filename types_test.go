@@ -2,13 +2,11 @@ package dmsg
 
 import (
 	"bytes"
-	"encoding/hex"
 	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/ioutil"
 )
 
@@ -375,7 +373,7 @@ func Test_writeFwdFrame(t *testing.T) {
 				seq: 0xEF01,
 				p:   []byte{0x23, 0x45, 0x67},
 			},
-			want:    []byte{0x0A, 0xAB, 0xCD, 0x00, 0x05, 0xEF, 0x01, 0x23, 0x45, 0x67},
+			want:    []byte{0x0A, 0xAB, 0xCD, 0x00, 0x3, 0x23, 0x45, 0x67},
 			wantErr: nil,
 		},
 	}
@@ -385,93 +383,11 @@ func Test_writeFwdFrame(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			w := &bytes.Buffer{}
 
-			err := writeFwdFrame(w, tc.args.id, tc.args.seq, tc.args.p)
+			err := writeFwdFrame(w, tc.args.id, tc.args.p)
 			assert.Equal(t, tc.wantErr, err)
 
 			got := w.Bytes()
 			assert.Equal(t, tc.want, got)
-		})
-	}
-}
-
-func Test_combinePKs(t *testing.T) {
-	type args struct {
-		initPK string
-		respPK string
-	}
-
-	cases := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "Example 1",
-			args: args{
-				initPK: "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7",
-				respPK: "031b80cd5773143a39d940dc0710b93dcccc262a85108018a7a95ab9af734f8055",
-			},
-			want: "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7" +
-				"031b80cd5773143a39d940dc0710b93dcccc262a85108018a7a95ab9af734f8055",
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			var initPK, respPK cipher.PubKey
-
-			err := initPK.Set(tc.args.initPK)
-			assert.NoError(t, err)
-
-			err = respPK.Set(tc.args.respPK)
-			assert.NoError(t, err)
-
-			got := combinePKs(initPK, respPK)
-			assert.Equal(t, tc.want, hex.EncodeToString(got))
-		})
-	}
-}
-
-func Test_splitPKs(t *testing.T) {
-	type args struct {
-		s string
-	}
-
-	cases := []struct {
-		name       string
-		args       args
-		wantInitPK string
-		wantRespPK string
-		wantOk     bool
-	}{
-		{
-			name: "OK",
-			args: args{s: "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7" +
-				"031b80cd5773143a39d940dc0710b93dcccc262a85108018a7a95ab9af734f8055"},
-			wantInitPK: "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7",
-			wantRespPK: "031b80cd5773143a39d940dc0710b93dcccc262a85108018a7a95ab9af734f8055",
-			wantOk:     true,
-		},
-		{
-			name:       "Not OK",
-			args:       args{s: "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7"},
-			wantInitPK: "000000000000000000000000000000000000000000000000000000000000000000",
-			wantRespPK: "000000000000000000000000000000000000000000000000000000000000000000",
-			wantOk:     false,
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			pks, err := hex.DecodeString(tc.args.s)
-			assert.NoError(t, err)
-
-			gotInitPK, gotRespPK, gotOk := splitPKs(pks)
-			assert.Equal(t, tc.wantOk, gotOk)
-			assert.Equal(t, tc.wantInitPK, gotInitPK.Hex())
-			assert.Equal(t, tc.wantRespPK, gotRespPK.Hex())
 		})
 	}
 }
