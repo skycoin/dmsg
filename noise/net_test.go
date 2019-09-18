@@ -13,7 +13,7 @@ import (
 	"github.com/flynn/noise"
 	"github.com/stretchr/testify/require"
 
-	"github.com/skycoin/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/cipher"
 )
 
 type TestRPC struct{}

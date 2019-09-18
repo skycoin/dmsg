@@ -5,11 +5,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/SkycoinProject/skycoin/src/util/logging"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/skycoin/dmsg/cipher"
-	"github.com/skycoin/dmsg/disc"
+	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/disc"
 )
 
 func TestNewTransport(t *testing.T) {
