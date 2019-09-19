@@ -7,9 +7,9 @@ import (
 	"net"
 	"sync"
 
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/SkycoinProject/skycoin/src/util/logging"
 
-	"github.com/skycoin/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/cipher"
 )
 
 // NextConn provides information on the next connection.

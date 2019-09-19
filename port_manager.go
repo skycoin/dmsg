@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/skycoin/dmsg/cipher"
-	"github.com/skycoin/dmsg/netutil"
+	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/netutil"
 )
 
 // PortManager manages ports of nodes.

@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/skycoin/dmsg/cipher"
-	"github.com/skycoin/dmsg/disc"
+	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/disc"
 )
 
 // TODO: update comments mentioning a & b
