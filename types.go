@@ -194,10 +194,11 @@ type writeError struct{ error }
 
 func (e *writeError) Error() string { return "write error: " + e.error.Error() }
 
-func isWriteError(err error) bool {
-	_, ok := err.(*writeError)
-	return ok
-}
+// TODO(evanlinjin): determine if this is still needed.
+//func isWriteError(err error) bool {
+//	_, ok := err.(*writeError)
+//	return ok
+//}
 
 func writeFrame(w io.Writer, f Frame) error {
 	_, err := w.Write(f)

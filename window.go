@@ -9,6 +9,7 @@ import (
 	"sync"
 )
 
+// LocalWindow represents the read window of a given dmsg.Transport
 type LocalWindow struct {
 	r   int           // remaining window (in bytes)
 	max int           // max possible window (in bytes)
@@ -17,6 +18,7 @@ type LocalWindow struct {
 	mx  sync.Mutex    // race protection
 }
 
+// NewLocalWindow creates a new local window with a given size in bytes.
 func NewLocalWindow(size int) *LocalWindow {
 	return &LocalWindow{
 		r:   size,
@@ -26,17 +28,20 @@ func NewLocalWindow(size int) *LocalWindow {
 	}
 }
 
+// Max returns the maximum size of the local window.
 func (lw *LocalWindow) Max() int {
 	return lw.max
 }
 
+// Enqueue adds the given payload 'p' to the internal buffer of the window.
+// 'tpDone' indicates whether the associated dmsg.Transport has been closed.
 func (lw *LocalWindow) Enqueue(p []byte, tpDone chan struct{}) error {
 	lw.mx.Lock()
 	defer lw.mx.Unlock()
 
 	// Offset local window.
-	// If the length of the FWD payload exceeds local window, then the remote client is not respecting our
-	// advertised window size.
+	// If the length of the FWD payload exceeds local window, then the remote client is not respecting our advertised
+	// window size.
 	if lw.r -= len(p); lw.r < 0 || lw.r > lw.max {
 		return errors.New("failed to enqueue local window: remote is not respecting advertised window size")
 	}
@@ -52,6 +57,9 @@ func (lw *LocalWindow) Enqueue(p []byte, tpDone chan struct{}) error {
 	return nil
 }
 
+// Read reads from the internal buffer of the local window.
+// ACK frames is delivered on every read (to clear the remote record of the local window).
+// The ACK frame should contain the number of freed bytes.
 func (lw *LocalWindow) Read(p []byte, tpDone <-chan struct{}, sendAck func(uint16)) (n int, err error) {
 	// return if 'p' has 0 len
 	if len(p) == 0 {
@@ -91,6 +99,7 @@ func (lw *LocalWindow) Read(p []byte, tpDone <-chan struct{}, sendAck func(uint1
 	}
 }
 
+// Close closes the local window.
 func (lw *LocalWindow) Close() error {
 	if lw == nil {
 		return nil
@@ -101,6 +110,7 @@ func (lw *LocalWindow) Close() error {
 	return nil
 }
 
+// RemoteWindow represents the local record of the remote window.
 type RemoteWindow struct {
 	r   int           // remaining window (in bytes)
 	max int           // max possible window (in bytes)
@@ -109,6 +119,8 @@ type RemoteWindow struct {
 	mx  sync.Mutex    // race protection
 }
 
+// NewRemoteWindow creates a new local representation of the remote window.
+// 'size' is in bytes and is the total size of the remote window.
 func NewRemoteWindow(size int) *RemoteWindow {
 	return &RemoteWindow{
 		r:   size,
@@ -118,6 +130,7 @@ func NewRemoteWindow(size int) *RemoteWindow {
 }
 
 // Grow should be triggered when we receive a remote ACK to grow our record of the remote window.
+// 'tpDone' signals when the associated dmsg.Transport is closed.
 func (rw *RemoteWindow) Grow(n int, tpDone <-chan struct{}) error {
 	rw.mx.Lock()
 	defer rw.mx.Unlock()
@@ -138,11 +151,13 @@ func (rw *RemoteWindow) Grow(n int, tpDone <-chan struct{}) error {
 	return nil
 }
 
+// Write blocks until all of 'p' is written, an error occurs, or the associated dmsg.Transport is closed.
+// 'sendFwd' contains the logic to write a FWD frame.
 func (rw *RemoteWindow) Write(p []byte, sendFwd func([]byte) error) (n int, err error) {
 	rw.wMx.Lock()
 	defer rw.wMx.Unlock()
 
-	for lastN, r := 0, rw.remaining(); len(p) > 0 && err == nil; n = n+lastN {
+	for lastN, r := 0, rw.remaining(); len(p) > 0 && err == nil; n = n + lastN {
 		// if remaining window has len 0, wait until it opens up
 		if r == 0 {
 			if _, ok := <-rw.ch; !ok {
@@ -194,6 +209,7 @@ func (rw *RemoteWindow) remaining() int {
 	return rw.r
 }
 
+// Close closes the local record of the remote window.
 func (rw *RemoteWindow) Close() error {
 	if rw == nil {
 		return nil
