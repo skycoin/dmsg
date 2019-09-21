@@ -10,20 +10,19 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/skycoin/dmsg/ioutil"
-
 	"github.com/skycoin/dmsg/cipher"
 )
 
 const (
 	// Type returns the transport type string.
 	Type = "dmsg"
+
 	// HandshakePayloadVersion contains payload version to maintain compatibility with future versions
-	// of HandshakePayload format.
+	// of HandshakeData format.
 	HandshakePayloadVersion = "2.0"
 
-	tpBufCap  = math.MaxUint16
-	headerLen = 5 // fType(1 byte), chID(2 byte), payLen(2 byte)
+	maxFwdPayLen = math.MaxUint16 // maximum len of FWD payload
+	headerLen    = 5              // fType(1 byte), chID(2 byte), payLen(2 byte)
 )
 
 var (
@@ -53,8 +52,8 @@ func (a Addr) String() string {
 	return fmt.Sprintf("%s:%d", a.PK, a.Port)
 }
 
-// HandshakePayload represents format of payload sent with REQUEST frames.
-type HandshakePayload struct {
+// HandshakeData represents format of payload sent with REQUEST frames.
+type HandshakeData struct {
 	Version  string `json:"version"` // just in case the struct changes.
 	InitAddr Addr   `json:"init_address"`
 	RespAddr Addr   `json:"resp_address"`
@@ -63,16 +62,16 @@ type HandshakePayload struct {
 	Window int32 `json:"window"`
 }
 
-func marshalHandshakePayload(p HandshakePayload) []byte {
+func marshalHandshakeData(p HandshakeData) []byte {
 	b, err := json.Marshal(p)
 	if err != nil {
-		panic(fmt.Errorf("marshalHandshakePayload: %v", err))
+		panic(fmt.Errorf("marshalHandshakeData: %v", err))
 	}
 	return b
 }
 
-func unmarshalHandshakePayload(b []byte) (HandshakePayload, error) {
-	var p HandshakePayload
+func unmarshalHandshakeData(b []byte) (HandshakeData, error) {
+	var p HandshakeData
 	err := json.Unmarshal(b, &p)
 	return p, err
 }
@@ -163,8 +162,13 @@ func (f Frame) Disassemble() (ft FrameType, id uint16, p []byte) {
 func (f Frame) String() string {
 	var p string
 	switch f.Type() {
-	case FwdType, AckType:
-		p = fmt.Sprintf("<seq:%d>", ioutil.DecodeUint16Seq(f.Pay()))
+	case AckType:
+		offset, err := disassembleAckPayload(f.Pay())
+		if err != nil {
+			p = fmt.Sprintf("<offset:%v>", err)
+		} else {
+			p = fmt.Sprintf("<offset:%d>", offset)
+		}
 	}
 	return fmt.Sprintf("<type:%s><id:%d><size:%d>%s", f.Type(), f.TpID(), f.PayLen(), p)
 }
@@ -209,8 +213,8 @@ func writeFrame(w io.Writer, f Frame) error {
 }
 
 func writeRequestFrame(w io.Writer, id uint16, lAddr, rAddr Addr, lWindow int32) error {
-	return writeFrame(w, MakeFrame(RequestType, id, marshalHandshakePayload(
-		HandshakePayload{
+	return writeFrame(w, MakeFrame(RequestType, id, marshalHandshakeData(
+		HandshakeData{
 			Version:  HandshakePayloadVersion,
 			InitAddr: lAddr,
 			RespAddr: rAddr,
@@ -219,8 +223,8 @@ func writeRequestFrame(w io.Writer, id uint16, lAddr, rAddr Addr, lWindow int32)
 }
 
 func writeAcceptFrame(w io.Writer, id uint16, lAddr, rAddr Addr, lWindow int32) error {
-	return writeFrame(w, MakeFrame(AcceptType, id, marshalHandshakePayload(
-		HandshakePayload{
+	return writeFrame(w, MakeFrame(AcceptType, id, marshalHandshakeData(
+		HandshakeData{
 			Version:  HandshakePayloadVersion,
 			InitAddr: rAddr,
 			RespAddr: lAddr,
@@ -233,7 +237,7 @@ func writeFwdFrame(w io.Writer, id uint16, p []byte) error {
 }
 
 func writeAckFrame(w io.Writer, id uint16, offset uint16) error {
-	p := make([]byte, 4)
+	p := make([]byte, 2)
 	binary.BigEndian.PutUint16(p, offset)
 	return writeFrame(w, MakeFrame(AckType, id, p))
 }

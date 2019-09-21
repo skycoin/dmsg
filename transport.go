@@ -215,7 +215,7 @@ func (tp *Transport) ReadAccept(ctx context.Context) (err error) {
 		}
 		switch ft, id, p := f.Disassemble(); ft {
 		case AcceptType:
-			hp, err := unmarshalHandshakePayload(p)
+			hp, err := unmarshalHandshakeData(p)
 			if err != nil || !isInitiatorID(id) ||
 				hp.Version != HandshakePayloadVersion ||
 				hp.InitAddr != tp.lAddr ||
@@ -266,37 +266,38 @@ func (tp *Transport) Serve() {
 			switch p := f.Pay(); f.Type() {
 			case FwdType:
 				log = log.WithField("payload_size", len(p))
-
 				if err := tp.lW.Enqueue(p, tp.done); err != nil {
 					log.WithError(err).Warn("Rejected [FWD]")
+					return
 				}
-				log.Infoln("Injected [FWD]")
+				log.Debug("Injected [FWD]")
 
 			case AckType:
 				offset, err := disassembleAckPayload(p)
 				if err != nil {
-					log.WithError(err).Warn("Rejected [ACK]")
-				}
-				if err := tp.rW.Grow(int(offset), tp.done); err != nil {
-					log.WithError(err).Warn("Rejected [ACK]")
+					log.WithError(err).Warn("Rejected [ACK]: Failed to dissemble payload.")
 					return
 				}
-				log.Infoln("Injected [ACK]")
+				if err := tp.rW.Grow(int(offset), tp.done); err != nil {
+					log.WithError(err).Warn("Rejected [ACK]: Failed to grow remote window.")
+					return
+				}
+				log.Debug("Injected [ACK]")
 
 			case CloseType:
-				log.Infoln("Injected [CLOSE]: Closing transport...")
+				log.Info("Injected [CLOSE]: Closing transport...")
 				tp.close() // ensure there is no sending of CLOSE frame
 				return
 
 			case RequestType:
-				log.Warnln("Rejected [REQUEST]: ID already occupied, possibly malicious server.")
+				log.Warn("Rejected [REQUEST]: ID already occupied, possibly malicious server.")
 				if err := tp.Conn.Close(); err != nil {
-					log.WithError(err).Warn("Failed to close connection")
+					log.WithError(err).Debug("Closing connection returned non-nil error.")
 				}
 				return
 
 			default:
-				tp.log.Infof("Rejected [%s]: Unexpected frame, possibly malicious server (ignored for now).", f.Type())
+				tp.log.Warnf("Rejected [%s]: Unexpected frame, possibly malicious server (ignored for now).", f.Type())
 			}
 		}
 	}

@@ -1,7 +1,6 @@
 package dmsg
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -43,8 +42,10 @@ func (lw *LocalWindow) Enqueue(p []byte, tpDone chan struct{}) error {
 	// If the length of the FWD payload exceeds local window, then the remote client is not respecting our advertised
 	// window size.
 	if lw.r -= len(p); lw.r < 0 || lw.r > lw.max {
-		return errors.New("failed to enqueue local window: remote is not respecting advertised window size")
+		return fmt.Errorf("failed to enqueue local window: remote is not respecting advertised window size: remaining(%d) min(%d) max(%d)",
+			lw.r, 0, lw.max)
 	}
+	fmt.Println("LocalWindow.Enqueue() remaining:", lw.r)
 
 	lw.buf = append(lw.buf, p)
 	if !isDone(tpDone) {
@@ -71,21 +72,26 @@ func (lw *LocalWindow) Read(p []byte, tpDone <-chan struct{}, sendAck func(uint1
 		return
 	}
 
+	lastN := 0
 	for {
-		// We limit the reader so that ACK frames has an 'window_offset' field that is in scope.
-		r := io.LimitReader(&lw.buf, math.MaxUint16)
-
 		lw.mx.Lock()
-		if n, err = r.Read(p); n > 0 {
+
+		// We limit the reader so that ACK frames has an 'window_offset' field that is in scope.
+		lastN, err = io.LimitReader(&lw.buf, math.MaxUint16).Read(p)
+		p = p[lastN:]
+		n += lastN
+
+		if lastN > 0 {
 			// increase local window and send ACK.
-			if lw.r += n; lw.r < 0 || lw.r > lw.max {
+			if lw.r += lastN; lw.r < 0 || lw.r > lw.max {
 				lw.mx.Unlock()
 				panic(fmt.Errorf("bug: local window size became invalid after read: remaining(%d) min(%d) max(%d)",
 					lw.r, 0, lw.max))
 			}
+			fmt.Println("LocalWindow.Read() remaining:", lw.r)
 
 			if !isDone(tpDone) {
-				go sendAck(uint16(n))
+				go sendAck(uint16(lastN))
 				err = nil
 			}
 			lw.mx.Unlock()
@@ -139,7 +145,6 @@ func (rw *RemoteWindow) Grow(n int, tpDone <-chan struct{}) error {
 	if rw.r += n; rw.r < 0 || rw.r > rw.max {
 		return fmt.Errorf("local record of remote window has become invalid: remaning(%d) min(%d) max(%d)", rw.r, 0, rw.max)
 	}
-	fmt.Printf("RemoteWindow.Grow: rw.r(%d) m(%d)\n", rw.r, n)
 
 	if !isDone(tpDone) {
 		select {
@@ -157,50 +162,55 @@ func (rw *RemoteWindow) Write(p []byte, sendFwd func([]byte) error) (n int, err 
 	rw.wMx.Lock()
 	defer rw.wMx.Unlock()
 
-	for lastN, r := 0, rw.remaining(); len(p) > 0 && err == nil; n = n + lastN {
+	lastN := 0
+	for {
+		r := rw.remaining()
+
 		// if remaining window has len 0, wait until it opens up
-		if r == 0 {
+		if r <= 0 {
 			if _, ok := <-rw.ch; !ok {
 				return 0, io.ErrClosedPipe
 			}
 			continue
 		}
 
-		// write FWD frame and update 'p' and 'r'
-		lastN, err = rw.write(&p, &r, sendFwd)
+		// write FWD frame and update 'p' and 'n'
+		lastN, err = rw.write(p, r, sendFwd)
+		p, n = p[lastN:], n+lastN
+
+		if err != nil || len(p) <= 0 {
+			return
+		}
 	}
-	return
 }
 
-func (rw *RemoteWindow) write(p *[]byte, r *int, sendFwd func([]byte) error) (n int, err error) {
-	n = len(*p)
+func (rw *RemoteWindow) write(p []byte, r int, sendFwd func([]byte) error) (n int, err error) {
+	n = len(p)
 
 	// ensure written payload does not surpass remaining remote window size or maximum allowed FWD payload size
-	if n > *r {
-		n = *r
+	if n > r {
+		n = r
 	}
-	if n > tpBufCap {
-		n = tpBufCap
+	if n > maxFwdPayLen {
+		n = maxFwdPayLen
 	}
 
 	// write FWD and remove written portion of 'p'
-	if err := sendFwd((*p)[:n]); err != nil {
+	if err := sendFwd(p[:n]); err != nil {
 		return 0, err
 	}
-	*p = (*p)[n:]
 
 	// shrink remaining remote window
-	*r, err = rw.shrink(n)
-	return n, err
+	return n, rw.shrink(n)
 }
 
-func (rw *RemoteWindow) shrink(dec int) (int, error) {
+func (rw *RemoteWindow) shrink(dec int) error {
 	rw.mx.Lock()
 	defer rw.mx.Unlock()
 	if rw.r -= dec; rw.r < 0 || rw.r > rw.max {
-		return dec, fmt.Errorf("local record of remote window has become invalid: remaning(%d) min(%d) max(%d)", rw.r, 0, rw.max)
+		return fmt.Errorf("local record of remote window has become invalid: remaning(%d) min(%d) max(%d)", rw.r, 0, rw.max)
 	}
-	return rw.r, nil
+	return nil
 }
 
 func (rw *RemoteWindow) remaining() int {

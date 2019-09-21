@@ -14,20 +14,20 @@ import (
 
 func TestNewTransport(t *testing.T) {
 	log := logging.MustGetLogger("dmsg_test")
-	tr := NewTransport(nil, log, Addr{}, Addr{}, 0, tpBufCap, func() {})
+	tr := NewTransport(nil, log, Addr{}, Addr{}, 0, maxFwdPayLen, func() {})
 	assert.NotNil(t, tr)
 }
 
 func BenchmarkNewTransport(b *testing.B) {
 	log := logging.MustGetLogger("dmsg_test")
 	for i := 0; i < b.N; i++ {
-		NewTransport(nil, log, Addr{}, Addr{}, 0, tpBufCap, func() {})
+		NewTransport(nil, log, Addr{}, Addr{}, 0, maxFwdPayLen, func() {})
 	}
 }
 
 func TestTransport_close(t *testing.T) {
 	log := logging.MustGetLogger("dmsg_test")
-	tr := NewTransport(nil, log, Addr{}, Addr{}, 0, tpBufCap, func() {})
+	tr := NewTransport(nil, log, Addr{}, Addr{}, 0, maxFwdPayLen, func() {})
 
 	closed := tr.close()
 
