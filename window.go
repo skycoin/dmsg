@@ -32,6 +32,13 @@ func (lw *LocalWindow) Max() int {
 	return lw.max
 }
 
+// Remaining returns the remaining window.
+func (lw *LocalWindow) Remaining() int {
+	lw.mx.Lock()
+	defer lw.mx.Unlock()
+	return lw.r
+}
+
 // Enqueue adds the given payload 'p' to the internal buffer of the window.
 // 'tpDone' indicates whether the associated dmsg.Transport has been closed.
 func (lw *LocalWindow) Enqueue(p []byte, tpDone chan struct{}) error {
