@@ -310,7 +310,7 @@ func testServerCappedTransport(t *testing.T) {
 	responderWrConn, _ := dial(t, responder, initiator, port, noDelay)
 	msg := []byte(message)
 	// exact iterations to fill the receiving buffer and hang `Write`
-	iterationsToDo := tpBufCap/len(msg) + 1
+	iterationsToDo := maxFwdPayLen/len(msg) + 1
 	// fill the buffer, but no block yet
 	for i := 0; i < iterationsToDo-1; i++ {
 		_, err := responderWrConn.Write(msg)
