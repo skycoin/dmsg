@@ -170,6 +170,7 @@ func (s *Server) updateDiscEntry(ctx context.Context) error {
 	if err != nil {
 		entry = disc.NewServerEntry(s.pk, 0, s.addr, 10)
 		if err := entry.Sign(s.sk); err != nil {
+			fmt.Println("err in sign")
 			return err
 		}
 		return s.dc.SetEntry(ctx, entry)
