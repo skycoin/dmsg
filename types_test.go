@@ -5,8 +5,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/SkycoinProject/dmsg/ioutil"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/SkycoinProject/dmsg/ioutil"
 )
 
 func Test_isInitiatorID(t *testing.T) {
