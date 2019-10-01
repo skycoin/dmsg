@@ -202,14 +202,14 @@ func TestNewServer(t *testing.T) {
 }
 
 // TestServer_Serve ensures that Server processes request frames and
-// instantiates transports properly.
+// instantiates streams properly.
 func TestServer_Serve(t *testing.T) {
-	t.Run("Transport establishes", func(t *testing.T) {
-		testServerTransportEstablishment(t)
+	t.Run("Stream establishes", func(t *testing.T) {
+		testServerStreamEstablishment(t)
 	})
 
-	t.Run("Transport establishes concurrently", func(t *testing.T) {
-		testServerConcurrentTransportEstablishment(t)
+	t.Run("Stream establishes concurrently", func(t *testing.T) {
+		testServerConcurrentStreamEstablishment(t)
 	})
 
 	t.Run("Failed accepts do not result in hang", func(t *testing.T) {
@@ -220,15 +220,15 @@ func TestServer_Serve(t *testing.T) {
 		testServerMessageConsistency(t)
 	})
 
-	t.Run("Capped transport buffer does not result in hang", func(t *testing.T) {
-		testServerCappedTransport(t)
+	t.Run("Capped stream buffer does not result in hang", func(t *testing.T) {
+		testServerCappedStream(t)
 	})
 
 	t.Run("Self dialing works", func(t *testing.T) {
 		testServerSelfDialing(t)
 	})
 
-	t.Run("Server disconnection closes transports", func(t *testing.T) {
+	t.Run("Server disconnection closes streams", func(t *testing.T) {
 		testServerDisconnection(t)
 	})
 
@@ -255,15 +255,15 @@ func testServerDisconnection(t *testing.T) {
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
 	initConn, respConns := dial(t, initiator, responder, port, noDelay)
-	testTransportMessaging(t, initConn, respConns)
+	testStreamMessaging(t, initConn, respConns)
 
 	require.NoError(t, srv.Close())
 	require.NoError(t, errWithTimeout(srvErrCh))
 
 	time.Sleep(smallDelay)
 
-	require.True(t, initConn.(*Transport).IsClosed())
-	require.True(t, respConns.(*Transport).IsClosed())
+	require.True(t, initConn.(*Stream).IsClosed())
+	require.True(t, respConns.(*Stream).IsClosed())
 }
 
 func testServerSelfDialing(t *testing.T) {
@@ -276,14 +276,14 @@ func testServerSelfDialing(t *testing.T) {
 	client := createClient(t, dc, "client")
 	selfWrTp, selfRdTp := dial(t, client, client, port, noDelay)
 	// try to write/read message to/from self
-	testTransportMessaging(t, selfWrTp, selfRdTp)
+	testStreamMessaging(t, selfWrTp, selfRdTp)
 	require.NoError(t, closeClosers(selfRdTp, selfWrTp, client))
 
 	assert.NoError(t, srv.Close())
 	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
-func testTransportMessaging(t *testing.T, init, resp io.ReadWriter) {
+func testStreamMessaging(t *testing.T, init, resp io.ReadWriter) {
 	for i := 0; i < msgCount; i++ {
 		_, err := init.Write([]byte(message))
 		require.NoError(t, err) // TODO: Sometimes this returns error: "io: read/write on closed pipe"
@@ -296,7 +296,7 @@ func testTransportMessaging(t *testing.T, init, resp io.ReadWriter) {
 	}
 }
 
-func testServerCappedTransport(t *testing.T) {
+func testServerCappedStream(t *testing.T) {
 	// TODO(evanlinjin): I've disabled this as it was causing writes to closed connections.
 	//t.Parallel()
 
@@ -325,7 +325,7 @@ func testServerCappedTransport(t *testing.T) {
 	}()
 	// wait till it's definitely blocked
 	initiatorWrConn, responderRdConn := dial(t, initiator, responder, port, smallDelay)
-	// try to write/read message via the new transports
+	// try to write/read message via the new streams
 	for i := 0; i < msgCount; i++ {
 		_, err := initiatorWrConn.Write(msg)
 		require.NoError(t, err)
@@ -419,9 +419,9 @@ func testServerFailedAccepts(t *testing.T) {
 	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
-// connect two clients, establish transport, check if there are
+// connect two clients, establish stream, check if there are
 // two ServerConn's and that both conn's `nextConn` is filled correctly
-func testServerTransportEstablishment(t *testing.T) {
+func testServerStreamEstablishment(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
@@ -468,7 +468,7 @@ func testServerTransportEstablishment(t *testing.T) {
 	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
-func testServerConcurrentTransportEstablishment(t *testing.T) {
+func testServerConcurrentStreamEstablishment(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
@@ -479,7 +479,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 	initiatorsCount := 50
 	respondersCount := 50
 	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
-	// store the number of transports each responder should handle
+	// store the number of streams each responder should handle
 	listenersConnsCount := make(map[int]int)
 	// mapping initiators to responders; one initiator performs a single connection,
 	// while responders may handle from 0 to `initiatorsCount` connections
@@ -749,7 +749,7 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 	assert.NoError(t, srv.Close())
 	assert.NoError(t, errWithTimeout(srvErrCh))
 
-	checkTransportsClosed(t, initConn, respConn)
+	checkStreamsClosed(t, initConn, respConn)
 	checkConnCount(t, smallDelay, 0, srv)
 
 	addr := ""

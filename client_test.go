@@ -16,8 +16,8 @@ import (
 	"github.com/SkycoinProject/dmsg/cipher"
 )
 
-type transportWithError struct {
-	tr  *Transport
+type streamWithError struct {
+	tr  *Stream
 	err error
 }
 
@@ -100,7 +100,7 @@ func clientConnWithTps(n int) (*ClientConn, []uint16) {
 	for i := 0; i < n; i++ {
 		id := uint16(rand.Intn(math.MaxUint16))
 		ids = append(ids, id)
-		tp := NewTransport(p1, log, Addr{}, Addr{}, id, maxFwdPayLen, func() { cc.delTp(id) })
+		tp := NewStream(p1, log, Addr{}, Addr{}, id, maxFwdPayLen, func() { cc.delTp(id) })
 		cc.setTp(tp)
 	}
 
@@ -120,7 +120,7 @@ func BenchmarkClientConn_setTp(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		id := uint16(rand.Intn(math.MaxUint16))
-		tp := NewTransport(p1, log, Addr{}, Addr{}, id, maxFwdPayLen, func() { cc.delTp(id) })
+		tp := NewStream(p1, log, Addr{}, Addr{}, id, maxFwdPayLen, func() { cc.delTp(id) })
 		cc.setTp(tp)
 	}
 }
@@ -128,8 +128,8 @@ func BenchmarkClientConn_setTp(b *testing.B) {
 func TestClient(t *testing.T) {
 	logger := logging.MustGetLogger("dmsg_client")
 
-	// Runs two ClientConn's and dials a transport from one to another.
-	// Checks if states change properly and if closing of transport and connections works.
+	// Runs two ClientConn's and dials a stream from one to another.
+	// Checks if states change properly and if closing of stream and connections works.
 	t.Run("Two connections", func(t *testing.T) {
 		p1, p2 := net.Pipe()
 		p1, p2 = invertedIDConn{p1}, invertedIDConn{p2}
@@ -175,7 +175,7 @@ func TestClient(t *testing.T) {
 
 		fmt.Println("dialing...")
 
-		tr1, err := conn1.DialTransport(ctx, pk2, port)
+		tr1, err := conn1.DialStream(ctx, pk2, port)
 		require.NoError(t, err)
 
 		fmt.Println("Dialed")
@@ -196,8 +196,8 @@ func TestClient(t *testing.T) {
 		assert.True(t, tr1.IsClosed())
 	})
 
-	// Runs four ClientConn's and dials two transports between them.
-	// Checks if states change properly and if closing of transports and connections works.
+	// Runs four ClientConn's and dials two streams between them.
+	// Checks if states change properly and if closing of streams and connections works.
 	t.Run("Four connections", func(t *testing.T) {
 		pipe1, pipe2 := net.Pipe()
 		pipe1, pipe2 = invertedIDConn{pipe1}, invertedIDConn{pipe2}
@@ -268,20 +268,20 @@ func TestClient(t *testing.T) {
 		_, ok = conn4.getTp(initID4)
 		assert.False(t, ok)
 
-		trCh1 := make(chan transportWithError)
-		trCh2 := make(chan transportWithError)
+		trCh1 := make(chan streamWithError)
+		trCh2 := make(chan streamWithError)
 
 		go func() {
-			tr, err := conn1.DialTransport(ctx, pk2, port)
-			trCh1 <- transportWithError{
+			tr, err := conn1.DialStream(ctx, pk2, port)
+			trCh1 <- streamWithError{
 				tr:  tr,
 				err: err,
 			}
 		}()
 
 		go func() {
-			tr, err := conn3.DialTransport(ctx, pk3, port)
-			trCh2 <- transportWithError{
+			tr, err := conn3.DialStream(ctx, pk3, port)
+			trCh2 <- streamWithError{
 				tr:  tr,
 				err: err,
 			}
@@ -311,7 +311,7 @@ func TestClient(t *testing.T) {
 		assert.Equal(t, initID3+2, newInitID3)
 
 		assert.NoError(t, closeClosers(tr1, tr2, conn1, conn2, conn3, conn4, pm1, pm2, pm3))
-		checkTransportsClosed(t, tr1, tr2)
+		checkStreamsClosed(t, tr1, tr2)
 		checkClientConnsClosed(t, conn1, conn3)
 
 		assert.Error(t, errWithTimeout(serveErrCh1))
@@ -320,7 +320,7 @@ func TestClient(t *testing.T) {
 		assert.Error(t, errWithTimeout(serveErrCh4))
 	})
 
-	// After a transport is established, attempt and single write and close.
+	// After a stream is established, attempt and single write and close.
 	// The reading edge should read the message correctly.
 	t.Run("close_tp_after_single_write", func(t *testing.T) {
 		p1, p2 := net.Pipe()
@@ -355,7 +355,7 @@ func TestClient(t *testing.T) {
 		}()
 		defer func() { require.NoError(t, conn2.Close()) }()
 
-		tp1, err := conn1.DialTransport(context.TODO(), pk2, port)
+		tp1, err := conn1.DialStream(context.TODO(), pk2, port)
 		require.NoError(t, err)
 		defer func() { require.NoError(t, tp1.Close()) }()
 

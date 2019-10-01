@@ -12,22 +12,22 @@ import (
 	"github.com/SkycoinProject/dmsg/disc"
 )
 
-func TestNewTransport(t *testing.T) {
+func TestNewStream(t *testing.T) {
 	log := logging.MustGetLogger("dmsg_test")
-	tr := NewTransport(nil, log, Addr{}, Addr{}, 0, maxFwdPayLen, func() {})
+	tr := NewStream(nil, log, Addr{}, Addr{}, 0, maxFwdPayLen, func() {})
 	assert.NotNil(t, tr)
 }
 
-func BenchmarkNewTransport(b *testing.B) {
+func BenchmarkNewStream(b *testing.B) {
 	log := logging.MustGetLogger("dmsg_test")
 	for i := 0; i < b.N; i++ {
-		NewTransport(nil, log, Addr{}, Addr{}, 0, maxFwdPayLen, func() {})
+		NewStream(nil, log, Addr{}, Addr{}, 0, maxFwdPayLen, func() {})
 	}
 }
 
-func TestTransport_close(t *testing.T) {
+func TestStream_close(t *testing.T) {
 	log := logging.MustGetLogger("dmsg_test")
-	tr := NewTransport(nil, log, Addr{}, Addr{}, 0, maxFwdPayLen, func() {})
+	tr := NewStream(nil, log, Addr{}, Addr{}, 0, maxFwdPayLen, func() {})
 
 	closed := tr.close()
 
@@ -52,13 +52,13 @@ func TestTransport_close(t *testing.T) {
 	})
 
 	t.Run("No panic with nil pointer receiver", func(t *testing.T) {
-		var tr1, tr2 *Transport
+		var tr1, tr2 *Stream
 		assert.NoError(t, tr1.Close())
 		assert.False(t, tr2.close())
 	})
 }
 
-func BenchmarkTransport_Read(b *testing.B) {
+func BenchmarkStream_Read(b *testing.B) {
 	initTr, respTr, err := createBenchmarkClients()
 	if err != nil {
 		b.Error(err)
@@ -84,7 +84,7 @@ func BenchmarkTransport_Read(b *testing.B) {
 	}
 }
 
-func BenchmarkTransport_Write(b *testing.B) {
+func BenchmarkStream_Write(b *testing.B) {
 	initTr, _, err := createBenchmarkClients()
 	if err != nil {
 		b.Error(err)
@@ -109,7 +109,7 @@ func BenchmarkTransport_Write(b *testing.B) {
 	}
 }
 
-func createBenchmarkClients() (initTp, respTp *Transport, err error) {
+func createBenchmarkClients() (initTp, respTp *Stream, err error) {
 	dc := disc.NewMock()
 	ctx := context.TODO()
 
@@ -141,7 +141,7 @@ func createBenchmarkClients() (initTp, respTp *Transport, err error) {
 		return nil, nil, err
 	}
 
-	respTp, err = listener.AcceptTransport()
+	respTp, err = listener.AcceptStream()
 	if err != nil {
 		return nil, nil, err
 	}
