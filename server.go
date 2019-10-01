@@ -135,7 +135,7 @@ func (s *Server) Serve() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if err := s.retryUpdateEntry(ctx, TransportHandshakeTimeout); err != nil {
+	if err := s.retryUpdateEntry(ctx, StreamHandshakeTimeout); err != nil {
 		return fmt.Errorf("updating server's client entry failed with: %s", err)
 	}
 
@@ -170,6 +170,7 @@ func (s *Server) updateDiscEntry(ctx context.Context) error {
 	if err != nil {
 		entry = disc.NewServerEntry(s.pk, 0, s.addr, 10)
 		if err := entry.Sign(s.sk); err != nil {
+			fmt.Println("err in sign")
 			return err
 		}
 		return s.dc.SetEntry(ctx, entry)

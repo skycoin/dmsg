@@ -19,7 +19,7 @@ func TestLocalWindow(t *testing.T) {
 
 	var (
 		expR   int           // expected remaining size of the local window
-		tpDone chan struct{} // emulate done chan of originating dmsg.Transport
+		tpDone chan struct{} // emulate done chan of originating dmsg.Stream
 		lw     *LocalWindow
 	)
 

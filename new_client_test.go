@@ -17,8 +17,8 @@ import (
 
 // TODO: update comments mentioning a & b
 // Given two client instances (a & b) and a server instance (s),
-// Client b should be able to dial a transport with client b
-// Data should be sent and delivered successfully via the transport.
+// Client b should be able to dial a stream with client b
+// Data should be sent and delivered successfully via the stream.
 // TODO: fix this.
 func TestNewClient(t *testing.T) {
 	srvPK, srvSK := cipher.GenerateKeyPair()
