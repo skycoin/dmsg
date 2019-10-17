@@ -9,8 +9,10 @@ import (
 	"sync"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
+	"golang.org/x/net/nettest"
 
 	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/disc"
 	"github.com/SkycoinProject/dmsg/ioutil"
 )
 
@@ -410,4 +412,25 @@ func (tp *Transport) Write(p []byte) (int, error) {
 		return 0, err
 	}
 	return len(p), nil
+}
+
+func CreateDmsgTestServer(dc disc.APIClient) (*Server, error) {
+	pk, sk, err := cipher.GenerateDeterministicKeyPair([]byte("s"))
+	if err != nil {
+		return nil, err
+	}
+
+	l, err := nettest.NewLocalListener("tcp")
+	if err != nil {
+		return nil, err
+	}
+
+	srv, err := NewServer(pk, sk, "", l, dc)
+	if err != nil {
+		return nil, err
+	}
+
+	go func() { _ = srv.Serve() }() //nolint:errcheck
+
+	return srv, nil
 }
