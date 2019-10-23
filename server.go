@@ -282,7 +282,7 @@ func NewServer(pk cipher.PubKey, sk cipher.SecKey, addr string, l net.Listener, 
 	}
 
 	return &Server{
-		log:   logging.MustGetLogger("dms_server"),
+		log:   logging.MustGetLogger("dmsg_server"),
 		pk:    pk,
 		sk:    sk,
 		addr:  addr,
