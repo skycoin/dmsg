@@ -23,10 +23,10 @@ type ClientConn struct {
 	remoteSrv cipher.PubKey // dmsg server's public key
 
 	// nextInitID keeps track of unused tp_ids to assign a future locally-initiated tp.
-	// locally-initiated tps use an even tp_id between local and intermediary dms_server.
+	// locally-initiated tps use an even tp_id between local and intermediary dmsg_server.
 	nextInitID uint16
 
-	// Transports: map of transports to remote dms_clients (key: tp_id, val: transport).
+	// Transports: map of transports to remote dmsg_clients (key: tp_id, val: transport).
 	tps map[uint16]*Transport
 	mx  sync.RWMutex // to protect tps
 
@@ -241,7 +241,7 @@ func (c *ClientConn) Serve(ctx context.Context) (err error) {
 	}
 }
 
-// DialTransport dials a transport to remote dms_client.
+// DialTransport dials a transport to remote dmsg_client.
 func (c *ClientConn) DialTransport(ctx context.Context, clientPK cipher.PubKey, port uint16) (*Transport, error) {
 	tp, err := c.addTp(ctx, clientPK, 0, port) // TODO: Have proper local port.
 	if err != nil {
@@ -282,7 +282,7 @@ func (c *ClientConn) close() (closed bool) {
 	return closed
 }
 
-// Close closes the connection to dms_server.
+// Close closes the connection to dmsg_server.
 func (c *ClientConn) Close() error {
 	if c.close() {
 		c.wg.Wait()

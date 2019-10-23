@@ -50,7 +50,7 @@ type Transport struct {
 	doneFunc    func(id uint16) // contains a method to remove the transport from dmsg.Client
 }
 
-// NewTransport creates a new dms_tp.
+// NewTransport creates a new dmsg_tp.
 func NewTransport(conn net.Conn, log *logging.Logger, local, remote Addr, id uint16, doneFunc func(id uint16)) *Transport {
 	tp := &Transport{
 		Conn:      conn,
@@ -122,7 +122,7 @@ func (tp *Transport) Close() error {
 	return nil
 }
 
-// IsClosed returns whether dms_tp is closed.
+// IsClosed returns whether dmsg_tp is closed.
 func (tp *Transport) IsClosed() bool {
 	select {
 	case <-tp.done:
