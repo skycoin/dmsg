@@ -132,6 +132,10 @@ func (ns *Noise) EncryptUnsafe(plaintext []byte) []byte {
 // DecryptUnsafe decrypts ciphertext without interlocking, should only
 // be used with external lock.
 func (ns *Noise) DecryptUnsafe(ciphertext []byte) ([]byte, error) {
+	if len(ciphertext) == 0 {
+		return make([]byte, 0), nil
+	}
+
 	seq := binary.BigEndian.Uint32(ciphertext[:4])
 	if seq <= ns.previousSeq {
 		noiseLogger.Warnf("current seq: %s is not higher than previous one: %s. "+

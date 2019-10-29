@@ -3,7 +3,6 @@ package noise
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"io"
 	"sync"
 	"time"
@@ -11,6 +10,18 @@ import (
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/ioutil"
 )
+
+type timeoutError struct{}
+
+func (timeoutError) Error() string   { return "deadline exceeded" }
+func (timeoutError) Timeout() bool   { return true }
+func (timeoutError) Temporary() bool { return true }
+
+type netError struct{ Err error }
+
+func (e *netError) Error() string { return e.Err.Error() }
+func (netError) Timeout() bool    { return false }
+func (netError) Temporary() bool  { return true }
 
 // ReadWriter implements noise encrypted read writer.
 type ReadWriter struct {
@@ -41,21 +52,34 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+
 	plaintext, err := rw.ns.DecryptUnsafe(ciphertext)
 	if err != nil {
-		return 0, err
+		return 0, &netError{Err: err}
 	}
+
 	return ioutil.BufRead(&rw.rBuf, plaintext, p)
 }
 
 func (rw *ReadWriter) readPacket() ([]byte, error) {
 	h := make([]byte, 2)
-	if _, err := io.ReadFull(rw.origin, h); err != nil {
-		return nil, err
+	n1, err1 := io.ReadFull(rw.origin, h)
+	if err1 != nil && n1 != len(h) {
+		return nil, err1
 	}
-	data := make([]byte, binary.BigEndian.Uint16(h))
-	_, err := io.ReadFull(rw.origin, data)
-	return data, err
+
+	l := binary.BigEndian.Uint16(h)
+	data := make([]byte, l)
+	_, err2 := io.ReadFull(rw.origin, data)
+
+	if err1 != nil {
+		return nil, err1
+	}
+	if err2 != nil {
+		return nil, err2
+	}
+
+	return data, nil
 }
 
 func (rw *ReadWriter) Write(p []byte) (int, error) {
@@ -73,7 +97,10 @@ func (rw *ReadWriter) Write(p []byte) (int, error) {
 func (rw *ReadWriter) writePacket(p []byte) error {
 	buf := make([]byte, 2)
 	binary.BigEndian.PutUint16(buf, uint16(len(p)))
-	_, err := rw.origin.Write(append(buf, p...))
+
+	data := append(buf, p...)
+	_, err := rw.origin.Write(data)
+
 	return err
 }
 
@@ -92,7 +119,7 @@ func (rw *ReadWriter) Handshake(hsTimeout time.Duration) error {
 	case err := <-doneChan:
 		return err
 	case <-time.After(hsTimeout):
-		return errors.New("timeout")
+		return timeoutError{}
 	}
 }
 
