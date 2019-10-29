@@ -127,7 +127,9 @@ func (ns *Noise) EncryptUnsafe(plaintext []byte) []byte {
 	seqBuf := make([]byte, 4)
 	binary.BigEndian.PutUint32(seqBuf, newSeq)
 
-	return append(seqBuf, ns.enc.Cipher().Encrypt(nil, uint64(newSeq), nil, plaintext)...)
+	// TODO: enable encryption
+	// return append(seqBuf, ns.enc.Cipher().Encrypt(nil, uint64(newSeq), nil, plaintext)...)
+	return append(seqBuf, plaintext...)
 }
 
 // DecryptUnsafe decrypts ciphertext without interlocking, should only
@@ -148,7 +150,9 @@ func (ns *Noise) DecryptUnsafe(ciphertext []byte) ([]byte, error) {
 		ns.previousSeq = seq
 	}
 
-	return ns.dec.Cipher().Decrypt(nil, uint64(seq), nil, ciphertext[4:])
+	// TODO: enable encryption
+	// return ns.dec.Cipher().Decrypt(nil, uint64(seq), nil, ciphertext[4:])
+	return ciphertext[4:], nil
 }
 
 // HandshakeFinished indicate whether handshake was completed.

@@ -3,6 +3,7 @@ package noise
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -48,11 +49,13 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 	defer rw.rMx.Unlock()
 
 	if rw.rBuf.Len() > 0 {
+		fmt.Println("noise reads packet from rBuf") // TODO: remove debug print
 		return rw.rBuf.Read(p)
 	}
 
 	ciphertext, err := rw.readPacket()
 	if err != nil {
+		fmt.Printf("read failure: %v\n", err) // TODO: remove debug print
 		return 0, err
 	}
 
@@ -70,10 +73,11 @@ func (rw *ReadWriter) readPacket() ([]byte, error) {
 	if err1 != nil && n1 != len(h) {
 		return nil, err1
 	}
+	fmt.Printf("read size: [%d/%d] %v\n", n1, 2, h) // TODO: remove debug print
 
 	l := binary.BigEndian.Uint16(h)
 	data := make([]byte, l)
-	_, err2 := io.ReadFull(rw.origin, data)
+	n2, err2 := io.ReadFull(rw.origin, data)
 
 	if err1 != nil {
 		return nil, err1
@@ -82,6 +86,8 @@ func (rw *ReadWriter) readPacket() ([]byte, error) {
 		return nil, err2
 	}
 
+	_ = n2
+	fmt.Printf("read: [%d/%d] %v\n", n2, len(data), data) // TODO: remove debug print
 	return data, nil
 }
 
@@ -104,6 +110,7 @@ func (rw *ReadWriter) writePacket(p []byte) error {
 	data := append(buf, p...)
 	_, err := rw.origin.Write(data)
 
+	fmt.Printf("written: [%d] %v\n", len(data), data) // TODO: remove debug print
 	return err
 }
 

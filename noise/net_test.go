@@ -252,11 +252,17 @@ func TestConn(t *testing.T) {
 	})
 
 	t.Run("TestConn", func(t *testing.T) {
-		mp := func() (c1, c2 net.Conn, stop func(), err error) {
-			c1, c2, stop = prepareConns(t)
-			return
+		// Subtle bugs do not always appear on the first run.
+		// This way can increase the probability of finding them.
+		const attempts = 3
+
+		for i := 0; i < attempts; i++ {
+			mp := func() (c1, c2 net.Conn, stop func(), err error) {
+				c1, c2, stop = prepareConns(t)
+				return
+			}
+			nettest.TestConn(t, mp)
 		}
-		nettest.TestConn(t, mp)
 	})
 }
 
