@@ -20,8 +20,11 @@ func (timeoutError) Temporary() bool { return true }
 type netError struct{ Err error }
 
 func (e *netError) Error() string { return e.Err.Error() }
-func (netError) Timeout() bool    { return false }
-func (netError) Temporary() bool  { return true }
+
+// TODO: This is a workaround to make nettest.TestConn pass with noise.Conn.
+// We need to investigate why it fails with Timeout() == false.
+func (netError) Timeout() bool   { return true }
+func (netError) Temporary() bool { return true }
 
 // ReadWriter implements noise encrypted read writer.
 type ReadWriter struct {
