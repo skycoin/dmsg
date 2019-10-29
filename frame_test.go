@@ -268,7 +268,7 @@ func Test_readFrame(t *testing.T) {
 		},
 		{
 			name:    "Payload shorter than required",
-			args:    args{r: bytes.NewReader(append([]byte{0x01, 0x00, 0x02, 0x00, 0x03}))},
+			args:    args{r: bytes.NewReader([]byte{0x01, 0x00, 0x02, 0x00, 0x03})},
 			want:    Frame{0x01, 0x00, 0x02, 0x00, 0x03, 0x00, 0x00, 0x00},
 			wantErr: io.EOF,
 		},

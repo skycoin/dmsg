@@ -414,6 +414,7 @@ func (tp *Transport) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// CreateDmsgTestServer creates a new dmsg test server.
 func CreateDmsgTestServer(dc disc.APIClient) (*Server, error) {
 	pk, sk, err := cipher.GenerateDeterministicKeyPair([]byte("s"))
 	if err != nil {

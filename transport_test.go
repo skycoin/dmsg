@@ -8,6 +8,7 @@ import (
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 
 	"github.com/SkycoinProject/dmsg/cipher"
@@ -164,7 +165,7 @@ func TestTransport(t *testing.T) {
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		defer func() { _ = srv.Close() }()
+		defer func() { require.NoError(t, srv.Close()) }()
 
 		respC := NewClient(respPK, respSK, dc)
 		initC := NewClient(initPK, initSK, dc)
@@ -198,12 +199,12 @@ func TestTransport(t *testing.T) {
 		}
 
 		closeFunc := func() {
-			_ = initTp.Close()
-			_ = respTp.Close()
-			_ = initL.Close()
-			_ = respL.Close()
-			_ = initC.Close()
-			_ = respC.Close()
+			require.NoError(t, initTp.Close())
+			require.NoError(t, respTp.Close())
+			require.NoError(t, initL.Close())
+			require.NoError(t, respL.Close())
+			require.NoError(t, initC.Close())
+			require.NoError(t, respC.Close())
 		}
 
 		return initTp, respTp, closeFunc, nil
