@@ -3,6 +3,7 @@ package noise
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"sync/atomic"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
 
@@ -122,11 +123,11 @@ func (ns *Noise) RemoteStatic() cipher.PubKey {
 // EncryptUnsafe encrypts plaintext without interlocking, should only
 // be used with external lock.
 func (ns *Noise) EncryptUnsafe(plaintext []byte) []byte {
-	ns.seq++
-	seq := make([]byte, 4)
-	binary.BigEndian.PutUint32(seq, ns.seq)
+	newSeq := atomic.AddUint32(&ns.seq, 1)
+	seqBuf := make([]byte, 4)
+	binary.BigEndian.PutUint32(seqBuf, newSeq)
 
-	return append(seq, ns.enc.Cipher().Encrypt(nil, uint64(ns.seq), nil, plaintext)...)
+	return append(seqBuf, ns.enc.Cipher().Encrypt(nil, uint64(newSeq), nil, plaintext)...)
 }
 
 // DecryptUnsafe decrypts ciphertext without interlocking, should only
@@ -139,7 +140,7 @@ func (ns *Noise) DecryptUnsafe(ciphertext []byte) ([]byte, error) {
 	seq := binary.BigEndian.Uint32(ciphertext[:4])
 	if seq <= ns.previousSeq {
 		noiseLogger.Warnf("current seq: %s is not higher than previous one: %s. "+
-			"Highest sequence number received so far is: %s", ns.seq, ns.previousSeq, ns.highestPrevious)
+			"Highest sequence number received so far is: %s", atomic.LoadUint32(&ns.seq), ns.previousSeq, ns.highestPrevious)
 	} else {
 		if ns.previousSeq > ns.highestPrevious {
 			ns.highestPrevious = seq
