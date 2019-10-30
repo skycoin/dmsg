@@ -222,7 +222,7 @@ func (c *Client) findOrConnectToServer(ctx context.Context, srvPK cipher.PubKey)
 
 	go func() {
 		err := conn.Serve(ctx)
-		conn.log.WithError(err).WithField("remoteServer", srvPK).Warn("connected with server closed")
+		conn.log.WithField("reason", err).WithField("remoteServer", srvPK).Debug("connection with server closed")
 		c.delConn(ctx, srvPK)
 
 		// reconnect logic.
@@ -299,7 +299,7 @@ func (c *Client) Close() error {
 		c.mx.Lock()
 		for _, conn := range c.conns {
 			if err := conn.Close(); err != nil {
-				log.WithError(err).Warn("Failed to close connection")
+				log.WithField("reason", err).Debug("Connection closed")
 			}
 		}
 		c.conns = make(map[cipher.PubKey]*ClientConn)

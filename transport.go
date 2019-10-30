@@ -344,7 +344,7 @@ func (tp *Transport) Serve() {
 			case RequestType:
 				log.Warnln("Rejected [REQUEST]: ID already occupied, possibly malicious server.")
 				if err := tp.Conn.Close(); err != nil {
-					log.WithError(err).Warn("Failed to close connection")
+					log.WithField("reason", err).Debug("Connection closed")
 				}
 				return
 
