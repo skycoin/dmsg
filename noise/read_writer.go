@@ -12,6 +12,9 @@ import (
 	"github.com/SkycoinProject/dmsg/ioutil"
 )
 
+// prefixSize is the len prefix (in uint32) of the payload.
+const prefixSize = 4
+
 type timeoutError struct{}
 
 func (timeoutError) Error() string   { return "deadline exceeded" }
@@ -29,11 +32,17 @@ func (netError) Temporary() bool { return true }
 
 // ReadWriter implements noise encrypted read writer.
 type ReadWriter struct {
-	origin io.ReadWriter
-	ns     *Noise
-	rBuf   bytes.Buffer
-	rMx    sync.Mutex
-	wMx    sync.Mutex
+	origin   io.ReadWriter
+	ns       *Noise
+
+	rawInput []byte
+	input    bytes.Buffer
+
+	rBytes uint64
+	wBytes uint64
+
+	rMx      sync.Mutex
+	wMx      sync.Mutex
 }
 
 // NewReadWriter constructs a new ReadWriter.
@@ -48,9 +57,9 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 	rw.rMx.Lock()
 	defer rw.rMx.Unlock()
 
-	if rw.rBuf.Len() > 0 {
-		fmt.Println("noise reads packet from rBuf") // TODO: remove debug print
-		return rw.rBuf.Read(p)
+	if rw.input.Len() > 0 {
+		fmt.Println("noise reads packet from input") // TODO: remove debug print
+		return rw.input.Read(p)
 	}
 
 	ciphertext, err := rw.readPacket()
@@ -64,31 +73,26 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 		return 0, &netError{Err: err}
 	}
 
-	return ioutil.BufRead(&rw.rBuf, plaintext, p)
+	return ioutil.BufRead(&rw.input, plaintext, p)
 }
 
 func (rw *ReadWriter) readPacket() ([]byte, error) {
-	h := make([]byte, 2)
-	n1, err1 := io.ReadFull(rw.origin, h)
-	if err1 != nil && n1 != len(h) {
-		return nil, err1
-	}
-	fmt.Printf("read size: [%d/%d] %v\n", n1, 2, h) // TODO: remove debug print
+	return readFullPacket(rw.origin, &rw.rawInput, &rw.rBytes)
 
-	l := binary.BigEndian.Uint16(h)
-	data := make([]byte, l)
-	n2, err2 := io.ReadFull(rw.origin, data)
-
-	if err1 != nil {
-		return nil, err1
-	}
-	if err2 != nil {
-		return nil, err2
-	}
-
-	_ = n2
-	fmt.Printf("read: [%d/%d] %v\n", n2, len(data), data) // TODO: remove debug print
-	return data, nil
+	//h := make([]byte, prefixSize)
+	//n, err := io.ReadFull(rw.origin, h)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//fmt.Printf("read size: [%d/%d] %v\n", n, 2, h) // TODO: remove debug print
+	//
+	//data := make([]byte, binary.BigEndian.Uint32(h))
+	//n, err = io.ReadFull(rw.origin, data)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//fmt.Printf("read: [%d/%d] %v\n", n, len(data), data) // TODO: remove debug print
+	//return data, nil
 }
 
 func (rw *ReadWriter) Write(p []byte) (int, error) {
@@ -104,8 +108,8 @@ func (rw *ReadWriter) Write(p []byte) (int, error) {
 }
 
 func (rw *ReadWriter) writePacket(p []byte) error {
-	buf := make([]byte, 2)
-	binary.BigEndian.PutUint16(buf, uint16(len(p)))
+	buf := make([]byte, prefixSize)
+	binary.BigEndian.PutUint32(buf, uint32(len(p)))
 
 	data := append(buf, p...)
 	_, err := rw.origin.Write(data)

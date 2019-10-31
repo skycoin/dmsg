@@ -280,7 +280,17 @@ func prepareConns(t *testing.T) (*Conn, *Conn, func()) {
 
 	aConn, bConn := net.Pipe()
 
+	//l, err := net.Listen("tcp", "")
+	//require.NoError(t, err)
+	//
+	//aConn, err := net.Dial(l.Addr().Network(), l.Addr().String())
+	//require.NoError(t, err)
+	//
+	//bConn, err := l.Accept()
+	//require.NoError(t, err)
+
 	closeFunc := func() {
+		//require.NoError(t, l.Close())
 		require.NoError(t, aConn.Close())
 		require.NoError(t, bConn.Close())
 	}
