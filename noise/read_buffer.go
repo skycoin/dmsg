@@ -45,29 +45,3 @@ func readFullPacket(in io.Reader, buf *[]byte, okReads *uint64) (out []byte, err
 	*buf = make([]byte, 0, prefixSize)
 	return out, nil
 }
-
-func completePacket(in io.Reader, buf *[]byte) error {
-
-	// complete prefix bytes
-	if r := prefixSize - len(*buf); r > 0 {
-		b := make([]byte, r)
-		n, err := io.ReadFull(in, b)
-		if *buf = append(*buf, b[:n]...); err != nil {
-			return err
-		}
-	}
-
-	// obtain payload size
-	paySize := int(binary.BigEndian.Uint32(*buf))
-
-	// complete payload bytes
-	if r := prefixSize + paySize - len(*buf); r > 0 {
-		b := make([]byte, r)
-		n, err := io.ReadFull(in, b)
-		if *buf = append(*buf, b[:n]...); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}

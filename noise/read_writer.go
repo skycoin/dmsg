@@ -38,8 +38,7 @@ type ReadWriter struct {
 	rawInput []byte
 	input    bytes.Buffer
 
-	rBytes uint64
-	wBytes uint64
+	okReads uint64
 
 	rMx      sync.Mutex
 	wMx      sync.Mutex
@@ -77,7 +76,7 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 }
 
 func (rw *ReadWriter) readPacket() ([]byte, error) {
-	return readFullPacket(rw.origin, &rw.rawInput, &rw.rBytes)
+	return readFullPacket(rw.origin, &rw.rawInput, &rw.okReads)
 
 	//h := make([]byte, prefixSize)
 	//n, err := io.ReadFull(rw.origin, h)
