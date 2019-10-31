@@ -3,7 +3,6 @@ package noise
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"sync/atomic"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
 
@@ -13,6 +12,9 @@ import (
 )
 
 var noiseLogger = logging.MustGetLogger("noise") // TODO: initialize properly or remove
+
+// nonceSize is the noise cipher state's nonce size in bytes.
+const nonceSize = 8
 
 // Config hold noise parameters.
 type Config struct {
@@ -34,9 +36,13 @@ type Noise struct {
 	enc     *noise.CipherState
 	dec     *noise.CipherState
 
-	seq             uint32 // sequence number, used as nonce for both encrypting and decrypting
-	previousSeq     uint32 // sequence number last decrypted, check in order to avoid reply attacks
-	highestPrevious uint32 // highest sequence number received from the other end
+	// next sequences
+	encSeq uint64 // increment after encryption
+	decSeq uint64 // expect increment with each subsequent packet
+
+	//seq             uint32 // sequence number, used as nonce for both encrypting and decrypting
+	//prevSeq         uint32 // sequence number last decrypted, check in order to avoid reply attacks
+	//highestPrevious uint32 // highest sequence number received from the other end
 }
 
 // New creates a new Noise with:
@@ -123,13 +129,14 @@ func (ns *Noise) RemoteStatic() cipher.PubKey {
 // EncryptUnsafe encrypts plaintext without interlocking, should only
 // be used with external lock.
 func (ns *Noise) EncryptUnsafe(plaintext []byte) []byte {
-	newSeq := atomic.AddUint32(&ns.seq, 1)
-	seqBuf := make([]byte, 4)
-	binary.BigEndian.PutUint32(seqBuf, newSeq)
+	ns.encSeq += 1
+
+	buf := make([]byte, nonceSize)
+	binary.BigEndian.PutUint64(buf, ns.encSeq)
 
 	// TODO: enable encryption
 	// return append(seqBuf, ns.enc.Cipher().Encrypt(nil, uint64(newSeq), nil, plaintext)...)
-	return append(seqBuf, plaintext...)
+	return append(buf, plaintext...)
 }
 
 // DecryptUnsafe decrypts ciphertext without interlocking, should only
@@ -138,21 +145,20 @@ func (ns *Noise) DecryptUnsafe(ciphertext []byte) ([]byte, error) {
 	if len(ciphertext) == 0 {
 		return make([]byte, 0), nil
 	}
-
-	seq := binary.BigEndian.Uint32(ciphertext[:4])
-	if seq <= ns.previousSeq {
-		noiseLogger.Warnf("current seq: %s is not higher than previous one: %s. "+
-			"Highest sequence number received so far is: %s", atomic.LoadUint32(&ns.seq), ns.previousSeq, ns.highestPrevious)
-	} else {
-		if ns.previousSeq > ns.highestPrevious {
-			ns.highestPrevious = seq
-		}
-		ns.previousSeq = seq
+	if len(ciphertext) < nonceSize {
+		panic("noise decrypt unsafe: cipher text cannot be less than 8 bytes")
 	}
+
+	recvSeq := binary.BigEndian.Uint64(ciphertext[:nonceSize])
+	if recvSeq <= ns.decSeq {
+		noiseLogger.Warnf("received decryption sequence (%d) is not higher than previous (%d)", recvSeq, ns.decSeq)
+		return nil, nil // TODO(evanlinjin): Maybe we should return error here.
+	}
+	ns.decSeq = recvSeq
 
 	// TODO: enable encryption
 	// return ns.dec.Cipher().Decrypt(nil, uint64(seq), nil, ciphertext[4:])
-	return ciphertext[4:], nil
+	return ciphertext[nonceSize:], nil
 }
 
 // HandshakeFinished indicate whether handshake was completed.
