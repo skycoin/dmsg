@@ -24,24 +24,19 @@ func (timeoutError) Temporary() bool { return true }
 type netError struct{ Err error }
 
 func (e *netError) Error() string { return e.Err.Error() }
-
-// TODO: This is a workaround to make nettest.TestConn pass with noise.Conn.
-// We need to investigate why it fails with Timeout() == false.
-func (netError) Timeout() bool   { return true }
-func (netError) Temporary() bool { return true }
+func (netError) Timeout() bool    { return false }
+func (netError) Temporary() bool  { return true }
 
 // ReadWriter implements noise encrypted read writer.
 type ReadWriter struct {
-	origin   io.ReadWriter
-	ns       *Noise
+	origin io.ReadWriter
+	ns     *Noise
 
 	rawInput []byte
 	input    bytes.Buffer
 
-	okReads uint64
-
-	rMx      sync.Mutex
-	wMx      sync.Mutex
+	rMx sync.Mutex
+	wMx sync.Mutex
 }
 
 // NewReadWriter constructs a new ReadWriter.
@@ -53,11 +48,6 @@ func NewReadWriter(rw io.ReadWriter, ns *Noise) *ReadWriter {
 }
 
 func (rw *ReadWriter) Read(p []byte) (int, error) {
-	if len(p) == 0 {
-		return 0, nil
-	}
-	fmt.Println("read buf size:", len(p))
-
 	rw.rMx.Lock()
 	defer rw.rMx.Unlock()
 
@@ -81,7 +71,40 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 }
 
 func (rw *ReadWriter) readPacket() ([]byte, error) {
-	return readFullPacket(rw.origin, &rw.rawInput, &rw.okReads)
+	return readFullPacket(rw.origin, &rw.rawInput)
+}
+
+func readFullPacket(in io.Reader, buf *[]byte) (out []byte, err error) {
+	// complete prefix bytes
+	if r := prefixSize - len(*buf); r > 0 {
+		b := make([]byte, r)
+		n, err := io.ReadFull(in, b)
+		fmt.Printf("read (prefix): [%d/%d] err(%v) %v\n", n, prefixSize, err, b[:n]) // TODO: remove debug print
+		*buf = append(*buf, b[:n]...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// obtain payload size
+	paySize := int(binary.BigEndian.Uint32(*buf))
+
+	// complete payload bytes
+	if r := prefixSize + paySize - len(*buf); r > 0 {
+		b := make([]byte, r)
+		n, err := io.ReadFull(in, b)
+		fmt.Printf("read (payload): [%d/%d] err(%v) %v\n", n, paySize, err, b[:n]) // TODO: remove debug print
+		*buf = append(*buf, b[:n]...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// return success
+	out = make([]byte, len(*buf)-prefixSize)
+	copy(out, (*buf)[prefixSize:])
+	*buf = make([]byte, 0, prefixSize)
+	return out, nil
 }
 
 func (rw *ReadWriter) Write(p []byte) (int, error) {
@@ -103,7 +126,7 @@ func (rw *ReadWriter) writePacket(p []byte) error {
 	data := append(buf, p...)
 	_, err := rw.origin.Write(data)
 
-	fmt.Printf("written: [%d] %v\n", len(data), data) // TODO: remove debug print
+	fmt.Printf("wrote: [%d] %v\n", len(data), data) // TODO: remove debug print
 	return err
 }
 
