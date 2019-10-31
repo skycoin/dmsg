@@ -29,7 +29,7 @@ func (r *NextConn) writeFrame(ft FrameType, p []byte) error {
 	if err := writeFrame(r.conn.Conn, MakeFrame(ft, r.id, p)); err != nil {
 		go func() {
 			if err := r.conn.Close(); err != nil {
-				log.WithError(err).Warn("Failed to close connection")
+				log.WithField("reason", err).Debug("Connection closed")
 			}
 		}()
 		return err
@@ -138,9 +138,9 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 		}
 		c.mx.Unlock()
 
-		log.WithError(err).WithField("connCount", decrementServeCount()).Infoln("ClosingConn")
+		log.WithField("reason", err).WithField("connCount", decrementServeCount()).Debug("ClosingConn")
 		if err := c.Conn.Close(); err != nil {
-			log.WithError(err).Warn("Failed to close connection")
+			log.WithField("reason", err).Debug("Connection closed")
 		}
 	}()
 

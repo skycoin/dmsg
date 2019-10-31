@@ -275,7 +275,7 @@ func (c *ClientConn) close() (closed bool) {
 			}()
 		}
 		if err := c.Conn.Close(); err != nil {
-			log.WithError(err).Warn("Failed to close connection")
+			log.WithField("reason", err).Debug("Connection closed")
 		}
 		c.mx.Unlock()
 	})
