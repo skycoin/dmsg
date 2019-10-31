@@ -257,13 +257,27 @@ func TestConn(t *testing.T) {
 		const attempts = 3
 
 		for i := 0; i < attempts; i++ {
-			mp := func() (c1, c2 net.Conn, stop func(), err error) {
+			nettest.TestConn(t, func() (c1, c2 net.Conn, stop func(), err error) {
 				c1, c2, stop = prepareConns(t)
 				return
-			}
-			nettest.TestConn(t, mp)
+			})
 		}
 	})
+
+	//t.Run("TestConn2", func(t *testing.T) {
+	//	const attempts = 3
+	//
+	//	for i := 0; i < attempts; i++ {
+	//		nettest.TestConn(t, func() (c1, c2 net.Conn, stop func(), err error) {
+	//			c1, c2 = net.Pipe()
+	//			stop = func() {
+	//				require.NoError(t, c1.Close())
+	//			}
+	//			err = nil
+	//			return
+	//		})
+	//	}
+	//})
 }
 
 func prepareConns(t *testing.T) (*Conn, *Conn, func()) {

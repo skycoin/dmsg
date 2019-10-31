@@ -3,6 +3,7 @@ package noise
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"sync/atomic"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
 
@@ -124,14 +125,12 @@ func (ns *Noise) RemoteStatic() cipher.PubKey {
 // EncryptUnsafe encrypts plaintext without interlocking, should only
 // be used with external lock.
 func (ns *Noise) EncryptUnsafe(plaintext []byte) []byte {
-	ns.encNonce += 1
+	nonce := atomic.AddUint64(&ns.encNonce, 1)
 
 	buf := make([]byte, nonceSize)
-	binary.BigEndian.PutUint64(buf, ns.encNonce)
+	binary.BigEndian.PutUint64(buf, nonce)
 
-	// TODO: enable encryption
-	return append(buf, ns.enc.Cipher().Encrypt(nil, ns.encNonce, nil, plaintext)...)
-	//return append(buf, plaintext...)
+	return append(buf, ns.enc.Cipher().Encrypt(nil, nonce, nil, plaintext)...)
 }
 
 // DecryptUnsafe decrypts ciphertext without interlocking, should only
@@ -145,15 +144,16 @@ func (ns *Noise) DecryptUnsafe(ciphertext []byte) ([]byte, error) {
 	}
 
 	recvSeq := binary.BigEndian.Uint64(ciphertext[:nonceSize])
-	if recvSeq <= ns.decNonce {
-		noiseLogger.Warnf("received decryption sequence (%d) is not higher than previous (%d)", recvSeq, ns.decNonce)
+	lastSeq := atomic.AddUint64(&ns.decNonce, 1) - 1
+
+	if recvSeq <= lastSeq {
+		noiseLogger.Warnf("received decryption sequence (%d) is not higher than previous (%d)", recvSeq, lastSeq)
 		return nil, nil // TODO(evanlinjin): Maybe we should return error here.
 	}
-	ns.decNonce = recvSeq
+	//ns.decNonce = recvSeq
+	atomic.CompareAndSwapUint64(&ns.decNonce, lastSeq, recvSeq)
 
-	// TODO: enable encryption
 	return ns.dec.Cipher().Decrypt(nil, recvSeq, nil, ciphertext[nonceSize:])
-	//return ciphertext[nonceSize:], nil
 }
 
 // HandshakeFinished indicate whether handshake was completed.

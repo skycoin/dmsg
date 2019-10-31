@@ -53,6 +53,11 @@ func NewReadWriter(rw io.ReadWriter, ns *Noise) *ReadWriter {
 }
 
 func (rw *ReadWriter) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	fmt.Println("read buf size:", len(p))
+
 	rw.rMx.Lock()
 	defer rw.rMx.Unlock()
 
@@ -77,21 +82,6 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 
 func (rw *ReadWriter) readPacket() ([]byte, error) {
 	return readFullPacket(rw.origin, &rw.rawInput, &rw.okReads)
-
-	//h := make([]byte, prefixSize)
-	//n, err := io.ReadFull(rw.origin, h)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//fmt.Printf("read size: [%d/%d] %v\n", n, 2, h) // TODO: remove debug print
-	//
-	//data := make([]byte, binary.BigEndian.Uint32(h))
-	//n, err = io.ReadFull(rw.origin, data)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//fmt.Printf("read: [%d/%d] %v\n", n, len(data), data) // TODO: remove debug print
-	//return data, nil
 }
 
 func (rw *ReadWriter) Write(p []byte) (int, error) {
