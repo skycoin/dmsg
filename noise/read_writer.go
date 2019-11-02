@@ -1,6 +1,7 @@
 package noise
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"fmt"
@@ -14,6 +15,9 @@ import (
 
 // prefixSize is the len prefix (in uint32) of the payload.
 const prefixSize = 4
+const authSize = 16 // noise auth data
+const maxFrameSize = 4096
+const maxPayloadSize = maxFrameSize - 4
 
 type timeoutError struct{}
 
@@ -32,7 +36,7 @@ type ReadWriter struct {
 	origin io.ReadWriter
 	ns     *Noise
 
-	rawInput []byte
+	rawInput *bufio.Reader
 	input    bytes.Buffer
 
 	rMx sync.Mutex
@@ -42,8 +46,9 @@ type ReadWriter struct {
 // NewReadWriter constructs a new ReadWriter.
 func NewReadWriter(rw io.ReadWriter, ns *Noise) *ReadWriter {
 	return &ReadWriter{
-		origin: rw,
-		ns:     ns,
+		origin:   rw,
+		ns:       ns,
+		rawInput: bufio.NewReaderSize(rw, maxFrameSize),
 	}
 }
 
@@ -52,13 +57,11 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 	defer rw.rMx.Unlock()
 
 	if rw.input.Len() > 0 {
-		fmt.Println("noise reads packet from input") // TODO: remove debug print
 		return rw.input.Read(p)
 	}
 
 	ciphertext, err := rw.readPacket()
 	if err != nil {
-		fmt.Printf("read failure: %v\n", err) // TODO: remove debug print
 		return 0, err
 	}
 
@@ -71,45 +74,41 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 }
 
 func (rw *ReadWriter) readPacket() ([]byte, error) {
-	return readFullPacket(rw.origin, &rw.rawInput)
+	return readWithBuf(rw.rawInput)
 }
 
-func readFullPacket(in io.Reader, buf *[]byte) (out []byte, err error) {
-	// complete prefix bytes
-	if r := prefixSize - len(*buf); r > 0 {
-		b := make([]byte, r)
-		n, err := io.ReadFull(in, b)
-		fmt.Printf("read (prefix): [%d/%d] err(%v) %v\n", n, prefixSize, err, b[:n]) // TODO: remove debug print
-		*buf = append(*buf, b[:n]...)
-		if err != nil {
-			return nil, err
-		}
+func readWithBuf(in *bufio.Reader) (out []byte, err error) {
+	prefixB, err := in.Peek(prefixSize)
+	if err != nil {
+		return nil, err
 	}
 
 	// obtain payload size
-	paySize := int(binary.BigEndian.Uint32(*buf))
-
-	// complete payload bytes
-	if r := prefixSize + paySize - len(*buf); r > 0 {
-		b := make([]byte, r)
-		n, err := io.ReadFull(in, b)
-		fmt.Printf("read (payload): [%d/%d] err(%v) %v\n", n, paySize, err, b[:n]) // TODO: remove debug print
-		*buf = append(*buf, b[:n]...)
-		if err != nil {
-			return nil, err
+	payLen := int(binary.BigEndian.Uint32(prefixB))
+	if payLen > maxPayloadSize {
+		return nil, &netError{
+			Err: fmt.Errorf("noise payload size %dB exceeds maximum %dB", payLen, maxPayloadSize),
 		}
 	}
 
-	// return success
-	out = make([]byte, len(*buf)-prefixSize)
-	copy(out, (*buf)[prefixSize:])
-	*buf = make([]byte, 0, prefixSize)
-	return out, nil
+	// obtain payload
+	b, err := in.Peek(prefixSize + payLen)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := in.Discard(prefixSize + payLen); err != nil {
+		panic(fmt.Errorf("unexpected error when discarding %d bytes: %v", prefixSize+payLen, err))
+	}
+	return b[prefixSize:], nil
 }
 
 func (rw *ReadWriter) Write(p []byte) (int, error) {
 	rw.wMx.Lock()
 	defer rw.wMx.Unlock()
+
+	if len(p)+prefixSize+authSize > maxFrameSize {
+		panic("TODO(evanlinjin): implement segmentation!!!")
+	}
 
 	ciphertext := rw.ns.EncryptUnsafe(p)
 
@@ -126,7 +125,6 @@ func (rw *ReadWriter) writePacket(p []byte) error {
 	data := append(buf, p...)
 	_, err := rw.origin.Write(data)
 
-	fmt.Printf("wrote: [%d] %v\n", len(data), data) // TODO: remove debug print
 	return err
 }
 
