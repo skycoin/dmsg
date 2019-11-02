@@ -13,11 +13,15 @@ import (
 	"github.com/SkycoinProject/dmsg/ioutil"
 )
 
-// prefixSize is the len prefix (in uint32) of the payload.
-const prefixSize = 4
-const authSize = 16 // noise auth data
-const maxFrameSize = 4096
-const maxPayloadSize = maxFrameSize - 4
+// Frame format: [ len (4 bytes) | auth (16 bytes) | payload (<= maxPayloadSize bytes) ]
+const (
+	maxFrameSize   = 4096                                 // maximum frame size (4096)
+	maxPayloadSize = maxFrameSize - prefixSize - authSize // maximum payload size
+	maxPrefixValue = maxFrameSize - prefixSize // maximum value contained in the 'len' prefix
+
+	prefixSize = 4  // len prefix size
+	authSize   = 16 // noise auth data size
+)
 
 type timeoutError struct{}
 
@@ -48,7 +52,7 @@ func NewReadWriter(rw io.ReadWriter, ns *Noise) *ReadWriter {
 	return &ReadWriter{
 		origin:   rw,
 		ns:       ns,
-		rawInput: bufio.NewReaderSize(rw, maxFrameSize),
+		rawInput: bufio.NewReaderSize(rw, maxFrameSize*2), // can fit 2 frames.
 	}
 }
 
@@ -84,47 +88,43 @@ func readWithBuf(in *bufio.Reader) (out []byte, err error) {
 	}
 
 	// obtain payload size
-	payLen := int(binary.BigEndian.Uint32(prefixB))
-	if payLen > maxPayloadSize {
+	prefix := int(binary.BigEndian.Uint32(prefixB))
+	if prefix > maxPrefixValue {
 		return nil, &netError{
-			Err: fmt.Errorf("noise payload size %dB exceeds maximum %dB", payLen, maxPayloadSize),
+			Err: fmt.Errorf("noise prefix value %dB exceeds maximum %dB", prefix, maxPrefixValue),
 		}
 	}
 
 	// obtain payload
-	b, err := in.Peek(prefixSize + payLen)
+	b, err := in.Peek(prefixSize + prefix)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := in.Discard(prefixSize + payLen); err != nil {
-		panic(fmt.Errorf("unexpected error when discarding %d bytes: %v", prefixSize+payLen, err))
+	if _, err := in.Discard(prefixSize + prefix); err != nil {
+		panic(fmt.Errorf("unexpected error when discarding %d bytes: %v", prefixSize+prefix, err))
 	}
 	return b[prefixSize:], nil
 }
 
-func (rw *ReadWriter) Write(p []byte) (int, error) {
+func (rw *ReadWriter) Write(p []byte) (n int, err error) {
 	rw.wMx.Lock()
 	defer rw.wMx.Unlock()
 
-	if len(p)+prefixSize+authSize > maxFrameSize {
-		panic("TODO(evanlinjin): implement segmentation!!!")
+	// Enforce max write size.
+	if len(p) > maxPayloadSize {
+		p, err = p[:maxPayloadSize], io.ErrShortWrite
 	}
-
-	ciphertext := rw.ns.EncryptUnsafe(p)
-
-	if err := rw.writePacket(ciphertext); err != nil {
+	if err := rw.writeFrame(rw.ns.EncryptUnsafe(p)); err != nil {
 		return 0, err
 	}
-	return len(p), nil
+	return len(p), err
 }
 
-func (rw *ReadWriter) writePacket(p []byte) error {
-	buf := make([]byte, prefixSize)
+func (rw *ReadWriter) writeFrame(p []byte) error {
+	buf := make([]byte, prefixSize+len(p))
 	binary.BigEndian.PutUint32(buf, uint32(len(p)))
-
-	data := append(buf, p...)
-	_, err := rw.origin.Write(data)
-
+	copy(buf[prefixSize:], p)
+	_, err := rw.origin.Write(buf)
 	return err
 }
 
@@ -138,7 +138,6 @@ func (rw *ReadWriter) Handshake(hsTimeout time.Duration) error {
 			doneChan <- rw.responderHandshake()
 		}
 	}()
-
 	select {
 	case err := <-doneChan:
 		return err
@@ -163,24 +162,19 @@ func (rw *ReadWriter) initiatorHandshake() error {
 		if err != nil {
 			return err
 		}
-
-		if err := rw.writePacket(msg); err != nil {
+		if err := rw.writeFrame(msg); err != nil {
 			return err
 		}
-
 		if rw.ns.HandshakeFinished() {
 			break
 		}
-
 		res, err := rw.readPacket()
 		if err != nil {
 			return err
 		}
-
 		if err = rw.ns.ProcessMessage(res); err != nil {
 			return err
 		}
-
 		if rw.ns.HandshakeFinished() {
 			break
 		}
@@ -195,24 +189,19 @@ func (rw *ReadWriter) responderHandshake() error {
 		if err != nil {
 			return err
 		}
-
 		if err := rw.ns.ProcessMessage(msg); err != nil {
 			return err
 		}
-
 		if rw.ns.HandshakeFinished() {
 			break
 		}
-
 		res, err := rw.ns.HandshakeMessage()
 		if err != nil {
 			return err
 		}
-
-		if err := rw.writePacket(res); err != nil {
+		if err := rw.writeFrame(res); err != nil {
 			return err
 		}
-
 		if rw.ns.HandshakeFinished() {
 			break
 		}
