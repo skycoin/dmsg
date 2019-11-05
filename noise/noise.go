@@ -125,11 +125,9 @@ func (ns *Noise) RemoteStatic() cipher.PubKey {
 // EncryptUnsafe encrypts plaintext without interlocking, should only
 // be used with external lock.
 func (ns *Noise) EncryptUnsafe(plaintext []byte) []byte {
-	ns.encNonce += 1
-
+	ns.encNonce++
 	buf := make([]byte, nonceSize)
 	binary.BigEndian.PutUint64(buf, ns.encNonce)
-
 	return append(buf, ns.enc.Cipher().Encrypt(nil, ns.encNonce, nil, plaintext)...)
 }
 
@@ -142,14 +140,11 @@ func (ns *Noise) DecryptUnsafe(ciphertext []byte) ([]byte, error) {
 	if len(ciphertext) < nonceSize {
 		panic("noise decrypt unsafe: cipher text cannot be less than 8 bytes")
 	}
-
 	recvSeq := binary.BigEndian.Uint64(ciphertext[:nonceSize])
-
 	if recvSeq <= ns.decNonce {
 		return nil, fmt.Errorf("received decryption nonce (%d) is not larger than previous (%d)", recvSeq, ns.decNonce)
 	}
 	ns.decNonce = recvSeq
-
 	return ns.dec.Cipher().Decrypt(nil, recvSeq, nil, ciphertext[nonceSize:])
 }
 
