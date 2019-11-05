@@ -13,13 +13,13 @@ import (
 	"github.com/SkycoinProject/dmsg/ioutil"
 )
 
-// Frame format: [ len (4 bytes) | auth (16 bytes) | payload (<= maxPayloadSize bytes) ]
+// Frame format: [ len (2 bytes) | auth (16 bytes) | payload (<= maxPayloadSize bytes) ]
 const (
 	maxFrameSize   = 4096                                 // maximum frame size (4096)
 	maxPayloadSize = maxFrameSize - prefixSize - authSize // maximum payload size
 	maxPrefixValue = maxFrameSize - prefixSize // maximum value contained in the 'len' prefix
 
-	prefixSize = 4  // len prefix size
+	prefixSize = 2  // len prefix size
 	authSize   = 16 // noise auth data size
 )
 
@@ -63,17 +63,17 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 	if rw.input.Len() > 0 {
 		return rw.input.Read(p)
 	}
-
 	ciphertext, err := rw.readPacket()
 	if err != nil {
 		return 0, err
 	}
-
 	plaintext, err := rw.ns.DecryptUnsafe(ciphertext)
 	if err != nil {
 		return 0, &netError{Err: err}
 	}
-
+	if len(plaintext) == 0 {
+		return 0, nil
+	}
 	return ioutil.BufRead(&rw.input, plaintext, p)
 }
 
@@ -88,7 +88,7 @@ func readWithBuf(in *bufio.Reader) (out []byte, err error) {
 	}
 
 	// obtain payload size
-	prefix := int(binary.BigEndian.Uint32(prefixB))
+	prefix := int(binary.BigEndian.Uint16(prefixB))
 	if prefix > maxPrefixValue {
 		return nil, &netError{
 			Err: fmt.Errorf("noise prefix value %dB exceeds maximum %dB", prefix, maxPrefixValue),
@@ -122,7 +122,7 @@ func (rw *ReadWriter) Write(p []byte) (n int, err error) {
 
 func (rw *ReadWriter) writeFrame(p []byte) error {
 	buf := make([]byte, prefixSize+len(p))
-	binary.BigEndian.PutUint32(buf, uint32(len(p)))
+	binary.BigEndian.PutUint16(buf, uint16(len(p)))
 	copy(buf[prefixSize:], p)
 	_, err := rw.origin.Write(buf)
 	return err
@@ -179,7 +179,6 @@ func (rw *ReadWriter) initiatorHandshake() error {
 			break
 		}
 	}
-
 	return nil
 }
 
@@ -206,6 +205,5 @@ func (rw *ReadWriter) responderHandshake() error {
 			break
 		}
 	}
-
 	return nil
 }
