@@ -17,7 +17,7 @@ import (
 const (
 	maxFrameSize   = 4096                                 // maximum frame size (4096)
 	maxPayloadSize = maxFrameSize - prefixSize - authSize // maximum payload size
-	maxPrefixValue = maxFrameSize - prefixSize // maximum value contained in the 'len' prefix
+	maxPrefixValue = maxFrameSize - prefixSize            // maximum value contained in the 'len' prefix
 
 	prefixSize = 2  // len prefix size
 	authSize   = 16 // noise auth data size
