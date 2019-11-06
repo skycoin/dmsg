@@ -4,8 +4,6 @@ import (
 	"context"
 	"log"
 
-	"golang.org/x/net/nettest"
-
 	"github.com/SkycoinProject/dmsg"
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/disc"
@@ -20,11 +18,11 @@ func main() {
 	var initPort, respPort uint16 = 1563, 1563
 
 	// instantiate discovery
-	// dc := disc.NewHTTP("https://messaging.discovery.skywire.skycoin.net")
+	// dc := disc.NewHTTP("https://dmsg.discovery.skywire.skycoin.com")
 	dc := disc.NewMock()
 
 	// instantiate server
-	srv, err := createDmsgSrv(dc)
+	srv, err := dmsg.CreateDmsgTestServer(dc)
 	if err != nil {
 		log.Fatalf("Error initiating server: %v", err)
 	}
@@ -130,21 +128,4 @@ func main() {
 	if err := respC.Close(); err != nil {
 		log.Fatalf("Error closing responder: %v", err)
 	}
-}
-
-func createDmsgSrv(dc disc.APIClient) (*dmsg.Server, error) {
-	pk, sk, err := cipher.GenerateDeterministicKeyPair([]byte("s"))
-	if err != nil {
-		return nil, err
-	}
-	l, err := nettest.NewLocalListener("tcp")
-	if err != nil {
-		return nil, err
-	}
-	srv, err := dmsg.NewServer(pk, sk, "", l, dc)
-	if err != nil {
-		return nil, err
-	}
-	go func() { _ = srv.Serve() }() //nolint:errcheck
-	return srv, nil
 }

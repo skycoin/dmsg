@@ -12,6 +12,7 @@ import (
 
 	"github.com/flynn/noise"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/nettest"
 
 	"github.com/SkycoinProject/dmsg/cipher"
 )
@@ -103,34 +104,8 @@ func TestConn(t *testing.T) {
 		Err error
 	}
 
-	const timeout = time.Second
-
-	aPK, aSK := cipher.GenerateKeyPair()
-	bPK, bSK := cipher.GenerateKeyPair()
-
-	aNs, err := XKAndSecp256k1(Config{LocalPK: aPK, LocalSK: aSK, RemotePK: bPK, Initiator: true})
-	require.NoError(t, err)
-	bNs, err := XKAndSecp256k1(Config{LocalPK: bPK, LocalSK: bSK, Initiator: false})
-	require.NoError(t, err)
-
-	aConn, bConn := net.Pipe()
-	defer func() {
-		require.NoError(t, aConn.Close())
-		require.NoError(t, bConn.Close())
-	}()
-
-	aRW := NewReadWriter(aConn, aNs)
-	bRW := NewReadWriter(bConn, bNs)
-
-	errChan := make(chan error, 2)
-	go func() { errChan <- aRW.Handshake(timeout) }()
-	go func() { errChan <- bRW.Handshake(timeout) }()
-	require.NoError(t, <-errChan)
-	require.NoError(t, <-errChan)
-	close(errChan)
-
-	a := &Conn{Conn: aConn, ns: aRW}
-	b := &Conn{Conn: bConn, ns: bRW}
+	a, b, closeFunc := prepareConns(t)
+	defer closeFunc()
 
 	t.Run("ReadWrite", func(t *testing.T) {
 		aResults := make(chan Result)
@@ -275,6 +250,64 @@ func TestConn(t *testing.T) {
 			require.Equal(t, segLen, r.N, i)
 		}
 	})
+
+	t.Run("TestConn", func(t *testing.T) {
+		// Subtle bugs do not always appear on the first run.
+		// This way can increase the probability of finding them.
+		const attempts = 3
+
+		for i := 0; i < attempts; i++ {
+			nettest.TestConn(t, func() (c1, c2 net.Conn, stop func(), err error) {
+				c1, c2, stop = prepareConns(t)
+				return
+			})
+		}
+	})
+}
+
+func prepareConns(t *testing.T) (*Conn, *Conn, func()) {
+	const timeout = time.Second
+
+	aPK, aSK := cipher.GenerateKeyPair()
+	bPK, bSK := cipher.GenerateKeyPair()
+
+	aNs, err := XKAndSecp256k1(Config{LocalPK: aPK, LocalSK: aSK, RemotePK: bPK, Initiator: true})
+	require.NoError(t, err)
+
+	bNs, err := XKAndSecp256k1(Config{LocalPK: bPK, LocalSK: bSK, Initiator: false})
+	require.NoError(t, err)
+
+	aConn, bConn := net.Pipe()
+
+	//l, err := net.Listen("tcp", "")
+	//require.NoError(t, err)
+	//
+	//aConn, err := net.Dial(l.Addr().Network(), l.Addr().String())
+	//require.NoError(t, err)
+	//
+	//bConn, err := l.Accept()
+	//require.NoError(t, err)
+
+	closeFunc := func() {
+		//require.NoError(t, l.Close())
+		require.NoError(t, aConn.Close())
+		require.NoError(t, bConn.Close())
+	}
+
+	aRW := NewReadWriter(aConn, aNs)
+	bRW := NewReadWriter(bConn, bNs)
+
+	errChan := make(chan error, 2)
+	go func() { errChan <- aRW.Handshake(timeout) }()
+	go func() { errChan <- bRW.Handshake(timeout) }()
+	require.NoError(t, <-errChan)
+	require.NoError(t, <-errChan)
+	close(errChan)
+
+	a := &Conn{Conn: aConn, ns: aRW}
+	b := &Conn{Conn: bConn, ns: bRW}
+
+	return a, b, closeFunc
 }
 
 func TestListener(t *testing.T) {
