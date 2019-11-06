@@ -4,8 +4,6 @@
 
 Distributed messaging system.
 
-<<<<<<< HEAD
-=======
 >**TODO:**
 >
 >- `ACK` frames should include the first 4 bytes of the rolling hash of incoming payloads, enforcing reliability of data. Streams should therefore keep track of incoming/outgoing rolling hashes.
@@ -13,7 +11,6 @@ Distributed messaging system.
 > - Streams should implement read/write deadlines and local/remote addresses (like `net.Conn`).
 > - `dmsg.Server` should check incoming frames to disallow excessive sending of `CLOSE`, `ACCEPT` and `REQUEST` frames.
 
->>>>>>> origin/mainnet-milestone2
 ## Terminology
 
 - **entity -** A service of `dmsg` (typically being part of an executable running on a machine).

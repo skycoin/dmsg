@@ -5,10 +5,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/SkycoinProject/skycoin/src/util/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/SkycoinProject/skycoin/src/util/logging"
 
 	"github.com/SkycoinProject/dmsg/cipher"
 )
