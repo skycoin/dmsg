@@ -202,14 +202,14 @@ func TestNewServer(t *testing.T) {
 }
 
 // TestServer_Serve ensures that Server processes request frames and
-// instantiates transports properly.
+// instantiates streams properly.
 func TestServer_Serve(t *testing.T) {
-	t.Run("Transport establishes", func(t *testing.T) {
-		testServerTransportEstablishment(t)
+	t.Run("Stream establishes", func(t *testing.T) {
+		testServerStreamEstablishment(t)
 	})
 
-	t.Run("Transport establishes concurrently", func(t *testing.T) {
-		testServerConcurrentTransportEstablishment(t)
+	t.Run("Stream establishes concurrently", func(t *testing.T) {
+		testServerConcurrentStreamEstablishment(t)
 	})
 
 	t.Run("Failed accepts do not result in hang", func(t *testing.T) {
@@ -220,15 +220,15 @@ func TestServer_Serve(t *testing.T) {
 		testServerMessageConsistency(t)
 	})
 
-	t.Run("Capped transport buffer does not result in hang", func(t *testing.T) {
-		testServerCappedTransport(t)
+	t.Run("Capped stream buffer does not result in hang", func(t *testing.T) {
+		testServerCappedStream(t)
 	})
 
 	t.Run("Self dialing works", func(t *testing.T) {
 		testServerSelfDialing(t)
 	})
 
-	t.Run("Server disconnection closes transports", func(t *testing.T) {
+	t.Run("Server disconnection closes streams", func(t *testing.T) {
 		testServerDisconnection(t)
 	})
 
@@ -255,15 +255,15 @@ func testServerDisconnection(t *testing.T) {
 	responder := createClient(t, dc, responderName)
 	initiator := createClient(t, dc, initiatorName)
 	initConn, respConns := dial(t, initiator, responder, port, noDelay)
-	testTransportMessaging(t, initConn, respConns)
+	testStreamMessaging(t, initConn, respConns)
 
 	require.NoError(t, srv.Close())
 	require.NoError(t, errWithTimeout(srvErrCh))
 
 	time.Sleep(smallDelay)
 
-	require.True(t, initConn.(*Transport).IsClosed())
-	require.True(t, respConns.(*Transport).IsClosed())
+	require.True(t, initConn.(*Stream).IsClosed())
+	require.True(t, respConns.(*Stream).IsClosed())
 }
 
 func testServerSelfDialing(t *testing.T) {
@@ -276,14 +276,14 @@ func testServerSelfDialing(t *testing.T) {
 	client := createClient(t, dc, "client")
 	selfWrTp, selfRdTp := dial(t, client, client, port, noDelay)
 	// try to write/read message to/from self
-	testTransportMessaging(t, selfWrTp, selfRdTp)
+	testStreamMessaging(t, selfWrTp, selfRdTp)
 	require.NoError(t, closeClosers(selfRdTp, selfWrTp, client))
 
 	assert.NoError(t, srv.Close())
 	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
-func testTransportMessaging(t *testing.T, init, resp io.ReadWriter) {
+func testStreamMessaging(t *testing.T, init, resp io.ReadWriter) {
 	for i := 0; i < msgCount; i++ {
 		_, err := init.Write([]byte(message))
 		require.NoError(t, err) // TODO: Sometimes this returns error: "io: read/write on closed pipe"
@@ -296,7 +296,7 @@ func testTransportMessaging(t *testing.T, init, resp io.ReadWriter) {
 	}
 }
 
-func testServerCappedTransport(t *testing.T) {
+func testServerCappedStream(t *testing.T) {
 	// TODO(evanlinjin): I've disabled this as it was causing writes to closed connections.
 	//t.Parallel()
 
@@ -310,7 +310,7 @@ func testServerCappedTransport(t *testing.T) {
 	responderWrConn, _ := dial(t, responder, initiator, port, noDelay)
 	msg := []byte(message)
 	// exact iterations to fill the receiving buffer and hang `Write`
-	iterationsToDo := tpBufCap/len(msg) + 1
+	iterationsToDo := maxFwdPayLen/len(msg) + 1
 	// fill the buffer, but no block yet
 	for i := 0; i < iterationsToDo-1; i++ {
 		_, err := responderWrConn.Write(msg)
@@ -325,7 +325,7 @@ func testServerCappedTransport(t *testing.T) {
 	}()
 	// wait till it's definitely blocked
 	initiatorWrConn, responderRdConn := dial(t, initiator, responder, port, smallDelay)
-	// try to write/read message via the new transports
+	// try to write/read message via the new streams
 	for i := 0; i < msgCount; i++ {
 		_, err := initiatorWrConn.Write(msg)
 		require.NoError(t, err)
@@ -419,9 +419,9 @@ func testServerFailedAccepts(t *testing.T) {
 	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
-// connect two clients, establish transport, check if there are
+// connect two clients, establish stream, check if there are
 // two ServerConn's and that both conn's `nextConn` is filled correctly
-func testServerTransportEstablishment(t *testing.T) {
+func testServerStreamEstablishment(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
@@ -468,7 +468,7 @@ func testServerTransportEstablishment(t *testing.T) {
 	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
-func testServerConcurrentTransportEstablishment(t *testing.T) {
+func testServerConcurrentStreamEstablishment(t *testing.T) {
 	t.Parallel()
 
 	dc := disc.NewMock()
@@ -479,7 +479,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 	initiatorsCount := 50
 	respondersCount := 50
 	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
-	// store the number of transports each responder should handle
+	// store the number of streams each responder should handle
 	listenersConnsCount := make(map[int]int)
 	// mapping initiators to responders; one initiator performs a single connection,
 	// while responders may handle from 0 to `initiatorsCount` connections
@@ -586,7 +586,7 @@ func testServerConcurrentTransportEstablishment(t *testing.T) {
 			defer initiatorsWG.Done()
 
 			responder := listeners[pickedListeners[initiatorIndex]].(*Listener)
-			conn, err := initiators[initiatorIndex].Dial(context.Background(), responder.pk, responder.port)
+			conn, err := initiators[initiatorIndex].Dial(context.Background(), responder.addr.PK, responder.addr.Port)
 			if err != nil {
 				dialErrs <- err
 			}
@@ -721,13 +721,15 @@ func testServerMessageConsistency(t *testing.T) {
 	assert.NoError(t, errWithTimeout(srvErrCh))
 }
 
-// Create a server, initiator, responder and connection between them then check if clients are connected to the server.
-// Stop the server, then check if no client is connected and if connection is closed.
-// Start the server again, check if clients reconnected and if `Dial()` and `Accept()` still work.
-// Second argument indicates if the server restarts not on the same address, but on the random one.
+// Create a dmsg.Server and two dmsg.Clients. Connect the two dmsg.Clients via the dmsg.Server.
+// When we restart the dmsg.Server:
+// - Clients should disconnect when server closes.
+// - Clients should reconnect when server starts again. `Dial()` and `Accept()` between dmsg.Clients should still work.
+// 'randomAddr' indicates whether the server should restart on a random new address, or use the original address.
 func testServerReconnection(t *testing.T, randomAddr bool) {
 	t.Parallel()
 
+	// Create discovery and server.
 	dc := disc.NewMock()
 	srv, srvErrCh, err := createServer(dc)
 	require.NoError(t, err)
@@ -736,18 +738,18 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 
 	checkConnCount(t, noDelay, 0, srv)
 
-	responder := createClient(t, dc, responderName)
+	respClient := createClient(t, dc, responderName)
 	checkConnCount(t, smallDelay, 1, srv)
 
-	initiator := createClient(t, dc, initiatorName)
+	initClient := createClient(t, dc, initiatorName)
 	checkConnCount(t, smallDelay, 2, srv)
 
-	initConn, respConn := dial(t, initiator, responder, port, noDelay)
+	initConn, respConn := dial(t, initClient, respClient, port, noDelay)
 
 	assert.NoError(t, srv.Close())
 	assert.NoError(t, errWithTimeout(srvErrCh))
 
-	checkTransportsClosed(t, initConn, respConn)
+	checkStreamsClosed(t, initConn, respConn)
 	checkConnCount(t, smallDelay, 0, srv)
 
 	addr := ""
@@ -767,9 +769,8 @@ func testServerReconnection(t *testing.T, randomAddr bool) {
 		close(errCh)
 	}()
 
-	responder.pm.RemoveListener(port)
 	checkConnCount(t, clientReconnectInterval+smallDelay, 2, srv)
-	_, _ = dial(t, initiator, responder, port, smallDelay)
+	_, _ = dial(t, initClient, respClient, port, smallDelay)
 
 	assert.NoError(t, srv.Close())
 	assert.NoError(t, errWithTimeout(errCh))
@@ -810,17 +811,18 @@ func dial(t *testing.T, initiator, responder *Client, port uint16, delay time.Du
 	require.NoError(t, testWithTimeout(delay, func() error {
 		ctx := context.TODO()
 
-		listener, err := responder.Listen(port)
+		lis, err := responder.Listen(port)
 		if err != nil {
 			return err
 		}
+		defer lis.close()
 
 		initTp, err = initiator.Dial(ctx, responder.pk, port)
 		if err != nil {
 			return err
 		}
 
-		respTp, err = listener.Accept()
+		respTp, err = lis.Accept()
 		return err
 	}))
 	return initTp, respTp

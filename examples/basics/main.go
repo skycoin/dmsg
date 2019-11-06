@@ -60,37 +60,37 @@ func main() {
 		log.Fatalf("Error dialing responder: %v", err)
 	}
 
-	// Accept connection. `AcceptTransport` returns an object exposing `transport` features
+	// Accept connection. `AcceptStream` returns an object exposing `stream` features
 	// thus, `Accept` could also be used here returning `net.Conn` interface. depends on your needs
-	respTp, err := respL.AcceptTransport()
+	respTp, err := respL.AcceptStream()
 	if err != nil {
 		log.Fatalf("Error accepting inititator: %v", err)
 	}
 
-	// initiator writes to it's transport
+	// initiator writes to it's stream
 	payload := "Hello there!"
 	_, err = initTp.Write([]byte(payload))
 	if err != nil {
-		log.Fatalf("Error writing to initiator's transport: %v", err)
+		log.Fatalf("Error writing to initiator's stream: %v", err)
 	}
 
-	// responder reads from it's transport
+	// responder reads from it's stream
 	recvBuf := make([]byte, len(payload))
 	_, err = respTp.Read(recvBuf)
 	if err != nil {
-		log.Fatalf("Error reading from responder's transport: %v", err)
+		log.Fatalf("Error reading from responder's stream: %v", err)
 	}
 
 	log.Printf("Responder accepted: %s", string(recvBuf))
 
-	// responder writes to it's transport
+	// responder writes to it's stream
 	payload = "General Kenobi"
 	_, err = respTp.Write([]byte(payload))
 	if err != nil {
 		log.Fatalf("Error writing response: %v", err)
 	}
 
-	// initiator reads from it's transport
+	// initiator reads from it's stream
 	initRecvBuf := make([]byte, len(payload))
 	_, err = initTp.Read(initRecvBuf)
 	if err != nil {
@@ -99,14 +99,14 @@ func main() {
 
 	log.Printf("Initiator accepted: %s", string(initRecvBuf))
 
-	// close transport
+	// close stream
 	if err := initTp.Close(); err != nil {
-		log.Fatalf("Error closing initiator's transport: %v", err)
+		log.Fatalf("Error closing initiator's stream: %v", err)
 	}
 
-	// close transport
+	// close stream
 	if err := respTp.Close(); err != nil {
-		log.Fatalf("Error closing responder's transport: %v", err)
+		log.Fatalf("Error closing responder's stream: %v", err)
 	}
 
 	// close listener
