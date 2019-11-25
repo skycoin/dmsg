@@ -13,6 +13,156 @@ import (
 	"github.com/SkycoinProject/dmsg/cipher"
 )
 
+/* Request & Response */
+
+type SessionDialRequest struct {
+	Timestamp int64
+	SrcPK     cipher.PubKey
+	DstPK     cipher.PubKey
+	Sig       cipher.Sig // Signature of srcPK
+}
+
+func MakeSessionDialRequest(srcPK, dstPK cipher.PubKey, sk cipher.SecKey) SessionDialRequest {
+	req := SessionDialRequest{
+		Timestamp: time.Now().UnixNano(),
+		SrcPK:     srcPK,
+		DstPK:     dstPK,
+		Sig:       cipher.Sig{},
+	}
+	if err := req.Sign(sk); err != nil {
+		panic(fmt.Errorf("failed to sign SessionDialRequest: %v", err))
+	}
+	return req
+}
+
+// Sign creates a signature of SessionDialRequest and fills the 'Sig' field of the SessionDialRequest with the generated signature.
+func (dr *SessionDialRequest) Sign(sk cipher.SecKey) error {
+	dr.Sig = cipher.Sig{}
+	b := gobEncode(dr)
+	sig, err := cipher.SignPayload(b, sk)
+	if err != nil {
+		return err
+	}
+	dr.Sig = sig
+	return nil
+}
+
+// Hash returns the hash of the dial request with a null signature.
+func (dr SessionDialRequest) Hash() cipher.SHA256 {
+	dr.Sig = cipher.Sig{}
+	return cipher.SumSHA256(gobEncode(dr))
+}
+
+// Verify returns nil if the following is satisfied:
+// - Source and destination public keys are non-null.
+// - Timestamp is higher than the most recently recorded timestamp (from the source node).
+// - Signature is valid when verified against the source public key.
+// Verify does not check:
+// - Whether the source public key is expected.
+// - Whether the destination public key is expected.
+func (dr SessionDialRequest) Verify(lastTimestamp int64) error {
+	if dr.SrcPK.Null() {
+		return ErrDialReqInvalidSrcPK
+	}
+	if dr.DstPK.Null() {
+		return ErrDialReqInvalidDstPK
+	}
+	if dr.Timestamp <= lastTimestamp {
+		return ErrDialReqInvalidTimestamp
+	}
+
+	sig := dr.Sig
+	dr.Sig = cipher.Sig{}
+
+	if err := cipher.VerifyPubKeySignedPayload(dr.SrcPK, sig, gobEncode(dr)); err != nil {
+		return ErrDialReqInvalidSig
+	}
+	return nil
+}
+
+type StreamDialRequest struct {
+	Timestamp int64
+	SrcAddr   Addr
+	DstAddr   Addr
+	Sig       cipher.Sig
+}
+
+func (dr *StreamDialRequest) Sign(sk cipher.SecKey) error {
+	dr.Sig = cipher.Sig{}
+	b := gobEncode(dr)
+	sig, err := cipher.SignPayload(b, sk)
+	if err != nil {
+		return err
+	}
+	dr.Sig = sig
+	return nil
+}
+
+func (dr StreamDialRequest) Hash() cipher.SHA256 {
+	dr.Sig = cipher.Sig{}
+	return cipher.SumSHA256(gobEncode(dr))
+}
+
+func (dr StreamDialRequest) Verify(lastTimestamp int64) error {
+	if dr.SrcAddr.PK.Null() {
+		return ErrDialReqInvalidSrcPK
+	}
+	if dr.SrcAddr.Port == 0 {
+		return ErrDialReqInvalidSrcPort
+	}
+	if dr.DstAddr.PK.Null() {
+		return ErrDialReqInvalidDstPK
+	}
+	if dr.DstAddr.Port == 0 {
+		return ErrDialReqInvalidDstPort
+	}
+	if dr.Timestamp <= lastTimestamp {
+		return ErrDialReqInvalidTimestamp
+	}
+
+	sig := dr.Sig
+	dr.Sig = cipher.Sig{}
+
+	if err := cipher.VerifyPubKeySignedPayload(dr.SrcAddr.PK, sig, gobEncode(dr)); err != nil {
+		return ErrDialReqInvalidSig
+	}
+	return nil
+}
+
+// DialResponse can be the response of either a SessionDialRequest or a StreamDialRequest.
+type DialResponse struct {
+	ReqHash  cipher.SHA256 // Hash of associated dial request.
+	Accepted bool          // Whether the request is accepted.
+	ErrCode  uint8         // Check if not accepted.
+	Sig      cipher.Sig    // Signature of this DialRequest, signed with public key of receiving node.
+}
+
+func (dr *DialResponse) Sign(sk cipher.SecKey) error {
+	dr.Sig = cipher.Sig{}
+	b := gobEncode(dr)
+	sig, err := cipher.SignPayload(b, sk)
+	if err != nil {
+		return err
+	}
+	dr.Sig = sig
+	return nil
+}
+
+func (dr DialResponse) Verify(reqDstPK cipher.PubKey, reqHash cipher.SHA256) error {
+	if dr.ReqHash != reqHash {
+		return ErrDialRespInvalidHash
+	}
+
+	sig := dr.Sig
+	dr.Sig = cipher.Sig{}
+
+	if err := cipher.VerifyPubKeySignedPayload(reqDstPK, sig, gobEncode(dr)); err != nil {
+		return ErrDialRespInvalidSig
+	}
+	return nil
+}
+
+
 const (
 	// Type returns the stream type string.
 	Type = "dmsg"

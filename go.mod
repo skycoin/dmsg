@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/SkycoinProject/skycoin v0.26.0
 	github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6
+	github.com/hashicorp/yamux v0.0.0-20190923154419-df201c70410d // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/sirupsen/logrus v1.4.2
