@@ -5,10 +5,10 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/gob"
-	"io"
-
+	"github.com/SkycoinProject/dmsg/netutil"
 	"github.com/hashicorp/yamux"
 	"github.com/sirupsen/logrus"
+	"io"
 
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/noise"
@@ -17,53 +17,92 @@ import (
 // Session handles the multiplexed connection between the dmsg server and dmsg client.
 type Session struct {
 	lPK cipher.PubKey
+	lSK cipher.SecKey
 	rPK cipher.PubKey // Public key of the remote dmsg server.
-	sk  cipher.SecKey
-	ys  *yamux.Session
-	ns  *noise.Noise
+
+	ys     *yamux.Session
+	ns     *noise.Noise    // For encrypting session messages, not stream messages.
+	porter *netutil.Porter
+
 	log logrus.FieldLogger
 }
 
-func (s *Session) DialStream(ctx context.Context, req StreamDialRequest) (conn *Stream2, err error) {
-	var stream *yamux.Stream
-	if stream, err = s.ys.OpenStream(); err != nil {
+func (s *Session) DialStream(ctx context.Context, dst Addr) (ds *Stream2, err error) {
+	done := make(chan struct{})
+	defer close(done)
+
+	// Prepare yamux stream.
+	ys, err := s.ys.OpenStream()
+	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if err != nil {
-			if err := stream.Close(); err != nil {
-				s.log.WithError(err).Debug("stream closed with error")
+	go func() {
+		select {
+		case <-ctx.Done():
+			s.log.
+				WithError(ys.Close()).
+				Warnf("failed to dial stream: %v", ctx.Err())
+		case <-done:
+			if err != nil {
+				if closeErr := ys.Close(); closeErr != nil {
+					s.log.
+						WithError(closeErr).
+						Debug("stream closed with error")
+				}
 			}
+			return
 		}
 	}()
-	if err := encryptedGobEncode(stream, s.ns, req); err != nil {
-		return nil, err
-	}
-	var resp DialResponse
-	if err := encryptedGobDecode(stream, s.ns, resp); err != nil {
-		return nil, err
-	}
-	if err = resp.Verify(req.DstAddr.PK, req.Hash()); err != nil {
-		return nil, err
-	}
 
-	// TODO(evanlinjin): Figure this out.
-	ns, err := noise.New(noise.HandshakeXK, noise.Config{
-
-	})
-
-	conn = &Stream2{
-		lAddr: req.SrcAddr,
-		rAddr: req.DstAddr,
-		sk:    s.sk,
-		ys:    stream,
-		ns:    ns,
-	}
-
-	return conn, nil
+	// Prepare dmsg stream to reserve in porter.
+	return NewEphemeralStream(ctx, s.log, s.porter, s.ns, ys, s.lPK, s.lSK, dst)
 }
 
-func gobEncode(v interface{}) []byte {
+func (s *Session) AcceptStream(ctx context.Context) (ds *Stream2, err error) {
+	done := make(chan struct{})
+	defer close(done)
+
+	ys, err := s.ys.AcceptStream()
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+
+	}()
+
+	var req StreamDialRequest
+	if err := readEncryptedGob(ys, s.ns, &req); err != nil {
+		return nil, err
+	}
+	// TODO(evanlinjin): Create TimestampTracker.
+	if err := req.Verify(0); err != nil {
+		return nil, err
+	}
+	lv, ok := s.porter.PortValue(req.DstAddr.Port)
+	if !ok {
+		return nil, ErrIncomingHasNoListener
+	}
+	l, ok := lv.(*Listener)
+	if !ok {
+		return nil, ErrIncomingHasNoListener
+	}
+
+	// TODO(evanlinjin): Finish handshake before pushing to listener.
+	if err = l.IntroduceStream(nil); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+// TODO(evanlinjin): Complete this!
+func watchStream(ctx context.Context, done chan struct{}, log logrus.FieldLogger, err *error, closeFunc func() error) {
+	select {
+	case <-ctx.Done():
+
+	}
+}
+
+func encodeGob(v interface{}) []byte {
 	var b bytes.Buffer
 	if err := gob.NewEncoder(&b).Encode(v); err != nil {
 		panic(err)
@@ -71,20 +110,20 @@ func gobEncode(v interface{}) []byte {
 	return b.Bytes()
 }
 
-// gobEncode encrypted with noise and prefixed with uint16 (2 additional bytes).
-func encryptedGobEncode(w io.Writer, ns *noise.Noise, v interface{}) error {
-	p := ns.EncryptUnsafe(gobEncode(v))
+// writeEncryptedGob encrypts with noise and prefixed with uint16 (2 additional bytes).
+func writeEncryptedGob(w io.Writer, ns *noise.Noise, v interface{}) error {
+	p := ns.EncryptUnsafe(encodeGob(v))
 	p = append(make([]byte, 2), p...)
 	binary.BigEndian.PutUint16(p, uint16(len(p) - 2))
 	_, err := w.Write(p)
 	return err
 }
 
-func gobDecode(v interface{}, b []byte) error {
+func decodeGob(v interface{}, b []byte) error {
 	return gob.NewDecoder(bytes.NewReader(b)).Decode(v)
 }
 
-func encryptedGobDecode(r io.Reader, ns *noise.Noise, v interface{}) error {
+func readEncryptedGob(r io.Reader, ns *noise.Noise, v interface{}) error {
 	lb := make([]byte, 2)
 	if _, err := io.ReadFull(r, lb); err != nil {
 		return err
@@ -97,5 +136,5 @@ func encryptedGobDecode(r io.Reader, ns *noise.Noise, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	return gobDecode(v, b)
+	return decodeGob(v, b)
 }

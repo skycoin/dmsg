@@ -23,9 +23,19 @@ var (
 	ErrPacketTooBig = errors.New("data too large to contain within a packet")
 
 	// HandshakeXK is the XK handshake pattern.
+	//	<- s
+	//	...
+	//	-> e, es
+	//	<- e, ee
+	//	-> s, se
 	HandshakeXK = noise.HandshakeXK
 
 	// HandshakeKK is the KK handshake pattern.
+	//	-> s
+	//	<- s
+	//	...
+	//	-> e, es, ss
+	//	<- e, ee, se
 	HandshakeKK = noise.HandshakeKK
 
 	// AcceptHandshakeTimeout determines how long a noise hs should take.

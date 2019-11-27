@@ -86,8 +86,8 @@ func XKAndSecp256k1(config Config) (*Noise, error) {
 	return New(noise.HandshakeXK, config)
 }
 
-// HandshakeMessage generates handshake message for a current handshake state.
-func (ns *Noise) HandshakeMessage() (res []byte, err error) {
+// MakeHandshakeMessage generates handshake message for a current handshake state.
+func (ns *Noise) MakeHandshakeMessage() (res []byte, err error) {
 	if ns.hs.MessageIndex() < len(ns.pattern.Messages)-1 {
 		res, _, _, err = ns.hs.WriteMessage(nil, nil)
 		return
@@ -97,8 +97,8 @@ func (ns *Noise) HandshakeMessage() (res []byte, err error) {
 	return res, err
 }
 
-// ProcessMessage processes a received handshake message and appends the payload.
-func (ns *Noise) ProcessMessage(msg []byte) (err error) {
+// ProcessHandshakeMessage processes a received handshake message and appends the payload.
+func (ns *Noise) ProcessHandshakeMessage(msg []byte) (err error) {
 	if ns.hs.MessageIndex() < len(ns.pattern.Messages)-1 {
 		_, _, _, err = ns.hs.ReadMessage(nil, msg)
 		return

@@ -3,6 +3,7 @@ package noise
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -63,7 +64,7 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 	if rw.input.Len() > 0 {
 		return rw.input.Read(p)
 	}
-	ciphertext, err := rw.readPacket()
+	ciphertext, err := ReadRawFrame(rw.rawInput)
 	if err != nil {
 		return 0, err
 	}
@@ -77,12 +78,136 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 	return ioutil.BufRead(&rw.input, plaintext, p)
 }
 
-func (rw *ReadWriter) readPacket() ([]byte, error) {
-	return readWithBuf(rw.rawInput)
+func (rw *ReadWriter) Write(p []byte) (n int, err error) {
+	rw.wMx.Lock()
+	defer rw.wMx.Unlock()
+
+	// Enforce max write size.
+	if len(p) > maxPayloadSize {
+		p, err = p[:maxPayloadSize], io.ErrShortWrite
+	}
+	if err := WriteRawFrame(rw.origin, rw.ns.EncryptUnsafe(p)); err != nil {
+		return 0, err
+	}
+	return len(p), err
 }
 
-func readWithBuf(in *bufio.Reader) (out []byte, err error) {
-	prefixB, err := in.Peek(prefixSize)
+// Handshake performs a Noise handshake using the provided io.ReadWriter.
+func (rw *ReadWriter) Handshake(hsTimeout time.Duration) error {
+	errCh := make(chan error, 1)
+	go func() {
+		if rw.ns.init {
+			errCh <- InitiatorHandshake(rw.ns, rw.rawInput, rw.origin)
+		} else {
+			errCh <- ResponderHandshake(rw.ns, rw.rawInput, rw.origin)
+		}
+		close(errCh)
+	}()
+	select {
+	case err := <-errCh:
+		return err
+	case <-time.After(hsTimeout):
+		return timeoutError{}
+	}
+}
+
+func (rw *ReadWriter) HandshakeWithContext(ctx context.Context) error {
+	errCh := make(chan error, 1)
+	go func() {
+		if rw.ns.init {
+			errCh <- InitiatorHandshake(rw.ns, rw.rawInput, rw.origin)
+		} else {
+			errCh <- ResponderHandshake(rw.ns, rw.rawInput, rw.origin)
+		}
+		close(errCh)
+	}()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			return err
+		}
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	return nil
+}
+
+// LocalStatic returns the local static public key.
+func (rw *ReadWriter) LocalStatic() cipher.PubKey {
+	return rw.ns.LocalStatic()
+}
+
+// RemoteStatic returns the remote static public key.
+func (rw *ReadWriter) RemoteStatic() cipher.PubKey {
+	return rw.ns.RemoteStatic()
+}
+
+// InitiatorHandshake performs a noise handshake as an initiator.
+func InitiatorHandshake(ns *Noise, r *bufio.Reader, w io.Writer) error {
+	for {
+		msg, err := ns.MakeHandshakeMessage()
+		if err != nil {
+			return err
+		}
+		if err := WriteRawFrame(w, msg); err != nil {
+			return err
+		}
+		if ns.HandshakeFinished() {
+			break
+		}
+		res, err := ReadRawFrame(r)
+		if err != nil {
+			return err
+		}
+		if err = ns.ProcessHandshakeMessage(res); err != nil {
+			return err
+		}
+		if ns.HandshakeFinished() {
+			break
+		}
+	}
+	return nil
+}
+
+// ResponderHandshake performs a noise handshake as a responder.
+func ResponderHandshake(ns *Noise, r *bufio.Reader, w io.Writer) error {
+	for {
+		msg, err := ReadRawFrame(r)
+		if err != nil {
+			return err
+		}
+		if err := ns.ProcessHandshakeMessage(msg); err != nil {
+			return err
+		}
+		if ns.HandshakeFinished() {
+			break
+		}
+		res, err := ns.MakeHandshakeMessage()
+		if err != nil {
+			return err
+		}
+		if err := WriteRawFrame(w, res); err != nil {
+			return err
+		}
+		if ns.HandshakeFinished() {
+			break
+		}
+	}
+	return nil
+}
+
+// WriteRawFrame writes a raw frame (data prefixed with a uint16 len).
+func WriteRawFrame(w io.Writer, p []byte) error {
+	buf := make([]byte, prefixSize+len(p))
+	binary.BigEndian.PutUint16(buf, uint16(len(p)))
+	copy(buf[prefixSize:], p)
+	_, err := w.Write(buf)
+	return err
+}
+
+// ReadRawFrame attempts to read a raw frame from a buffered reader.
+func ReadRawFrame(r *bufio.Reader) (p []byte, err error) {
+	prefixB, err := r.Peek(prefixSize)
 	if err != nil {
 		return nil, err
 	}
@@ -96,114 +221,13 @@ func readWithBuf(in *bufio.Reader) (out []byte, err error) {
 	}
 
 	// obtain payload
-	b, err := in.Peek(prefixSize + prefix)
+	b, err := r.Peek(prefixSize + prefix)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := in.Discard(prefixSize + prefix); err != nil {
+	if _, err := r.Discard(prefixSize + prefix); err != nil {
 		panic(fmt.Errorf("unexpected error when discarding %d bytes: %v", prefixSize+prefix, err))
 	}
 	return b[prefixSize:], nil
 }
 
-func (rw *ReadWriter) Write(p []byte) (n int, err error) {
-	rw.wMx.Lock()
-	defer rw.wMx.Unlock()
-
-	// Enforce max write size.
-	if len(p) > maxPayloadSize {
-		p, err = p[:maxPayloadSize], io.ErrShortWrite
-	}
-	if err := rw.writeFrame(rw.ns.EncryptUnsafe(p)); err != nil {
-		return 0, err
-	}
-	return len(p), err
-}
-
-func (rw *ReadWriter) writeFrame(p []byte) error {
-	buf := make([]byte, prefixSize+len(p))
-	binary.BigEndian.PutUint16(buf, uint16(len(p)))
-	copy(buf[prefixSize:], p)
-	_, err := rw.origin.Write(buf)
-	return err
-}
-
-// Handshake performs a Noise handshake using the provided io.ReadWriter.
-func (rw *ReadWriter) Handshake(hsTimeout time.Duration) error {
-	doneChan := make(chan error)
-	go func() {
-		if rw.ns.init {
-			doneChan <- rw.initiatorHandshake()
-		} else {
-			doneChan <- rw.responderHandshake()
-		}
-	}()
-	select {
-	case err := <-doneChan:
-		return err
-	case <-time.After(hsTimeout):
-		return timeoutError{}
-	}
-}
-
-// LocalStatic returns the local static public key.
-func (rw *ReadWriter) LocalStatic() cipher.PubKey {
-	return rw.ns.LocalStatic()
-}
-
-// RemoteStatic returns the remote static public key.
-func (rw *ReadWriter) RemoteStatic() cipher.PubKey {
-	return rw.ns.RemoteStatic()
-}
-
-func (rw *ReadWriter) initiatorHandshake() error {
-	for {
-		msg, err := rw.ns.HandshakeMessage()
-		if err != nil {
-			return err
-		}
-		if err := rw.writeFrame(msg); err != nil {
-			return err
-		}
-		if rw.ns.HandshakeFinished() {
-			break
-		}
-		res, err := rw.readPacket()
-		if err != nil {
-			return err
-		}
-		if err = rw.ns.ProcessMessage(res); err != nil {
-			return err
-		}
-		if rw.ns.HandshakeFinished() {
-			break
-		}
-	}
-	return nil
-}
-
-func (rw *ReadWriter) responderHandshake() error {
-	for {
-		msg, err := rw.readPacket()
-		if err != nil {
-			return err
-		}
-		if err := rw.ns.ProcessMessage(msg); err != nil {
-			return err
-		}
-		if rw.ns.HandshakeFinished() {
-			break
-		}
-		res, err := rw.ns.HandshakeMessage()
-		if err != nil {
-			return err
-		}
-		if err := rw.writeFrame(res); err != nil {
-			return err
-		}
-		if rw.ns.HandshakeFinished() {
-			break
-		}
-	}
-	return nil
-}

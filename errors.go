@@ -16,6 +16,12 @@ var (
 
 	ErrDialRespInvalidSig  = NewError(56, "dial response has invalid signature", nil)
 	ErrDialRespInvalidHash = NewError(57, "dial response has invalid hash of associated request", nil)
+	ErrDialRespNotAccepted = NewError(58, "dial response rejected associated request without reason", nil)
+)
+
+// Errors related to steams/listeners (70-79).
+var (
+	ErrIncomingHasNoListener = NewError(70, "incoming stream has no associated listener", nil)
 )
 
 // NetworkErrorOptions provides 'timeout' and 'temporary' options for NetworkError.

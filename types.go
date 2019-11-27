@@ -38,7 +38,7 @@ func MakeSessionDialRequest(srcPK, dstPK cipher.PubKey, sk cipher.SecKey) Sessio
 // Sign creates a signature of SessionDialRequest and fills the 'Sig' field of the SessionDialRequest with the generated signature.
 func (dr *SessionDialRequest) Sign(sk cipher.SecKey) error {
 	dr.Sig = cipher.Sig{}
-	b := gobEncode(dr)
+	b := encodeGob(dr)
 	sig, err := cipher.SignPayload(b, sk)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func (dr *SessionDialRequest) Sign(sk cipher.SecKey) error {
 // Hash returns the hash of the dial request with a null signature.
 func (dr SessionDialRequest) Hash() cipher.SHA256 {
 	dr.Sig = cipher.Sig{}
-	return cipher.SumSHA256(gobEncode(dr))
+	return cipher.SumSHA256(encodeGob(dr))
 }
 
 // Verify returns nil if the following is satisfied:
@@ -74,7 +74,7 @@ func (dr SessionDialRequest) Verify(lastTimestamp int64) error {
 	sig := dr.Sig
 	dr.Sig = cipher.Sig{}
 
-	if err := cipher.VerifyPubKeySignedPayload(dr.SrcPK, sig, gobEncode(dr)); err != nil {
+	if err := cipher.VerifyPubKeySignedPayload(dr.SrcPK, sig, encodeGob(dr)); err != nil {
 		return ErrDialReqInvalidSig
 	}
 	return nil
@@ -84,12 +84,13 @@ type StreamDialRequest struct {
 	Timestamp int64
 	SrcAddr   Addr
 	DstAddr   Addr
+	NoiseMsg  []byte
 	Sig       cipher.Sig
 }
 
 func (dr *StreamDialRequest) Sign(sk cipher.SecKey) error {
 	dr.Sig = cipher.Sig{}
-	b := gobEncode(dr)
+	b := encodeGob(dr)
 	sig, err := cipher.SignPayload(b, sk)
 	if err != nil {
 		return err
@@ -100,7 +101,7 @@ func (dr *StreamDialRequest) Sign(sk cipher.SecKey) error {
 
 func (dr StreamDialRequest) Hash() cipher.SHA256 {
 	dr.Sig = cipher.Sig{}
-	return cipher.SumSHA256(gobEncode(dr))
+	return cipher.SumSHA256(encodeGob(dr))
 }
 
 func (dr StreamDialRequest) Verify(lastTimestamp int64) error {
@@ -123,7 +124,7 @@ func (dr StreamDialRequest) Verify(lastTimestamp int64) error {
 	sig := dr.Sig
 	dr.Sig = cipher.Sig{}
 
-	if err := cipher.VerifyPubKeySignedPayload(dr.SrcAddr.PK, sig, gobEncode(dr)); err != nil {
+	if err := cipher.VerifyPubKeySignedPayload(dr.SrcAddr.PK, sig, encodeGob(dr)); err != nil {
 		return ErrDialReqInvalidSig
 	}
 	return nil
@@ -134,12 +135,13 @@ type DialResponse struct {
 	ReqHash  cipher.SHA256 // Hash of associated dial request.
 	Accepted bool          // Whether the request is accepted.
 	ErrCode  uint8         // Check if not accepted.
+	NoiseMsg []byte
 	Sig      cipher.Sig    // Signature of this DialRequest, signed with public key of receiving node.
 }
 
 func (dr *DialResponse) Sign(sk cipher.SecKey) error {
 	dr.Sig = cipher.Sig{}
-	b := gobEncode(dr)
+	b := encodeGob(dr)
 	sig, err := cipher.SignPayload(b, sk)
 	if err != nil {
 		return err
@@ -156,8 +158,15 @@ func (dr DialResponse) Verify(reqDstPK cipher.PubKey, reqHash cipher.SHA256) err
 	sig := dr.Sig
 	dr.Sig = cipher.Sig{}
 
-	if err := cipher.VerifyPubKeySignedPayload(reqDstPK, sig, gobEncode(dr)); err != nil {
+	if err := cipher.VerifyPubKeySignedPayload(reqDstPK, sig, encodeGob(dr)); err != nil {
 		return ErrDialRespInvalidSig
+	}
+	if !dr.Accepted {
+		err, ok := ErrorFromCode(dr.ErrCode)
+		if !ok {
+			return ErrDialRespNotAccepted
+		}
+		return err
 	}
 	return nil
 }
@@ -200,6 +209,15 @@ func (a Addr) String() string {
 		return fmt.Sprintf("%s:~", a.PK)
 	}
 	return fmt.Sprintf("%s:%d", a.PK, a.Port)
+}
+
+// ShortString returns a shortened string representation of the address.
+func (a Addr) ShortString() string {
+	const PKLen = 8
+	if a.Port == 0 {
+		return fmt.Sprintf("%s:~", a.PK.String()[:PKLen])
+	}
+	return fmt.Sprintf("%s:%d", a.PK.String()[:PKLen], a.Port)
 }
 
 // HandshakeData represents format of payload sent with REQUEST frames.
