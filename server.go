@@ -88,7 +88,7 @@ func (s *Server) getConn(pk cipher.PubKey) (*ServerConn, bool) {
 	return l, ok
 }
 
-func (s *Server) connCount() int {
+func (s *Server) sessionCount() int {
 	s.mx.RLock()
 	n := len(s.conns)
 	s.mx.RUnlock()

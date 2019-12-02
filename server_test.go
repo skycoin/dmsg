@@ -383,7 +383,7 @@ func testServerFailedAccepts(t *testing.T) {
 	// Call Dial in a loop without any Accepts until an error occurs.
 	for {
 		ctx := context.Background()
-		if _, err = responder.Dial(ctx, initiator.pk, port); err != nil {
+		if _, err = responder.DialStream(ctx, initiator.pk, port); err != nil {
 			break
 		}
 	}
@@ -392,7 +392,7 @@ func testServerFailedAccepts(t *testing.T) {
 	// the same as above, connection is created by another client
 	for {
 		ctx := context.Background()
-		if _, err = initiator.Dial(ctx, responder.pk, port); err != nil {
+		if _, err = initiator.DialStream(ctx, responder.pk, port); err != nil {
 			break
 		}
 	}
@@ -442,11 +442,11 @@ func testServerStreamEstablishment(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, initiator.pk, initiatorServerConn.PK())
 	// must have a ClientConn
-	responderClientConn, ok := responder.getConn(srv.pk)
+	responderClientConn, ok := responder.getSession(srv.pk)
 	require.True(t, ok)
 	require.Equal(t, srv.pk, responderClientConn.RemotePK())
 	// must have a ClientConn
-	initiatorClientConn, ok := initiator.getConn(srv.pk)
+	initiatorClientConn, ok := initiator.getSession(srv.pk)
 	require.True(t, ok)
 	require.Equal(t, srv.pk, initiatorClientConn.RemotePK())
 	// check whether nextConn's contents are as must be
@@ -586,7 +586,7 @@ func testServerConcurrentStreamEstablishment(t *testing.T) {
 			defer initiatorsWG.Done()
 
 			responder := listeners[pickedListeners[initiatorIndex]].(*Listener)
-			conn, err := initiators[initiatorIndex].Dial(context.Background(), responder.addr.PK, responder.addr.Port)
+			conn, err := initiators[initiatorIndex].DialStream(context.Background(), responder.addr.PK, responder.addr.Port)
 			if err != nil {
 				dialErrs <- err
 			}
@@ -617,7 +617,7 @@ func testServerConcurrentStreamEstablishment(t *testing.T) {
 		require.Equal(t, initiator.pk, initiatorSrvConn.PK())
 
 		// get and check initiator's ClientConn
-		initiatorClientConn, ok := initiator.getConn(srv.pk)
+		initiatorClientConn, ok := initiator.getSession(srv.pk)
 		require.True(t, ok)
 		require.Equal(t, srv.pk, initiatorClientConn.RemotePK())
 
@@ -629,7 +629,7 @@ func testServerConcurrentStreamEstablishment(t *testing.T) {
 		require.Equal(t, responder.pk, responderSrvConn.PK())
 
 		// get and check responder's ClientConn
-		responderClientConn, ok := responder.getConn(srv.pk)
+		responderClientConn, ok := responder.getSession(srv.pk)
 		require.True(t, ok)
 		require.Equal(t, srv.pk, responderClientConn.RemotePK())
 
@@ -817,7 +817,7 @@ func dial(t *testing.T, initiator, responder *Client, port uint16, delay time.Du
 		}
 		defer lis.close()
 
-		initTp, err = initiator.Dial(ctx, responder.pk, port)
+		initTp, err = initiator.DialStream(ctx, responder.pk, port)
 		if err != nil {
 			return err
 		}

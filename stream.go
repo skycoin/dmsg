@@ -1,358 +1,325 @@
 package dmsg
 
 import (
+	"bytes"
 	"context"
-	"errors"
+	"github.com/SkycoinProject/dmsg/netutil"
+	"encoding/binary"
+	"encoding/gob"
 	"io"
 	"net"
-	"sync"
+	"time"
 
-	"github.com/SkycoinProject/skycoin/src/util/logging"
-	"golang.org/x/net/nettest"
+	"github.com/hashicorp/yamux"
+	"github.com/sirupsen/logrus"
 
 	"github.com/SkycoinProject/dmsg/cipher"
-	"github.com/SkycoinProject/dmsg/disc"
+	"github.com/SkycoinProject/dmsg/noise"
 )
 
-// Errors related to REQUEST frames.
-var (
-	ErrRequestRejected    = errors.New("failed to create stream: request rejected")
-	ErrRequestCheckFailed = errors.New("failed to create stream: request check failed")
-	ErrAcceptCheckFailed  = errors.New("failed to create stream: accept check failed")
-	ErrPortNotListening   = errors.New("failed to create stream: port not listening")
-)
-
-// Stream represents communication between two nodes via a single hop:
-// a connection from dmsg.Client to remote dmsg.Client (via dmsg.Server intermediary).
 type Stream struct {
-	net.Conn // underlying connection to dmsg.Server
-	log      *logging.Logger
+	lAddr Addr // local address
+	rAddr Addr // remote address
+	sk  cipher.SecKey     // Local secret key.
 
-	id    uint16 // tp ID that identifies this dmsg.stream
-	lAddr Addr   // local address
-	rAddr Addr   // remote address
+	ys  *yamux.Stream     // Underlying yamux stream.
+	ns  *noise.ReadWriter // Underlying noise read writer.
 
-	inCh chan Frame // handles incoming frames (from dmsg.Client)
-	inMx sync.Mutex // protects 'inCh'
-
-	lW *LocalWindow  // local window
-	rW *RemoteWindow // remote window
-
-	serving     chan struct{} // chan which closes when serving begins
-	servingOnce sync.Once     // ensures 'serving' only closes once
-	done        chan struct{} // chan which closes when stream stops serving
-	doneOnce    sync.Once     // ensures 'done' only closes once
-	doneFunc    func()        // contains a method that triggers when dmsg.Client closes
+	close func() // to be called when closing.
+	log   logrus.FieldLogger
 }
 
-// NewStream creates a new dms_tp.
-func NewStream(conn net.Conn, log *logging.Logger, local, remote Addr, id uint16, lWindow int, doneFunc func()) *Stream {
-	tp := &Stream{
-		Conn:     conn,
-		log:      log,
-		id:       id,
-		lAddr:    local,
-		rAddr:    remote,
-		inCh:     make(chan Frame),
-		lW:       NewLocalWindow(lWindow),
-		serving:  make(chan struct{}),
-		done:     make(chan struct{}),
-		doneFunc: doneFunc,
-	}
-	return tp
-}
-
-func (tp *Stream) serve() (started bool) {
-	tp.servingOnce.Do(func() {
-		started = true
-		close(tp.serving)
-	})
-	return started
-}
-
-// Regarding the use of mutexes:
-// 1. `done` is always closed before `inCh`/`lCh` is closed.
-// 2. mutexes protect `inCh`/`lCh` to ensure that closing and writing to these chans does not happen concurrently.
-// 3. Our worry now, is writing to `inCh`/`lCh` AFTER they have been closed.
-// 4. But as, under the mutexes protecting `inCh`/`lCh`, checking `done` comes first,
-// and we know that `done` is closed before `inCh`/`lCh`, we can guarantee that it avoids writing to closed chan.
-func (tp *Stream) close() (closed bool) {
-	if tp == nil {
-		return false
-	}
-
-	tp.doneOnce.Do(func() {
-		closed = true
-
-		close(tp.done)
-		tp.doneFunc()
-
-		_ = tp.rW.Close() //nolint:errcheck
-		_ = tp.lW.Close() //nolint:errcheck
-
-		tp.inMx.Lock()
-		close(tp.inCh)
-		tp.inMx.Unlock()
-	})
-
-	tp.serve() // just in case.
-	return closed
-}
-
-// Close closes the dmsg_tp.
-func (tp *Stream) Close() error {
-	if tp.close() {
-		if err := writeCloseFrame(tp.Conn, tp.id, PlaceholderReason); err != nil {
-			log.WithError(err).Warn("Failed to write frame")
-		}
-	}
-	return nil
-}
-
-// IsClosed returns whether dms_tp is closed.
-func (tp *Stream) IsClosed() bool {
-	select {
-	case <-tp.done:
-		return true
-	default:
-		return false
+func NewStream(ys *yamux.Stream, lSK cipher.SecKey, src, dst Addr) *Stream {
+	return &Stream{
+		lAddr: src,
+		rAddr: dst,
+		sk: lSK,
+		ys: ys,
 	}
 }
 
-// LocalPK returns the local public key of the stream.
-func (tp *Stream) LocalPK() cipher.PubKey {
-	return tp.lAddr.PK
-}
+type ClientStreamHandshake func(ctx context.Context, log logrus.FieldLogger, porter *netutil.Porter, sessionNoise *noise.Noise) error
 
-// RemotePK returns the remote public key of the stream.
-func (tp *Stream) RemotePK() cipher.PubKey {
-	return tp.rAddr.PK
-}
-
-// LocalAddr returns local address in from <public-key>:<port>
-func (tp *Stream) LocalAddr() net.Addr { return tp.lAddr }
-
-// RemoteAddr returns remote address in form <public-key>:<port>
-func (tp *Stream) RemoteAddr() net.Addr { return tp.rAddr }
-
-// Type returns the stream type.
-func (tp *Stream) Type() string {
-	return Type
-}
-
-// HandleFrame allows 'tp.Serve' to handle the frame (typically from 'ClientConn').
-func (tp *Stream) HandleFrame(f Frame) error {
-	tp.inMx.Lock()
-	defer tp.inMx.Unlock()
-	for {
-		if tp.IsClosed() {
-			return io.ErrClosedPipe
-		}
-		select {
-		case tp.inCh <- f:
-			return nil
-		default:
-		}
-	}
-}
-
-// WriteRequest writes a REQUEST frame to dmsg_server to be forwarded to associated client.
-func (tp *Stream) WriteRequest() error {
-	if err := writeRequestFrame(tp.Conn, tp.id, tp.lAddr, tp.rAddr, int32(tp.lW.Max())); err != nil {
-		tp.log.WithError(err).Error("HandshakeFailed")
-		tp.close()
-		return err
-	}
-	return nil
-}
-
-// WriteAccept writes an ACCEPT frame to dmsg_server to be forwarded to associated client.
-func (tp *Stream) WriteAccept(rWindow int) (err error) {
-	defer func() {
-		if err != nil {
-			tp.log.WithError(err).WithField("remote", tp.rAddr).Warnln("(HANDSHAKE) Rejected locally.")
-		} else {
-			tp.log.WithField("remote", tp.rAddr).Infoln("(HANDSHAKE) Accepted locally.")
-		}
-	}()
-
-	tp.rW = NewRemoteWindow(rWindow)
-
-	if err = writeAcceptFrame(tp.Conn, tp.id, tp.lAddr, tp.rAddr, int32(tp.lW.Max())); err != nil {
-		tp.close()
-		return err
-	}
-	return nil
-}
-
-// ReadAccept awaits for an ACCEPT frame to be read from the remote client.
-// TODO(evanlinjin): Cleanup errors.
-func (tp *Stream) ReadAccept(ctx context.Context) (err error) {
-	defer func() {
-		if err != nil {
-			switch err {
-			case io.ErrClosedPipe, ErrRequestRejected:
-				tp.close()
-			default:
-				if err := tp.Close(); err != nil {
-					log.WithError(err).Warn("Failed to close stream")
-				}
-			}
-			tp.log.WithError(err).WithField("remote", tp.rAddr).Warnln("(HANDSHAKE) Rejected by remote.")
-		} else {
-			tp.log.WithField("remote", tp.rAddr).Infoln("(HANDSHAKE) Accepted by remote.")
-		}
+func (ds *Stream) DoClientHandshake(ctx context.Context, log logrus.FieldLogger, porter *netutil.Porter, sessionNoise *noise.Noise, hs ClientStreamHandshake) (err error) {
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- hs(ctx, log, porter, sessionNoise)
+		close(errCh)
 	}()
 
 	select {
-	case <-tp.done:
-		return io.ErrClosedPipe
-
 	case <-ctx.Done():
-		return ctx.Err()
-
-	case f, ok := <-tp.inCh:
-		if !ok {
-			return io.ErrClosedPipe
-		}
-		switch ft, id, p := f.Disassemble(); ft {
-		case AcceptType:
-			hp, err := unmarshalHandshakeData(p)
-			if err != nil || !isInitiatorID(id) ||
-				hp.Version != HandshakePayloadVersion ||
-				hp.InitAddr != tp.lAddr ||
-				hp.RespAddr != tp.rAddr {
-				return ErrAcceptCheckFailed
-			}
-
-			tp.rW = NewRemoteWindow(int(hp.Window))
-			return nil
-
-		case CloseType:
-			return ErrRequestRejected
-
-		default:
-			return ErrAcceptCheckFailed
-		}
+		err = ctx.Err()
+	case err = <-errCh:
 	}
+
+	if err != nil {
+		log.WithError(ds.Close()).
+			Warnf("failed to complete handshake for stream: %v", err)
+		return err
+	}
+	return nil
 }
 
-// Serve handles received frames.
-func (tp *Stream) Serve() {
-	// return is stream is already being served, or is closed
-	if !tp.serve() {
-		return
-	}
-
-	// ensure stream closes when serving stops
-	// also write CLOSE frame if this is the first time 'close' is triggered
-	defer func() {
-		if tp.close() {
-			if err := writeCloseFrame(tp.Conn, tp.id, PlaceholderReason); err != nil {
-				log.WithError(err).Warn("Failed to write close frame")
-			}
-		}
-	}()
-
-	for {
-		select {
-		case <-tp.done:
-			return
-
-		case f, ok := <-tp.inCh:
-			if !ok {
-				return
-			}
-			log := tp.log.WithField("remoteClient", tp.rAddr).WithField("received", f)
-
-			switch p := f.Pay(); f.Type() {
-			case FwdType:
-				log = log.WithField("payload_size", len(p))
-				if err := tp.lW.Enqueue(p, tp.done); err != nil {
-					log.WithError(err).Warn("Rejected [FWD]")
-					return
-				}
-				log.Debug("Injected [FWD]")
-
-			case AckType:
-				offset, err := disassembleAckPayload(p)
-				if err != nil {
-					log.WithError(err).Warn("Rejected [ACK]: Failed to dissemble payload.")
-					return
-				}
-				if err := tp.rW.Grow(int(offset), tp.done); err != nil {
-					log.WithError(err).Warn("Rejected [ACK]: Failed to grow remote window.")
-					return
-				}
-				log.Debug("Injected [ACK]")
-
-			case CloseType:
-				log.Info("Injected [CLOSE]: Closing stream...")
-				tp.close() // ensure there is no sending of CLOSE frame
-				return
-
-			case RequestType:
-				log.Warn("Rejected [REQUEST]: ID already occupied, possibly malicious server.")
-				if err := tp.Conn.Close(); err != nil {
-					log.WithError(err).Debug("Closing connection returned non-nil error.")
-				}
-				return
-
-			default:
-				tp.log.Warnf("Rejected [%s]: Unexpected frame, possibly malicious server (ignored for now).", f.Type())
-			}
-		}
-	}
-}
-
-// Read implements io.Reader
-// TODO(evanlinjin): read deadline.
-func (tp *Stream) Read(p []byte) (n int, err error) {
-	<-tp.serving
-
-	return tp.lW.Read(p, tp.done, func(n uint16) {
-		if err := writeAckFrame(tp.Conn, tp.id, n); err != nil {
-			tp.close()
-		}
-	})
-}
-
-// Write implements io.Writer
-// TODO(evanlinjin): write deadline.
-func (tp *Stream) Write(p []byte) (int, error) {
-	<-tp.serving
-
-	if tp.IsClosed() {
-		return 0, io.ErrClosedPipe
-	}
-
-	return tp.rW.Write(p, func(b []byte) error {
-		if err := writeFwdFrame(tp.Conn, tp.id, p); err != nil {
-			tp.close()
+func (ds *Stream) ClientInitiatingHandshake(ctx context.Context, log logrus.FieldLogger, porter *netutil.Porter, sessionNoise *noise.Noise) error {
+	saveStream := func() error {
+		lPort, closeDS, err := porter.ReserveEphemeral(ctx, ds)
+		if err != nil {
 			return err
 		}
+		ds.lAddr.Port = lPort
+		ds.close = closeDS
+		ds.log = log.WithField("stream", ds.lAddr.ShortString()+"->"+ds.rAddr.ShortString())
 		return nil
-	})
+	}
+
+	writeRequest := func(ns *noise.Noise) (*StreamDialRequest, error) {
+		nsMsg, err := ns.MakeHandshakeMessage()
+		if err != nil {
+			return nil, err
+		}
+		req := StreamDialRequest{
+			Timestamp: time.Now().UnixNano(),
+			SrcAddr:   ds.lAddr,
+			DstAddr:   ds.rAddr,
+			NoiseMsg:  nsMsg,
+		}
+		if err := req.Sign(ds.sk); err != nil {
+			return nil, err
+		}
+		if err := writeEncryptedGob(ds.ys, sessionNoise, req); err != nil {
+			return nil, err
+		}
+		return &req, nil
+	}
+
+	readResponse := func(ns *noise.Noise, req *StreamDialRequest) error {
+		var resp DialResponse
+		if err := readEncryptedGob(ds.ys, sessionNoise, &resp); err != nil {
+			return err
+		}
+		if err := resp.Verify(req.DstAddr.PK, req.Hash()); err != nil {
+			return err
+		}
+		return ns.ProcessHandshakeMessage(resp.NoiseMsg)
+	}
+
+	// Save stream in porter.
+	if err := saveStream(); err != nil {
+		return err
+	}
+
+	// Prepare noise.
+	ns, err := ds.prepareNoise(true)
+	if err != nil {
+		return err
+	}
+
+	// Prepare and write request object.
+	req, err := writeRequest(ns)
+	if err != nil {
+		return err
+	}
+
+	// Await and read response object.
+	if err := readResponse(ns, req); err != nil {
+		return err
+	}
+
+	// Prepare noise read writer.
+	ds.ns = noise.NewReadWriter(ds.ys, ns)
+	return nil
 }
 
-// CreateDmsgTestServer creates a new dmsg test server.
-func CreateDmsgTestServer(dc disc.APIClient) (*Server, error) {
-	pk, sk, err := cipher.GenerateDeterministicKeyPair([]byte("s"))
-	if err != nil {
-		return nil, err
+func (ds *Stream) ClientRespondingHandshake(_ context.Context, log logrus.FieldLogger, porter *netutil.Porter, sessionNoise *noise.Noise) error {
+	readRequest := func() (*StreamDialRequest, error) {
+		var req StreamDialRequest
+		if err := readEncryptedGob(ds.ys, sessionNoise, &req); err != nil {
+			return nil, err
+		}
+		if err := req.Verify(0); err != nil { // TODO(evanlinjin): timestamp tracker.
+			return nil, ErrDialReqInvalidTimestamp
+		}
+		if req.DstAddr.PK != ds.lAddr.PK {
+			return nil, ErrDialReqInvalidDstPK
+		}
+		ds.lAddr = req.DstAddr
+		ds.rAddr = req.SrcAddr
+		ds.log = log.WithField("stream", ds.lAddr.ShortString()+"->"+ds.rAddr.ShortString())
+		return &req, nil
 	}
 
-	l, err := nettest.NewLocalListener("tcp")
-	if err != nil {
-		return nil, err
+	checkRequest := func(ns *noise.Noise, req *StreamDialRequest) (*Listener, error) {
+		if err := ns.ProcessHandshakeMessage(req.NoiseMsg); err != nil {
+			return nil, err
+		}
+		pv, ok := porter.PortValue(ds.lAddr.Port)
+		if !ok {
+			return nil, ErrIncomingHasNoListener
+		}
+		lis, ok := pv.(*Listener)
+		if !ok {
+			return nil, ErrIncomingHasNoListener
+		}
+		return lis, nil
 	}
 
-	srv, err := NewServer(pk, sk, "", l, dc)
-	if err != nil {
-		return nil, err
+	writeResponse := func(ns *noise.Noise, req *StreamDialRequest) error {
+		nsMsg, err := ns.MakeHandshakeMessage()
+		if err != nil {
+			return err
+		}
+		resp := DialResponse{
+			ReqHash:  req.Hash(),
+			Accepted: true,
+			NoiseMsg: nsMsg,
+		}
+		if err := resp.Sign(ds.sk); err != nil {
+			return err
+		}
+		return writeEncryptedGob(ds.ys, sessionNoise, resp)
 	}
 
-	go func() { _ = srv.Serve() }() //nolint:errcheck
+	writeReject := func(req *StreamDialRequest, err error) {
+		if req == nil {
+			return
+		}
 
-	return srv, nil
+		resp := DialResponse{
+			ReqHash:  req.Hash(),
+			Accepted: false,
+			ErrCode:  CodeFromError(err),
+		}
+		if err := resp.Sign(ds.sk); err != nil {
+			ds.log.
+				WithError(err).
+				Error("failed to sign reject response")
+		}
+		if err := writeEncryptedGob(ds.ys, sessionNoise, resp); err != nil {
+			ds.log.
+				WithError(err).
+				Error("failed to write reject response")
+		}
+		ds.log.
+			WithError(err).
+			WithField("remote", ds.rAddr.ShortString()).
+			Warn("rejected stream request")
+	}
+
+	// Await and read request object.
+	req, err := readRequest()
+	if err != nil {
+		writeReject(req, err)
+		return err
+	}
+
+	// Prepare noise.
+	ns, err := ds.prepareNoise(false)
+	if err != nil {
+		writeReject(req, err)
+		return err
+	}
+
+	// Check request and return listener.
+	lis, err := checkRequest(ns, req)
+	if err != nil {
+		writeReject(req, err)
+		return err
+	}
+
+	// Prepare and write response object.
+	if err := writeResponse(ns, req); err != nil {
+		return err
+	}
+
+	// Prepare noise read writer.
+	ds.ns = noise.NewReadWriter(ds.ys, ns)
+	return lis.IntroduceStream(ds)
+}
+
+// TODO(evanlinjin): Complete this.
+type ServerStreamHandshake func(ctx context.Context)
+
+
+
+func (ds *Stream) prepareNoise(init bool) (*noise.Noise, error) {
+	ns, err := noise.New(noise.HandshakeKK, noise.Config{
+		LocalPK: ds.lAddr.PK,
+		LocalSK: ds.sk,
+		RemotePK: ds.rAddr.PK,
+		Initiator: init,
+	})
+	return ns, err
+}
+
+func (ds *Stream) LocalAddr() net.Addr {
+	return ds.lAddr
+}
+
+func (ds *Stream) RemoteAddr() net.Addr {
+	return ds.rAddr
+}
+
+func (ds *Stream) Read(b []byte) (int, error) {
+	return ds.ns.Read(b)
+}
+
+func (ds *Stream) Write(b []byte) (int, error) {
+	return ds.ns.Write(b)
+}
+
+func (ds *Stream) SetDeadline(t time.Time) error {
+	return ds.ys.SetDeadline(t)
+}
+
+func (ds *Stream) SetReadDeadline(t time.Time) error {
+	return ds.ys.SetReadDeadline(t)
+}
+
+func (ds *Stream) SetWriteDeadline(t time.Time) error {
+	return ds.ys.SetWriteDeadline(t)
+}
+
+func (ds *Stream) Close() error {
+	if ds.close != nil {
+		ds.close()
+	}
+	return ds.ys.Close()
+}
+
+func encodeGob(v interface{}) []byte {
+	var b bytes.Buffer
+	if err := gob.NewEncoder(&b).Encode(v); err != nil {
+		panic(err)
+	}
+	return b.Bytes()
+}
+
+// writeEncryptedGob encrypts with noise and prefixed with uint16 (2 additional bytes).
+func writeEncryptedGob(w io.Writer, ns *noise.Noise, v interface{}) error {
+	p := ns.EncryptUnsafe(encodeGob(v))
+	p = append(make([]byte, 2), p...)
+	binary.BigEndian.PutUint16(p, uint16(len(p) - 2))
+	_, err := w.Write(p)
+	return err
+}
+
+func decodeGob(v interface{}, b []byte) error {
+	return gob.NewDecoder(bytes.NewReader(b)).Decode(v)
+}
+
+func readEncryptedGob(r io.Reader, ns *noise.Noise, v interface{}) error {
+	lb := make([]byte, 2)
+	if _, err := io.ReadFull(r, lb); err != nil {
+		return err
+	}
+	pb := make([]byte, binary.BigEndian.Uint16(lb))
+	if _, err := io.ReadFull(r, pb); err != nil {
+		return err
+	}
+	b, err := ns.DecryptUnsafe(pb)
+	if err != nil {
+		return err
+	}
+	return decodeGob(v, b)
 }

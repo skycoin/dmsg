@@ -131,13 +131,13 @@ func (c *ServerConn) Serve(ctx context.Context, getConn getConnFunc) (err error)
 		}
 		c.mx.Unlock()
 
-		log.WithError(err).WithField("connCount", decrementServeCount()).Infoln("ClosingConn")
+		log.WithError(err).WithField("sessionCount", decrementServeCount()).Infoln("ClosingConn")
 		if err := c.Conn.Close(); err != nil {
 			log.WithError(err).Warn("Failed to close connection")
 		}
 	}()
 
-	log.WithField("connCount", incrementServeCount()).Infoln("ServingConn")
+	log.WithField("sessionCount", incrementServeCount()).Infoln("ServingConn")
 
 	err = c.writeOK()
 	if err != nil {

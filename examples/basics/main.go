@@ -55,7 +55,7 @@ func main() {
 	}
 
 	// dial responder via DMSG
-	initTp, err := initC.Dial(context.Background(), respPK, respPort)
+	initTp, err := initC.DialStream(context.Background(), respPK, respPort)
 	if err != nil {
 		log.Fatalf("Error dialing responder: %v", err)
 	}

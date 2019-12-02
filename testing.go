@@ -29,14 +29,14 @@ func closeClosers(closers ...io.Closer) error {
 }
 
 type connCounter interface {
-	connCount() int
+	sessionCount() int
 }
 
 func checkConnCount(t *testing.T, delay time.Duration, count int, ccs ...connCounter) {
 	require.NoError(t, testWithTimeout(delay, func() error {
 		for _, cc := range ccs {
-			if cc.connCount() != count {
-				return fmt.Errorf("connCount equals to %d, want %d", cc.connCount(), count)
+			if cc.sessionCount() != count {
+				return fmt.Errorf("sessionCount equals to %d, want %d", cc.sessionCount(), count)
 			}
 		}
 		return nil

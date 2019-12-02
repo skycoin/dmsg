@@ -12,7 +12,7 @@ import (
 
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/disc"
-	"github.com/SkycoinProject/dmsg/noise"
+	"github.com/SkycoinProject/dmsg/netutil"
 )
 
 var log = logging.MustGetLogger("dmsg")
@@ -52,10 +52,10 @@ type Client struct {
 	sk cipher.SecKey
 	dc disc.APIClient
 
-	conns map[cipher.PubKey]*ClientConn // conns with messaging servers. Key: pk of server
-	mx    sync.RWMutex
+	ss map[cipher.PubKey]*Session // sessions with messaging servers. Key: pk of server
+	mx sync.RWMutex
 
-	pm *PortManager
+	pm *netutil.Porter
 
 	done chan struct{}
 	once sync.Once
@@ -64,13 +64,13 @@ type Client struct {
 // NewClient creates a new Client.
 func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, opts ...ClientOption) *Client {
 	c := &Client{
-		log:   logging.MustGetLogger("dmsg_client"),
-		pk:    pk,
-		sk:    sk,
-		dc:    dc,
-		conns: make(map[cipher.PubKey]*ClientConn),
-		pm:    newPortManager(pk),
-		done:  make(chan struct{}),
+		log:  logging.MustGetLogger("dmsg_client"),
+		pk:   pk,
+		sk:   sk,
+		dc:   dc,
+		ss:   make(map[cipher.PubKey]*Session),
+		pm:   netutil.NewPorter(netutil.PorterMinEphemeral),
+		done: make(chan struct{}),
 	}
 	for _, opt := range opts {
 		if err := opt(c); err != nil {
@@ -81,8 +81,8 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, opts ...Cl
 }
 
 func (c *Client) updateDiscEntry(ctx context.Context) error {
-	srvPKs := make([]cipher.PubKey, 0, len(c.conns))
-	for pk := range c.conns {
+	srvPKs := make([]cipher.PubKey, 0, len(c.ss))
+	for pk := range c.ss {
 		srvPKs = append(srvPKs, pk)
 	}
 	entry, err := c.dc.Entry(ctx, c.pk)
@@ -98,34 +98,34 @@ func (c *Client) updateDiscEntry(ctx context.Context) error {
 	return c.dc.UpdateEntry(ctx, c.sk, entry)
 }
 
-func (c *Client) setConn(ctx context.Context, conn *ClientConn) {
+func (c *Client) setSession(ctx context.Context, conn *Session) {
 	c.mx.Lock()
-	c.conns[conn.srvPK] = conn
+	c.ss[conn.rPK] = conn
 	if err := c.updateDiscEntry(ctx); err != nil {
 		c.log.WithError(err).Warn("updateEntry: failed")
 	}
 	c.mx.Unlock()
 }
 
-func (c *Client) delConn(ctx context.Context, pk cipher.PubKey) {
+func (c *Client) delSession(ctx context.Context, pk cipher.PubKey) {
 	c.mx.Lock()
-	delete(c.conns, pk)
+	delete(c.ss, pk)
 	if err := c.updateDiscEntry(ctx); err != nil {
 		c.log.WithError(err).Warn("updateEntry: failed")
 	}
 	c.mx.Unlock()
 }
 
-func (c *Client) getConn(pk cipher.PubKey) (*ClientConn, bool) {
+func (c *Client) getSession(pk cipher.PubKey) (*Session, bool) {
 	c.mx.RLock()
-	l, ok := c.conns[pk]
+	l, ok := c.ss[pk]
 	c.mx.RUnlock()
 	return l, ok
 }
 
-func (c *Client) connCount() int {
+func (c *Client) sessionCount() int {
 	c.mx.RLock()
-	n := len(c.conns)
+	n := len(c.ss)
 	c.mx.RUnlock()
 	return n
 }
@@ -172,15 +172,15 @@ func (c *Client) findOrConnectToServers(ctx context.Context, entries []*disc.Ent
 			continue
 		}
 		c.log.Infof("findOrConnectToServers: found/connected to server %s", entry.Static)
-		if c.connCount() >= min {
+		if c.sessionCount() >= min {
 			return nil
 		}
 	}
 	return fmt.Errorf("findOrConnectToServers: all servers failed")
 }
 
-func (c *Client) findOrConnectToServer(ctx context.Context, srvPK cipher.PubKey) (*ClientConn, error) {
-	if conn, ok := c.getConn(srvPK); ok {
+func (c *Client) findOrConnectToServer(ctx context.Context, srvPK cipher.PubKey) (*Session, error) {
+	if conn, ok := c.getSession(srvPK); ok {
 		return conn, nil
 	}
 
@@ -196,60 +196,54 @@ func (c *Client) findOrConnectToServer(ctx context.Context, srvPK cipher.PubKey)
 	if err != nil {
 		return nil, err
 	}
-	ns, err := noise.New(noise.HandshakeXK, noise.Config{
-		LocalPK:   c.pk,
-		LocalSK:   c.sk,
-		RemotePK:  srvPK,
-		Initiator: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	nc, err := noise.WrapConn(tcpConn, ns, StreamHandshakeTimeout)
+	dSes, err := NewClientSession(c.log, c.pm, tcpConn, c.sk, c.pk, srvPK)
 	if err != nil {
 		return nil, err
 	}
 
-	conn := NewClientConn(c.log, c.pm, nc, c.pk, srvPK)
-	if err := conn.readOK(); err != nil {
-		return nil, err
-	}
-
-	c.setConn(ctx, conn)
+	c.setSession(ctx, dSes)
 
 	go func() {
-		err := conn.Serve(ctx)
-		conn.log.WithField("reason", err).WithField("remoteServer", srvPK).Debug("connection with server closed")
-		c.delConn(ctx, srvPK)
+		// serve
+		for {
+			if err := dSes.AcceptStream(ctx); err != nil {
+				dSes.log.WithField("reason", err).WithField("remoteServer", srvPK).Debug("connection with server closed")
+				c.delSession(ctx, srvPK)
+				break
+			}
+		}
 
-		// reconnect logic.
+		// reconnect logic
 	retryServerConnect:
 		select {
 		case <-c.done:
 		case <-ctx.Done():
 		case <-time.After(clientReconnectInterval):
-			conn.log.WithField("remoteServer", srvPK).Warn("Reconnecting")
+			dSes.log.WithField("remoteServer", srvPK).Warn("Reconnecting")
 			if _, err := c.findOrConnectToServer(ctx, srvPK); err != nil {
-				conn.log.WithError(err).WithField("remoteServer", srvPK).Warn("ReconnectionFailed")
+				dSes.log.WithError(err).WithField("remoteServer", srvPK).Warn("ReconnectionFailed")
 				goto retryServerConnect
 			}
-			conn.log.WithField("remoteServer", srvPK).Warn("ReconnectionSucceeded")
+			dSes.log.WithField("remoteServer", srvPK).Warn("ReconnectionSucceeded")
 		}
 	}()
-	return conn, nil
+	return dSes, nil
 }
 
 // Listen creates a listener on a given port, adds it to port manager and returns the listener.
 func (c *Client) Listen(port uint16) (*Listener, error) {
-	l, ok := c.pm.NewListener(port)
+	lis := newListener(Addr{PK: c.pk, Port: port})
+	ok, doneFunc := c.pm.Reserve(port, lis)
 	if !ok {
-		return nil, errors.New("port is busy")
+		lis.close()
+		return nil, errors.New("port occupied") // TODO(evanlinjin): Have proper error here.
 	}
-	return l, nil
+	lis.doneFunc = doneFunc
+	return lis, nil
 }
 
-// Dial dials a stream to remote dms_client.
-func (c *Client) Dial(ctx context.Context, remote cipher.PubKey, port uint16) (*Stream, error) {
+// DialStream dials a stream to remote dms_client.
+func (c *Client) DialStream(ctx context.Context, remote cipher.PubKey, port uint16) (*Stream, error) {
 	entry, err := c.dc.Entry(ctx, remote)
 	if err != nil {
 		return nil, fmt.Errorf("get entry failure: %s", err)
@@ -261,12 +255,12 @@ func (c *Client) Dial(ctx context.Context, remote cipher.PubKey, port uint16) (*
 		return nil, ErrNoSrv
 	}
 	for _, srvPK := range entry.Client.DelegatedServers {
-		conn, err := c.findOrConnectToServer(ctx, srvPK)
+		dSes, err := c.findOrConnectToServer(ctx, srvPK)
 		if err != nil {
 			c.log.WithError(err).Warn("failed to connect to server")
 			continue
 		}
-		return conn.DialStream(ctx, remote, port)
+		return dSes.DialStream(ctx, Addr{PK: remote, Port: port})
 	}
 	return nil, errors.New("failed to find dmsg_servers for given client pk")
 }
@@ -294,15 +288,13 @@ func (c *Client) Close() (err error) {
 		close(c.done)
 
 		c.mx.Lock()
-		for _, conn := range c.conns {
-			if err := conn.Close(); err != nil {
-				log.WithField("reason", err).Debug("Connection closed")
+		for _, dSes := range c.ss {
+			if err := dSes.Close(); err != nil {
+				log.WithField("reason", err).Debug("Session closed")
 			}
 		}
-		c.conns = make(map[cipher.PubKey]*ClientConn)
+		c.ss = make(map[cipher.PubKey]*Session)
 		c.mx.Unlock()
-
-		err = c.pm.Close()
 	})
 
 	return err

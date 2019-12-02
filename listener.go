@@ -10,7 +10,7 @@ import (
 type Listener struct {
 	addr Addr // local listening address
 
-	accept chan *Stream2
+	accept chan *Stream
 	mx     sync.Mutex // protects 'accept'
 
 	doneFunc func() // callback when done
@@ -21,7 +21,7 @@ type Listener struct {
 func newListener(addr Addr) *Listener {
 	return &Listener{
 		addr:   addr,
-		accept: make(chan *Stream2, AcceptBufferSize),
+		accept: make(chan *Stream, AcceptBufferSize),
 		done:   make(chan struct{}),
 	}
 }
@@ -31,7 +31,7 @@ func newListener(addr Addr) *Listener {
 func (l *Listener) AddCloseCallback(cb func()) { l.doneFunc = cb }
 
 // IntroduceStream handles a stream after receiving a REQUEST frame.
-func (l *Listener) IntroduceStream(tp *Stream2) error {
+func (l *Listener) IntroduceStream(tp *Stream) error {
 	if tp.LocalAddr() != l.addr {
 		return fmt.Errorf("local addresses do not match: expected %s but got %s", l.addr, tp.LocalAddr())
 	}
@@ -62,7 +62,7 @@ func (l *Listener) Accept() (net.Conn, error) {
 }
 
 // AcceptStream accepts a stream connection.
-func (l *Listener) AcceptStream() (*Stream2, error) {
+func (l *Listener) AcceptStream() (*Stream, error) {
 	select {
 	case <-l.done:
 		return nil, ErrClientClosed
