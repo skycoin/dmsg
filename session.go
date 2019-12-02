@@ -20,7 +20,7 @@ type Session struct {
 	rPK cipher.PubKey // Public key of the remote dmsg server.
 
 	ys     *yamux.Session
-	ns     *noise.Noise    // For encrypting session messages, not stream messages.
+	ns     *noise.Noise // For encrypting session messages, not stream messages.
 	porter *netutil.Porter
 
 	log logrus.FieldLogger
@@ -32,9 +32,9 @@ func NewClientSession(log logrus.FieldLogger, porter *netutil.Porter, conn net.C
 		return nil, err
 	}
 	ns, err := noise.New(noise.HandshakeXK, noise.Config{
-		LocalPK: lPK,
-		LocalSK: lSK,
-		RemotePK: rPK,
+		LocalPK:   lPK,
+		LocalSK:   lSK,
+		RemotePK:  rPK,
 		Initiator: true,
 	})
 	if err != nil {
@@ -44,13 +44,13 @@ func NewClientSession(log logrus.FieldLogger, porter *netutil.Porter, conn net.C
 		return nil, err
 	}
 	return &Session{
-		lPK: lPK,
-		lSK: lSK,
-		rPK: rPK,
-		ys: ySes,
-		ns: ns,
+		lPK:    lPK,
+		lSK:    lSK,
+		rPK:    rPK,
+		ys:     ySes,
+		ns:     ns,
 		porter: porter,
-		log: log,
+		log:    log,
 	}, nil
 }
 

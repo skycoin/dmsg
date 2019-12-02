@@ -3,12 +3,13 @@ package dmsg
 import (
 	"bytes"
 	"context"
-	"github.com/SkycoinProject/dmsg/netutil"
 	"encoding/binary"
 	"encoding/gob"
 	"io"
 	"net"
 	"time"
+
+	"github.com/SkycoinProject/dmsg/netutil"
 
 	"github.com/hashicorp/yamux"
 	"github.com/sirupsen/logrus"
@@ -18,12 +19,12 @@ import (
 )
 
 type Stream struct {
-	lAddr Addr // local address
-	rAddr Addr // remote address
-	sk  cipher.SecKey     // Local secret key.
+	lAddr Addr          // local address
+	rAddr Addr          // remote address
+	sk    cipher.SecKey // Local secret key.
 
-	ys  *yamux.Stream     // Underlying yamux stream.
-	ns  *noise.ReadWriter // Underlying noise read writer.
+	ys *yamux.Stream     // Underlying yamux stream.
+	ns *noise.ReadWriter // Underlying noise read writer.
 
 	close func() // to be called when closing.
 	log   logrus.FieldLogger
@@ -33,8 +34,8 @@ func NewStream(ys *yamux.Stream, lSK cipher.SecKey, src, dst Addr) *Stream {
 	return &Stream{
 		lAddr: src,
 		rAddr: dst,
-		sk: lSK,
-		ys: ys,
+		sk:    lSK,
+		ys:    ys,
 	}
 }
 
@@ -240,13 +241,11 @@ func (ds *Stream) ClientRespondingHandshake(_ context.Context, log logrus.FieldL
 // TODO(evanlinjin): Complete this.
 type ServerStreamHandshake func(ctx context.Context)
 
-
-
 func (ds *Stream) prepareNoise(init bool) (*noise.Noise, error) {
 	ns, err := noise.New(noise.HandshakeKK, noise.Config{
-		LocalPK: ds.lAddr.PK,
-		LocalSK: ds.sk,
-		RemotePK: ds.rAddr.PK,
+		LocalPK:   ds.lAddr.PK,
+		LocalSK:   ds.sk,
+		RemotePK:  ds.rAddr.PK,
 		Initiator: init,
 	})
 	return ns, err
@@ -299,7 +298,7 @@ func encodeGob(v interface{}) []byte {
 func writeEncryptedGob(w io.Writer, ns *noise.Noise, v interface{}) error {
 	p := ns.EncryptUnsafe(encodeGob(v))
 	p = append(make([]byte, 2), p...)
-	binary.BigEndian.PutUint16(p, uint16(len(p) - 2))
+	binary.BigEndian.PutUint16(p, uint16(len(p)-2))
 	_, err := w.Write(p)
 	return err
 }

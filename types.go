@@ -136,7 +136,7 @@ type DialResponse struct {
 	Accepted bool          // Whether the request is accepted.
 	ErrCode  uint8         // Check if not accepted.
 	NoiseMsg []byte
-	Sig      cipher.Sig    // Signature of this DialRequest, signed with public key of receiving node.
+	Sig      cipher.Sig // Signature of this DialRequest, signed with public key of receiving node.
 }
 
 func (dr *DialResponse) Sign(sk cipher.SecKey) error {
@@ -170,7 +170,6 @@ func (dr DialResponse) Verify(reqDstPK cipher.PubKey, reqHash cipher.SHA256) err
 	}
 	return nil
 }
-
 
 const (
 	// Type returns the stream type string.

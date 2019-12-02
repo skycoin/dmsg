@@ -230,4 +230,3 @@ func ReadRawFrame(r *bufio.Reader) (p []byte, err error) {
 	}
 	return b[prefixSize:], nil
 }
-
