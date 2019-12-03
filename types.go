@@ -62,20 +62,20 @@ func (dr SessionDialRequest) Hash() cipher.SHA256 {
 // - Whether the destination public key is expected.
 func (dr SessionDialRequest) Verify(lastTimestamp int64) error {
 	if dr.SrcPK.Null() {
-		return ErrDialReqInvalidSrcPK
+		return ErrReqInvalidSrcPK
 	}
 	if dr.DstPK.Null() {
-		return ErrDialReqInvalidDstPK
+		return ErrReqInvalidDstPK
 	}
 	if dr.Timestamp <= lastTimestamp {
-		return ErrDialReqInvalidTimestamp
+		return ErrReqInvalidTimestamp
 	}
 
 	sig := dr.Sig
 	dr.Sig = cipher.Sig{}
 
 	if err := cipher.VerifyPubKeySignedPayload(dr.SrcPK, sig, encodeGob(dr)); err != nil {
-		return ErrDialReqInvalidSig
+		return ErrReqInvalidSig
 	}
 	return nil
 }
@@ -86,6 +86,10 @@ type StreamDialRequest struct {
 	DstAddr   Addr
 	NoiseMsg  []byte
 	Sig       cipher.Sig
+}
+
+func (dr *StreamDialRequest) Empty() bool {
+	return dr.Timestamp == 0
 }
 
 func (dr *StreamDialRequest) Sign(sk cipher.SecKey) error {
@@ -106,26 +110,26 @@ func (dr StreamDialRequest) Hash() cipher.SHA256 {
 
 func (dr StreamDialRequest) Verify(lastTimestamp int64) error {
 	if dr.SrcAddr.PK.Null() {
-		return ErrDialReqInvalidSrcPK
+		return ErrReqInvalidSrcPK
 	}
 	if dr.SrcAddr.Port == 0 {
-		return ErrDialReqInvalidSrcPort
+		return ErrReqInvalidSrcPort
 	}
 	if dr.DstAddr.PK.Null() {
-		return ErrDialReqInvalidDstPK
+		return ErrReqInvalidDstPK
 	}
 	if dr.DstAddr.Port == 0 {
-		return ErrDialReqInvalidDstPort
+		return ErrReqInvalidDstPort
 	}
 	if dr.Timestamp <= lastTimestamp {
-		return ErrDialReqInvalidTimestamp
+		return ErrReqInvalidTimestamp
 	}
 
 	sig := dr.Sig
 	dr.Sig = cipher.Sig{}
 
 	if err := cipher.VerifyPubKeySignedPayload(dr.SrcAddr.PK, sig, encodeGob(dr)); err != nil {
-		return ErrDialReqInvalidSig
+		return ErrReqInvalidSig
 	}
 	return nil
 }

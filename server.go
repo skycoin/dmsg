@@ -27,10 +27,10 @@ type Server struct {
 	sk cipher.SecKey
 	dc disc.APIClient
 
-	addr  string
-	lis   net.Listener
-	conns map[cipher.PubKey]*ServerConn
-	mx    sync.RWMutex
+	addr string
+	lis  net.Listener
+	ss   map[cipher.PubKey]*Session
+	mx   sync.RWMutex
 
 	wg sync.WaitGroup
 
@@ -49,13 +49,13 @@ func NewServer(pk cipher.PubKey, sk cipher.SecKey, addr string, l net.Listener, 
 	}
 
 	return &Server{
-		log:   logging.MustGetLogger("dmsg_server"),
-		pk:    pk,
-		sk:    sk,
-		addr:  addr,
-		lis:   noise.WrapListener(l, pk, sk, false, noise.HandshakeXK),
-		dc:    dc,
-		conns: make(map[cipher.PubKey]*ServerConn),
+		log:  logging.MustGetLogger("dmsg_server"),
+		pk:   pk,
+		sk:   sk,
+		addr: addr,
+		lis:  noise.WrapListener(l, pk, sk, false, noise.HandshakeXK),
+		dc:   dc,
+		ss:   make(map[cipher.PubKey]*Session),
 	}, nil
 }
 
@@ -69,28 +69,32 @@ func (s *Server) Addr() string {
 	return s.addr
 }
 
-func (s *Server) setConn(l *ServerConn) {
-	s.mx.Lock()
-	s.conns[l.remoteClient] = l
-	s.mx.Unlock()
-}
+// SessionGetter is a function that obtains a session.
+type SessionGetter func(pk cipher.PubKey) (*Session, bool)
 
-func (s *Server) delConn(pk cipher.PubKey) {
-	s.mx.Lock()
-	delete(s.conns, pk)
-	s.mx.Unlock()
-}
-
-func (s *Server) getConn(pk cipher.PubKey) (*ServerConn, bool) {
+// Session obtains a session between the remote client and this server.
+func (s *Server) Session(pk cipher.PubKey) (*Session, bool) {
 	s.mx.RLock()
-	l, ok := s.conns[pk]
+	dSes, ok := s.ss[pk]
 	s.mx.RUnlock()
-	return l, ok
+	return dSes, ok
+}
+
+func (s *Server) setSession(dSes *Session) {
+	s.mx.Lock()
+	s.ss[dSes.rPK] = dSes
+	s.mx.Unlock()
+}
+
+func (s *Server) delSession(pk cipher.PubKey) {
+	s.mx.Lock()
+	delete(s.ss, pk)
+	s.mx.Unlock()
 }
 
 func (s *Server) sessionCount() int {
 	s.mx.RLock()
-	n := len(s.conns)
+	n := len(s.ss)
 	s.mx.RUnlock()
 	return n
 }
@@ -105,7 +109,7 @@ func (s *Server) close() (closed bool, err error) {
 		}
 
 		s.mx.Lock()
-		s.conns = make(map[cipher.PubKey]*ServerConn)
+		s.ss = make(map[cipher.PubKey]*Session)
 		s.mx.Unlock()
 	})
 
@@ -158,15 +162,23 @@ func (s *Server) Serve() error {
 			return err
 		}
 		s.log.Infof("newConn: %v", rawConn.RemoteAddr())
-		conn := NewServerConn(s.log, rawConn, rawConn.RemoteAddr().(*noise.Addr).PK)
-		s.setConn(conn)
+		dSes, err := NewServerSession(s.log, s.Session, rawConn, s.sk, s.pk)
+		if err != nil {
+			_ = rawConn.Close() //nolint:errcheck
+			continue
+		}
+		s.setSession(dSes)
 
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
-			err := conn.Serve(ctx, s.getConn)
-			s.log.Infof("connection with client %s closed: error(%v)", conn.PK(), err)
-			s.delConn(conn.PK())
+			for {
+				if err := dSes.AcceptServerStream(); err != nil {
+					s.log.Infof("connection with client %s closed: error(%v)", dSes.rPK, err)
+					s.delSession(dSes.rPK)
+					return
+				}
+			}
 		}()
 	}
 }

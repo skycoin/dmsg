@@ -5,23 +5,20 @@ import (
 	"sync"
 )
 
-// Errors for dial request/response (50-59).
+// Errors for dial request/response (50-69).
 var (
-	ErrDialReqInvalidSig       = NewError(50, "dial request has invalid signature", nil)
-	ErrDialReqInvalidTimestamp = NewError(51, "dial request timestamp should be higher than last", nil)
-	ErrDialReqInvalidSrcPK     = NewError(52, "dial request has invalid source public key", nil)
-	ErrDialReqInvalidDstPK     = NewError(53, "dial request has invalid destination public key", nil)
-	ErrDialReqInvalidSrcPort   = NewError(54, "dial request has invalid source port", nil)
-	ErrDialReqInvalidDstPort   = NewError(55, "dial request has invalid destination port", nil)
+	ErrReqInvalidSig       = NewError(50, "request has invalid signature", nil)
+	ErrReqInvalidTimestamp = NewError(51, "request timestamp should be higher than last", nil)
+	ErrReqInvalidSrcPK     = NewError(52, "request has invalid source public key", nil)
+	ErrReqInvalidDstPK     = NewError(53, "request has invalid destination public key", nil)
+	ErrReqInvalidSrcPort   = NewError(54, "request has invalid source port", nil)
+	ErrReqInvalidDstPort   = NewError(55, "request has invalid destination port", nil)
+	ErrReqNoListener       = NewError(56, "request has no associated listener", nil)
+	ErrReqNoSession        = NewError(57, "request has no associated session on the dmsg server", nil)
 
-	ErrDialRespInvalidSig  = NewError(56, "dial response has invalid signature", nil)
-	ErrDialRespInvalidHash = NewError(57, "dial response has invalid hash of associated request", nil)
-	ErrDialRespNotAccepted = NewError(58, "dial response rejected associated request without reason", nil)
-)
-
-// Errors related to steams/listeners (70-79).
-var (
-	ErrIncomingHasNoListener = NewError(70, "incoming stream has no associated listener", nil)
+	ErrDialRespInvalidSig  = NewError(60, "response has invalid signature", nil)
+	ErrDialRespInvalidHash = NewError(61, "response has invalid hash of associated request", nil)
+	ErrDialRespNotAccepted = NewError(62, "response rejected associated request without reason", nil)
 )
 
 // NetworkErrorOptions provides 'timeout' and 'temporary' options for NetworkError.

@@ -3,6 +3,7 @@ package dmsg
 import (
 	"bufio"
 	"context"
+	"io"
 	"net"
 
 	"github.com/hashicorp/yamux"
@@ -20,17 +21,14 @@ type Session struct {
 	rPK cipher.PubKey // Public key of the remote dmsg server.
 
 	ys     *yamux.Session
-	ns     *noise.Noise // For encrypting session messages, not stream messages.
-	porter *netutil.Porter
+	ns     *noise.Noise    // For encrypting session messages, not stream messages.
+	porter *netutil.Porter // only used by client sessions.
+	getter SessionGetter   // only used by server sessions.
 
 	log logrus.FieldLogger
 }
 
 func NewClientSession(log logrus.FieldLogger, porter *netutil.Porter, conn net.Conn, lSK cipher.SecKey, lPK, rPK cipher.PubKey) (*Session, error) {
-	ySes, err := yamux.Client(conn, yamux.DefaultConfig())
-	if err != nil {
-		return nil, err
-	}
 	ns, err := noise.New(noise.HandshakeXK, noise.Config{
 		LocalPK:   lPK,
 		LocalSK:   lSK,
@@ -41,6 +39,10 @@ func NewClientSession(log logrus.FieldLogger, porter *netutil.Porter, conn net.C
 		return nil, err
 	}
 	if err := noise.InitiatorHandshake(ns, bufio.NewReader(conn), conn); err != nil {
+		return nil, err
+	}
+	ySes, err := yamux.Client(conn, yamux.DefaultConfig())
+	if err != nil {
 		return nil, err
 	}
 	return &Session{
@@ -54,7 +56,42 @@ func NewClientSession(log logrus.FieldLogger, porter *netutil.Porter, conn net.C
 	}, nil
 }
 
-func (s *Session) DialStream(ctx context.Context, dst Addr) (*Stream, error) {
+func NewServerSession(log logrus.FieldLogger, getter SessionGetter, conn net.Conn, lSK cipher.SecKey, lPK cipher.PubKey) (*Session, error) {
+	ns, err := noise.New(noise.HandshakeXK, noise.Config{
+		LocalPK:   lPK,
+		LocalSK:   lSK,
+		Initiator: false,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := noise.ResponderHandshake(ns, bufio.NewReader(conn), conn); err != nil {
+		return nil, err
+	}
+	ySes, err := yamux.Server(conn, yamux.DefaultConfig())
+	if err != nil {
+		return nil, err
+	}
+	return &Session{
+		lPK:    lPK,
+		lSK:    lSK,
+		rPK:    ns.RemoteStatic(),
+		ys:     ySes,
+		ns:     ns,
+		getter: getter,
+		log:    log,
+	}, nil
+}
+
+func (s *Session) LocalPK() cipher.PubKey {
+	return s.lPK
+}
+
+func (s *Session) RemotePK() cipher.PubKey {
+	return s.rPK
+}
+
+func (s *Session) DialClientStream(ctx context.Context, dst Addr) (*Stream, error) {
 	// Prepare yamux stream.
 	ys, err := s.ys.OpenStream()
 	if err != nil {
@@ -68,7 +105,7 @@ func (s *Session) DialStream(ctx context.Context, dst Addr) (*Stream, error) {
 	return dstr, nil
 }
 
-func (s *Session) AcceptStream(ctx context.Context) error {
+func (s *Session) AcceptClientStream(ctx context.Context) error {
 	ys, err := s.ys.AcceptStream()
 	if err != nil {
 		return err
@@ -78,6 +115,86 @@ func (s *Session) AcceptStream(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (s *Session) AcceptServerStream() error {
+	yStr, err := s.ys.OpenStream()
+	if err != nil {
+		return err
+	}
+	go func() {
+		defer func() {
+			_ = yStr.Close() //nolint:errcheck
+		}()
+		err := s.handleServerStream(yStr)
+		s.log.WithError(err).Infof("AcceptServerStream stopped.")
+	}()
+	return nil
+}
+
+func (s *Session) handleServerStream(yStr *yamux.Stream) error {
+	readRequest := func() (StreamDialRequest, error) {
+		var req StreamDialRequest
+		if err := readEncryptedGob(yStr, s.ns, &req); err != nil {
+			return req, err
+		}
+		if err := req.Verify(0); err != nil { // TODO(evanlinjin): timestamp tracker.
+			return req, ErrReqInvalidTimestamp
+		}
+		if req.SrcAddr.PK != s.rPK {
+			return req, ErrReqInvalidSrcPK
+		}
+		return req, nil
+	}
+
+	// Read request.
+	req, err := readRequest()
+	if err != nil {
+		return err
+	}
+
+	// Obtain next session.
+	s2, ok := s.getter(req.DstAddr.PK)
+	if !ok {
+		return ErrReqNoSession
+	}
+
+	// Forward request and obtain/check response.
+	yStr2, resp, err := s2.forwardRequest(req)
+	if err != nil {
+		return err
+	}
+
+	// Forward response.
+	if err := writeEncryptedGob(yStr, s.ns, resp); err != nil {
+		return err
+	}
+
+	// Serve stream.
+	go func() { _, _ = io.Copy(yStr, yStr2) }()
+	_, err = io.Copy(yStr2, yStr)
+	return err
+}
+
+func (s *Session) forwardRequest(req StreamDialRequest) (*yamux.Stream, DialResponse, error) {
+	yStr, err := s.ys.OpenStream()
+	if err != nil {
+		return nil, DialResponse{}, err
+	}
+	if err := writeEncryptedGob(yStr, s.ns, req); err != nil {
+		_ = yStr.Close() //nolint:errcheck
+		return nil, DialResponse{}, err
+	}
+	var resp DialResponse
+	if err := readEncryptedGob(yStr, s.ns, &resp); err != nil {
+		_ = yStr.Close() //nolint:errcheck
+		return nil, DialResponse{}, err
+	}
+	if err := resp.Verify(req.DstAddr.PK, req.Hash()); err != nil {
+		_ = yStr.Close() //nolint:errcheck
+		return nil, DialResponse{}, err
+	}
+	return yStr, resp, nil
 }
 
 func (s *Session) Close() error {

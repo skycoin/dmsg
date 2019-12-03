@@ -60,7 +60,7 @@ func main() {
 		log.Fatalf("Error dialing responder: %v", err)
 	}
 
-	// Accept connection. `AcceptStream` returns an object exposing `stream` features
+	// Accept connection. `AcceptClientStream` returns an object exposing `stream` features
 	// thus, `Accept` could also be used here returning `net.Conn` interface. depends on your needs
 	respTp, err := respL.AcceptStream()
 	if err != nil {

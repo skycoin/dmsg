@@ -139,10 +139,10 @@ func (ds *Stream) ClientRespondingHandshake(_ context.Context, log logrus.FieldL
 			return nil, err
 		}
 		if err := req.Verify(0); err != nil { // TODO(evanlinjin): timestamp tracker.
-			return nil, ErrDialReqInvalidTimestamp
+			return nil, ErrReqInvalidTimestamp
 		}
 		if req.DstAddr.PK != ds.lAddr.PK {
-			return nil, ErrDialReqInvalidDstPK
+			return nil, ErrReqInvalidDstPK
 		}
 		ds.lAddr = req.DstAddr
 		ds.rAddr = req.SrcAddr
@@ -156,11 +156,11 @@ func (ds *Stream) ClientRespondingHandshake(_ context.Context, log logrus.FieldL
 		}
 		pv, ok := porter.PortValue(ds.lAddr.Port)
 		if !ok {
-			return nil, ErrIncomingHasNoListener
+			return nil, ErrReqNoListener
 		}
 		lis, ok := pv.(*Listener)
 		if !ok {
-			return nil, ErrIncomingHasNoListener
+			return nil, ErrReqNoListener
 		}
 		return lis, nil
 	}
@@ -238,9 +238,6 @@ func (ds *Stream) ClientRespondingHandshake(_ context.Context, log logrus.FieldL
 	return lis.IntroduceStream(ds)
 }
 
-// TODO(evanlinjin): Complete this.
-type ServerStreamHandshake func(ctx context.Context)
-
 func (ds *Stream) prepareNoise(init bool) (*noise.Noise, error) {
 	ns, err := noise.New(noise.HandshakeKK, noise.Config{
 		LocalPK:   ds.lAddr.PK,
@@ -257,6 +254,10 @@ func (ds *Stream) LocalAddr() net.Addr {
 
 func (ds *Stream) RemoteAddr() net.Addr {
 	return ds.rAddr
+}
+
+func (ds *Stream) StreamID() uint32 {
+	return ds.ys.StreamID()
 }
 
 func (ds *Stream) Read(b []byte) (int, error) {

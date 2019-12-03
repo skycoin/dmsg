@@ -61,7 +61,7 @@ func (l *Listener) Accept() (net.Conn, error) {
 	return l.AcceptStream()
 }
 
-// AcceptStream accepts a stream connection.
+// AcceptClientStream accepts a stream connection.
 func (l *Listener) AcceptStream() (*Stream, error) {
 	select {
 	case <-l.done:
