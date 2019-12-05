@@ -143,10 +143,13 @@ func (s *Server) Serve() error {
 		return fmt.Errorf("updating server's client entry failed with: %s", err)
 	}
 
-	s.log.Infof("serving: pk(%s) addr(%s)", s.pk, s.addr)
+	s.log.
+		WithField("local_addr", s.addr).
+		WithField("local_pk", s.pk).
+		Info("serving")
 
 	for {
-		rawConn, err := s.lis.Accept()
+		conn, err := s.lis.Accept()
 		if err != nil {
 			// if the listener is closed, it means that this error is not interesting
 			// for the outer client
@@ -161,17 +164,26 @@ func (s *Server) Serve() error {
 			}
 			return err
 		}
-		s.log.Infof("newConn: %v", rawConn.RemoteAddr())
-		dSes, err := NewServerSession(s.log, s.Session, rawConn, s.sk, s.pk)
-		if err != nil {
-			_ = rawConn.Close() //nolint:errcheck
-			continue
-		}
-		s.setSession(dSes)
 
 		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
+		go func(conn net.Conn) {
+			defer func() {
+				_ = conn.Close() //nolint:errcheck
+				s.wg.Done()
+			}()
+
+			dSes, err := NewServerSession(s.log, s.Session, conn, s.sk, s.pk)
+			if err != nil {
+				s.log.WithError(err).Warn("failed to accept new session")
+				return
+			}
+			s.setSession(dSes)
+
+			s.log.
+				WithField("remote_addr", conn.RemoteAddr()).
+				WithField("remote_pk", dSes.RemotePK()).
+				Info("serving session")
+
 			for {
 				if err := dSes.AcceptServerStream(); err != nil {
 					s.log.Infof("connection with client %s closed: error(%v)", dSes.rPK, err)
@@ -179,7 +191,7 @@ func (s *Server) Serve() error {
 					return
 				}
 			}
-		}()
+		}(conn)
 	}
 }
 

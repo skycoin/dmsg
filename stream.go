@@ -23,8 +23,8 @@ type Stream struct {
 	rAddr Addr          // remote address
 	sk    cipher.SecKey // Local secret key.
 
-	ys *yamux.Stream     // Underlying yamux stream.
-	ns *noise.ReadWriter // Underlying noise read writer.
+	yStr *yamux.Stream     // Underlying yamux stream.
+	ns   *noise.ReadWriter // Underlying noise read writer.
 
 	close func() // to be called when closing.
 	log   logrus.FieldLogger
@@ -35,7 +35,7 @@ func NewStream(ys *yamux.Stream, lSK cipher.SecKey, src, dst Addr) *Stream {
 		lAddr: src,
 		rAddr: dst,
 		sk:    lSK,
-		ys:    ys,
+		yStr:  ys,
 	}
 }
 
@@ -88,7 +88,7 @@ func (ds *Stream) ClientInitiatingHandshake(ctx context.Context, log logrus.Fiel
 		if err := req.Sign(ds.sk); err != nil {
 			return nil, err
 		}
-		if err := writeEncryptedGob(ds.ys, sessionNoise, req); err != nil {
+		if err := writeEncryptedGob(ds.yStr, sessionNoise, req); err != nil {
 			return nil, err
 		}
 		return &req, nil
@@ -96,7 +96,7 @@ func (ds *Stream) ClientInitiatingHandshake(ctx context.Context, log logrus.Fiel
 
 	readResponse := func(ns *noise.Noise, req *StreamDialRequest) error {
 		var resp DialResponse
-		if err := readEncryptedGob(ds.ys, sessionNoise, &resp); err != nil {
+		if err := readEncryptedGob(ds.yStr, sessionNoise, &resp); err != nil {
 			return err
 		}
 		if err := resp.Verify(req.DstAddr.PK, req.Hash()); err != nil {
@@ -105,37 +105,43 @@ func (ds *Stream) ClientInitiatingHandshake(ctx context.Context, log logrus.Fiel
 		return ns.ProcessHandshakeMessage(resp.NoiseMsg)
 	}
 
+	log = log.WithField("fn", "ClientInitiatingHandshake")
+
 	// Save stream in porter.
 	if err := saveStream(); err != nil {
 		return err
 	}
+	log.Info("Stream saved.")
 
 	// Prepare noise.
 	ns, err := ds.prepareNoise(true)
 	if err != nil {
 		return err
 	}
+	log.Info("Noise prepared.")
 
 	// Prepare and write request object.
 	req, err := writeRequest(ns)
 	if err != nil {
 		return err
 	}
+	log.Info("Request written.")
 
 	// Await and read response object.
 	if err := readResponse(ns, req); err != nil {
 		return err
 	}
+	log.Info("Response read.")
 
 	// Prepare noise read writer.
-	ds.ns = noise.NewReadWriter(ds.ys, ns)
+	ds.ns = noise.NewReadWriter(ds.yStr, ns)
 	return nil
 }
 
 func (ds *Stream) ClientRespondingHandshake(_ context.Context, log logrus.FieldLogger, porter *netutil.Porter, sessionNoise *noise.Noise) error {
 	readRequest := func() (*StreamDialRequest, error) {
 		var req StreamDialRequest
-		if err := readEncryptedGob(ds.ys, sessionNoise, &req); err != nil {
+		if err := readEncryptedGob(ds.yStr, sessionNoise, &req); err != nil {
 			return nil, err
 		}
 		if err := req.Verify(0); err != nil { // TODO(evanlinjin): timestamp tracker.
@@ -178,7 +184,7 @@ func (ds *Stream) ClientRespondingHandshake(_ context.Context, log logrus.FieldL
 		if err := resp.Sign(ds.sk); err != nil {
 			return err
 		}
-		return writeEncryptedGob(ds.ys, sessionNoise, resp)
+		return writeEncryptedGob(ds.yStr, sessionNoise, resp)
 	}
 
 	writeReject := func(req *StreamDialRequest, err error) {
@@ -196,7 +202,7 @@ func (ds *Stream) ClientRespondingHandshake(_ context.Context, log logrus.FieldL
 				WithError(err).
 				Error("failed to sign reject response")
 		}
-		if err := writeEncryptedGob(ds.ys, sessionNoise, resp); err != nil {
+		if err := writeEncryptedGob(ds.yStr, sessionNoise, resp); err != nil {
 			ds.log.
 				WithError(err).
 				Error("failed to write reject response")
@@ -207,12 +213,15 @@ func (ds *Stream) ClientRespondingHandshake(_ context.Context, log logrus.FieldL
 			Warn("rejected stream request")
 	}
 
+	log = log.WithField("fn", "ClientRespondingHandshake")
+
 	// Await and read request object.
 	req, err := readRequest()
 	if err != nil {
 		writeReject(req, err)
 		return err
 	}
+	log.Info("Read request.")
 
 	// Prepare noise.
 	ns, err := ds.prepareNoise(false)
@@ -234,7 +243,7 @@ func (ds *Stream) ClientRespondingHandshake(_ context.Context, log logrus.FieldL
 	}
 
 	// Prepare noise read writer.
-	ds.ns = noise.NewReadWriter(ds.ys, ns)
+	ds.ns = noise.NewReadWriter(ds.yStr, ns)
 	return lis.IntroduceStream(ds)
 }
 
@@ -257,7 +266,7 @@ func (ds *Stream) RemoteAddr() net.Addr {
 }
 
 func (ds *Stream) StreamID() uint32 {
-	return ds.ys.StreamID()
+	return ds.yStr.StreamID()
 }
 
 func (ds *Stream) Read(b []byte) (int, error) {
@@ -269,22 +278,22 @@ func (ds *Stream) Write(b []byte) (int, error) {
 }
 
 func (ds *Stream) SetDeadline(t time.Time) error {
-	return ds.ys.SetDeadline(t)
+	return ds.yStr.SetDeadline(t)
 }
 
 func (ds *Stream) SetReadDeadline(t time.Time) error {
-	return ds.ys.SetReadDeadline(t)
+	return ds.yStr.SetReadDeadline(t)
 }
 
 func (ds *Stream) SetWriteDeadline(t time.Time) error {
-	return ds.ys.SetWriteDeadline(t)
+	return ds.yStr.SetWriteDeadline(t)
 }
 
 func (ds *Stream) Close() error {
 	if ds.close != nil {
 		ds.close()
 	}
-	return ds.ys.Close()
+	return ds.yStr.Close()
 }
 
 func encodeGob(v interface{}) []byte {

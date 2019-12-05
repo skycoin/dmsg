@@ -15,8 +15,6 @@ import (
 	"github.com/SkycoinProject/dmsg/netutil"
 )
 
-var log = logging.MustGetLogger("dmsg")
-
 const (
 	clientReconnectInterval = 3 * time.Second
 )
@@ -180,8 +178,8 @@ func (c *Client) findOrConnectToServers(ctx context.Context, entries []*disc.Ent
 }
 
 func (c *Client) findOrConnectToServer(ctx context.Context, srvPK cipher.PubKey) (*Session, error) {
-	if conn, ok := c.getSession(srvPK); ok {
-		return conn, nil
+	if dSes, ok := c.getSession(srvPK); ok {
+		return dSes, nil
 	}
 
 	entry, err := c.dc.Entry(ctx, srvPK)
@@ -192,22 +190,26 @@ func (c *Client) findOrConnectToServer(ctx context.Context, srvPK cipher.PubKey)
 		return nil, errors.New("entry is of client instead of server")
 	}
 
-	tcpConn, err := net.Dial("tcp", entry.Server.Address)
+	conn, err := net.Dial("tcp", entry.Server.Address)
 	if err != nil {
 		return nil, err
 	}
-	dSes, err := NewClientSession(c.log, c.pm, tcpConn, c.sk, c.pk, srvPK)
+	dSes, err := NewClientSession(c.log, c.pm, conn, c.sk, c.pk, srvPK)
 	if err != nil {
 		return nil, err
 	}
-
 	c.setSession(ctx, dSes)
+	c.log.
+		WithField("remote_pk", dSes.RemotePK()).
+		Info("session created successfully")
 
-	go func() {
+	go func(dSes *Session) {
 		// serve
 		for {
 			if err := dSes.AcceptClientStream(ctx); err != nil {
-				dSes.log.WithField("reason", err).WithField("remoteServer", srvPK).Debug("connection with server closed")
+				dSes.log.
+					WithError(err).
+					WithField("remote_pk", dSes.RemotePK()).Debug("session with server closed")
 				c.delSession(ctx, srvPK)
 				break
 			}
@@ -226,7 +228,8 @@ func (c *Client) findOrConnectToServer(ctx context.Context, srvPK cipher.PubKey)
 			}
 			dSes.log.WithField("remoteServer", srvPK).Warn("ReconnectionSucceeded")
 		}
-	}()
+	}(dSes)
+
 	return dSes, nil
 }
 
@@ -290,7 +293,7 @@ func (c *Client) Close() (err error) {
 		c.mx.Lock()
 		for _, dSes := range c.ss {
 			if err := dSes.Close(); err != nil {
-				log.WithField("reason", err).Debug("Session closed")
+				c.log.WithField("reason", err).Debug("Session closed")
 			}
 		}
 		c.ss = make(map[cipher.PubKey]*Session)

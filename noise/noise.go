@@ -3,6 +3,7 @@ package noise
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"fmt"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
@@ -138,7 +139,9 @@ func (ns *Noise) DecryptUnsafe(ciphertext []byte) ([]byte, error) {
 		return make([]byte, 0), nil
 	}
 	if len(ciphertext) < nonceSize {
-		panic("noise decrypt unsafe: cipher text cannot be less than 8 bytes")
+		//fmt.Println(len(ciphertext))
+		return nil, errors.New("noise decrypt unsafe: cipher text cannot be less than 8 bytes")
+		//panic("noise decrypt unsafe: cipher text cannot be less than 8 bytes")
 	}
 	recvSeq := binary.BigEndian.Uint64(ciphertext[:nonceSize])
 	if recvSeq <= ns.decNonce {

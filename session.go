@@ -118,14 +118,12 @@ func (s *Session) AcceptClientStream(ctx context.Context) error {
 }
 
 func (s *Session) AcceptServerStream() error {
-	yStr, err := s.ys.OpenStream()
+	yStr, err := s.ys.AcceptStream()
 	if err != nil {
 		return err
 	}
 	go func() {
-		defer func() {
-			_ = yStr.Close() //nolint:errcheck
-		}()
+		defer func() {_ = yStr.Close()}() //nolint:errcheck
 		err := s.handleServerStream(yStr)
 		s.log.WithError(err).Infof("AcceptServerStream stopped.")
 	}()
@@ -147,23 +145,29 @@ func (s *Session) handleServerStream(yStr *yamux.Stream) error {
 		return req, nil
 	}
 
+	log := s.log.WithField("fn", "handleServerStream")
+
 	// Read request.
 	req, err := readRequest()
 	if err != nil {
 		return err
 	}
+	log.Info("Request read.")
 
 	// Obtain next session.
+	log.Infof("attempting to get PK: %s", req.DstAddr.PK)
 	s2, ok := s.getter(req.DstAddr.PK)
 	if !ok {
 		return ErrReqNoSession
 	}
+	log.Info("Next session obtained.")
 
 	// Forward request and obtain/check response.
 	yStr2, resp, err := s2.forwardRequest(req)
 	if err != nil {
 		return err
 	}
+	defer func() {_ = yStr2.Close()}() //nolint:errcheck
 
 	// Forward response.
 	if err := writeEncryptedGob(yStr, s.ns, resp); err != nil {
