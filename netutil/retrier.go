@@ -22,7 +22,7 @@ type Retrier struct {
 	expFactor    uint32        // multiplier for the backoff duration that is applied on every retry
 	times        uint32        // number of times that the given function is going to be retried until success, if 0 it will be retried forever until success
 	errWhitelist map[error]struct{}
-	log logrus.FieldLogger
+	log          logrus.FieldLogger
 }
 
 // NewRetrier returns a retrier that is ready to call Do() method
@@ -32,7 +32,7 @@ func NewRetrier(log logrus.FieldLogger, exponentialBackoff time.Duration, times,
 		times:        times,
 		expFactor:    factor,
 		errWhitelist: make(map[error]struct{}),
-		log: log,
+		log:          log,
 	}
 }
 

@@ -181,7 +181,7 @@ func (s *Session) handleServerStream(yStr *yamux.Stream) error {
 	if err != nil {
 		return err
 	}
-	defer func() {_ = yStr2.Close()}() //nolint:errcheck
+	defer func() { _ = yStr2.Close() }() //nolint:errcheck
 
 	// Forward response.
 	if err := writeEncryptedGob(yStr, s.ns, resp); err != nil {

@@ -43,7 +43,7 @@ type ClientStreamHandshake func(ctx context.Context, log logrus.FieldLogger, por
 
 func (ds *Stream) DoClientHandshake(ctx context.Context, log logrus.FieldLogger, porter *netutil.Porter, sessionNoise *noise.Noise, hs ClientStreamHandshake) (err error) {
 	errCh := make(chan error, 1)
-		go func() {
+	go func() {
 		errCh <- hs(ctx, log, porter, sessionNoise)
 		close(errCh)
 	}()

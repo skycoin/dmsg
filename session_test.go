@@ -65,8 +65,8 @@ func TestSession(t *testing.T) {
 
 			// Ensure we are accepting.
 			accepts := make(chan error, 2)
-			go func() {accepts <- adj.AcceptServerStream()}()
-			go func() {accepts <- dst.AcceptClientStream(context.TODO())}()
+			go func() { accepts <- adj.AcceptServerStream() }()
+			go func() { accepts <- dst.AcceptClientStream(context.TODO()) }()
 
 			// Make src dial to dst.
 			c1, err = src.DialClientStream(context.TODO(), dstAddr)
@@ -118,7 +118,6 @@ func TestYamux(t *testing.T) {
 		if err != nil {
 			return nil, nil, nil, err
 		}
-
 
 		if c1, err = c.OpenStream(); err != nil {
 			return

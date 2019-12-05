@@ -15,7 +15,10 @@ import (
 	"github.com/SkycoinProject/dmsg/netutil"
 )
 
-type Server2 struct {
+// SessionGetter is a function that obtains a session.
+type SessionGetter func(pk cipher.PubKey) (*Session, bool)
+
+type Server struct {
 	pk cipher.PubKey
 	sk cipher.SecKey
 	dc disc.APIClient
@@ -26,8 +29,8 @@ type Server2 struct {
 	log logrus.FieldLogger
 }
 
-func NewServer2(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient) *Server2 {
-	return &Server2{
+func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient) *Server {
+	return &Server{
 		pk:  pk,
 		sk:  sk,
 		dc:  dc,
@@ -37,33 +40,37 @@ func NewServer2(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient) *Server2 
 }
 
 // SetLogger should not be called after dmsg server is serving.
-func (s *Server2) SetLogger(log logrus.FieldLogger) { s.log = log }
+func (s *Server) SetLogger(log logrus.FieldLogger) { s.log = log }
 
-func (s *Server2) Session(pk cipher.PubKey) (*Session, bool) {
+func (s *Server) Session(pk cipher.PubKey) (*Session, bool) {
 	s.mx.Lock()
 	dSes, ok := s.ss[pk]
 	s.mx.Unlock()
 	return dSes, ok
 }
 
-func (s *Server2) setSession(dSes *Session) {
+func (s *Server) setSession(dSes *Session) {
 	s.mx.Lock()
 	s.ss[dSes.rPK] = dSes
 	s.mx.Unlock()
 }
 
-func (s *Server2) deleteSession(pk cipher.PubKey) {
+func (s *Server) deleteSession(pk cipher.PubKey) {
 	s.mx.Lock()
 	delete(s.ss, pk)
 	s.mx.Unlock()
 }
 
 // Serve serves the server.
-func (s *Server2) Serve(ctx context.Context, lis net.Listener, addr string) error {
+func (s *Server) Serve(ctx context.Context, lis net.Listener, addr string) error {
+	if addr == "" {
+		addr = lis.Addr().String()
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	if err := s.updateEntryLoop(ctx, time.Second * 10, addr); err != nil {
+	if err := s.updateEntryLoop(ctx, time.Second*10, addr); err != nil {
 		return err
 	}
 
@@ -85,7 +92,7 @@ func (s *Server2) Serve(ctx context.Context, lis net.Listener, addr string) erro
 	}
 }
 
-func (s *Server2) handleConn(conn net.Conn) {
+func (s *Server) handleConn(conn net.Conn) {
 	var log logrus.FieldLogger
 	log = s.log.WithField("remote_tcp", conn.RemoteAddr())
 
@@ -117,7 +124,7 @@ func (s *Server2) handleConn(conn net.Conn) {
 	}
 }
 
-func (s *Server2) updateEntryLoop(ctx context.Context, timeout time.Duration, addr string) error {
+func (s *Server) updateEntryLoop(ctx context.Context, timeout time.Duration, addr string) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 

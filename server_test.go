@@ -3,6 +3,7 @@ package dmsg
 import (
 	"context"
 	"fmt"
+	"net"
 	"testing"
 	"time"
 
@@ -18,16 +19,14 @@ func TestNewServer(t *testing.T) {
 
 	sPK, sSK := GenKeyPair(t, "server")
 
+	srv := NewServer(sPK, sSK, dmsgDisc)
+	srv.SetLogger(logging.MustGetLogger("server"))
+
 	srvL, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
 
-	srv, err := NewServer(sPK, sSK, "", srvL, dmsgDisc)
-	require.NoError(t, err)
-	srv.SetLogger(logging.MustGetLogger("server"))
-
 	go func() {
-		_ = srv.Serve()
-		panic("no") // TODO: remove this.
+		_ = srv.Serve(context.TODO(), srvL, "")
 	}()
 	time.Sleep(time.Second * 2)
 
@@ -49,6 +48,21 @@ func TestNewServer(t *testing.T) {
 	aStr, err := aL.AcceptStream()
 	require.NoError(t, err)
 
-	fmt.Println(aStr.StreamID())
-	fmt.Println(bStr.StreamID())
+	fmt.Println("stream A:", aStr.StreamID())
+	fmt.Println("stream B:", bStr.StreamID())
+
+	nettest.TestConn(t, func() (c1, c2 net.Conn, stop func(), err error) {
+		if c1, err = b.DialStream(context.TODO(), aPK, aPort); err != nil {
+			return
+		}
+		if c2, err = aL.AcceptStream(); err != nil {
+			return
+		}
+		stop = func() {
+			_ = c1.Close()
+			_ = c2.Close()
+		}
+		return
+	})
+
 }
