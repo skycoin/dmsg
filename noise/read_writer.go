@@ -200,7 +200,6 @@ func ResponderHandshake(ns *Noise, r *bufio.Reader, w io.Writer) error {
 
 // WriteRawFrame writes a raw frame (data prefixed with a uint16 len).
 func WriteRawFrame(w io.Writer, p []byte) error {
-	fmt.Println("writing:", len(p))
 	buf := make([]byte, prefixSize+len(p))
 	binary.BigEndian.PutUint16(buf, uint16(len(p)))
 	copy(buf[prefixSize:], p)
@@ -231,6 +230,5 @@ func ReadRawFrame(r *bufio.Reader) (p []byte, err error) {
 	if _, err := r.Discard(prefixSize + prefix); err != nil {
 		panic(fmt.Errorf("unexpected error when discarding %d bytes: %v", prefixSize+prefix, err))
 	}
-	fmt.Println("reading:", len(b[prefixSize:]))
 	return b[prefixSize:], nil
 }

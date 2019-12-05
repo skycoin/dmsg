@@ -3,7 +3,7 @@ package dmsg
 import (
 	"bufio"
 	"context"
-	"io"
+	"errors"
 	"net"
 
 	"github.com/hashicorp/yamux"
@@ -22,8 +22,8 @@ type Session struct {
 
 	ys     *yamux.Session
 	ns     *noise.Noise    // For encrypting session messages, not stream messages.
-	porter *netutil.Porter // only used by client sessions.
-	getter SessionGetter   // only used by server sessions.
+	porter *netutil.Porter // Only used by client sessions.
+	getter SessionGetter   // Only used by server sessions.
 
 	log logrus.FieldLogger
 }
@@ -38,9 +38,15 @@ func NewClientSession(log logrus.FieldLogger, porter *netutil.Porter, conn net.C
 	if err != nil {
 		return nil, err
 	}
-	if err := noise.InitiatorHandshake(ns, bufio.NewReader(conn), conn); err != nil {
+
+	r := bufio.NewReader(conn) // Ensure this is emptied after handshake.
+	if err := noise.InitiatorHandshake(ns, r, conn); err != nil {
 		return nil, err
 	}
+	if r.Buffered() > 0 {
+		return nil, errors.New("bufio reader should be empty after session handshake")
+	}
+
 	ySes, err := yamux.Client(conn, yamux.DefaultConfig())
 	if err != nil {
 		return nil, err
@@ -65,9 +71,15 @@ func NewServerSession(log logrus.FieldLogger, getter SessionGetter, conn net.Con
 	if err != nil {
 		return nil, err
 	}
-	if err := noise.ResponderHandshake(ns, bufio.NewReader(conn), conn); err != nil {
+
+	r := bufio.NewReader(conn) // Ensure this is emptied after handshake.
+	if err := noise.ResponderHandshake(ns, r, conn); err != nil {
 		return nil, err
 	}
+	if r.Buffered() > 0 {
+		return nil, errors.New("bufio reader should be empty after session handshake")
+	}
+
 	ySes, err := yamux.Server(conn, yamux.DefaultConfig())
 	if err != nil {
 		return nil, err
@@ -123,9 +135,11 @@ func (s *Session) AcceptServerStream() error {
 		return err
 	}
 	go func() {
-		defer func() {_ = yStr.Close()}() //nolint:errcheck
 		err := s.handleServerStream(yStr)
-		s.log.WithError(err).Infof("AcceptServerStream stopped.")
+		_ = yStr.Close() //nolint:errcheck
+		s.log.
+			WithError(err).
+			Infof("AcceptServerStream stopped.")
 	}()
 	return nil
 }
@@ -175,9 +189,7 @@ func (s *Session) handleServerStream(yStr *yamux.Stream) error {
 	}
 
 	// Serve stream.
-	go func() { _, _ = io.Copy(yStr, yStr2) }()
-	_, err = io.Copy(yStr2, yStr)
-	return err
+	return netutil.CopyReadWriter(yStr, yStr2)
 }
 
 func (s *Session) forwardRequest(req StreamDialRequest) (*yamux.Stream, DialResponse, error) {
@@ -203,14 +215,18 @@ func (s *Session) forwardRequest(req StreamDialRequest) (*yamux.Stream, DialResp
 
 func (s *Session) Close() error {
 	_ = s.ys.GoAway() //nolint:errcheck
-	s.porter.RangePortValues(func(port uint16, v interface{}) (next bool) {
-		switch v.(type) {
-		case *Listener:
-			_ = v.(*Listener).Close() //nolint:errcheck
-		case *Stream:
-			_ = v.(*Stream).Close() //nolint:errcheck
-		}
-		return true
-	})
+
+	// TODO(evanlinjin): Should this be part of dmsg.Client?
+	//if s.porter != nil {
+	//	s.porter.RangePortValues(func(port uint16, v interface{}) (next bool) {
+	//		switch v.(type) {
+	//		case *Listener:
+	//			_ = v.(*Listener).Close() //nolint:errcheck
+	//		case *Stream:
+	//			_ = v.(*Stream).Close() //nolint:errcheck
+	//		}
+	//		return true
+	//	})
+	//}
 	return s.ys.Close()
 }

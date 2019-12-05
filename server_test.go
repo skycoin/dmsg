@@ -10,15 +10,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 
-	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/disc"
 )
 
 func TestNewServer(t *testing.T) {
 	dmsgDisc := disc.NewMock()
 
-	sPK, sSK, err := cipher.GenerateDeterministicKeyPair([]byte("server"))
-	require.NoError(t, err)
+	sPK, sSK := GenKeyPair(t, "server")
 
 	srvL, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
@@ -29,23 +27,19 @@ func TestNewServer(t *testing.T) {
 
 	go func() {
 		_ = srv.Serve()
-		panic("no")
+		panic("no") // TODO: remove this.
 	}()
 	time.Sleep(time.Second * 2)
 
-	aPK, aSK, err := cipher.GenerateDeterministicKeyPair([]byte("client A"))
-	require.NoError(t, err)
-
+	aPK, aSK := GenKeyPair(t, "client A")
 	a := NewClient(aPK, aSK, dmsgDisc, SetLogger(logging.MustGetLogger("client_A")))
 	require.NoError(t, a.InitiateServerConnections(context.TODO(), 1))
 
-	bPK, bSK, err := cipher.GenerateDeterministicKeyPair([]byte("client B"))
-	require.NoError(t, err)
-
+	bPK, bSK := GenKeyPair(t, "client B")
 	b := NewClient(bPK, bSK, dmsgDisc, SetLogger(logging.MustGetLogger("client_B")))
 	require.NoError(t, b.InitiateServerConnections(context.TODO(), 1))
 
-	aPort := uint16(8080)
+	aPort := uint16(80)
 	aL, err := a.Listen(aPort)
 	require.NoError(t, err)
 

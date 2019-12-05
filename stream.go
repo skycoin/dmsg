@@ -43,7 +43,7 @@ type ClientStreamHandshake func(ctx context.Context, log logrus.FieldLogger, por
 
 func (ds *Stream) DoClientHandshake(ctx context.Context, log logrus.FieldLogger, porter *netutil.Porter, sessionNoise *noise.Noise, hs ClientStreamHandshake) (err error) {
 	errCh := make(chan error, 1)
-	go func() {
+		go func() {
 		errCh <- hs(ctx, log, porter, sessionNoise)
 		close(errCh)
 	}()
@@ -270,11 +270,19 @@ func (ds *Stream) StreamID() uint32 {
 }
 
 func (ds *Stream) Read(b []byte) (int, error) {
-	return ds.ns.Read(b)
+	n, err := ds.ns.Read(b)
+	if _, ok := err.(net.Error); err != nil && !ok {
+		ds.log.WithError(err).Info("Read() returned error that does not implement net.Error.")
+	}
+	return n, err
 }
 
 func (ds *Stream) Write(b []byte) (int, error) {
-	return ds.ns.Write(b)
+	n, err := ds.ns.Write(b)
+	if _, ok := err.(net.Error); err != nil && !ok {
+		ds.log.WithError(err).Info("Write() returned error that does not implement net.Error.")
+	}
+	return n, err
 }
 
 func (ds *Stream) SetDeadline(t time.Time) error {

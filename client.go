@@ -194,6 +194,7 @@ func (c *Client) findOrConnectToServer(ctx context.Context, srvPK cipher.PubKey)
 	if err != nil {
 		return nil, err
 	}
+	c.log.WithField("server_pk", srvPK).Info("Connecting to server.")
 	dSes, err := NewClientSession(c.log, c.pm, conn, c.sk, c.pk, srvPK)
 	if err != nil {
 		return nil, err
