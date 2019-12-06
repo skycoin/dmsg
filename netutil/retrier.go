@@ -26,14 +26,24 @@ type Retrier struct {
 }
 
 // NewRetrier returns a retrier that is ready to call Do() method
-func NewRetrier(log logrus.FieldLogger, exponentialBackoff time.Duration, times, factor uint32) *Retrier {
+func NewRetrier(log logrus.FieldLogger, backOff time.Duration, times, factor uint32) *Retrier {
 	return &Retrier{
-		expBackoff:   exponentialBackoff,
+		expBackoff:   backOff,
 		times:        times,
 		expFactor:    factor,
 		errWhitelist: make(map[error]struct{}),
 		log:          log,
 	}
+}
+
+const (
+	DefaultBackOff = 100*time.Millisecond
+	DefaultTries   = 0
+	DefaultFactor  = 2
+)
+
+func NewDefaultRetrier(log logrus.FieldLogger) *Retrier {
+	return NewRetrier(log, DefaultBackOff, DefaultTries, DefaultFactor)
 }
 
 // WithErrWhitelist sets a list of errors into the retrier, if the RetryFunc provided to Do() fails with one of them it will return inmediatelly with such error. Calling

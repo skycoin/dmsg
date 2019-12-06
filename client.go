@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
+	"github.com/sirupsen/logrus"
 
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/disc"
@@ -44,7 +45,7 @@ func SetLogger(log *logging.Logger) ClientOption {
 
 // Client implements stream.Factory
 type Client struct {
-	log *logging.Logger
+	log logrus.FieldLogger
 
 	pk cipher.PubKey
 	sk cipher.SecKey
@@ -195,7 +196,7 @@ func (c *Client) findOrConnectToServer(ctx context.Context, srvPK cipher.PubKey)
 		return nil, err
 	}
 	c.log.WithField("server_pk", srvPK).Info("Connecting to server.")
-	dSes, err := NewClientSession(c.log, c.pm, conn, c.sk, c.pk, srvPK)
+	dSes, err := InitiateSession(c.log, c.pm, conn, c.sk, c.pk, srvPK)
 	if err != nil {
 		return nil, err
 	}

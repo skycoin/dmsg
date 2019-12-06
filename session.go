@@ -28,7 +28,7 @@ type Session struct {
 	log logrus.FieldLogger
 }
 
-func NewClientSession(log logrus.FieldLogger, porter *netutil.Porter, conn net.Conn, lSK cipher.SecKey, lPK, rPK cipher.PubKey) (*Session, error) {
+func InitiateSession(log logrus.FieldLogger, porter *netutil.Porter, conn net.Conn, lSK cipher.SecKey, lPK, rPK cipher.PubKey) (*Session, error) {
 	ns, err := noise.New(noise.HandshakeXK, noise.Config{
 		LocalPK:   lPK,
 		LocalSK:   lSK,
@@ -62,7 +62,7 @@ func NewClientSession(log logrus.FieldLogger, porter *netutil.Porter, conn net.C
 	}, nil
 }
 
-func NewServerSession(log logrus.FieldLogger, getter SessionGetter, conn net.Conn, lSK cipher.SecKey, lPK cipher.PubKey) (*Session, error) {
+func RespondSession(log logrus.FieldLogger, getter SessionGetter, conn net.Conn, lSK cipher.SecKey, lPK cipher.PubKey) (*Session, error) {
 	ns, err := noise.New(noise.HandshakeXK, noise.Config{
 		LocalPK:   lPK,
 		LocalSK:   lSK,
@@ -117,11 +117,15 @@ func (s *Session) DialClientStream(ctx context.Context, dst Addr) (*Stream, erro
 	return dstr, nil
 }
 
-func (s *Session) AcceptClientStream(ctx context.Context) error {
+func (s *Session) AcceptClientStream() error {
 	ys, err := s.ys.AcceptStream()
 	if err != nil {
 		return err
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), StreamHandshakeTimeout)
+	defer cancel()
+
 	dstr := NewStream(ys, s.lSK, Addr{PK: s.lPK}, Addr{})
 	if err := dstr.DoClientHandshake(ctx, s.log, s.porter, s.ns, dstr.ClientRespondingHandshake); err != nil {
 		return err

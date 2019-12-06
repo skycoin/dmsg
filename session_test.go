@@ -30,13 +30,13 @@ func TestSession(t *testing.T) {
 
 		cErr := make(chan error, 1)
 		go func() {
-			ses, err := NewClientSession(logging.MustGetLogger("client_"+logSuffix), porter, cConn, cSK, cPK, sPK)
+			ses, err := InitiateSession(logging.MustGetLogger("client_"+logSuffix), porter, cConn, cSK, cPK, sPK)
 			cSes = ses
 			cErr <- err
 			close(cErr)
 		}()
 
-		sSes, err := NewServerSession(logging.MustGetLogger("server_"+logSuffix), getSes, sConn, sSK, sPK)
+		sSes, err := RespondSession(logging.MustGetLogger("server_"+logSuffix), getSes, sConn, sSK, sPK)
 		require.NoError(t, err)
 		addSes(sSes)
 		require.NoError(t, <-cErr)

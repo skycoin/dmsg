@@ -144,7 +144,6 @@ func (rw *ReadWriter) RemoteStatic() cipher.PubKey {
 
 // InitiatorHandshake performs a noise handshake as an initiator.
 func InitiatorHandshake(ns *Noise, r *bufio.Reader, w io.Writer) error {
-	//log := logging.MustGetLogger("HS:init")
 	for {
 		msg, err := ns.MakeHandshakeMessage()
 		if err != nil {
@@ -172,7 +171,6 @@ func InitiatorHandshake(ns *Noise, r *bufio.Reader, w io.Writer) error {
 
 // ResponderHandshake performs a noise handshake as a responder.
 func ResponderHandshake(ns *Noise, r *bufio.Reader, w io.Writer) error {
-	//log := logging.MustGetLogger("HS:resp")
 	for {
 		msg, err := ReadRawFrame(r)
 		if err != nil {

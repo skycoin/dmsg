@@ -21,6 +21,11 @@ var (
 	ErrDialRespNotAccepted = NewError(62, "response rejected associated request without reason", nil)
 )
 
+// Errors for dmsg discovery (20 - 30).
+var (
+	ErrDiscEntryIsNotServer = NewError(21, "discovery entry is not of server", nil)
+)
+
 // NetworkErrorOptions provides 'timeout' and 'temporary' options for NetworkError.
 type NetworkErrorOptions struct {
 	Timeout   bool
