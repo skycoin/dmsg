@@ -53,6 +53,7 @@ func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream2, err error) {
 }
 
 func (cs *ClientSession) Serve() error {
+	defer func() { _ = cs.Close() }() //nolint:errcheck
 	for {
 		if _, err := cs.acceptStream(); err != nil {
 			return err

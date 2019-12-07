@@ -60,7 +60,7 @@ import (
 //
 //			// Ensure we are accepting.
 //			accepts := make(chan error, 2)
-//			go func() { accepts <- adj.acceptAndProxyStream() }()
+//			go func() { accepts <- adj.acceptAndServeStream() }()
 //			go func() { accepts <- dst.acceptClientStream() }()
 //
 //			// Make src dial to dst.

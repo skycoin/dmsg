@@ -21,22 +21,27 @@ func makeServerSession(entity *EntityCommon, conn net.Conn) (ServerSession, erro
 	return sSes, nil
 }
 
-func (ss *ServerSession) acceptAndProxyStream() error {
-	yStr, err := ss.ys.AcceptStream()
-	if err != nil {
-		return err
+func (ss *ServerSession) Serve() {
+	for {
+		yStr, err := ss.ys.AcceptStream()
+		if err != nil {
+			ss.log.
+				WithError(err).
+				Warn("Failed to accept yamux stream.")
+			return
+		}
+
+		ss.log.Info("Serving stream.")
+		go func(yStr *yamux.Stream) {
+			ss.log.
+				WithError(ss.serveStream(yStr)).
+				Info("Stopped serving stream.")
+			_ = yStr.Close() //nolint:errcheck
+		}(yStr)
 	}
-	go func() {
-		err := ss.proxyStream(yStr)
-		_ = yStr.Close() //nolint:errcheck
-		ss.log.
-			WithError(err).
-			Infof("acceptAndProxyStream stopped.")
-	}()
-	return nil
 }
 
-func (ss *ServerSession) proxyStream(yStr *yamux.Stream) error {
+func (ss *ServerSession) serveStream(yStr *yamux.Stream) error {
 	readRequest := func() (StreamDialRequest, error) {
 		var req StreamDialRequest
 		if err := readEncryptedGob(yStr, ss.ns, &req); err != nil {
@@ -51,7 +56,7 @@ func (ss *ServerSession) proxyStream(yStr *yamux.Stream) error {
 		return req, nil
 	}
 
-	log := ss.log.WithField("fn", "proxyStream")
+	log := ss.log.WithField("fn", "serveStream")
 
 	// Read request.
 	req, err := readRequest()

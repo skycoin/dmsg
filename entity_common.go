@@ -12,6 +12,7 @@ import (
 	"github.com/SkycoinProject/dmsg/netutil"
 )
 
+// EntityCommon contains the common fields and methods for server and client entities.
 type EntityCommon struct {
 	pk cipher.PubKey
 	sk cipher.SecKey
@@ -35,8 +36,11 @@ func (c *EntityCommon) init(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClien
 	c.log = log
 }
 
+// LocalPK returns the local public key of the entity.
 func (c *EntityCommon) LocalPK() cipher.PubKey { return c.pk }
 
+// SetLogger sets the internal logger.
+// This should be called before we serve.
 func (c *EntityCommon) SetLogger(log logrus.FieldLogger) { c.log = log }
 
 func (c *EntityCommon) session(pk cipher.PubKey) (*SessionCommon, bool) {
@@ -46,16 +50,19 @@ func (c *EntityCommon) session(pk cipher.PubKey) (*SessionCommon, bool) {
 	return dSes, ok
 }
 
+// ServerSession obtains a session as a server.
 func (c *EntityCommon) ServerSession(pk cipher.PubKey) (ServerSession, bool) {
 	ses, ok := c.session(pk)
 	return ServerSession{SessionCommon: ses}, ok
 }
 
+// ClientSession obtains a session as a client.
 func (c *EntityCommon) ClientSession(porter *netutil.Porter, pk cipher.PubKey) (ClientSession, bool) {
 	ses, ok := c.session(pk)
 	return ClientSession{SessionCommon: ses, porter: porter}, ok
 }
 
+// SessionCount returns the number of sessions.
 func (c *EntityCommon) SessionCount() int {
 	c.mx.Lock()
 	n := len(c.ss)
@@ -131,13 +138,12 @@ func isDone(ctx context.Context) bool {
 	}
 }
 
-func notifyOfClientSession(ctx context.Context, sesCh chan<- ClientSession, dSes ClientSession) {
-	if sesCh != nil {
-		select {
-		case sesCh <- dSes:
-		case <-ctx.Done():
-		}
-		close(sesCh)
+func isClosed(done chan struct{}) bool {
+	select {
+	case <-done:
+		return true
+	default:
+		return false
 	}
 }
 

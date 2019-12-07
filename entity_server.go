@@ -13,10 +13,12 @@ import (
 	"github.com/SkycoinProject/dmsg/netutil"
 )
 
+// ServerEntity represents a dsmg server entity.
 type ServerEntity struct {
 	EntityCommon
 }
 
+// NewServer creates a new dmsg server entity.
 func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient) *ServerEntity {
 	s := new(ServerEntity)
 	s.EntityCommon.init(pk, sk, dc, logging.MustGetLogger("dmsg_server"))
@@ -96,11 +98,5 @@ func (s *ServerEntity) handleConn(ctx context.Context, conn net.Conn) {
 
 	log = log.WithField("remote_pk", dSes.RemotePK())
 	log.Info("Serving session.")
-
-	for {
-		if err := dSes.acceptAndProxyStream(); err != nil {
-			log = log.WithError(err)
-			return
-		}
-	}
+	dSes.Serve()
 }
