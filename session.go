@@ -2,9 +2,8 @@ package dmsg
 
 import (
 	"bufio"
-	"context"
-	"errors"
 	"net"
+	"time"
 
 	"github.com/SkycoinProject/yamux"
 	"github.com/sirupsen/logrus"
@@ -14,157 +13,206 @@ import (
 	"github.com/SkycoinProject/dmsg/noise"
 )
 
-// Session handles the multiplexed connection between the dmsg server and dmsg client.
-// TODO(evanlinjin): Session handshakes should use timeout.
-type Session struct {
-	lPK cipher.PubKey
-	lSK cipher.SecKey
-	rPK cipher.PubKey // Public key of the remote dmsg server.
+type SessionCommon struct {
+	entity *EntityCommon // back reference
+	rPK    cipher.PubKey // remote pk
 
-	ys     *yamux.Session
-	ns     *noise.Noise    // For encrypting session messages, not stream messages.
-	porter *netutil.Porter // Only used by client sessions.
-	getter SessionGetter   // Only used by server sessions.
+	ys *yamux.Session
+	ns *noise.Noise
 
 	log logrus.FieldLogger
 }
 
-func InitiateSession(log logrus.FieldLogger, porter *netutil.Porter, conn net.Conn, lSK cipher.SecKey, lPK, rPK cipher.PubKey) (*Session, error) {
+func (sc *SessionCommon) initClient(entity *EntityCommon, conn net.Conn, rPK cipher.PubKey) error {
 	ns, err := noise.New(noise.HandshakeXK, noise.Config{
-		LocalPK:   lPK,
-		LocalSK:   lSK,
+		LocalPK:   entity.pk,
+		LocalSK:   entity.sk,
 		RemotePK:  rPK,
 		Initiator: true,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	r := bufio.NewReader(conn) // Ensure this is emptied after handshake.
+	r := bufio.NewReader(conn)
 	if err := noise.InitiatorHandshake(ns, r, conn); err != nil {
-		return nil, err
+		return err
 	}
 	if r.Buffered() > 0 {
-		return nil, errors.New("bufio reader should be empty after session handshake")
+		return ErrSessionHandshakeExtraBytes
 	}
 
 	ySes, err := yamux.Client(conn, yamux.DefaultConfig())
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &Session{
-		lPK:    lPK,
-		lSK:    lSK,
-		rPK:    rPK,
-		ys:     ySes,
-		ns:     ns,
-		porter: porter,
-		log:    log,
-	}, nil
+
+	sc.entity = entity
+	sc.rPK = rPK
+	sc.ys = ySes
+	sc.ns = ns
+	sc.log = entity.log.WithField("session", ns.RemoteStatic())
+	return nil
 }
 
-func RespondSession(log logrus.FieldLogger, getter SessionGetter, conn net.Conn, lSK cipher.SecKey, lPK cipher.PubKey) (*Session, error) {
+func (sc *SessionCommon) initServer(entity *EntityCommon, conn net.Conn) error {
 	ns, err := noise.New(noise.HandshakeXK, noise.Config{
-		LocalPK:   lPK,
-		LocalSK:   lSK,
+		LocalPK:   entity.pk,
+		LocalSK:   entity.sk,
 		Initiator: false,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	r := bufio.NewReader(conn) // Ensure this is emptied after handshake.
+	r := bufio.NewReader(conn)
 	if err := noise.ResponderHandshake(ns, r, conn); err != nil {
-		return nil, err
+		return err
 	}
 	if r.Buffered() > 0 {
-		return nil, errors.New("bufio reader should be empty after session handshake")
+		return ErrSessionHandshakeExtraBytes
 	}
 
 	ySes, err := yamux.Server(conn, yamux.DefaultConfig())
 	if err != nil {
-		return nil, err
-	}
-	return &Session{
-		lPK:    lPK,
-		lSK:    lSK,
-		rPK:    ns.RemoteStatic(),
-		ys:     ySes,
-		ns:     ns,
-		getter: getter,
-		log:    log,
-	}, nil
-}
-
-func (s *Session) LocalPK() cipher.PubKey {
-	return s.lPK
-}
-
-func (s *Session) RemotePK() cipher.PubKey {
-	return s.rPK
-}
-
-func (s *Session) dialClientStream(ctx context.Context, dst Addr) (*Stream, error) {
-	// Prepare yamux stream.
-	ys, err := s.ys.OpenStream()
-	if err != nil {
-		return nil, err
-	}
-	// Prepare dmsg stream to reserve in porter.
-	dstr := NewStream(ys, s.lSK, Addr{PK: s.lPK}, dst)
-	if err := dstr.DoClientHandshake(ctx, s.log, s.porter, s.ns, dstr.ClientInitiatingHandshake); err != nil {
-		return nil, err
-	}
-	return dstr, nil
-}
-
-func (s *Session) acceptClientStream() error {
-	ys, err := s.ys.AcceptStream()
-	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), HandshakeTimeout)
-	defer cancel()
-
-	dstr := NewStream(ys, s.lSK, Addr{PK: s.lPK}, Addr{})
-	if err := dstr.DoClientHandshake(ctx, s.log, s.porter, s.ns, dstr.ClientRespondingHandshake); err != nil {
-		return err
-	}
+	sc.entity = entity
+	sc.rPK = ns.RemoteStatic()
+	sc.ys = ySes
+	sc.ns = ns
+	sc.log = entity.log.WithField("session", ns.RemoteStatic())
 	return nil
 }
 
-func (s *Session) acceptAndProxyStream() error {
-	yStr, err := s.ys.AcceptStream()
+func (sc *SessionCommon) localSK() cipher.SecKey { return sc.entity.sk }
+
+func (sc *SessionCommon) LocalPK() cipher.PubKey { return sc.entity.pk }
+
+func (sc *SessionCommon) RemotePK() cipher.PubKey { return sc.rPK }
+
+func (sc *SessionCommon) Close() error {
+	return sc.ys.Close()
+}
+
+type ClientSession struct {
+	*SessionCommon
+	porter *netutil.Porter
+}
+
+func makeClientSession(entity *EntityCommon, porter *netutil.Porter, conn net.Conn, rPK cipher.PubKey) (ClientSession, error) {
+	var cSes ClientSession
+	cSes.SessionCommon = new(SessionCommon)
+	if err := cSes.SessionCommon.initClient(entity, conn, rPK); err != nil {
+		return cSes, err
+	}
+	cSes.porter = porter
+	return cSes, nil
+}
+
+func (cs *ClientSession) dialStream(dst Addr) (dStr *Stream2, err error) {
+	if dStr, err = newInitiatingStream(cs); err != nil {
+		return nil, err
+	}
+
+	// Close stream on failure.
+	defer func() {
+		if err != nil {
+			_ = dStr.Close() //nolint:errcheck
+		}
+	}()
+
+	// Prepare deadline.
+	if err = dStr.SetDeadline(time.Now().Add(HandshakeTimeout)); err != nil {
+		return
+	}
+	defer func() { _ = dStr.SetDeadline(time.Time{}) }() //nolint:errcheck
+
+	// Do stream handshake.
+	req, err := dStr.writeRequest(dst)
+	if err != nil {
+		return nil, err
+	}
+	if err := dStr.readResponse(req); err != nil {
+		return nil, err
+	}
+	return dStr, err
+}
+
+func (cs *ClientSession) acceptStream() (dStr *Stream2, err error) {
+	if dStr, err = newRespondingStream(cs); err != nil {
+		return nil, err
+	}
+
+	// Close stream on failure.
+	defer func() {
+		if err != nil {
+			_ = dStr.Close() //nolint:errcheck
+		}
+	}()
+
+	// Prepare deadline.
+	if err = dStr.SetDeadline(time.Now().Add(HandshakeTimeout)); err != nil {
+		return nil, err
+	}
+	defer func() { _ = dStr.SetDeadline(time.Time{}) }() //nolint:errcheck
+
+	// Do stream handshake.
+	var req StreamDialRequest
+	if req, err = dStr.readRequest(); err != nil {
+		return nil, err
+	}
+	if err = dStr.writeResponse(req); err != nil {
+		return nil, err
+	}
+	return dStr, err
+}
+
+type ServerSession struct {
+	*SessionCommon
+}
+
+func makeServerSession(entity *EntityCommon, conn net.Conn) (ServerSession, error) {
+	var sSes ServerSession
+	sSes.SessionCommon = new(SessionCommon)
+	if err := sSes.SessionCommon.initServer(entity, conn); err != nil {
+		return sSes, err
+	}
+	return sSes, nil
+}
+
+func (ss *ServerSession) acceptAndProxyStream() error {
+	yStr, err := ss.ys.AcceptStream()
 	if err != nil {
 		return err
 	}
 	go func() {
-		err := s.proxyStream(yStr)
+		err := ss.proxyStream(yStr)
 		_ = yStr.Close() //nolint:errcheck
-		s.log.
+		ss.log.
 			WithError(err).
 			Infof("acceptAndProxyStream stopped.")
 	}()
 	return nil
 }
 
-func (s *Session) proxyStream(yStr *yamux.Stream) error {
+func (ss *ServerSession) proxyStream(yStr *yamux.Stream) error {
 	readRequest := func() (StreamDialRequest, error) {
 		var req StreamDialRequest
-		if err := readEncryptedGob(yStr, s.ns, &req); err != nil {
+		if err := readEncryptedGob(yStr, ss.ns, &req); err != nil {
 			return req, err
 		}
 		if err := req.Verify(0); err != nil { // TODO(evanlinjin): timestamp tracker.
 			return req, ErrReqInvalidTimestamp
 		}
-		if req.SrcAddr.PK != s.rPK {
+		if req.SrcAddr.PK != ss.rPK {
 			return req, ErrReqInvalidSrcPK
 		}
 		return req, nil
 	}
 
-	log := s.log.WithField("fn", "proxyStream")
+	log := ss.log.WithField("fn", "proxyStream")
 
 	// Read request.
 	req, err := readRequest()
@@ -175,21 +223,21 @@ func (s *Session) proxyStream(yStr *yamux.Stream) error {
 
 	// Obtain next session.
 	log.Infof("attempting to get PK: %s", req.DstAddr.PK)
-	s2, ok := s.getter(req.DstAddr.PK)
+	ss2, ok := ss.entity.ServerSession(req.DstAddr.PK)
 	if !ok {
 		return ErrReqNoSession
 	}
 	log.Info("Next session obtained.")
 
 	// Forward request and obtain/check response.
-	yStr2, resp, err := s2.forwardRequest(req)
+	yStr2, resp, err := ss2.forwardRequest(req)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = yStr2.Close() }() //nolint:errcheck
 
 	// Forward response.
-	if err := writeEncryptedGob(yStr, s.ns, resp); err != nil {
+	if err := writeEncryptedGob(yStr, ss.ns, resp); err != nil {
 		return err
 	}
 
@@ -197,17 +245,17 @@ func (s *Session) proxyStream(yStr *yamux.Stream) error {
 	return netutil.CopyReadWriter(yStr, yStr2)
 }
 
-func (s *Session) forwardRequest(req StreamDialRequest) (*yamux.Stream, DialResponse, error) {
-	yStr, err := s.ys.OpenStream()
+func (ss *ServerSession) forwardRequest(req StreamDialRequest) (*yamux.Stream, DialResponse, error) {
+	yStr, err := ss.ys.OpenStream()
 	if err != nil {
 		return nil, DialResponse{}, err
 	}
-	if err := writeEncryptedGob(yStr, s.ns, req); err != nil {
+	if err := writeEncryptedGob(yStr, ss.ns, req); err != nil {
 		_ = yStr.Close() //nolint:errcheck
 		return nil, DialResponse{}, err
 	}
 	var resp DialResponse
-	if err := readEncryptedGob(yStr, s.ns, &resp); err != nil {
+	if err := readEncryptedGob(yStr, ss.ns, &resp); err != nil {
 		_ = yStr.Close() //nolint:errcheck
 		return nil, DialResponse{}, err
 	}
@@ -216,8 +264,4 @@ func (s *Session) forwardRequest(req StreamDialRequest) (*yamux.Stream, DialResp
 		return nil, DialResponse{}, err
 	}
 	return yStr, resp, nil
-}
-
-func (s *Session) Close() error {
-	return s.ys.Close()
 }

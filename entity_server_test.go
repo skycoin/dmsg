@@ -28,12 +28,12 @@ func TestNewClientEntity(t *testing.T) {
 	time.Sleep(time.Second)
 
 	aPK, aSK := GenKeyPair(t, "client A")
-	a := NewClientEntity(aPK, aSK, dc, DefaultConfig())
+	a := NewClient(aPK, aSK, dc, DefaultConfig())
 	a.SetLogger(logging.MustGetLogger("client_A"))
 	go a.Serve()
 
 	bPK, bSK := GenKeyPair(t, "client B")
-	b := NewClientEntity(bPK, bSK, dc, DefaultConfig())
+	b := NewClient(bPK, bSK, dc, DefaultConfig())
 	b.SetLogger(logging.MustGetLogger("client_B"))
 	go b.Serve()
 

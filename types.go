@@ -21,15 +21,14 @@ func (dr *StreamDialRequest) Empty() bool {
 	return dr.Timestamp == 0
 }
 
-func (dr *StreamDialRequest) Sign(sk cipher.SecKey) error {
+func (dr *StreamDialRequest) Sign(sk cipher.SecKey) {
 	dr.Sig = cipher.Sig{}
 	b := encodeGob(dr)
 	sig, err := cipher.SignPayload(b, sk)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	dr.Sig = sig
-	return nil
 }
 
 func (dr StreamDialRequest) Hash() cipher.SHA256 {
@@ -72,15 +71,14 @@ type DialResponse struct {
 	Sig      cipher.Sig // Signature of this DialRequest, signed with public key of receiving node.
 }
 
-func (dr *DialResponse) Sign(sk cipher.SecKey) error {
+func (dr *DialResponse) Sign(sk cipher.SecKey) {
 	dr.Sig = cipher.Sig{}
 	b := encodeGob(dr)
 	sig, err := cipher.SignPayload(b, sk)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	dr.Sig = sig
-	return nil
 }
 
 func (dr DialResponse) Verify(reqDstPK cipher.PubKey, reqHash cipher.SHA256) error {

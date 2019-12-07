@@ -13,21 +13,18 @@ import (
 	"github.com/SkycoinProject/dmsg/netutil"
 )
 
-// SessionGetter is a function that obtains a session.
-type SessionGetter func(pk cipher.PubKey) (*Session, bool)
-
-type Server struct {
+type ServerEntity struct {
 	EntityCommon
 }
 
-func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient) *Server {
-	s := new(Server)
+func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient) *ServerEntity {
+	s := new(ServerEntity)
 	s.EntityCommon.init(pk, sk, dc, logging.MustGetLogger("dmsg_server"))
 	return s
 }
 
 // Serve serves the server.
-func (s *Server) Serve(ctx context.Context, lis net.Listener, addr string) error {
+func (s *ServerEntity) Serve(ctx context.Context, lis net.Listener, addr string) error {
 	if addr == "" {
 		addr = lis.Addr().String()
 	}
@@ -64,7 +61,7 @@ func (s *Server) Serve(ctx context.Context, lis net.Listener, addr string) error
 	}
 }
 
-func (s *Server) updateEntryLoop(ctx context.Context, timeout time.Duration, addr string) error {
+func (s *ServerEntity) updateEntryLoop(ctx context.Context, timeout time.Duration, addr string) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	err := netutil.NewRetrier(s.log, 100*time.Millisecond, 0, 2).
 		Do(ctx, func() error { return s.updateServerEntry(ctx, addr) })
@@ -72,7 +69,7 @@ func (s *Server) updateEntryLoop(ctx context.Context, timeout time.Duration, add
 	return err
 }
 
-func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
+func (s *ServerEntity) handleConn(ctx context.Context, conn net.Conn) {
 	var log logrus.FieldLogger
 	log = s.log.WithField("remote_tcp", conn.RemoteAddr())
 
@@ -85,13 +82,13 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 		log.Info("Stopped serving session.")
 	}()
 
-	dSes, err := RespondSession(s.log, s.Session, conn, s.sk, s.pk)
+	dSes, err := makeServerSession(&s.EntityCommon, conn)
 	if err != nil {
 		log = log.WithError(err)
 		return
 	}
 
-	s.setSession(ctx, dSes)
+	s.setSession(ctx, dSes.SessionCommon)
 	defer func() {
 		s.delSession(ctx, dSes.RemotePK())
 		_ = dSes.Close() //nolint:errcheck

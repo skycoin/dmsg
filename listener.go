@@ -10,7 +10,7 @@ import (
 type Listener struct {
 	addr Addr // local listening address
 
-	accept chan *Stream
+	accept chan *Stream2
 	mx     sync.Mutex // protects 'accept'
 
 	doneFunc func() // callback when done
@@ -21,17 +21,17 @@ type Listener struct {
 func newListener(addr Addr) *Listener {
 	return &Listener{
 		addr:   addr,
-		accept: make(chan *Stream, AcceptBufferSize),
+		accept: make(chan *Stream2, AcceptBufferSize),
 		done:   make(chan struct{}),
 	}
 }
 
-// AddCloseCallback adds a function that triggers when listener is closed.
+// addCloseCallback adds a function that triggers when listener is closed.
 // This should be called right after the listener is created and is not thread safe.
-func (l *Listener) AddCloseCallback(cb func()) { l.doneFunc = cb }
+func (l *Listener) addCloseCallback(cb func()) { l.doneFunc = cb }
 
-// IntroduceStream handles a stream after receiving a REQUEST frame.
-func (l *Listener) IntroduceStream(tp *Stream) error {
+// introduceStream handles a stream after receiving a REQUEST frame.
+func (l *Listener) introduceStream(tp *Stream2) error {
 	if tp.LocalAddr() != l.addr {
 		return fmt.Errorf("local addresses do not match: expected %s but got %s", l.addr, tp.LocalAddr())
 	}
@@ -41,7 +41,7 @@ func (l *Listener) IntroduceStream(tp *Stream) error {
 
 	if l.isClosed() {
 		_ = tp.Close() //nolint:errcheck
-		return ErrClientClosed
+		return ErrEntityClosed
 	}
 
 	select {
@@ -49,10 +49,10 @@ func (l *Listener) IntroduceStream(tp *Stream) error {
 		return nil
 	case <-l.done:
 		_ = tp.Close() //nolint:errcheck
-		return ErrClientClosed
+		return ErrEntityClosed
 	default:
 		_ = tp.Close() //nolint:errcheck
-		return ErrClientAcceptMaxed
+		return ErrAcceptChanMaxed
 	}
 }
 
@@ -62,13 +62,13 @@ func (l *Listener) Accept() (net.Conn, error) {
 }
 
 // AcceptClientStream accepts a stream connection.
-func (l *Listener) AcceptStream() (*Stream, error) {
+func (l *Listener) AcceptStream() (*Stream2, error) {
 	select {
 	case <-l.done:
-		return nil, ErrClientClosed
+		return nil, ErrEntityClosed
 	case tp, ok := <-l.accept:
 		if !ok {
-			return nil, ErrClientClosed
+			return nil, ErrEntityClosed
 		}
 		return tp, nil
 	}
@@ -79,7 +79,7 @@ func (l *Listener) Close() error {
 	if l.close() {
 		return nil
 	}
-	return ErrClientClosed
+	return ErrEntityClosed
 }
 
 func (l *Listener) close() (closed bool) {
