@@ -37,7 +37,7 @@ func NewRetrier(log logrus.FieldLogger, backOff time.Duration, times, factor uin
 }
 
 const (
-	DefaultBackOff = 100*time.Millisecond
+	DefaultBackOff = 100 * time.Millisecond
 	DefaultTries   = 0
 	DefaultFactor  = 2
 )

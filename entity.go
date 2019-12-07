@@ -37,7 +37,7 @@ func (c *EntityCommon) init(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClien
 	c.log = log
 }
 
-func (c *EntityCommon) LocalPublicKey() cipher.PubKey { return c.pk }
+func (c *EntityCommon) LocalPK() cipher.PubKey { return c.pk }
 
 func (c *EntityCommon) SetLogger(log logrus.FieldLogger) { c.log = log }
 
@@ -116,10 +116,6 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context) error {
 
 // It is expected that the session is created and served before the context cancels, otherwise an error will be returned.
 func (c *EntityCommon) initiateAndServeSession(ctx context.Context, porter *netutil.Porter, entry *disc.Entry, sesCh chan<- *Session) error {
-	//if dSes, ok := c.Session(entry.Static); ok {
-	//	notifyOfSession(ctx, sesCh, dSes)
-	//	return nil
-	//}
 
 	conn, err := net.Dial("tcp", entry.Server.Address)
 	if err != nil {
@@ -138,7 +134,7 @@ func (c *EntityCommon) initiateAndServeSession(ctx context.Context, porter *netu
 
 	notifyOfSession(ctx, sesCh, dSes)
 	for {
-		if err := dSes.AcceptClientStream(); err != nil {
+		if err := dSes.acceptClientStream(); err != nil {
 			return err
 		}
 	}
@@ -166,10 +162,24 @@ func notifyOfSession(ctx context.Context, sesCh chan<- *Session, dSes *Session) 
 func getServerEntry(ctx context.Context, dc disc.APIClient, srvPK cipher.PubKey) (*disc.Entry, error) {
 	entry, err := dc.Entry(ctx, srvPK)
 	if err != nil {
-		return nil, err
+		return nil, ErrDiscEntryNotFound
 	}
 	if entry.Server == nil {
 		return nil, ErrDiscEntryIsNotServer
+	}
+	return entry, nil
+}
+
+func getClientEntry(ctx context.Context, dc disc.APIClient, clientPK cipher.PubKey) (*disc.Entry, error) {
+	entry, err := dc.Entry(ctx, clientPK)
+	if err != nil {
+		return nil, ErrDiscEntryNotFound
+	}
+	if entry.Client == nil {
+		return nil, ErrDiscEntryIsNotClient
+	}
+	if len(entry.Client.DelegatedServers) == 0 {
+		return nil, ErrDiscEntryHasNoDelegated
 	}
 	return entry, nil
 }
@@ -229,6 +239,7 @@ func (ce *ClientEntity) Serve() {
 		}
 
 		for _, entry := range entries {
+			// If session with server of pk already exists, skip.
 			if _, ok := ce.Session(entry.Static); ok {
 				continue
 			}
@@ -264,8 +275,84 @@ func (ce *ClientEntity) discoverServers(ctx context.Context) (entries []*disc.En
 
 // TODO(evanlinjin): Have waitgroup.
 func (ce *ClientEntity) Close() error {
+	if ce == nil {
+		return nil
+	}
+
 	ce.once.Do(func() {
+		ce.mx.Lock()
+		defer ce.mx.Unlock()
+
 		close(ce.done)
+
+		for _, dSes := range ce.ss {
+			ce.log.
+				WithError(dSes.Close()).
+				Info("Session closed.")
+		}
+		ce.ss = make(map[cipher.PubKey]*Session)
+
+		ce.porter.RangePortValues(func(port uint16, v interface{}) (next bool) {
+			switch v.(type) {
+			case *Listener:
+				ce.log.
+					WithError(v.(*Listener).Close()).
+					Info("Listener closed.")
+			case *Stream:
+				ce.log.
+					WithError(v.(*Stream).Close()).
+					Info("Stream closed.")
+			}
+			return true
+		})
 	})
+
 	return nil
+}
+
+func (ce *ClientEntity) Listen(port uint16) (*Listener, error) {
+	lis := newListener(Addr{PK: ce.pk, Port: port})
+	ok, doneFn := ce.porter.Reserve(port, lis)
+	if !ok {
+		lis.close()
+		return nil, ErrPortOccupied
+	}
+	lis.doneFunc = doneFn
+	return lis, nil
+}
+
+func (ce *ClientEntity) DialStream(ctx context.Context, addr Addr) (*Stream, error) {
+	entry, err := getClientEntry(ctx, ce.dc, addr.PK)
+	if err != nil {
+		return nil, err
+	}
+
+	// Range client's delegated servers.
+	// See if we are already connected to a delegated server.
+	for _, srvPK := range entry.Client.DelegatedServers {
+		if dSes, ok := ce.Session(srvPK); ok {
+			return dSes.dialClientStream(ctx, addr)
+		}
+	}
+
+	// Range client's delegated servers.
+	// Attempt to connect to a delegated server.
+	for _, srvPK := range entry.Client.DelegatedServers {
+		srvEntry, err := getServerEntry(ctx, ce.dc, srvPK)
+		if err != nil {
+			continue
+		}
+		sesCh := make(chan *Session, 1)
+		go func() { ce.errCh <- ce.initiateAndServeSession(ctx, ce.porter, srvEntry, sesCh) }()
+		select {
+		case <-ce.done:
+			return nil, ErrEntityClosed
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case dSes := <-sesCh:
+			return dSes.dialClientStream(ctx, addr)
+		}
+	}
+
+	return nil, ErrCannotConnectToDelegated
 }

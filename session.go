@@ -15,6 +15,7 @@ import (
 )
 
 // Session handles the multiplexed connection between the dmsg server and dmsg client.
+// TODO(evanlinjin): Session handshakes should use timeout.
 type Session struct {
 	lPK cipher.PubKey
 	lSK cipher.SecKey
@@ -103,7 +104,7 @@ func (s *Session) RemotePK() cipher.PubKey {
 	return s.rPK
 }
 
-func (s *Session) DialClientStream(ctx context.Context, dst Addr) (*Stream, error) {
+func (s *Session) dialClientStream(ctx context.Context, dst Addr) (*Stream, error) {
 	// Prepare yamux stream.
 	ys, err := s.ys.OpenStream()
 	if err != nil {
@@ -117,13 +118,13 @@ func (s *Session) DialClientStream(ctx context.Context, dst Addr) (*Stream, erro
 	return dstr, nil
 }
 
-func (s *Session) AcceptClientStream() error {
+func (s *Session) acceptClientStream() error {
 	ys, err := s.ys.AcceptStream()
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), StreamHandshakeTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), HandshakeTimeout)
 	defer cancel()
 
 	dstr := NewStream(ys, s.lSK, Addr{PK: s.lPK}, Addr{})
@@ -133,22 +134,22 @@ func (s *Session) AcceptClientStream() error {
 	return nil
 }
 
-func (s *Session) AcceptServerStream() error {
+func (s *Session) acceptAndProxyStream() error {
 	yStr, err := s.ys.AcceptStream()
 	if err != nil {
 		return err
 	}
 	go func() {
-		err := s.handleServerStream(yStr)
+		err := s.proxyStream(yStr)
 		_ = yStr.Close() //nolint:errcheck
 		s.log.
 			WithError(err).
-			Infof("AcceptServerStream stopped.")
+			Infof("acceptAndProxyStream stopped.")
 	}()
 	return nil
 }
 
-func (s *Session) handleServerStream(yStr *yamux.Stream) error {
+func (s *Session) proxyStream(yStr *yamux.Stream) error {
 	readRequest := func() (StreamDialRequest, error) {
 		var req StreamDialRequest
 		if err := readEncryptedGob(yStr, s.ns, &req); err != nil {
@@ -163,7 +164,7 @@ func (s *Session) handleServerStream(yStr *yamux.Stream) error {
 		return req, nil
 	}
 
-	log := s.log.WithField("fn", "handleServerStream")
+	log := s.log.WithField("fn", "proxyStream")
 
 	// Read request.
 	req, err := readRequest()
@@ -218,19 +219,5 @@ func (s *Session) forwardRequest(req StreamDialRequest) (*yamux.Stream, DialResp
 }
 
 func (s *Session) Close() error {
-	_ = s.ys.GoAway() //nolint:errcheck
-
-	// TODO(evanlinjin): Should this be part of dmsg.Client?
-	//if s.porter != nil {
-	//	s.porter.RangePortValues(func(port uint16, v interface{}) (next bool) {
-	//		switch v.(type) {
-	//		case *Listener:
-	//			_ = v.(*Listener).Close() //nolint:errcheck
-	//		case *Stream:
-	//			_ = v.(*Stream).Close() //nolint:errcheck
-	//		}
-	//		return true
-	//	})
-	//}
 	return s.ys.Close()
 }

@@ -208,7 +208,7 @@ func (c *Client) findOrConnectToServer(ctx context.Context, srvPK cipher.PubKey)
 	go func(dSes *Session) {
 		// serve
 		for {
-			if err := dSes.AcceptClientStream(ctx); err != nil {
+			if err := dSes.acceptClientStream(); err != nil {
 				dSes.log.
 					WithError(err).
 					WithField("remote_pk", dSes.RemotePK()).Debug("session with server closed")
@@ -265,7 +265,7 @@ func (c *Client) DialStream(ctx context.Context, remote cipher.PubKey, port uint
 			c.log.WithError(err).Warn("failed to connect to server")
 			continue
 		}
-		return dSes.DialClientStream(ctx, Addr{PK: remote, Port: port})
+		return dSes.dialClientStream(ctx, Addr{PK: remote, Port: port})
 	}
 	return nil, errors.New("failed to find dmsg_servers for given client pk")
 }

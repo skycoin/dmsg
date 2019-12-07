@@ -65,11 +65,11 @@ func TestSession(t *testing.T) {
 
 			// Ensure we are accepting.
 			accepts := make(chan error, 2)
-			go func() { accepts <- adj.AcceptServerStream() }()
-			go func() { accepts <- dst.AcceptClientStream(context.TODO()) }()
+			go func() { accepts <- adj.acceptAndProxyStream() }()
+			go func() { accepts <- dst.acceptClientStream() }()
 
 			// Make src dial to dst.
-			c1, err = src.DialClientStream(context.TODO(), dstAddr)
+			c1, err = src.dialClientStream(context.TODO(), dstAddr)
 			if err != nil {
 				return
 			}

@@ -5,6 +5,20 @@ import (
 	"sync"
 )
 
+// Entity Errors (10-19).
+var (
+	ErrEntityClosed             = NewError(10, "local entity closed", nil)
+	ErrCannotConnectToDelegated = NewError(11, "cannot connect to delegated server", nil)
+)
+
+// Errors for dmsg discovery (30-39).
+var (
+	ErrDiscEntryNotFound       = NewError(30, "discovery entry is not found", nil)
+	ErrDiscEntryIsNotServer    = NewError(31, "discovery entry is not of server", nil)
+	ErrDiscEntryIsNotClient    = NewError(32, "discovery entry is not of client", nil)
+	ErrDiscEntryHasNoDelegated = NewError(33, "discovery client entry has no delegated servers", nil)
+)
+
 // Errors for dial request/response (50-69).
 var (
 	ErrReqInvalidSig       = NewError(50, "request has invalid signature", nil)
@@ -21,9 +35,9 @@ var (
 	ErrDialRespNotAccepted = NewError(62, "response rejected associated request without reason", nil)
 )
 
-// Errors for dmsg discovery (20 - 30).
+// Listener errors (80-89).
 var (
-	ErrDiscEntryIsNotServer = NewError(21, "discovery entry is not of server", nil)
+	ErrPortOccupied = NewError(80, "port already occupied", nil)
 )
 
 // NetworkErrorOptions provides 'timeout' and 'temporary' options for NetworkError.

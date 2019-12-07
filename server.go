@@ -101,7 +101,7 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	log.Info("Serving session.")
 
 	for {
-		if err := dSes.AcceptServerStream(); err != nil {
+		if err := dSes.acceptAndProxyStream(); err != nil {
 			log = log.WithError(err)
 			return
 		}

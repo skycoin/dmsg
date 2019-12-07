@@ -114,8 +114,8 @@ const (
 )
 
 var (
-	// StreamHandshakeTimeout defines the duration a stream handshake should take.
-	StreamHandshakeTimeout = time.Second * 10
+	// HandshakeTimeout defines the duration a stream handshake should take.
+	HandshakeTimeout = time.Second * 10
 
 	// AcceptBufferSize defines the size of the accepts buffer.
 	AcceptBufferSize = 20
