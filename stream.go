@@ -11,7 +11,7 @@ import (
 
 	"github.com/SkycoinProject/dmsg/netutil"
 
-	"github.com/hashicorp/yamux"
+	"github.com/SkycoinProject/yamux"
 	"github.com/sirupsen/logrus"
 
 	"github.com/SkycoinProject/dmsg/cipher"

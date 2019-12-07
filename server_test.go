@@ -14,37 +14,37 @@ import (
 	"github.com/SkycoinProject/dmsg/disc"
 )
 
-func TestNewServer(t *testing.T) {
-	dmsgDisc := disc.NewMock()
+func TestNewClientEntity(t *testing.T) {
+	dc := disc.NewMock()
 
 	sPK, sSK := GenKeyPair(t, "server")
-
-	srv := NewServer(sPK, sSK, dmsgDisc)
+	srv := NewServer(sPK, sSK, dc)
 	srv.SetLogger(logging.MustGetLogger("server"))
-
 	srvL, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
 
-	go func() {
-		_ = srv.Serve(context.TODO(), srvL, "")
-	}()
-	time.Sleep(time.Second * 2)
+	go func() { _ = srv.Serve(context.TODO(), srvL, "") }()
+
+	time.Sleep(time.Second)
 
 	aPK, aSK := GenKeyPair(t, "client A")
-	a := NewClient(aPK, aSK, dmsgDisc, SetLogger(logging.MustGetLogger("client_A")))
-	require.NoError(t, a.InitiateServerConnections(context.TODO(), 1))
+	a := NewClientEntity(aPK, aSK, dc, DefaultConfig())
+	a.SetLogger(logging.MustGetLogger("client_A"))
+	go a.Serve()
 
 	bPK, bSK := GenKeyPair(t, "client B")
-	b := NewClient(bPK, bSK, dmsgDisc, SetLogger(logging.MustGetLogger("client_B")))
-	require.NoError(t, b.InitiateServerConnections(context.TODO(), 1))
+	b := NewClientEntity(bPK, bSK, dc, DefaultConfig())
+	b.SetLogger(logging.MustGetLogger("client_B"))
+	go b.Serve()
+
+	time.Sleep(time.Second)
 
 	aPort := uint16(80)
 	aL, err := a.Listen(aPort)
 	require.NoError(t, err)
 
-	bStr, err := b.DialStream(context.TODO(), aPK, aPort)
+	bStr, err := b.DialStream(context.TODO(), Addr{PK: aPK, Port: aPort})
 	require.NoError(t, err)
-
 	aStr, err := aL.AcceptStream()
 	require.NoError(t, err)
 
@@ -52,7 +52,7 @@ func TestNewServer(t *testing.T) {
 	fmt.Println("stream B:", bStr.StreamID())
 
 	nettest.TestConn(t, func() (c1, c2 net.Conn, stop func(), err error) {
-		if c1, err = b.DialStream(context.TODO(), aPK, aPort); err != nil {
+		if c1, err = b.DialStream(context.TODO(), Addr{PK: aPK, Port: aPort}); err != nil {
 			return
 		}
 		if c2, err = aL.AcceptStream(); err != nil {
@@ -64,5 +64,4 @@ func TestNewServer(t *testing.T) {
 		}
 		return
 	})
-
 }

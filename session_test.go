@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
-	"github.com/hashicorp/yamux"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 
@@ -103,38 +102,6 @@ func TestSession(t *testing.T) {
 	DoTestConn(t, makePiper(bSes, bSrv, aSes))
 	nettest.TestConn(t, makePiper(aSes, aSrv, bSes))
 	nettest.TestConn(t, makePiper(bSes, bSrv, aSes))
-}
-
-func TestYamux(t *testing.T) {
-	nettest.TestConn(t, func() (c1, c2 net.Conn, stop func(), err error) {
-		connC, connS := net.Pipe()
-
-		c, err := yamux.Client(connC, yamux.DefaultConfig())
-		if err != nil {
-			return nil, nil, nil, err
-		}
-
-		s, err := yamux.Server(connS, yamux.DefaultConfig())
-		if err != nil {
-			return nil, nil, nil, err
-		}
-
-		if c1, err = c.OpenStream(); err != nil {
-			return
-		}
-		if c2, err = s.AcceptStream(); err != nil {
-			return
-		}
-		stop = func() {
-			_ = c1.Close()
-			_ = c2.Close()
-			_ = c.Close()
-			_ = s.Close()
-			_ = connC.Close()
-			_ = connS.Close()
-		}
-		return
-	})
 }
 
 // This is a simplified test for a piped connection pair.

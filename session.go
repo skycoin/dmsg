@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net"
 
-	"github.com/hashicorp/yamux"
+	"github.com/SkycoinProject/yamux"
 	"github.com/sirupsen/logrus"
 
 	"github.com/SkycoinProject/dmsg/cipher"
