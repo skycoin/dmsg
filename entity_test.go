@@ -25,7 +25,7 @@ func TestNewClientEntity(t *testing.T) {
 
 	go func() { _ = srv.Serve(context.TODO(), srvL, "") }()
 
-	time.Sleep(time.Second)
+	//time.Sleep(time.Second)
 
 	aPK, aSK := GenKeyPair(t, "client A")
 	a := NewClient(aPK, aSK, dc, DefaultConfig())

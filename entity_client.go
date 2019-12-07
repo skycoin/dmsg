@@ -22,6 +22,7 @@ func DefaultConfig() *Config {
 	}
 }
 
+// TODO(evanlinjin): Implement proper closing logic.
 type ClientEntity struct {
 	EntityCommon
 	conf   *Config

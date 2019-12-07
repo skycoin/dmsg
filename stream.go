@@ -15,43 +15,6 @@ import (
 	"github.com/SkycoinProject/dmsg/noise"
 )
 
-func encodeGob(v interface{}) []byte {
-	var b bytes.Buffer
-	if err := gob.NewEncoder(&b).Encode(v); err != nil {
-		panic(err)
-	}
-	return b.Bytes()
-}
-
-// writeEncryptedGob encrypts with noise and prefixed with uint16 (2 additional bytes).
-func writeEncryptedGob(w io.Writer, ns *noise.Noise, v interface{}) error {
-	p := ns.EncryptUnsafe(encodeGob(v))
-	p = append(make([]byte, 2), p...)
-	binary.BigEndian.PutUint16(p, uint16(len(p)-2))
-	_, err := w.Write(p)
-	return err
-}
-
-func decodeGob(v interface{}, b []byte) error {
-	return gob.NewDecoder(bytes.NewReader(b)).Decode(v)
-}
-
-func readEncryptedGob(r io.Reader, ns *noise.Noise, v interface{}) error {
-	lb := make([]byte, 2)
-	if _, err := io.ReadFull(r, lb); err != nil {
-		return err
-	}
-	pb := make([]byte, binary.BigEndian.Uint16(lb))
-	if _, err := io.ReadFull(r, pb); err != nil {
-		return err
-	}
-	b, err := ns.DecryptUnsafe(pb)
-	if err != nil {
-		return err
-	}
-	return decodeGob(v, b)
-}
-
 type Stream2 struct {
 	ses  *ClientSession // back reference
 	yStr *yamux.Stream
@@ -234,4 +197,41 @@ func (s *Stream2) SetReadDeadline(t time.Time) error {
 
 func (s *Stream2) SetWriteDeadline(t time.Time) error {
 	return s.yStr.SetWriteDeadline(t)
+}
+
+func encodeGob(v interface{}) []byte {
+	var b bytes.Buffer
+	if err := gob.NewEncoder(&b).Encode(v); err != nil {
+		panic(err)
+	}
+	return b.Bytes()
+}
+
+// writeEncryptedGob encrypts with noise and prefixed with uint16 (2 additional bytes).
+func writeEncryptedGob(w io.Writer, ns *noise.Noise, v interface{}) error {
+	p := ns.EncryptUnsafe(encodeGob(v))
+	p = append(make([]byte, 2), p...)
+	binary.BigEndian.PutUint16(p, uint16(len(p)-2))
+	_, err := w.Write(p)
+	return err
+}
+
+func decodeGob(v interface{}, b []byte) error {
+	return gob.NewDecoder(bytes.NewReader(b)).Decode(v)
+}
+
+func readEncryptedGob(r io.Reader, ns *noise.Noise, v interface{}) error {
+	lb := make([]byte, 2)
+	if _, err := io.ReadFull(r, lb); err != nil {
+		return err
+	}
+	pb := make([]byte, binary.BigEndian.Uint16(lb))
+	if _, err := io.ReadFull(r, pb); err != nil {
+		return err
+	}
+	b, err := ns.DecryptUnsafe(pb)
+	if err != nil {
+		return err
+	}
+	return decodeGob(v, b)
 }
