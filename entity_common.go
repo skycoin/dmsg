@@ -3,7 +3,6 @@ package dmsg
 import (
 	"context"
 	"fmt"
-	"net"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -123,33 +122,6 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context) error {
 	return c.dc.UpdateEntry(ctx, c.sk, entry)
 }
 
-// It is expected that the session is created and served before the context cancels, otherwise an error will be returned.
-// TODO(evanlinjin): THis should be in ClientEntity.
-func (c *EntityCommon) initiateAndServeSession(ctx context.Context, porter *netutil.Porter, entry *disc.Entry, sesCh chan<- ClientSession) error {
-
-	conn, err := net.Dial("tcp", entry.Server.Address)
-	if err != nil {
-		return err
-	}
-	dSes, err := makeClientSession(c, porter, conn, entry.Static)
-	if err != nil {
-		return err
-	}
-
-	c.setSession(ctx, dSes.SessionCommon)
-	defer func() {
-		c.delSession(ctx, dSes.RemotePK())
-		_ = dSes.Close() //nolint:errcheck
-	}()
-
-	notifyOfSession(ctx, sesCh, dSes)
-	for {
-		if _, err := dSes.acceptStream(); err != nil {
-			return err
-		}
-	}
-}
-
 func isDone(ctx context.Context) bool {
 	select {
 	case <-ctx.Done():
@@ -159,7 +131,7 @@ func isDone(ctx context.Context) bool {
 	}
 }
 
-func notifyOfSession(ctx context.Context, sesCh chan<- ClientSession, dSes ClientSession) {
+func notifyOfClientSession(ctx context.Context, sesCh chan<- ClientSession, dSes ClientSession) {
 	if sesCh != nil {
 		select {
 		case sesCh <- dSes:

@@ -2,6 +2,7 @@ package dmsg
 
 import (
 	"context"
+	"net"
 	"sync"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
@@ -72,7 +73,7 @@ func (ce *ClientEntity) Serve() {
 			}
 
 			sesCh := make(chan ClientSession, 1)
-			go func() { ce.errCh <- ce.initiateAndServeSession(ctx, ce.porter, entry, sesCh) }()
+			go func() { ce.errCh <- ce.serveSession(ctx, entry, sesCh) }()
 			select {
 			case <-ce.done:
 				return
@@ -158,7 +159,7 @@ func (ce *ClientEntity) DialStream(ctx context.Context, addr Addr) (*Stream2, er
 	// See if we are already connected to a delegated server.
 	for _, srvPK := range entry.Client.DelegatedServers {
 		if dSes, ok := ce.ClientSession(ce.porter, srvPK); ok {
-			return dSes.dialStream(addr)
+			return dSes.DialStream(addr)
 		}
 	}
 
@@ -170,16 +171,37 @@ func (ce *ClientEntity) DialStream(ctx context.Context, addr Addr) (*Stream2, er
 			continue
 		}
 		sesCh := make(chan ClientSession, 1)
-		go func() { ce.errCh <- ce.initiateAndServeSession(ctx, ce.porter, srvEntry, sesCh) }()
+		go func() { ce.errCh <- ce.serveSession(ctx, srvEntry, sesCh) }()
 		select {
 		case <-ce.done:
 			return nil, ErrEntityClosed
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case dSes := <-sesCh:
-			return dSes.dialStream(addr)
+			return dSes.DialStream(addr)
 		}
 	}
 
 	return nil, ErrCannotConnectToDelegated
+}
+
+// It is expected that the session is created and served before the context cancels, otherwise an error will be returned.
+func (ce *ClientEntity) serveSession(ctx context.Context, entry *disc.Entry, sesCh chan<- ClientSession) error {
+	conn, err := net.Dial("tcp", entry.Server.Address)
+	if err != nil {
+		return err
+	}
+	dSes, err := makeClientSession(&ce.EntityCommon, ce.porter, conn, entry.Static)
+	if err != nil {
+		return err
+	}
+
+	ce.setSession(ctx, dSes.SessionCommon)
+	defer func() {
+		ce.delSession(ctx, dSes.RemotePK())
+		_ = dSes.Close() //nolint:errcheck
+	}()
+
+	notifyOfClientSession(ctx, sesCh, dSes)
+	return dSes.Serve()
 }
