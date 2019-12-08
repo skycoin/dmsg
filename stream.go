@@ -15,7 +15,8 @@ import (
 	"github.com/SkycoinProject/dmsg/noise"
 )
 
-type Stream2 struct {
+// Stream represents a dmsg connection between two dmsg clients.
+type Stream struct {
 	ses  *ClientSession // back reference
 	yStr *yamux.Stream
 
@@ -28,30 +29,31 @@ type Stream2 struct {
 	log    logrus.FieldLogger
 }
 
-func newInitiatingStream(cSes *ClientSession) (*Stream2, error) {
+func newInitiatingStream(cSes *ClientSession) (*Stream, error) {
 	yStr, err := cSes.ys.OpenStream()
 	if err != nil {
 		return nil, err
 	}
-	return &Stream2{ses: cSes, yStr: yStr}, nil
+	return &Stream{ses: cSes, yStr: yStr}, nil
 }
 
-func newRespondingStream(cSes *ClientSession) (*Stream2, error) {
+func newRespondingStream(cSes *ClientSession) (*Stream, error) {
 	yStr, err := cSes.ys.AcceptStream()
 	if err != nil {
 		return nil, err
 	}
-	return &Stream2{ses: cSes, yStr: yStr}, nil
+	return &Stream{ses: cSes, yStr: yStr}, nil
 }
 
-func (s *Stream2) Close() error {
+// Close closes the dmsg stream.
+func (s *Stream) Close() error {
 	if s.close != nil {
 		s.close()
 	}
 	return s.yStr.Close()
 }
 
-func (s *Stream2) writeRequest(rAddr Addr) (req StreamDialRequest, err error) {
+func (s *Stream) writeRequest(rAddr Addr) (req StreamDialRequest, err error) {
 	// Reserve stream in porter.
 	var lPort uint16
 	if lPort, s.close, err = s.ses.porter.ReserveEphemeral(context.Background(), s); err != nil {
@@ -79,7 +81,7 @@ func (s *Stream2) writeRequest(rAddr Addr) (req StreamDialRequest, err error) {
 	return
 }
 
-func (s *Stream2) readRequest() (req StreamDialRequest, err error) {
+func (s *Stream) readRequest() (req StreamDialRequest, err error) {
 	if err = readEncryptedGob(s.yStr, s.ses.ns, &req); err != nil {
 		return
 	}
@@ -101,8 +103,7 @@ func (s *Stream2) readRequest() (req StreamDialRequest, err error) {
 	return
 }
 
-func (s *Stream2) writeResponse(req StreamDialRequest) error {
-
+func (s *Stream) writeResponse(req StreamDialRequest) error {
 	// Obtain associated local listener.
 	pVal, ok := s.ses.porter.PortValue(s.lAddr.Port)
 	if !ok {
@@ -132,7 +133,7 @@ func (s *Stream2) writeResponse(req StreamDialRequest) error {
 	return lis.introduceStream(s)
 }
 
-func (s *Stream2) readResponse(req StreamDialRequest) (err error) {
+func (s *Stream) readResponse(req StreamDialRequest) (err error) {
 	// Read and process response.
 	var resp DialResponse
 	if err = readEncryptedGob(s.yStr, s.ses.ns, &resp); err != nil {
@@ -150,7 +151,7 @@ func (s *Stream2) readResponse(req StreamDialRequest) (err error) {
 	return
 }
 
-func (s *Stream2) prepareFields(init bool, lAddr, rAddr Addr) {
+func (s *Stream) prepareFields(init bool, lAddr, rAddr Addr) {
 	ns, err := noise.New(noise.HandshakeKK, noise.Config{
 		LocalPK:   s.ses.LocalPK(),
 		LocalSK:   s.ses.localSK(),
@@ -167,35 +168,43 @@ func (s *Stream2) prepareFields(init bool, lAddr, rAddr Addr) {
 	s.log = s.ses.log.WithField("stream", s.lAddr.ShortString()+"->"+s.rAddr.ShortString())
 }
 
-func (s *Stream2) LocalAddr() net.Addr {
+// LocalAddr returns the local address of the dmsg stream.
+func (s *Stream) LocalAddr() net.Addr {
 	return s.lAddr
 }
 
-func (s *Stream2) RemoteAddr() net.Addr {
+// RemoteAddr returns the remote address of the dmsg stream.
+func (s *Stream) RemoteAddr() net.Addr {
 	return s.rAddr
 }
 
-func (s *Stream2) StreamID() uint32 {
+// StreamID returns the stream ID.
+func (s *Stream) StreamID() uint32 {
 	return s.yStr.StreamID()
 }
 
-func (s *Stream2) Read(b []byte) (int, error) {
+// Read implements io.Reader
+func (s *Stream) Read(b []byte) (int, error) {
 	return s.yStr.Read(b)
 }
 
-func (s *Stream2) Write(b []byte) (int, error) {
+// Write implements io.Writer
+func (s *Stream) Write(b []byte) (int, error) {
 	return s.yStr.Write(b)
 }
 
-func (s *Stream2) SetDeadline(t time.Time) error {
+// SetDeadline implements net.Conn
+func (s *Stream) SetDeadline(t time.Time) error {
 	return s.yStr.SetDeadline(t)
 }
 
-func (s *Stream2) SetReadDeadline(t time.Time) error {
+// SetReadDeadline implements net.Conn
+func (s *Stream) SetReadDeadline(t time.Time) error {
 	return s.yStr.SetReadDeadline(t)
 }
 
-func (s *Stream2) SetWriteDeadline(t time.Time) error {
+// SetWriteDeadline implements net.Conn
+func (s *Stream) SetWriteDeadline(t time.Time) error {
 	return s.yStr.SetWriteDeadline(t)
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/SkycoinProject/dmsg/netutil"
 )
 
+// ClientSession represents a session from the perspective of a dmsg client.
 type ClientSession struct {
 	*SessionCommon
 	porter *netutil.Porter
@@ -23,7 +24,8 @@ func makeClientSession(entity *EntityCommon, porter *netutil.Porter, conn net.Co
 	return cSes, nil
 }
 
-func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream2, err error) {
+// DialStream attempts to dial a stream to a remote client via the dsmg server that this session is connected to.
+func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream, err error) {
 	if dStr, err = newInitiatingStream(cs); err != nil {
 		return nil, err
 	}
@@ -52,6 +54,7 @@ func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream2, err error) {
 	return dStr, err
 }
 
+// Serve accepts incoming streams from remote clients.
 func (cs *ClientSession) Serve() error {
 	defer func() { _ = cs.Close() }() //nolint:errcheck
 	for {
@@ -61,7 +64,7 @@ func (cs *ClientSession) Serve() error {
 	}
 }
 
-func (cs *ClientSession) acceptStream() (dStr *Stream2, err error) {
+func (cs *ClientSession) acceptStream() (dStr *Stream, err error) {
 	if dStr, err = newRespondingStream(cs); err != nil {
 		return nil, err
 	}

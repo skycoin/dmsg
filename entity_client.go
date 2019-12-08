@@ -137,9 +137,9 @@ func (ce *ClientEntity) Close() error {
 				ce.log.
 					WithError(v.(*Listener).Close()).
 					Info("Listener closed.")
-			case *Stream2:
+			case *Stream:
 				ce.log.
-					WithError(v.(*Stream2).Close()).
+					WithError(v.(*Stream).Close()).
 					Info("Stream closed.")
 			}
 			return true
@@ -162,7 +162,7 @@ func (ce *ClientEntity) Listen(port uint16) (*Listener, error) {
 }
 
 // DialStream dials to a remote client entity with the given address.
-func (ce *ClientEntity) DialStream(ctx context.Context, addr Addr) (*Stream2, error) {
+func (ce *ClientEntity) DialStream(ctx context.Context, addr Addr) (*Stream, error) {
 	entry, err := getClientEntry(ctx, ce.dc, addr.PK)
 	if err != nil {
 		return nil, err

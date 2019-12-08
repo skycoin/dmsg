@@ -8,6 +8,7 @@ import (
 	"github.com/SkycoinProject/dmsg/netutil"
 )
 
+// ServerSession represents a session from the perspective of a dmsg server.
 type ServerSession struct {
 	*SessionCommon
 }
@@ -21,6 +22,7 @@ func makeServerSession(entity *EntityCommon, conn net.Conn) (ServerSession, erro
 	return sSes, nil
 }
 
+// Serve serves the session.
 func (ss *ServerSession) Serve() {
 	for {
 		yStr, err := ss.ys.AcceptStream()

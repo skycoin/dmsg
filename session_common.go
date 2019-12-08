@@ -11,6 +11,8 @@ import (
 	"github.com/SkycoinProject/dmsg/noise"
 )
 
+// SessionCommon contains the common fields and methods used by a session, whether it be it from the client or server
+// perspective.
 type SessionCommon struct {
 	entity *EntityCommon // back reference
 	rPK    cipher.PubKey // remote pk
@@ -86,10 +88,13 @@ func (sc *SessionCommon) initServer(entity *EntityCommon, conn net.Conn) error {
 
 func (sc *SessionCommon) localSK() cipher.SecKey { return sc.entity.sk }
 
+// LocalPK returns the local public key of the session.
 func (sc *SessionCommon) LocalPK() cipher.PubKey { return sc.entity.pk }
 
+// RemotePK returns the remote public key of the session.
 func (sc *SessionCommon) RemotePK() cipher.PubKey { return sc.rPK }
 
+// Close closes the session.
 func (sc *SessionCommon) Close() error {
 	return sc.ys.Close()
 }
