@@ -3,7 +3,7 @@ package dmsg
 import (
 	"context"
 	"net"
-	"time"
+	"sync"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
 	"github.com/sirupsen/logrus"
@@ -16,87 +16,117 @@ import (
 // ServerEntity represents a dsmg server entity.
 type ServerEntity struct {
 	EntityCommon
+	done chan struct{}
+	once sync.Once
+	wg   sync.WaitGroup
 }
 
 // NewServer creates a new dmsg server entity.
 func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient) *ServerEntity {
 	s := new(ServerEntity)
 	s.EntityCommon.init(pk, sk, dc, logging.MustGetLogger("dmsg_server"))
+	s.done = make(chan struct{})
 	return s
 }
 
+func (s *ServerEntity) Close() error {
+	if s == nil {
+		return nil
+	}
+	s.once.Do(func() {
+		close(s.done)
+		s.wg.Wait()
+	})
+	return nil
+}
+
 // Serve serves the server.
-func (s *ServerEntity) Serve(ctx context.Context, lis net.Listener, addr string) error {
+func (s *ServerEntity) Serve(lis net.Listener, addr string) error {
+	var log logrus.FieldLogger
+	log = s.log.WithField("local_addr", addr).WithField("local_pk", s.pk)
+
+	log.Info("Serving server.")
+	s.wg.Add(1)
+
+	defer func() {
+		log.Info("Stopped server.")
+		s.wg.Done()
+	}()
+
+	go func() {
+		<-s.done
+		log.Info("Stopping server...")
+		_ = lis.Close() //nolint:errcheck
+	}()
+
+	log.Info("Updating discovery entry...")
 	if addr == "" {
 		addr = lis.Addr().String()
 	}
-
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	if err := s.updateEntryLoop(ctx, time.Second*10, addr); err != nil {
+	if err := s.updateEntryLoop(addr); err != nil {
 		return err
 	}
 
-	s.log.
-		WithField("local_addr", addr).
-		WithField("local_pk", s.pk).
-		Info("Serving dmsg server.")
-
-	defer func() {
-		s.log.
-			WithField("local_addr", addr).
-			WithField("local_pk", s.pk).
-			Info("Stopped dmsg server.")
-	}()
-
+	log.Info("Accepting sessions...")
 	for {
 		conn, err := lis.Accept()
 		if err != nil {
-			// If context is cancelled, there is no error to report.
-			if isDone(ctx) {
+			// If server is closed, there is no error to report.
+			if isClosed(s.done) {
 				return nil
 			}
 			return err
 		}
-		go s.handleConn(ctx, conn)
+
+		s.wg.Add(1)
+		go func() {
+			s.handleSession(conn)
+			s.wg.Done()
+		}()
 	}
 }
 
-func (s *ServerEntity) updateEntryLoop(ctx context.Context, timeout time.Duration, addr string) error {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	err := netutil.NewRetrier(s.log, 100*time.Millisecond, 0, 2).
-		Do(ctx, func() error { return s.updateServerEntry(ctx, addr) })
-	cancel()
-	return err
+func (s *ServerEntity) updateEntryLoop(addr string) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		awaitDone(ctx, s.done)
+		cancel()
+	}()
+	return netutil.NewDefaultRetrier(s.log).Do(ctx, func() error { return s.updateServerEntry(ctx, addr) })
 }
 
-func (s *ServerEntity) handleConn(ctx context.Context, conn net.Conn) {
+func (s *ServerEntity) handleSession(conn net.Conn) {
 	var log logrus.FieldLogger
 	log = s.log.WithField("remote_tcp", conn.RemoteAddr())
-
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	go func() {
-		<-ctx.Done()
-		_ = conn.Close()
-		log.Info("Stopped serving session.")
-	}()
 
 	dSes, err := makeServerSession(&s.EntityCommon, conn)
 	if err != nil {
 		log = log.WithError(err)
+		_ = conn.Close() //nolint:errcheck
 		return
 	}
 
-	s.setSession(ctx, dSes.SessionCommon)
-	defer func() {
-		s.delSession(ctx, dSes.RemotePK())
+	log = log.WithField("remote_pk", dSes.RemotePK())
+	log.Info("Started session.")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		awaitDone(ctx, s.done)
 		_ = dSes.Close() //nolint:errcheck
+		log.Info("Stopped session.")
 	}()
 
-	log = log.WithField("remote_pk", dSes.RemotePK())
-	log.Info("Serving session.")
+	s.setSession(ctx, dSes.SessionCommon)
 	dSes.Serve()
+	s.delSession(ctx, dSes.RemotePK())
+
+	cancel()
+}
+
+func awaitDone(ctx context.Context, done chan struct{}) {
+	select {
+	case <-ctx.Done():
+	case <-done:
+	}
+	return
 }

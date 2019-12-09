@@ -1,6 +1,7 @@
 package dmsg
 
 import (
+	"io"
 	"net"
 
 	"github.com/SkycoinProject/yamux"
@@ -27,17 +28,19 @@ func (ss *ServerSession) Serve() {
 	for {
 		yStr, err := ss.ys.AcceptStream()
 		if err != nil {
-			ss.log.
-				WithError(err).
-				Warn("Failed to accept yamux stream.")
+			switch err {
+			case yamux.ErrSessionShutdown, io.EOF:
+				ss.log.WithError(err).Info("Stopping session...")
+			default:
+				ss.log.WithError(err).Warn("Failed to accept stream, stopping session...")
+			}
 			return
 		}
 
 		ss.log.Info("Serving stream.")
 		go func(yStr *yamux.Stream) {
-			ss.log.
-				WithError(ss.serveStream(yStr)).
-				Info("Stopped serving stream.")
+			err := ss.serveStream(yStr)
+			ss.log.WithError(err).Info("Stopped stream.")
 			_ = yStr.Close() //nolint:errcheck
 		}(yStr)
 	}
