@@ -54,8 +54,13 @@ type NetworkError struct {
 	Opts NetworkErrorOptions
 }
 
+// Error implements error
 func (err NetworkError) Error() string   { return err.Err.Error() }
+
+// Timeout implements net.Error
 func (err NetworkError) Timeout() bool   { return err.Opts.Timeout }
+
+// Temporary implements net.Error
 func (err NetworkError) Temporary() bool { return err.Opts.Temporary }
 
 var (

@@ -1,8 +1,11 @@
 package dmsg
 
 import (
+	"fmt"
 	"io"
 	"net"
+	"sync"
+	"sync/atomic"
 
 	"github.com/SkycoinProject/yamux"
 
@@ -12,6 +15,8 @@ import (
 // ServerSession represents a session from the perspective of a dmsg server.
 type ServerSession struct {
 	*SessionCommon
+	rMx sync.Mutex
+	wMx sync.Mutex
 }
 
 func makeServerSession(entity *EntityCommon, conn net.Conn) (ServerSession, error) {
@@ -23,8 +28,15 @@ func makeServerSession(entity *EntityCommon, conn net.Conn) (ServerSession, erro
 	return sSes, nil
 }
 
+var sesCount int32
+
 // Serve serves the session.
 func (ss *ServerSession) Serve() {
+	fmt.Println("ServerSession (started) count:", atomic.AddInt32(&sesCount, 1))
+	defer func() {
+		fmt.Println("ServerSession (stopped) count:", atomic.AddInt32(&sesCount, -1))
+	}()
+
 	for {
 		yStr, err := ss.ys.AcceptStream()
 		if err != nil {
@@ -41,7 +53,6 @@ func (ss *ServerSession) Serve() {
 		go func(yStr *yamux.Stream) {
 			err := ss.serveStream(yStr)
 			ss.log.WithError(err).Info("Stopped stream.")
-			_ = yStr.Close() //nolint:errcheck
 		}(yStr)
 	}
 }
@@ -49,7 +60,7 @@ func (ss *ServerSession) Serve() {
 func (ss *ServerSession) serveStream(yStr *yamux.Stream) error {
 	readRequest := func() (StreamDialRequest, error) {
 		var req StreamDialRequest
-		if err := readEncryptedGob(yStr, ss.ns, &req); err != nil {
+		if err := readEncryptedGob(yStr, &ss.rMx, ss.ns, &req); err != nil {
 			return req, err
 		}
 		if err := req.Verify(0); err != nil { // TODO(evanlinjin): timestamp tracker.
@@ -83,34 +94,33 @@ func (ss *ServerSession) serveStream(yStr *yamux.Stream) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = yStr2.Close() }() //nolint:errcheck
 
 	// Forward response.
-	if err := writeEncryptedGob(yStr, ss.ns, resp); err != nil {
+	if err := writeEncryptedGob(yStr, &ss.wMx, ss.ns, resp); err != nil {
 		return err
 	}
 
 	// Serve stream.
-	return netutil.CopyReadWriter(yStr, yStr2)
+	return netutil.CopyReadWriteCloser(yStr, yStr2)
 }
 
-func (ss *ServerSession) forwardRequest(req StreamDialRequest) (*yamux.Stream, DialResponse, error) {
+func (ss *ServerSession) forwardRequest(req StreamDialRequest) (*yamux.Stream, StreamDialResponse, error) {
 	yStr, err := ss.ys.OpenStream()
 	if err != nil {
-		return nil, DialResponse{}, err
+		return nil, StreamDialResponse{}, err
 	}
-	if err := writeEncryptedGob(yStr, ss.ns, req); err != nil {
+	if err := writeEncryptedGob(yStr, &ss.wMx, ss.ns, req); err != nil {
 		_ = yStr.Close() //nolint:errcheck
-		return nil, DialResponse{}, err
+		return nil, StreamDialResponse{}, err
 	}
-	var resp DialResponse
-	if err := readEncryptedGob(yStr, ss.ns, &resp); err != nil {
+	var resp StreamDialResponse
+	if err := readEncryptedGob(yStr, &ss.rMx, ss.ns, &resp); err != nil {
 		_ = yStr.Close() //nolint:errcheck
-		return nil, DialResponse{}, err
+		return nil, StreamDialResponse{}, err
 	}
 	if err := resp.Verify(req.DstAddr.PK, req.Hash()); err != nil {
 		_ = yStr.Close() //nolint:errcheck
-		return nil, DialResponse{}, err
+		return nil, StreamDialResponse{}, err
 	}
 	return yStr, resp, nil
 }

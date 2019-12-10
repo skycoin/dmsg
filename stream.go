@@ -1,12 +1,9 @@
 package dmsg
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
-	"encoding/gob"
-	"io"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/SkycoinProject/yamux"
@@ -19,6 +16,9 @@ import (
 type Stream struct {
 	ses  *ClientSession // back reference
 	yStr *yamux.Stream
+
+	rMx sync.Mutex
+	wMx sync.Mutex
 
 	// The following fields are to be filled after handshake.
 	lAddr  Addr
@@ -47,6 +47,9 @@ func newRespondingStream(cSes *ClientSession) (*Stream, error) {
 
 // Close closes the dmsg stream.
 func (s *Stream) Close() error {
+	if s == nil {
+		return nil
+	}
 	if s.close != nil {
 		s.close()
 	}
@@ -77,12 +80,12 @@ func (s *Stream) writeRequest(rAddr Addr) (req StreamDialRequest, err error) {
 	req.Sign(s.ses.localSK())
 
 	// Write request.
-	err = writeEncryptedGob(s.yStr, s.ses.ns, req)
+	err = writeEncryptedGob(s.yStr, &s.wMx, s.ses.ns, req)
 	return
 }
 
 func (s *Stream) readRequest() (req StreamDialRequest, err error) {
-	if err = readEncryptedGob(s.yStr, s.ses.ns, &req); err != nil {
+	if err = readEncryptedGob(s.yStr, &s.rMx, s.ses.ns, &req); err != nil {
 		return
 	}
 	if err = req.Verify(0); err != nil {
@@ -119,13 +122,13 @@ func (s *Stream) writeResponse(req StreamDialRequest) error {
 	if err != nil {
 		return err
 	}
-	resp := DialResponse{
+	resp := StreamDialResponse{
 		ReqHash:  req.Hash(),
 		Accepted: true,
 		NoiseMsg: nsMsg,
 	}
 	resp.Sign(s.ses.localSK())
-	if err := writeEncryptedGob(s.yStr, s.ses.ns, resp); err != nil {
+	if err := writeEncryptedGob(s.yStr, &s.wMx, s.ses.ns, resp); err != nil {
 		return err
 	}
 
@@ -135,8 +138,8 @@ func (s *Stream) writeResponse(req StreamDialRequest) error {
 
 func (s *Stream) readResponse(req StreamDialRequest) (err error) {
 	// Read and process response.
-	var resp DialResponse
-	if err = readEncryptedGob(s.yStr, s.ses.ns, &resp); err != nil {
+	var resp StreamDialResponse
+	if err = readEncryptedGob(s.yStr, &s.rMx, s.ses.ns, &resp); err != nil {
 		return
 	}
 	if err = resp.Verify(req.DstAddr.PK, req.Hash()); err != nil {
@@ -206,41 +209,4 @@ func (s *Stream) SetReadDeadline(t time.Time) error {
 // SetWriteDeadline implements net.Conn
 func (s *Stream) SetWriteDeadline(t time.Time) error {
 	return s.yStr.SetWriteDeadline(t)
-}
-
-func encodeGob(v interface{}) []byte {
-	var b bytes.Buffer
-	if err := gob.NewEncoder(&b).Encode(v); err != nil {
-		panic(err)
-	}
-	return b.Bytes()
-}
-
-// writeEncryptedGob encrypts with noise and prefixed with uint16 (2 additional bytes).
-func writeEncryptedGob(w io.Writer, ns *noise.Noise, v interface{}) error {
-	p := ns.EncryptUnsafe(encodeGob(v))
-	p = append(make([]byte, 2), p...)
-	binary.BigEndian.PutUint16(p, uint16(len(p)-2))
-	_, err := w.Write(p)
-	return err
-}
-
-func decodeGob(v interface{}, b []byte) error {
-	return gob.NewDecoder(bytes.NewReader(b)).Decode(v)
-}
-
-func readEncryptedGob(r io.Reader, ns *noise.Noise, v interface{}) error {
-	lb := make([]byte, 2)
-	if _, err := io.ReadFull(r, lb); err != nil {
-		return err
-	}
-	pb := make([]byte, binary.BigEndian.Uint16(lb))
-	if _, err := io.ReadFull(r, pb); err != nil {
-		return err
-	}
-	b, err := ns.DecryptUnsafe(pb)
-	if err != nil {
-		return err
-	}
-	return decodeGob(v, b)
 }

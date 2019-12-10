@@ -1,6 +1,7 @@
 package dmsg
 
 import (
+	"fmt"
 	"net"
 	"time"
 
@@ -26,6 +27,18 @@ func makeClientSession(entity *EntityCommon, porter *netutil.Porter, conn net.Co
 
 // DialStream attempts to dial a stream to a remote client via the dsmg server that this session is connected to.
 func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream, err error) {
+
+	var (
+		writeDone = false
+		readDone  = false
+	)
+
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("failed to dial stream [write(%v), read(%v)]: %v", writeDone, readDone, err)
+		}
+	}()
+
 	if dStr, err = newInitiatingStream(cs); err != nil {
 		return nil, err
 	}
@@ -41,16 +54,24 @@ func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream, err error) {
 	if err = dStr.SetDeadline(time.Now().Add(HandshakeTimeout)); err != nil {
 		return
 	}
-	defer func() { _ = dStr.SetDeadline(time.Time{}) }() //nolint:errcheck
 
 	// Do stream handshake.
 	req, err := dStr.writeRequest(dst)
 	if err != nil {
 		return nil, err
 	}
+	writeDone = true
+
 	if err := dStr.readResponse(req); err != nil {
 		return nil, err
 	}
+	readDone = true
+
+	// Clear deadline.
+	if err = dStr.SetDeadline(time.Time{}); err != nil {
+		return
+	}
+
 	return dStr, err
 }
 
@@ -59,6 +80,7 @@ func (cs *ClientSession) Serve() error {
 	defer func() { _ = cs.Close() }() //nolint:errcheck
 	for {
 		if _, err := cs.acceptStream(); err != nil {
+			cs.log.WithError(err).Warn("Stopped accepting streams.")
 			return err
 		}
 	}
@@ -80,7 +102,6 @@ func (cs *ClientSession) acceptStream() (dStr *Stream, err error) {
 	if err = dStr.SetDeadline(time.Now().Add(HandshakeTimeout)); err != nil {
 		return nil, err
 	}
-	defer func() { _ = dStr.SetDeadline(time.Time{}) }() //nolint:errcheck
 
 	// Do stream handshake.
 	var req StreamDialRequest
@@ -90,5 +111,11 @@ func (cs *ClientSession) acceptStream() (dStr *Stream, err error) {
 	if err = dStr.writeResponse(req); err != nil {
 		return nil, err
 	}
+
+	// Clear deadline.
+	if err = dStr.SetDeadline(time.Time{}); err != nil {
+		return
+	}
+
 	return dStr, err
 }

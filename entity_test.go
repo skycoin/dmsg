@@ -2,7 +2,9 @@ package dmsg
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -41,32 +43,87 @@ func TestNewClientEntity(t *testing.T) {
 	go clientB.Serve()
 
 	// Ensure all entities are registered in discovery before continuing.
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 2)
 
-	// Make client A start listening.
-	portA := uint16(80)
-	lisA, err := clientA.Listen(portA)
-	require.NoError(t, err)
+	// Helper functions.
+	makePiper := func(dialer, listener *ClientEntity, port uint16) (net.Listener, nettest.MakePipe) {
+		lis, err := listener.Listen(port)
+		require.NoError(t, err)
 
-	// Test dial and accept streams between client A and B.
-	nettest.TestConn(t, func() (c1, c2 net.Conn, stop func(), err error) {
-		if c1, err = clientB.DialStream(context.TODO(), Addr{PK: pkA, Port: portA}); err != nil {
+		return lis, func() (c1, c2 net.Conn, stop func(), err error) {
+			if c1, err = dialer.DialStream(context.TODO(), Addr{PK: listener.LocalPK(), Port: port}); err != nil {
+				return
+			}
+			if c2, err = lis.Accept(); err != nil {
+				return
+			}
+			stop = func() {
+				//t.Log("Stopping pipe!")
+				_ = c1.Close() //nolint:errcheck
+				_ = c2.Close() //nolint:errcheck
+			}
 			return
 		}
-		if c2, err = lisA.AcceptStream(); err != nil {
-			return
+	}
+
+	t.Run("test_listeners", func(t *testing.T) {
+		const rounds = 3
+		listeners := make([]net.Listener, 0, rounds*2)
+
+		for port := uint16(1); port <= rounds; port++ {
+			lis1, makePipe1 := makePiper(clientA, clientB, port)
+			listeners = append(listeners, lis1)
+			nettest.TestConn(t, makePipe1)
+
+			lis2, makePipe2 := makePiper(clientB, clientA, port)
+			listeners = append(listeners, lis2)
+			nettest.TestConn(t, makePipe2)
 		}
-		stop = func() {
-			_ = c1.Close()
-			_ = c2.Close()
+
+		// Closing logic.
+		for _, lis := range listeners {
+			require.NoError(t, lis.Close())
 		}
-		return
+	})
+
+	t.Run("test_concurrent_listeners", func(t *testing.T) {
+		const rounds = 5
+		listeners := make([]net.Listener, 0, rounds*2)
+
+		wg := new(sync.WaitGroup)
+		wg.Add(rounds*2)
+
+		for port := uint16(1); port <= rounds; port++ {
+			lis1, makePipe1 := makePiper(clientA, clientB, port)
+			listeners = append(listeners, lis1)
+			go func(makePipe1 nettest.MakePipe) {
+				nettest.TestConn(t, makePipe1)
+				wg.Done()
+			}(makePipe1)
+
+			lis2, makePipe2 := makePiper(clientB, clientA, port)
+			listeners = append(listeners, lis2)
+			go func(makePipe2 nettest.MakePipe) {
+				nettest.TestConn(t, makePipe2)
+				wg.Done()
+			}(makePipe2)
+		}
+
+		wg.Wait()
+		fmt.Println("CLOSE LOGIC STARTED!")
+
+		// Closing logic.
+		for _, lis := range listeners {
+			require.NoError(t, lis.Close())
+		}
 	})
 
 	// Closing logic.
-	require.NoError(t, lisA.Close())
 	require.NoError(t, clientB.Close())
+	fmt.Println("CLOSE: client B stopped")
 	require.NoError(t, clientA.Close())
+	fmt.Println("CLOSE: client A stopped")
 	require.NoError(t, srv.Close())
+	fmt.Println("CLOSE: server stopped")
 	require.NoError(t, <-chSrv)
 }

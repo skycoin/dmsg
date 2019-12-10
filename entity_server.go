@@ -16,6 +16,7 @@ import (
 // ServerEntity represents a dsmg server entity.
 type ServerEntity struct {
 	EntityCommon
+
 	done chan struct{}
 	once sync.Once
 	wg   sync.WaitGroup
@@ -29,6 +30,7 @@ func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient) *ServerEnt
 	return s
 }
 
+// Close implements io.Closer
 func (s *ServerEntity) Close() error {
 	if s == nil {
 		return nil
@@ -79,10 +81,10 @@ func (s *ServerEntity) Serve(lis net.Listener, addr string) error {
 		}
 
 		s.wg.Add(1)
-		go func() {
+		go func(conn net.Conn) {
 			s.handleSession(conn)
 			s.wg.Done()
-		}()
+		}(conn)
 	}
 }
 
@@ -116,17 +118,9 @@ func (s *ServerEntity) handleSession(conn net.Conn) {
 		log.Info("Stopped session.")
 	}()
 
-	s.setSession(ctx, dSes.SessionCommon)
-	dSes.Serve()
-	s.delSession(ctx, dSes.RemotePK())
-
-	cancel()
-}
-
-func awaitDone(ctx context.Context, done chan struct{}) {
-	select {
-	case <-ctx.Done():
-	case <-done:
+	if s.setSession(ctx, dSes.SessionCommon) {
+		dSes.Serve()
 	}
-	return
+	s.delSession(ctx, dSes.RemotePK())
+	cancel()
 }

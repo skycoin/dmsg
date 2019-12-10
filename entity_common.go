@@ -2,7 +2,6 @@ package dmsg
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -70,8 +69,14 @@ func (c *EntityCommon) SessionCount() int {
 	return n
 }
 
-func (c *EntityCommon) setSession(ctx context.Context, dSes *SessionCommon) {
+func (c *EntityCommon) setSession(ctx context.Context, dSes *SessionCommon) bool {
 	c.mx.Lock()
+
+	if _, ok := c.ss[dSes.RemotePK()]; ok {
+		c.mx.Unlock()
+		return false
+	}
+
 	c.ss[dSes.RemotePK()] = dSes
 	if c.setSessionCallback != nil {
 		if err := c.setSessionCallback(ctx); err != nil {
@@ -81,6 +86,7 @@ func (c *EntityCommon) setSession(ctx context.Context, dSes *SessionCommon) {
 		}
 	}
 	c.mx.Unlock()
+	return true
 }
 
 func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
@@ -102,7 +108,6 @@ func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string) error
 	if err != nil {
 		entry = disc.NewServerEntry(c.pk, 0, addr, 10)
 		if err := entry.Sign(c.sk); err != nil {
-			fmt.Println("err in sign")
 			return err
 		}
 		return c.dc.SetEntry(ctx, entry)
@@ -111,7 +116,11 @@ func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string) error
 	return c.dc.UpdateEntry(ctx, c.sk, entry)
 }
 
-func (c *EntityCommon) updateClientEntry(ctx context.Context) error {
+func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}) error {
+	if isClosed(done) {
+		return nil
+	}
+
 	srvPKs := make([]cipher.PubKey, 0, len(c.ss))
 	for pk := range c.ss {
 		srvPKs = append(srvPKs, pk)
@@ -125,26 +134,8 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context) error {
 		return c.dc.SetEntry(ctx, entry)
 	}
 	entry.Client.DelegatedServers = srvPKs
-	c.log.Infoln("updatingEntry:", entry)
+	c.log.WithField("entry", entry).Info("Updating entry.")
 	return c.dc.UpdateEntry(ctx, c.sk, entry)
-}
-
-func isDone(ctx context.Context) bool {
-	select {
-	case <-ctx.Done():
-		return true
-	default:
-		return false
-	}
-}
-
-func isClosed(done chan struct{}) bool {
-	select {
-	case <-done:
-		return true
-	default:
-		return false
-	}
 }
 
 func getServerEntry(ctx context.Context, dc disc.APIClient, srvPK cipher.PubKey) (*disc.Entry, error) {

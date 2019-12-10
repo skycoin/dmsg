@@ -2,6 +2,7 @@ package dmsg
 
 import (
 	"context"
+	"errors"
 	"net"
 	"sync"
 
@@ -32,6 +33,8 @@ type ClientEntity struct {
 	errCh  chan error
 	done   chan struct{}
 	once   sync.Once
+
+	sesMx sync.Mutex
 }
 
 // NewClient creates a dmsg client entity.
@@ -47,8 +50,12 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 	c.done = make(chan struct{})
 
 	c.EntityCommon.init(pk, sk, dc, logging.MustGetLogger("dmsg_client"))
-	c.EntityCommon.setSessionCallback = c.EntityCommon.updateClientEntry
-	c.EntityCommon.delSessionCallback = c.EntityCommon.updateClientEntry
+	c.EntityCommon.setSessionCallback = func(ctx context.Context) error {
+		return c.EntityCommon.updateClientEntry(ctx, c.done)
+	}
+	c.EntityCommon.delSessionCallback = func(ctx context.Context) error {
+		return c.EntityCommon.updateClientEntry(ctx, c.done)
+	}
 
 	return c
 }
@@ -56,20 +63,28 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 // Serve serves the client.
 // It blocks until the client is closed.
 func (ce *ClientEntity) Serve() {
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		<-ce.done
-		cancel()
+	defer func() {
+		ce.log.Info("Stopped serving client!")
 	}()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func(ctx context.Context) {
+		awaitDone(ctx, ce.done)
+		cancel()
+	}(ctx)
+
 	for {
+		if isClosed(ce.done) {
+			return
+		}
+
 		ce.log.Info("Discovering dmsg servers...")
 		entries, err := ce.discoverServers(ctx)
 		if err != nil {
 			ce.log.WithError(err).Warn("Failed to discover dmsg servers.")
-			if isClosed(ce.done) {
-				return
-			}
+			continue
 		}
 
 		for _, entry := range entries {
@@ -87,18 +102,9 @@ func (ce *ClientEntity) Serve() {
 				}
 			}
 
-			// If session with server of pk already exists, skip.
-			if _, ok := ce.ClientSession(ce.porter, entry.Static); ok {
-				continue
+			if err := ce.ensureSession(ctx, entry); err != nil {
+				ce.log.WithField("remote_pk", entry.Static).WithError(err).Warn("Failed to establish session.")
 			}
-
-			// Dial session.
-			dSes, err := ce.dialSession(ctx, entry)
-			if err != nil {
-				continue
-			}
-
-			ce.log.WithField("remote_pk", dSes.RemotePK()).Info("Serving session.")
 		}
 	}
 }
@@ -119,28 +125,34 @@ func (ce *ClientEntity) Close() error {
 	}
 
 	ce.once.Do(func() {
-		ce.mx.Lock()
-		defer ce.mx.Unlock()
-
 		close(ce.done)
 
+		ce.sesMx.Lock()
+		close(ce.errCh)
+		ce.sesMx.Unlock()
+
+		ce.mx.Lock()
 		for _, dSes := range ce.ss {
 			ce.log.
 				WithError(dSes.Close()).
 				Info("Session closed.")
 		}
 		ce.ss = make(map[cipher.PubKey]*SessionCommon)
+		ce.log.Info("All sessions closed.")
+		ce.mx.Unlock()
 
-		ce.porter.RangePortValues(func(port uint16, v interface{}) (next bool) {
-			switch v.(type) {
-			case *Listener:
-				ce.log.
-					WithError(v.(*Listener).Close()).
-					Info("Listener closed.")
-			case *Stream:
-				ce.log.
-					WithError(v.(*Stream).Close()).
-					Info("Stream closed.")
+		go ce.porter.RangePortValues(func(port uint16, v interface{}) (next bool) {
+			if v != nil {
+				switch v.(type) {
+				case *Listener:
+					ce.log.
+						WithError(v.(*Listener).Close()).
+						Info("Listener closed.")
+				case *Stream:
+					ce.log.
+						WithError(v.(*Stream).Close()).
+						Info("Stream closed.")
+				}
 			}
 			return true
 		})
@@ -179,11 +191,7 @@ func (ce *ClientEntity) DialStream(ctx context.Context, addr Addr) (*Stream, err
 	// Range client's delegated servers.
 	// Attempt to connect to a delegated server.
 	for _, srvPK := range entry.Client.DelegatedServers {
-		srvEntry, err := getServerEntry(ctx, ce.dc, srvPK)
-		if err != nil {
-			continue
-		}
-		dSes, err := ce.dialSession(ctx, srvEntry)
+		dSes, err := ce.obtainSession(ctx, srvPK)
 		if err != nil {
 			continue
 		}
@@ -193,8 +201,44 @@ func (ce *ClientEntity) DialStream(ctx context.Context, addr Addr) (*Stream, err
 	return nil, ErrCannotConnectToDelegated
 }
 
+// ensureSession ensures the existence of a session.
+// It returns an error if the session does not exist AND cannot be established.
+func (ce *ClientEntity) ensureSession(ctx context.Context, entry *disc.Entry) error {
+	ce.sesMx.Lock()
+	defer ce.sesMx.Unlock()
+
+	// If session with server of pk already exists, skip.
+	if _, ok := ce.ClientSession(ce.porter, entry.Static); ok {
+		return nil
+	}
+
+	// Dial session.
+	_, err := ce.dialSession(ctx, entry)
+	return err
+}
+
+func (ce *ClientEntity) obtainSession(ctx context.Context, srvPK cipher.PubKey) (ClientSession, error) {
+	ce.sesMx.Lock()
+	defer ce.sesMx.Unlock()
+
+	if dSes, ok := ce.ClientSession(ce.porter, srvPK); ok {
+		return dSes, nil
+	}
+
+	srvEntry, err := getServerEntry(ctx, ce.dc, srvPK)
+	if err != nil {
+		return ClientSession{}, err
+	}
+
+	return ce.dialSession(ctx, srvEntry)
+}
+
 // It is expected that the session is created and served before the context cancels, otherwise an error will be returned.
+// NOTE: This should not be called directly as it may lead to session duplicates.
+// Only `ensureSession` or `obtainSession` should call this function.
 func (ce *ClientEntity) dialSession(ctx context.Context, entry *disc.Entry) (ClientSession, error) {
+	ce.log.WithField("remote_pk", entry.Static).Info("Dialing session...")
+
 	conn, err := net.Dial("tcp", entry.Server.Address)
 	if err != nil {
 		return ClientSession{}, err
@@ -204,10 +248,16 @@ func (ce *ClientEntity) dialSession(ctx context.Context, entry *disc.Entry) (Cli
 		return ClientSession{}, err
 	}
 
-	ce.setSession(ctx, dSes.SessionCommon)
+	if !ce.setSession(ctx, dSes.SessionCommon) {
+		_ = dSes.Close()
+		return ClientSession{}, errors.New("session already exists")
+	}
 	go func() {
-		ce.errCh <- dSes.Serve()
-		ce.delSession(ctx, dSes.RemotePK())
+		ce.log.WithField("remote_pk", dSes.RemotePK()).Info("Serving session.")
+		if err := dSes.Serve(); !isClosed(ce.done) {
+			ce.errCh <-err
+			ce.delSession(ctx, dSes.RemotePK())
+		}
 	}()
 
 	return dSes, nil
