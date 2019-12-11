@@ -145,7 +145,7 @@ func (dr StreamDialResponse) Verify(reqDstPK cipher.PubKey, reqHash cipher.SHA25
 		return ErrDialRespInvalidSig
 	}
 	if !dr.Accepted {
-		err, ok := ErrorFromCode(dr.ErrCode)
+		ok, err := ErrorFromCode(dr.ErrCode)
 		if !ok {
 			return ErrDialRespNotAccepted
 		}

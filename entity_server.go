@@ -44,7 +44,7 @@ func (s *ServerEntity) Close() error {
 
 // Serve serves the server.
 func (s *ServerEntity) Serve(lis net.Listener, addr string) error {
-	var log logrus.FieldLogger
+	var log logrus.FieldLogger //nolint:gosimple
 	log = s.log.WithField("local_addr", addr).WithField("local_pk", s.pk)
 
 	log.Info("Serving server.")
@@ -98,7 +98,7 @@ func (s *ServerEntity) updateEntryLoop(addr string) error {
 }
 
 func (s *ServerEntity) handleSession(conn net.Conn) {
-	var log logrus.FieldLogger
+	var log logrus.FieldLogger //nolint:gosimple
 	log = s.log.WithField("remote_tcp", conn.RemoteAddr())
 
 	dSes, err := makeServerSession(&s.EntityCommon, conn)

@@ -11,7 +11,6 @@ func awaitDone(ctx context.Context, done chan struct{}) {
 	case <-ctx.Done():
 	case <-done:
 	}
-	return
 }
 
 func isClosed(done chan struct{}) bool {

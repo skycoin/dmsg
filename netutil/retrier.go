@@ -36,12 +36,14 @@ func NewRetrier(log logrus.FieldLogger, backOff time.Duration, times, factor uin
 	}
 }
 
+// Default values for retrier.
 const (
 	DefaultBackOff = 100 * time.Millisecond
 	DefaultTries   = 0
 	DefaultFactor  = 2
 )
 
+// NewDefaultRetrier creates a retrier with default values.
 func NewDefaultRetrier(log logrus.FieldLogger) *Retrier {
 	return NewRetrier(log, DefaultBackOff, DefaultTries, DefaultFactor)
 }

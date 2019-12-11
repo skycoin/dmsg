@@ -96,11 +96,11 @@ func NewError(code uint8, msg string, netOpts *NetworkErrorOptions) error {
 }
 
 // ErrorFromCode returns a saved error (if exists) from given error code.
-func ErrorFromCode(code uint8) (error, bool) {
+func ErrorFromCode(code uint8) (bool, error) {
 	errMx.RLock()
 	err, ok := errMap[code]
 	errMx.RUnlock()
-	return err, ok
+	return ok, err
 }
 
 // CodeFromError returns code from a given error.

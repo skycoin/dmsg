@@ -3,7 +3,6 @@ package noise
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -109,27 +108,6 @@ func (rw *ReadWriter) Handshake(hsTimeout time.Duration) error {
 	case <-time.After(hsTimeout):
 		return timeoutError{}
 	}
-}
-
-func (rw *ReadWriter) HandshakeWithContext(ctx context.Context) error {
-	errCh := make(chan error, 1)
-	go func() {
-		if rw.ns.init {
-			errCh <- InitiatorHandshake(rw.ns, rw.rawInput, rw.origin)
-		} else {
-			errCh <- ResponderHandshake(rw.ns, rw.rawInput, rw.origin)
-		}
-		close(errCh)
-	}()
-	select {
-	case err := <-errCh:
-		if err != nil {
-			return err
-		}
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-	return nil
 }
 
 // LocalStatic returns the local static public key.

@@ -251,7 +251,7 @@ func (ce *ClientEntity) dialSession(ctx context.Context, entry *disc.Entry) (Cli
 	}
 
 	if !ce.setSession(ctx, dSes.SessionCommon) {
-		_ = dSes.Close()
+		_ = dSes.Close() //nolint:errcheck
 		return ClientSession{}, errors.New("session already exists")
 	}
 	go func() {
