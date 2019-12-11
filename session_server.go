@@ -4,28 +4,40 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sync"
 	"sync/atomic"
 
 	"github.com/SkycoinProject/yamux"
 
 	"github.com/SkycoinProject/dmsg/netutil"
+	"github.com/SkycoinProject/dmsg/noise"
 )
 
 // ServerSession represents a session from the perspective of a dmsg server.
 type ServerSession struct {
 	*SessionCommon
-	rMx sync.Mutex
-	wMx sync.Mutex
 }
 
 func makeServerSession(entity *EntityCommon, conn net.Conn) (ServerSession, error) {
 	var sSes ServerSession
 	sSes.SessionCommon = new(SessionCommon)
+	sSes.nMap = make(noise.NonceMap)
 	if err := sSes.SessionCommon.initServer(entity, conn); err != nil {
 		return sSes, err
 	}
 	return sSes, nil
+}
+
+// Close implements io.Closer
+func (ss *ServerSession) Close() (err error) {
+	if ss != nil {
+		if ss.SessionCommon != nil {
+			err = ss.SessionCommon.Close()
+		}
+		ss.rMx.Lock()
+		ss.nMap = nil
+		ss.rMx.Unlock()
+	}
+	return err
 }
 
 var sesCount int32
@@ -60,7 +72,7 @@ func (ss *ServerSession) Serve() {
 func (ss *ServerSession) serveStream(yStr *yamux.Stream) error {
 	readRequest := func() (StreamDialRequest, error) {
 		var req StreamDialRequest
-		if err := readEncryptedGob(yStr, &ss.rMx, ss.ns, &req); err != nil {
+		if err := ss.readEncryptedGob(yStr, &req); err != nil {
 			return req, err
 		}
 		if err := req.Verify(0); err != nil { // TODO(evanlinjin): timestamp tracker.
@@ -96,7 +108,7 @@ func (ss *ServerSession) serveStream(yStr *yamux.Stream) error {
 	}
 
 	// Forward response.
-	if err := writeEncryptedGob(yStr, &ss.wMx, ss.ns, resp); err != nil {
+	if err := ss.writeEncryptedGob(yStr, resp); err != nil {
 		return err
 	}
 
@@ -109,12 +121,12 @@ func (ss *ServerSession) forwardRequest(req StreamDialRequest) (*yamux.Stream, S
 	if err != nil {
 		return nil, StreamDialResponse{}, err
 	}
-	if err := writeEncryptedGob(yStr, &ss.wMx, ss.ns, req); err != nil {
+	if err := ss.writeEncryptedGob(yStr, req); err != nil {
 		_ = yStr.Close() //nolint:errcheck
 		return nil, StreamDialResponse{}, err
 	}
 	var resp StreamDialResponse
-	if err := readEncryptedGob(yStr, &ss.rMx, ss.ns, &resp); err != nil {
+	if err := ss.readEncryptedGob(yStr, &resp); err != nil {
 		_ = yStr.Close() //nolint:errcheck
 		return nil, StreamDialResponse{}, err
 	}

@@ -2,7 +2,10 @@ package dmsg
 
 import (
 	"bufio"
+	"encoding/binary"
+	"io"
 	"net"
+	"sync"
 
 	"github.com/SkycoinProject/yamux"
 	"github.com/sirupsen/logrus"
@@ -17,8 +20,11 @@ type SessionCommon struct {
 	entity *EntityCommon // back reference
 	rPK    cipher.PubKey // remote pk
 
-	ys *yamux.Session
-	ns *noise.Noise
+	ys   *yamux.Session
+	ns   *noise.Noise
+	nMap noise.NonceMap
+	rMx  sync.Mutex
+	wMx  sync.Mutex
 
 	log logrus.FieldLogger
 }
@@ -51,6 +57,7 @@ func (sc *SessionCommon) initClient(entity *EntityCommon, conn net.Conn, rPK cip
 	sc.rPK = rPK
 	sc.ys = ySes
 	sc.ns = ns
+	sc.nMap = make(noise.NonceMap)
 	sc.log = entity.log.WithField("session", ns.RemoteStatic())
 	return nil
 }
@@ -82,8 +89,42 @@ func (sc *SessionCommon) initServer(entity *EntityCommon, conn net.Conn) error {
 	sc.rPK = ns.RemoteStatic()
 	sc.ys = ySes
 	sc.ns = ns
+	sc.nMap = make(noise.NonceMap)
 	sc.log = entity.log.WithField("session", ns.RemoteStatic())
 	return nil
+}
+
+// writeEncryptedGob encrypts with noise and prefixed with uint16 (2 additional bytes).
+func (sc *SessionCommon) writeEncryptedGob(w io.Writer, v interface{}) error {
+	raw := encodeGob(v)
+	sc.wMx.Lock()
+	p := sc.ns.EncryptUnsafe(raw)
+	sc.wMx.Unlock()
+	p = append(make([]byte, 2), p...)
+	binary.BigEndian.PutUint16(p, uint16(len(p)-2))
+	_, err := w.Write(p)
+	return err
+}
+
+func (sc *SessionCommon) readEncryptedGob(r io.Reader, v interface{}) error {
+	lb := make([]byte, 2)
+	if _, err := io.ReadFull(r, lb); err != nil {
+		return err
+	}
+	pb := make([]byte, binary.BigEndian.Uint16(lb))
+	if _, err := io.ReadFull(r, pb); err != nil {
+		return err
+	}
+	sc.rMx.Lock()
+	if sc.nMap == nil {
+		return ErrSessionClosed
+	}
+	b, err := sc.ns.DecryptWithNonceMap(sc.nMap, pb)
+	sc.rMx.Unlock()
+	if err != nil {
+		return err
+	}
+	return decodeGob(v, b)
 }
 
 func (sc *SessionCommon) localSK() cipher.SecKey { return sc.entity.sk }
@@ -95,6 +136,12 @@ func (sc *SessionCommon) LocalPK() cipher.PubKey { return sc.entity.pk }
 func (sc *SessionCommon) RemotePK() cipher.PubKey { return sc.rPK }
 
 // Close closes the session.
-func (sc *SessionCommon) Close() error {
-	return sc.ys.Close()
+func (sc *SessionCommon) Close() (err error) {
+	if sc != nil {
+		err = sc.ys.Close()
+		sc.rMx.Lock()
+		sc.nMap = nil
+		sc.rMx.Unlock()
+	}
+	return err
 }

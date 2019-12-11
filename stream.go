@@ -3,7 +3,6 @@ package dmsg
 import (
 	"context"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/SkycoinProject/yamux"
@@ -16,9 +15,6 @@ import (
 type Stream struct {
 	ses  *ClientSession // back reference
 	yStr *yamux.Stream
-
-	rMx sync.Mutex
-	wMx sync.Mutex
 
 	// The following fields are to be filled after handshake.
 	lAddr  Addr
@@ -80,12 +76,12 @@ func (s *Stream) writeRequest(rAddr Addr) (req StreamDialRequest, err error) {
 	req.Sign(s.ses.localSK())
 
 	// Write request.
-	err = writeEncryptedGob(s.yStr, &s.wMx, s.ses.ns, req)
+	err = s.ses.writeEncryptedGob(s.yStr, req)
 	return
 }
 
 func (s *Stream) readRequest() (req StreamDialRequest, err error) {
-	if err = readEncryptedGob(s.yStr, &s.rMx, s.ses.ns, &req); err != nil {
+	if err = s.ses.readEncryptedGob(s.yStr, &req); err != nil {
 		return
 	}
 	if err = req.Verify(0); err != nil {
@@ -128,7 +124,7 @@ func (s *Stream) writeResponse(req StreamDialRequest) error {
 		NoiseMsg: nsMsg,
 	}
 	resp.Sign(s.ses.localSK())
-	if err := writeEncryptedGob(s.yStr, &s.wMx, s.ses.ns, resp); err != nil {
+	if err := s.ses.writeEncryptedGob(s.yStr, resp); err != nil {
 		return err
 	}
 
@@ -139,7 +135,7 @@ func (s *Stream) writeResponse(req StreamDialRequest) error {
 func (s *Stream) readResponse(req StreamDialRequest) (err error) {
 	// Read and process response.
 	var resp StreamDialResponse
-	if err = readEncryptedGob(s.yStr, &s.rMx, s.ses.ns, &resp); err != nil {
+	if err = s.ses.readEncryptedGob(s.yStr, &resp); err != nil {
 		return
 	}
 	if err = resp.Verify(req.DstAddr.PK, req.Hash()); err != nil {

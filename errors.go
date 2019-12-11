@@ -8,8 +8,9 @@ import (
 // Entity Errors (10-19).
 var (
 	ErrEntityClosed               = NewError(10, "local entity closed", nil)
-	ErrCannotConnectToDelegated   = NewError(11, "cannot connect to delegated server", nil)
-	ErrSessionHandshakeExtraBytes = NewError(12, "extra bytes received during session handshake", nil)
+	ErrSessionClosed              = NewError(11, "local session closed", nil)
+	ErrCannotConnectToDelegated   = NewError(12, "cannot connect to delegated server", nil)
+	ErrSessionHandshakeExtraBytes = NewError(13, "extra bytes received during session handshake", nil)
 )
 
 // Errors for dmsg discovery (30-39).
@@ -55,10 +56,10 @@ type NetworkError struct {
 }
 
 // Error implements error
-func (err NetworkError) Error() string   { return err.Err.Error() }
+func (err NetworkError) Error() string { return err.Err.Error() }
 
 // Timeout implements net.Error
-func (err NetworkError) Timeout() bool   { return err.Opts.Timeout }
+func (err NetworkError) Timeout() bool { return err.Opts.Timeout }
 
 // Temporary implements net.Error
 func (err NetworkError) Temporary() bool { return err.Opts.Temporary }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
 
@@ -84,6 +85,7 @@ func (ce *ClientEntity) Serve() {
 		entries, err := ce.discoverServers(ctx)
 		if err != nil {
 			ce.log.WithError(err).Warn("Failed to discover dmsg servers.")
+			time.Sleep(time.Second) // TODO(evanlinjin): Implement exponential back off.
 			continue
 		}
 
@@ -141,7 +143,7 @@ func (ce *ClientEntity) Close() error {
 		ce.log.Info("All sessions closed.")
 		ce.mx.Unlock()
 
-		go ce.porter.RangePortValues(func(port uint16, v interface{}) (next bool) {
+		ce.porter.RangePortValues(func(port uint16, v interface{}) (next bool) {
 			if v != nil {
 				switch v.(type) {
 				case *Listener:
@@ -255,7 +257,7 @@ func (ce *ClientEntity) dialSession(ctx context.Context, entry *disc.Entry) (Cli
 	go func() {
 		ce.log.WithField("remote_pk", dSes.RemotePK()).Info("Serving session.")
 		if err := dSes.Serve(); !isClosed(ce.done) {
-			ce.errCh <-err
+			ce.errCh <- err
 			ce.delSession(ctx, dSes.RemotePK())
 		}
 	}()

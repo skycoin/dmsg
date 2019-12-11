@@ -87,11 +87,11 @@ func TestNewClientEntity(t *testing.T) {
 	})
 
 	t.Run("test_concurrent_listeners", func(t *testing.T) {
-		const rounds = 5
+		const rounds = 10
 		listeners := make([]net.Listener, 0, rounds*2)
 
 		wg := new(sync.WaitGroup)
-		wg.Add(rounds*2)
+		wg.Add(rounds * 2)
 
 		for port := uint16(1); port <= rounds; port++ {
 			lis1, makePipe1 := makePiper(clientA, clientB, port)

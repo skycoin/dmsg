@@ -108,6 +108,11 @@ func (ns *Noise) ProcessHandshakeMessage(msg []byte) (err error) {
 	return err
 }
 
+// HandshakeFinished indicate whether handshake was completed.
+func (ns *Noise) HandshakeFinished() bool {
+	return ns.hs.MessageIndex() == len(ns.pattern.Messages)
+}
+
 // LocalStatic returns the local static public key.
 func (ns *Noise) LocalStatic() cipher.PubKey {
 	return ns.pk
@@ -148,7 +153,20 @@ func (ns *Noise) DecryptUnsafe(ciphertext []byte) ([]byte, error) {
 	return ns.dec.Cipher().Decrypt(nil, recvSeq, nil, ciphertext[nonceSize:])
 }
 
-// HandshakeFinished indicate whether handshake was completed.
-func (ns *Noise) HandshakeFinished() bool {
-	return ns.hs.MessageIndex() == len(ns.pattern.Messages)
+// NonceMap is a map of used nonces.
+type NonceMap map[uint64]struct{}
+
+// DecryptWithNonceMap is equivalent to DecryptNonce, instead it uses NonceMap to track nonces instead of a counter.
+func (ns *Noise) DecryptWithNonceMap(nm NonceMap, ciphertext []byte) ([]byte, error) {
+	if len(ciphertext) == 0 {
+		return make([]byte, 0), nil
+	}
+	if len(ciphertext) < nonceSize {
+		panic("noise decrypt unsafe: cipher text cannot be less than 8 bytes")
+	}
+	recvSeq := binary.BigEndian.Uint64(ciphertext[:nonceSize])
+	if _, ok := nm[recvSeq]; ok {
+		return nil, fmt.Errorf("received decryption nonce (%d) is repeated", recvSeq)
+	}
+	return ns.dec.Cipher().Decrypt(nil, recvSeq, nil, ciphertext[nonceSize:])
 }
