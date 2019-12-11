@@ -1,10 +1,8 @@
 package dmsg
 
 import (
-	"fmt"
 	"io"
 	"net"
-	"sync/atomic"
 
 	"github.com/SkycoinProject/yamux"
 
@@ -40,15 +38,8 @@ func (ss *ServerSession) Close() (err error) {
 	return err
 }
 
-var sesCount int32
-
 // Serve serves the session.
 func (ss *ServerSession) Serve() {
-	fmt.Println("ServerSession (started) count:", atomic.AddInt32(&sesCount, 1))
-	defer func() {
-		fmt.Println("ServerSession (stopped) count:", atomic.AddInt32(&sesCount, -1))
-	}()
-
 	for {
 		yStr, err := ss.ys.AcceptStream()
 		if err != nil {

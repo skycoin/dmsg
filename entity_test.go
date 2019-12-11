@@ -2,7 +2,6 @@ package dmsg
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"sync"
 	"testing"
@@ -12,10 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 
+	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/disc"
 )
 
-func TestNewClientEntity(t *testing.T) {
+func TestEntity(t *testing.T) {
 	// Prepare mock discovery.
 	dc := disc.NewMock()
 
@@ -58,7 +58,6 @@ func TestNewClientEntity(t *testing.T) {
 				return
 			}
 			stop = func() {
-				//t.Log("Stopping pipe!")
 				_ = c1.Close() //nolint:errcheck
 				_ = c2.Close() //nolint:errcheck
 			}
@@ -110,7 +109,6 @@ func TestNewClientEntity(t *testing.T) {
 		}
 
 		wg.Wait()
-		fmt.Println("CLOSE LOGIC STARTED!")
 
 		// Closing logic.
 		for _, lis := range listeners {
@@ -120,10 +118,13 @@ func TestNewClientEntity(t *testing.T) {
 
 	// Closing logic.
 	require.NoError(t, clientB.Close())
-	fmt.Println("CLOSE: client B stopped")
 	require.NoError(t, clientA.Close())
-	fmt.Println("CLOSE: client A stopped")
 	require.NoError(t, srv.Close())
-	fmt.Println("CLOSE: server stopped")
 	require.NoError(t, <-chSrv)
+}
+
+func GenKeyPair(t *testing.T, seed string) (cipher.PubKey, cipher.SecKey) {
+	pk, sk, err := cipher.GenerateDeterministicKeyPair([]byte(seed))
+	require.NoError(t, err)
+	return pk, sk
 }
