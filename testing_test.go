@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/SkycoinProject/dmsg/cipher"
-	"github.com/SkycoinProject/dmsg/netutil"
 )
 
 func GenKeyPair(t *testing.T, seed string) (cipher.PubKey, cipher.SecKey) {
@@ -15,10 +14,10 @@ func GenKeyPair(t *testing.T, seed string) (cipher.PubKey, cipher.SecKey) {
 	return pk, sk
 }
 
-func AddListener(t *testing.T, porter *netutil.Porter, addr Addr) *Listener {
-	lis := newListener(addr)
-	ok, doneFn := porter.Reserve(addr.Port, lis)
-	lis.doneFunc = doneFn
-	require.True(t, ok)
-	return lis
-}
+//func AddListener(t *testing.T, porter *netutil.Porter, addr Addr) *Listener {
+//	lis := newListener(addr)
+//	ok, doneFn := porter.Reserve(addr.Port, lis)
+//	lis.doneFunc = doneFn
+//	require.True(t, ok)
+//	return lis
+//}
