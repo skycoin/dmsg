@@ -263,6 +263,23 @@ func TestConn(t *testing.T) {
 			})
 		}
 	})
+
+	//t.Run("TestLargeDataIO", func(t *testing.T) {
+	//	c1, c2, stop := prepareConns(t)
+	//	defer stop()
+	//
+	//	writeB := makeLargeData(8)
+	//	n1, err1 := c1.Write(writeB)
+	//	require.NoError(t, err1)
+	//	require.Equal(t, len(writeB), n1)
+	//
+	//	readB := make([]byte, len(writeB))
+	//	n2, err2 := io.ReadFull(c2, readB)
+	//	require.NoError(t, err2)
+	//	require.Equal(t, len(readB), n2)
+	//
+	//	require.Equal(t, writeB, readB)
+	//})
 }
 
 func prepareConns(t *testing.T) (*Conn, *Conn, func()) {
@@ -279,17 +296,7 @@ func prepareConns(t *testing.T) (*Conn, *Conn, func()) {
 
 	aConn, bConn := net.Pipe()
 
-	//l, err := net.Listen("tcp", "")
-	//require.NoError(t, err)
-	//
-	//aConn, err := net.Dial(l.Addr().Network(), l.Addr().String())
-	//require.NoError(t, err)
-	//
-	//bConn, err := l.Accept()
-	//require.NoError(t, err)
-
 	closeFunc := func() {
-		//require.NoError(t, l.Close())
 		require.NoError(t, aConn.Close())
 		require.NoError(t, bConn.Close())
 	}
@@ -309,6 +316,15 @@ func prepareConns(t *testing.T) (*Conn, *Conn, func()) {
 
 	return a, b, closeFunc
 }
+
+//func makeLargeData(reps int) []byte {
+//	section := cipher.RandByte(math.MaxUint16)
+//	b := make([]byte, 0, len(section)*reps)
+//	for i := 0; i < reps; i++ {
+//		b = append(b, section...)
+//	}
+//	return b
+//}
 
 func TestListener(t *testing.T) {
 	const (

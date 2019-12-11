@@ -132,22 +132,16 @@ func (s *Stream) writeResponse(req StreamDialRequest) error {
 	return lis.introduceStream(s)
 }
 
-func (s *Stream) readResponse(req StreamDialRequest) (err error) {
+func (s *Stream) readResponse(req StreamDialRequest) error {
 	// Read and process response.
 	var resp StreamDialResponse
-	if err = s.ses.readEncryptedGob(s.yStr, &resp); err != nil {
-		return
+	if err := s.ses.readEncryptedGob(s.yStr, &resp); err != nil {
+		return err
 	}
-	if err = resp.Verify(req.DstAddr.PK, req.Hash()); err != nil {
-		return
+	if err := resp.Verify(req.DstAddr.PK, req.Hash()); err != nil {
+		return err
 	}
-	if err = s.ns.ProcessHandshakeMessage(resp.NoiseMsg); err != nil {
-		return
-	}
-
-	// Finalize noise read writer.
-	s.nsConn = noise.NewReadWriter(s.yStr, s.ns)
-	return
+	return s.ns.ProcessHandshakeMessage(resp.NoiseMsg)
 }
 
 func (s *Stream) prepareFields(init bool, lAddr, rAddr Addr) {
@@ -164,6 +158,7 @@ func (s *Stream) prepareFields(init bool, lAddr, rAddr Addr) {
 	s.lAddr = lAddr
 	s.rAddr = rAddr
 	s.ns = ns
+	s.nsConn = noise.NewReadWriter(s.yStr, s.ns)
 	s.log = s.ses.log.WithField("stream", s.lAddr.ShortString()+"->"+s.rAddr.ShortString())
 }
 
@@ -184,12 +179,12 @@ func (s *Stream) StreamID() uint32 {
 
 // Read implements io.Reader
 func (s *Stream) Read(b []byte) (int, error) {
-	return s.yStr.Read(b)
+	return s.yStr.Read(b) // TODO(evanlinjin): Use s.nsConn
 }
 
 // Write implements io.Writer
 func (s *Stream) Write(b []byte) (int, error) {
-	return s.yStr.Write(b)
+	return s.yStr.Write(b) // TODO(evanlinjin): Use s.nsConn
 }
 
 // SetDeadline implements net.Conn

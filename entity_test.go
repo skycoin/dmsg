@@ -2,6 +2,7 @@ package dmsg
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"math"
 	"net"
@@ -124,7 +125,10 @@ func TestEntity(t *testing.T) {
 		connA, connB, stop, errA := makePipe()
 		require.NoError(t, errA)
 
-		largeData := cipher.RandByte(math.MaxUint16 * 8)
+		fmt.Println(connA.LocalAddr(), connA.RemoteAddr())
+		fmt.Println(connB.LocalAddr(), connB.RemoteAddr())
+
+		largeData := makeLargeData(8) // TODO(evanlinjin): Anything larger than 8 causes hang.
 		t.Log("Made large data, size:", len(largeData))
 
 		nA, errA := connA.Write(largeData)
@@ -155,4 +159,13 @@ func GenKeyPair(t *testing.T, seed string) (cipher.PubKey, cipher.SecKey) {
 	pk, sk, err := cipher.GenerateDeterministicKeyPair([]byte(seed))
 	require.NoError(t, err)
 	return pk, sk
+}
+
+func makeLargeData(reps int) []byte {
+	section := cipher.RandByte(math.MaxUint16)
+	b := make([]byte, 0, len(section)*reps)
+	for i := 0; i < reps; i++ {
+		b = append(b, section...)
+	}
+	return b
 }
