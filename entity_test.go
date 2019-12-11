@@ -2,6 +2,8 @@ package dmsg
 
 import (
 	"context"
+	"io"
+	"math"
 	"net"
 	"sync"
 	"testing"
@@ -116,6 +118,32 @@ func TestEntity(t *testing.T) {
 		}
 	})
 
+	t.Run("test_large_data_io", func(t *testing.T) {
+		const port = 8080
+		lis, makePipe := makePiper(clientA, clientB, port)
+		connA, connB, stop, errA := makePipe()
+		require.NoError(t, errA)
+
+		largeData := cipher.RandByte(math.MaxUint16 * 8)
+		t.Log("Made large data, size:", len(largeData))
+
+		nA, errA := connA.Write(largeData)
+		require.NoError(t, errA)
+		require.Equal(t, len(largeData), nA)
+		t.Log("Large data written.")
+
+		readB := make([]byte, len(largeData))
+		nB, errB := io.ReadFull(connB, readB)
+		require.NoError(t, errB)
+		require.Equal(t, len(largeData), nB)
+		require.Equal(t, largeData, readB)
+		t.Log("Large data read.")
+
+		// Closing logic.
+		stop()
+		require.NoError(t, lis.Close())
+	})
+
 	// Closing logic.
 	require.NoError(t, clientB.Close())
 	require.NoError(t, clientA.Close())
@@ -127,4 +155,15 @@ func GenKeyPair(t *testing.T, seed string) (cipher.PubKey, cipher.SecKey) {
 	pk, sk, err := cipher.GenerateDeterministicKeyPair([]byte(seed))
 	require.NoError(t, err)
 	return pk, sk
+}
+
+func makeLargeData(size, sectionSize int) []byte {
+	section := cipher.RandByte(sectionSize)
+
+	i, data := 0, make([]byte, size)
+	for {
+		if i += copy(data[i:], section); i >= size {
+			return data[:size]
+		}
+	}
 }
