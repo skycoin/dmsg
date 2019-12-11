@@ -156,14 +156,3 @@ func GenKeyPair(t *testing.T, seed string) (cipher.PubKey, cipher.SecKey) {
 	require.NoError(t, err)
 	return pk, sk
 }
-
-func makeLargeData(size, sectionSize int) []byte {
-	section := cipher.RandByte(sectionSize)
-
-	i, data := 0, make([]byte, size)
-	for {
-		if i += copy(data[i:], section); i >= size {
-			return data[:size]
-		}
-	}
-}
