@@ -4,7 +4,7 @@ go 1.12
 
 require (
 	github.com/SkycoinProject/skycoin v0.26.0
-	github.com/SkycoinProject/yamux v0.0.0-20191209062828-11b2cb0b8016
+	github.com/SkycoinProject/yamux v0.0.0-20191213015001-a36efeefbf6a
 	github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6
 	github.com/hashicorp/yamux v0.0.0-20190923154419-df201c70410d // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
@@ -18,3 +18,5 @@ require (
 	golang.org/x/tools v0.0.0-20191206204035-259af5ff87bd // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )
+
+replace github.com/SkycoinProject/yamux => ../yamux

@@ -4,6 +4,8 @@ github.com/SkycoinProject/yamux v0.0.0-20191207100950-bbe838e43911 h1:kwh3+sPgZH
 github.com/SkycoinProject/yamux v0.0.0-20191207100950-bbe838e43911/go.mod h1:IaE1dxncLQs4RJcQTZPikJfAZY4szH87u2h0lT0SDuM=
 github.com/SkycoinProject/yamux v0.0.0-20191209062828-11b2cb0b8016 h1:aDzSnsFGUuAt5oY3vNEpEFEvsNM5BVrhWmWU1VRXMMo=
 github.com/SkycoinProject/yamux v0.0.0-20191209062828-11b2cb0b8016/go.mod h1:IaE1dxncLQs4RJcQTZPikJfAZY4szH87u2h0lT0SDuM=
+github.com/SkycoinProject/yamux v0.0.0-20191213015001-a36efeefbf6a h1:6nHCJqh7trsuRcpMC5JmtDukUndn2VC9sY64K6xQ7hQ=
+github.com/SkycoinProject/yamux v0.0.0-20191213015001-a36efeefbf6a/go.mod h1:IaE1dxncLQs4RJcQTZPikJfAZY4szH87u2h0lT0SDuM=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

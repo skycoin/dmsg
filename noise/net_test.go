@@ -264,22 +264,33 @@ func TestConn(t *testing.T) {
 		}
 	})
 
-	//t.Run("TestLargeDataIO", func(t *testing.T) {
-	//	c1, c2, stop := prepareConns(t)
-	//	defer stop()
-	//
-	//	writeB := makeLargeData(8)
-	//	n1, err1 := c1.Write(writeB)
-	//	require.NoError(t, err1)
-	//	require.Equal(t, len(writeB), n1)
-	//
-	//	readB := make([]byte, len(writeB))
-	//	n2, err2 := io.ReadFull(c2, readB)
-	//	require.NoError(t, err2)
-	//	require.Equal(t, len(readB), n2)
-	//
-	//	require.Equal(t, writeB, readB)
-	//})
+	t.Run("TestLargeDataIO", func(t *testing.T) {
+		c1, c2, stop := prepareConns(t)
+		defer stop()
+
+		writeB := cipher.RandByte(MaxWriteSize)
+		readB := make([]byte, len(writeB))
+
+		var (
+			n2 int
+			err2 = make(chan error, 1)
+		)
+		go func() {
+			var err error
+			n2, err = io.ReadFull(c2, readB)
+			err2 <- err
+			close(err2)
+		}()
+
+		n1, err1 := c1.Write(writeB)
+		require.NoError(t, err1)
+		require.Equal(t, len(writeB), n1)
+
+		require.NoError(t, <-err2)
+		require.Equal(t, len(readB), n2)
+
+		require.Equal(t, writeB, readB)
+	})
 }
 
 func prepareConns(t *testing.T) (*Conn, *Conn, func()) {

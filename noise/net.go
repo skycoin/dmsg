@@ -2,8 +2,6 @@ package noise
 
 import (
 	"errors"
-	"io"
-	"math"
 	"net"
 	"net/rpc"
 	"sync"
@@ -182,9 +180,6 @@ func (c *Conn) Read(b []byte) (int, error) {
 
 // Write writes to the noise-encrypted connection.
 func (c *Conn) Write(b []byte) (int, error) {
-	if len(b) > math.MaxUint16 {
-		return 0, io.ErrShortWrite
-	}
 	return c.ns.Write(b)
 }
 

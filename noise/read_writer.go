@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"sync"
 	"time"
 
@@ -13,14 +14,17 @@ import (
 	"github.com/SkycoinProject/dmsg/ioutil"
 )
 
+// MaxWriteSize is the largest amount for a single write.
+const MaxWriteSize = maxPayloadSize
+
 // Frame format: [ len (2 bytes) | auth (16 bytes) | payload (<= maxPayloadSize bytes) ]
 const (
-	maxFrameSize   = 4096                                 // maximum frame size (4096)
+	maxFrameSize   = math.MaxInt16                       // maximum frame size (4096)
 	maxPayloadSize = maxFrameSize - prefixSize - authSize // maximum payload size
 	maxPrefixValue = maxFrameSize - prefixSize            // maximum value contained in the 'len' prefix
 
 	prefixSize = 2  // len prefix size
-	authSize   = 16 // noise auth data size
+	authSize   = 24 // noise auth data size
 )
 
 type timeoutError struct{}
@@ -42,8 +46,9 @@ type ReadWriter struct {
 
 	rawInput *bufio.Reader
 	input    bytes.Buffer
+	rMx      sync.Mutex
 
-	rMx sync.Mutex
+	wR  bytes.Reader
 	wMx sync.Mutex
 }
 
@@ -60,9 +65,14 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 	rw.rMx.Lock()
 	defer rw.rMx.Unlock()
 
+	// Ensure we grab timeout
+	//if n, err := rw.origin.Read(nil); err != nil {
+	//	return n, err
+	//}
 	if rw.input.Len() > 0 {
 		return rw.input.Read(p)
 	}
+
 	ciphertext, err := ReadRawFrame(rw.rawInput)
 	if err != nil {
 		return 0, err
@@ -81,13 +91,15 @@ func (rw *ReadWriter) Write(p []byte) (n int, err error) {
 	rw.wMx.Lock()
 	defer rw.wMx.Unlock()
 
-	// Enforce max write size.
+	// Enforce max frame size.
 	if len(p) > maxPayloadSize {
 		p, err = p[:maxPayloadSize], io.ErrShortWrite
 	}
-	if err := WriteRawFrame(rw.origin, rw.ns.EncryptUnsafe(p)); err != nil {
-		return 0, err
+
+	if wErr := WriteRawFrame(rw.origin, rw.ns.EncryptUnsafe(p)); wErr != nil {
+		return 0, wErr
 	}
+
 	return len(p), err
 }
 
@@ -179,6 +191,7 @@ func WriteRawFrame(w io.Writer, p []byte) error {
 	buf := make([]byte, prefixSize+len(p))
 	binary.BigEndian.PutUint16(buf, uint16(len(p)))
 	copy(buf[prefixSize:], p)
+
 	_, err := w.Write(buf)
 	return err
 }

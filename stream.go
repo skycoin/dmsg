@@ -179,25 +179,66 @@ func (s *Stream) StreamID() uint32 {
 
 // Read implements io.Reader
 func (s *Stream) Read(b []byte) (int, error) {
-	return s.yStr.Read(b) // TODO(evanlinjin): Use s.nsConn
+	//start := time.Now()
+	//s.log.WithField("start", start).Debug("begin(Read):")
+	n, err := s.yStr.Read(b) // TODO(evanlinjin): Use s.nsConn
+	//s.log.
+	//	WithField("duration", time.Now().Sub(start)).
+	//	WithField("n", n).
+	//	WithField("len(b)", len(b)).
+	//	WithError(err).
+	//	Debug("end(Read):")
+	return n, err
 }
 
 // Write implements io.Writer
 func (s *Stream) Write(b []byte) (int, error) {
-	return s.yStr.Write(b) // TODO(evanlinjin): Use s.nsConn
+	//start := time.Now()
+	n, err := s.yStr.Write(b) // TODO(evanlinjin): Use s.nsConn
+	//s.log.
+	//	WithField("duration", time.Now().Sub(start)).
+	//	WithField("n", n).
+	//	WithError(err).
+	//	Debug("Write:")
+	return n, err
 }
 
 // SetDeadline implements net.Conn
 func (s *Stream) SetDeadline(t time.Time) error {
-	return s.yStr.SetDeadline(t)
+	err := s.yStr.SetDeadline(t)
+	if s.log != nil && s.ns.HandshakeFinished() {
+		if t.IsZero() {
+			s.log.
+				WithField("remaining", "zero").
+				WithError(err).
+				Debug("SetDeadline:")
+		} else {
+			s.log.
+				WithField("remaining", t.Sub(time.Now())).
+				WithError(err).
+				Debug("SetDeadline:")
+		}
+	}
+
+	return err
 }
 
 // SetReadDeadline implements net.Conn
 func (s *Stream) SetReadDeadline(t time.Time) error {
-	return s.yStr.SetReadDeadline(t)
+	err := s.yStr.SetReadDeadline(t)
+	s.log.
+		WithField("remaining", t.Sub(time.Now())).
+		WithError(err).
+		Debug("SetReadDeadline:")
+	return err
 }
 
 // SetWriteDeadline implements net.Conn
 func (s *Stream) SetWriteDeadline(t time.Time) error {
-	return s.yStr.SetWriteDeadline(t)
+	err := s.yStr.SetWriteDeadline(t)
+	s.log.
+		WithField("remaining", t.Sub(time.Now())).
+		WithError(err).
+		Debug("SetWriteDeadline:")
+	return err
 }
