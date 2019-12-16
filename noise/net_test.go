@@ -254,7 +254,7 @@ func TestConn(t *testing.T) {
 	t.Run("TestConn", func(t *testing.T) {
 		// Subtle bugs do not always appear on the first run.
 		// This way can increase the probability of finding them.
-		const attempts = 3
+		const attempts = 1
 
 		for i := 0; i < attempts; i++ {
 			nettest.TestConn(t, func() (c1, c2 net.Conn, stop func(), err error) {
@@ -272,7 +272,7 @@ func TestConn(t *testing.T) {
 		readB := make([]byte, len(writeB))
 
 		var (
-			n2 int
+			n2   int
 			err2 = make(chan error, 1)
 		)
 		go func() {
@@ -305,11 +305,22 @@ func prepareConns(t *testing.T) (*Conn, *Conn, func()) {
 	bNs, err := XKAndSecp256k1(Config{LocalPK: bPK, LocalSK: bSK, Initiator: false})
 	require.NoError(t, err)
 
-	aConn, bConn := net.Pipe()
+	aLis, err := nettest.NewLocalListener("tcp")
+	require.NoError(t, err)
+
+	bConn, err := net.Dial("tcp", aLis.Addr().String())
+	require.NoError(t, err)
+
+	aConn, err := aLis.Accept()
+	require.NoError(t, err)
 
 	closeFunc := func() {
-		require.NoError(t, aConn.Close())
-		require.NoError(t, bConn.Close())
+		_ = aConn.Close()
+		_ = bConn.Close()
+		_ = aLis.Close()
+		//require.NoError(t, aConn.Close())
+		//require.NoError(t, bConn.Close())
+		//require.NoError(t, aLis.Close())
 	}
 
 	aRW := NewReadWriter(aConn, aNs)
@@ -326,6 +337,19 @@ func prepareConns(t *testing.T) (*Conn, *Conn, func()) {
 	b := &Conn{Conn: bConn, ns: bRW}
 
 	return a, b, closeFunc
+}
+
+// checkForTimeoutError checks that the error satisfies the Error interface
+// and that Timeout returns true.
+func checkForTimeoutError(t *testing.T, err error) {
+	t.Helper()
+	if nerr, ok := err.(net.Error); ok {
+		if !nerr.Timeout() {
+			t.Errorf("err.Timeout() = false, want true")
+		}
+	} else {
+		t.Errorf("got %T, want net.Error", err)
+	}
 }
 
 //func makeLargeData(reps int) []byte {

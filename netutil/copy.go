@@ -1,21 +1,12 @@
 package netutil
 
 import (
-	"fmt"
 	"io"
-	"sync/atomic"
 )
-
-var rwCount int32
 
 // CopyReadWriteCloser copies reads and writes between two connections.
 // It returns when a connection returns an error.
 func CopyReadWriteCloser(conn1, conn2 io.ReadWriteCloser) error {
-	fmt.Println("STARTED: CopyReadWriteCloser: count:", atomic.AddInt32(&rwCount, 1))
-	defer func() {
-		fmt.Println("STOPPED: CopyReadWriteCloser: count:", atomic.AddInt32(&rwCount, -1))
-	}()
-
 	errCh1 := make(chan error, 1)
 	go func() {
 		_, err := io.Copy(conn2, conn1)

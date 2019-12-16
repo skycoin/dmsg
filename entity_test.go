@@ -16,6 +16,7 @@ import (
 
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/disc"
+	"github.com/SkycoinProject/dmsg/noise"
 )
 
 func TestEntity(t *testing.T) {
@@ -69,7 +70,7 @@ func TestEntity(t *testing.T) {
 	}
 
 	t.Run("test_listeners", func(t *testing.T) {
-		const rounds = 1
+		const rounds = 3
 		listeners := make([]net.Listener, 0, rounds*2)
 
 		for port := uint16(1); port <= rounds; port++ {
@@ -77,9 +78,9 @@ func TestEntity(t *testing.T) {
 			listeners = append(listeners, lis1)
 			nettest.TestConn(t, makePipe1)
 
-			//lis2, makePipe2 := makePiper(clientB, clientA, port)
-			//listeners = append(listeners, lis2)
-			//nettest.TestConn(t, makePipe2)
+			lis2, makePipe2 := makePiper(clientB, clientA, port)
+			listeners = append(listeners, lis2)
+			nettest.TestConn(t, makePipe2)
 		}
 
 		// Closing logic.
@@ -128,20 +129,17 @@ func TestEntity(t *testing.T) {
 		fmt.Println(connA.LocalAddr(), connA.RemoteAddr())
 		fmt.Println(connB.LocalAddr(), connB.RemoteAddr())
 
-		largeData := makeLargeData(8) // TODO(evanlinjin): Anything larger than 8 causes hang.
-		t.Log("Made large data, size:", len(largeData))
+		largeData := cipher.RandByte(noise.MaxWriteSize)
 
 		nA, errA := connA.Write(largeData)
 		require.NoError(t, errA)
 		require.Equal(t, len(largeData), nA)
-		t.Log("Large data written.")
 
 		readB := make([]byte, len(largeData))
 		nB, errB := io.ReadFull(connB, readB)
 		require.NoError(t, errB)
 		require.Equal(t, len(largeData), nB)
 		require.Equal(t, largeData, readB)
-		t.Log("Large data read.")
 
 		// Closing logic.
 		stop()
