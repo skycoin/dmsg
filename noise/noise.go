@@ -156,11 +156,9 @@ type NonceMap map[uint64]struct{}
 
 // DecryptWithNonceMap is equivalent to DecryptNonce, instead it uses NonceMap to track nonces instead of a counter.
 func (ns *Noise) DecryptWithNonceMap(nm NonceMap, ciphertext []byte) ([]byte, error) {
-	if len(ciphertext) == 0 {
-		return make([]byte, 0), nil
-	}
 	if len(ciphertext) < nonceSize {
-		panic("noise decrypt unsafe: cipher text cannot be less than 8 bytes")
+		//TODO(evanlinjin): Log the following: "noise decrypt unsafe: cipher text cannot be less than 8 bytes".
+		return make([]byte, 0), nil
 	}
 	recvSeq := binary.BigEndian.Uint64(ciphertext[:nonceSize])
 	if _, ok := nm[recvSeq]; ok {
