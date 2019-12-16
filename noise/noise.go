@@ -139,11 +139,9 @@ func (ns *Noise) EncryptUnsafe(plaintext []byte) []byte {
 // DecryptUnsafe decrypts ciphertext without interlocking, should only
 // be used with external lock.
 func (ns *Noise) DecryptUnsafe(ciphertext []byte) ([]byte, error) {
-	if len(ciphertext) == 0 {
-		return make([]byte, 0), nil
-	}
 	if len(ciphertext) < nonceSize {
-		panic("noise decrypt unsafe: cipher text cannot be less than 8 bytes")
+		//TODO(evanlinjin): Log the following: "noise decrypt unsafe: cipher text cannot be less than 8 bytes".
+		return make([]byte, 0), nil
 	}
 	recvSeq := binary.BigEndian.Uint64(ciphertext[:nonceSize])
 	if recvSeq <= ns.decNonce {
