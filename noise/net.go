@@ -18,6 +18,7 @@ var (
 	ErrAlreadyServing = errors.New("already serving")
 
 	// HandshakeXK is the XK handshake pattern.
+	// 		legend: s(static) e(ephemeral)
 	//	<- s
 	//	...
 	//	-> e, es
@@ -26,6 +27,7 @@ var (
 	HandshakeXK = noise.HandshakeXK
 
 	// HandshakeKK is the KK handshake pattern.
+	// 		legend: s(static) e(ephemeral)
 	//	-> s
 	//	<- s
 	//	...

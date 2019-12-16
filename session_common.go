@@ -115,12 +115,15 @@ func (sc *SessionCommon) readEncryptedGob(r io.Reader, v interface{}) error {
 	if _, err := io.ReadFull(r, pb); err != nil {
 		return err
 	}
+
 	sc.rMx.Lock()
 	if sc.nMap == nil {
+		sc.rMx.Unlock()
 		return ErrSessionClosed
 	}
 	b, err := sc.ns.DecryptWithNonceMap(sc.nMap, pb)
 	sc.rMx.Unlock()
+
 	if err != nil {
 		return err
 	}

@@ -26,8 +26,8 @@ func DefaultConfig() *Config {
 	}
 }
 
-// ClientEntity represents a dmsg client entity.
-type ClientEntity struct {
+// Client represents a dmsg client entity.
+type Client struct {
 	EntityCommon
 	conf   *Config
 	porter *netutil.Porter
@@ -39,12 +39,12 @@ type ClientEntity struct {
 }
 
 // NewClient creates a dmsg client entity.
-func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Config) *ClientEntity {
+func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Config) *Client {
 	if conf == nil {
 		conf = DefaultConfig()
 	}
 
-	c := new(ClientEntity)
+	c := new(Client)
 	c.conf = conf
 	c.porter = netutil.NewPorter(netutil.PorterMinEphemeral)
 	c.errCh = make(chan error, 10)
@@ -63,7 +63,7 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 
 // Serve serves the client.
 // It blocks until the client is closed.
-func (ce *ClientEntity) Serve() {
+func (ce *Client) Serve() {
 	defer func() {
 		ce.log.Info("Stopped serving client!")
 	}()
@@ -72,8 +72,11 @@ func (ce *ClientEntity) Serve() {
 	defer cancel()
 
 	go func(ctx context.Context) {
-		awaitDone(ctx, ce.done)
-		cancel()
+		select {
+		case <-ctx.Done():
+		case <-ce.done:
+			cancel()
+		}
 	}(ctx)
 
 	for {
@@ -111,7 +114,7 @@ func (ce *ClientEntity) Serve() {
 	}
 }
 
-func (ce *ClientEntity) discoverServers(ctx context.Context) (entries []*disc.Entry, err error) {
+func (ce *Client) discoverServers(ctx context.Context) (entries []*disc.Entry, err error) {
 	err = netutil.NewDefaultRetrier(ce.log).Do(ctx, func() error {
 		entries, err = ce.dc.AvailableServers(ctx)
 		return err
@@ -121,7 +124,7 @@ func (ce *ClientEntity) discoverServers(ctx context.Context) (entries []*disc.En
 
 // Close closes the dmsg client entity.
 // TODO(evanlinjin): Have waitgroup.
-func (ce *ClientEntity) Close() error {
+func (ce *Client) Close() error {
 	if ce == nil {
 		return nil
 	}
@@ -133,38 +136,24 @@ func (ce *ClientEntity) Close() error {
 		close(ce.errCh)
 		ce.sesMx.Unlock()
 
-		ce.mx.Lock()
-		for _, dSes := range ce.ss {
+		ce.sessionsMx.Lock()
+		for _, dSes := range ce.sessions {
 			ce.log.
 				WithError(dSes.Close()).
 				Info("Session closed.")
 		}
-		ce.ss = make(map[cipher.PubKey]*SessionCommon)
+		ce.sessions = make(map[cipher.PubKey]*SessionCommon)
 		ce.log.Info("All sessions closed.")
-		ce.mx.Unlock()
+		ce.sessionsMx.Unlock()
 
-		ce.porter.RangePortValues(func(port uint16, v interface{}) (next bool) {
-			if v != nil {
-				switch v.(type) {
-				case *Listener:
-					ce.log.
-						WithError(v.(*Listener).Close()).
-						Info("Listener closed.")
-				case *Stream:
-					ce.log.
-						WithError(v.(*Stream).Close()).
-						Info("Stream closed.")
-				}
-			}
-			return true
-		})
+		ce.porter.CloseAll(ce.log)
 	})
 
 	return nil
 }
 
 // Listen listens on a given dmsg port.
-func (ce *ClientEntity) Listen(port uint16) (*Listener, error) {
+func (ce *Client) Listen(port uint16) (*Listener, error) {
 	lis := newListener(Addr{PK: ce.pk, Port: port})
 	ok, doneFn := ce.porter.Reserve(port, lis)
 	if !ok {
@@ -175,8 +164,13 @@ func (ce *ClientEntity) Listen(port uint16) (*Listener, error) {
 	return lis, nil
 }
 
+// Dial wraps DialStream to output net.Conn instead of *Stream.
+func (ce *Client) Dial(ctx context.Context, addr Addr) (net.Conn, error) {
+	return ce.DialStream(ctx, addr)
+}
+
 // DialStream dials to a remote client entity with the given address.
-func (ce *ClientEntity) DialStream(ctx context.Context, addr Addr) (*Stream, error) {
+func (ce *Client) DialStream(ctx context.Context, addr Addr) (*Stream, error) {
 	entry, err := getClientEntry(ctx, ce.dc, addr.PK)
 	if err != nil {
 		return nil, err
@@ -205,7 +199,7 @@ func (ce *ClientEntity) DialStream(ctx context.Context, addr Addr) (*Stream, err
 
 // ensureSession ensures the existence of a session.
 // It returns an error if the session does not exist AND cannot be established.
-func (ce *ClientEntity) ensureSession(ctx context.Context, entry *disc.Entry) error {
+func (ce *Client) ensureSession(ctx context.Context, entry *disc.Entry) error {
 	ce.sesMx.Lock()
 	defer ce.sesMx.Unlock()
 
@@ -219,7 +213,7 @@ func (ce *ClientEntity) ensureSession(ctx context.Context, entry *disc.Entry) er
 	return err
 }
 
-func (ce *ClientEntity) obtainSession(ctx context.Context, srvPK cipher.PubKey) (ClientSession, error) {
+func (ce *Client) obtainSession(ctx context.Context, srvPK cipher.PubKey) (ClientSession, error) {
 	ce.sesMx.Lock()
 	defer ce.sesMx.Unlock()
 
@@ -238,7 +232,7 @@ func (ce *ClientEntity) obtainSession(ctx context.Context, srvPK cipher.PubKey) 
 // It is expected that the session is created and served before the context cancels, otherwise an error will be returned.
 // NOTE: This should not be called directly as it may lead to session duplicates.
 // Only `ensureSession` or `obtainSession` should call this function.
-func (ce *ClientEntity) dialSession(ctx context.Context, entry *disc.Entry) (ClientSession, error) {
+func (ce *Client) dialSession(ctx context.Context, entry *disc.Entry) (ClientSession, error) {
 	ce.log.WithField("remote_pk", entry.Static).Info("Dialing session...")
 
 	conn, err := net.Dial("tcp", entry.Server.Address)

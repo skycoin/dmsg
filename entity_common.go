@@ -17,8 +17,8 @@ type EntityCommon struct {
 	sk cipher.SecKey
 	dc disc.APIClient
 
-	ss map[cipher.PubKey]*SessionCommon
-	mx *sync.Mutex
+	sessions   map[cipher.PubKey]*SessionCommon
+	sessionsMx *sync.Mutex
 
 	log logrus.FieldLogger
 
@@ -30,8 +30,8 @@ func (c *EntityCommon) init(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClien
 	c.pk = pk
 	c.sk = sk
 	c.dc = dc
-	c.ss = make(map[cipher.PubKey]*SessionCommon)
-	c.mx = new(sync.Mutex)
+	c.sessions = make(map[cipher.PubKey]*SessionCommon)
+	c.sessionsMx = new(sync.Mutex)
 	c.log = log
 }
 
@@ -43,9 +43,9 @@ func (c *EntityCommon) LocalPK() cipher.PubKey { return c.pk }
 func (c *EntityCommon) SetLogger(log logrus.FieldLogger) { c.log = log }
 
 func (c *EntityCommon) session(pk cipher.PubKey) (*SessionCommon, bool) {
-	c.mx.Lock()
-	dSes, ok := c.ss[pk]
-	c.mx.Unlock()
+	c.sessionsMx.Lock()
+	dSes, ok := c.sessions[pk]
+	c.sessionsMx.Unlock()
 	return dSes, ok
 }
 
@@ -63,21 +63,21 @@ func (c *EntityCommon) ClientSession(porter *netutil.Porter, pk cipher.PubKey) (
 
 // SessionCount returns the number of sessions.
 func (c *EntityCommon) SessionCount() int {
-	c.mx.Lock()
-	n := len(c.ss)
-	c.mx.Unlock()
+	c.sessionsMx.Lock()
+	n := len(c.sessions)
+	c.sessionsMx.Unlock()
 	return n
 }
 
 func (c *EntityCommon) setSession(ctx context.Context, dSes *SessionCommon) bool {
-	c.mx.Lock()
+	c.sessionsMx.Lock()
 
-	if _, ok := c.ss[dSes.RemotePK()]; ok {
-		c.mx.Unlock()
+	if _, ok := c.sessions[dSes.RemotePK()]; ok {
+		c.sessionsMx.Unlock()
 		return false
 	}
 
-	c.ss[dSes.RemotePK()] = dSes
+	c.sessions[dSes.RemotePK()] = dSes
 	if c.setSessionCallback != nil {
 		if err := c.setSessionCallback(ctx); err != nil {
 			c.log.
@@ -85,13 +85,13 @@ func (c *EntityCommon) setSession(ctx context.Context, dSes *SessionCommon) bool
 				Warn("setSession() callback returned non-nil error.")
 		}
 	}
-	c.mx.Unlock()
+	c.sessionsMx.Unlock()
 	return true
 }
 
 func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
-	c.mx.Lock()
-	delete(c.ss, pk)
+	c.sessionsMx.Lock()
+	delete(c.sessions, pk)
 	if c.delSessionCallback != nil {
 		if err := c.delSessionCallback(ctx); err != nil {
 			c.log.
@@ -99,7 +99,7 @@ func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
 				Warn("delSession() callback returned non-nil error.")
 		}
 	}
-	c.mx.Unlock()
+	c.sessionsMx.Unlock()
 }
 
 // updateServerEntry updates the dmsg server's entry within dmsg discovery.
@@ -121,8 +121,8 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}
 		return nil
 	}
 
-	srvPKs := make([]cipher.PubKey, 0, len(c.ss))
-	for pk := range c.ss {
+	srvPKs := make([]cipher.PubKey, 0, len(c.sessions))
+	for pk := range c.sessions {
 		srvPKs = append(srvPKs, pk)
 	}
 	entry, err := c.dc.Entry(ctx, c.pk)

@@ -49,7 +49,7 @@ func TestEntity(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	// Helper functions.
-	makePiper := func(dialer, listener *ClientEntity, port uint16) (net.Listener, nettest.MakePipe) {
+	makePiper := func(dialer, listener *Client, port uint16) (net.Listener, nettest.MakePipe) {
 		lis, err := listener.Listen(port)
 		require.NoError(t, err)
 

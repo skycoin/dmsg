@@ -33,13 +33,14 @@ func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream, err error) {
 	// Close stream on failure.
 	defer func() {
 		if err != nil {
-			_ = dStr.Close() //nolint:errcheck
+			cs.log.WithError(dStr.Close()).
+				Debug("On DialStream() failure, close stream resulted in error.")
 		}
 	}()
 
 	// Prepare deadline.
 	if err = dStr.SetDeadline(time.Now().Add(HandshakeTimeout)); err != nil {
-		return
+		return nil, err
 	}
 
 	// Do stream handshake.
@@ -54,7 +55,7 @@ func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream, err error) {
 
 	// Clear deadline.
 	if err = dStr.SetDeadline(time.Time{}); err != nil {
-		return
+		return nil, err
 	}
 
 	return dStr, err
@@ -62,7 +63,10 @@ func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream, err error) {
 
 // Serve accepts incoming streams from remote clients.
 func (cs *ClientSession) Serve() error {
-	defer func() { _ = cs.Close() }() //nolint:errcheck
+	defer func() {
+		cs.log.WithError(cs.Close()).
+			Debug("On Serve() return, close client session resulted in error.")
+	}()
 	for {
 		if _, err := cs.acceptStream(); err != nil {
 			cs.log.WithError(err).Warn("Stopped accepting streams.")
@@ -79,7 +83,8 @@ func (cs *ClientSession) acceptStream() (dStr *Stream, err error) {
 	// Close stream on failure.
 	defer func() {
 		if err != nil {
-			_ = dStr.Close() //nolint:errcheck
+			cs.log.WithError(dStr.Close()).
+				Debug("On acceptStream() failure, close stream resulted in error.")
 		}
 	}()
 
@@ -99,7 +104,7 @@ func (cs *ClientSession) acceptStream() (dStr *Stream, err error) {
 
 	// Clear deadline.
 	if err = dStr.SetDeadline(time.Time{}); err != nil {
-		return
+		return nil, err
 	}
 
 	return dStr, err

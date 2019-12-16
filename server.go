@@ -13,8 +13,8 @@ import (
 	"github.com/SkycoinProject/dmsg/netutil"
 )
 
-// ServerEntity represents a dsmg server entity.
-type ServerEntity struct {
+// Server represents a dsmg server entity.
+type Server struct {
 	EntityCommon
 
 	done chan struct{}
@@ -23,15 +23,15 @@ type ServerEntity struct {
 }
 
 // NewServer creates a new dmsg server entity.
-func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient) *ServerEntity {
-	s := new(ServerEntity)
+func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient) *Server {
+	s := new(Server)
 	s.EntityCommon.init(pk, sk, dc, logging.MustGetLogger("dmsg_server"))
 	s.done = make(chan struct{})
 	return s
 }
 
 // Close implements io.Closer
-func (s *ServerEntity) Close() error {
+func (s *Server) Close() error {
 	if s == nil {
 		return nil
 	}
@@ -43,7 +43,7 @@ func (s *ServerEntity) Close() error {
 }
 
 // Serve serves the server.
-func (s *ServerEntity) Serve(lis net.Listener, addr string) error {
+func (s *Server) Serve(lis net.Listener, addr string) error {
 	var log logrus.FieldLogger //nolint:gosimple
 	log = s.log.WithField("local_addr", addr).WithField("local_pk", s.pk)
 
@@ -57,8 +57,8 @@ func (s *ServerEntity) Serve(lis net.Listener, addr string) error {
 
 	go func() {
 		<-s.done
-		log.Info("Stopping server...")
-		_ = lis.Close() //nolint:errcheck
+		log.WithError(lis.Close()).
+			Info("Stopping server, net.Listener closed.")
 	}()
 
 	log.Info("Updating discovery entry...")
@@ -88,23 +88,32 @@ func (s *ServerEntity) Serve(lis net.Listener, addr string) error {
 	}
 }
 
-func (s *ServerEntity) updateEntryLoop(addr string) error {
+func (s *Server) updateEntryLoop(addr string) error {
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go func() {
-		awaitDone(ctx, s.done)
-		cancel()
+		select {
+		case <-ctx.Done():
+		case <-s.done:
+			cancel()
+		}
 	}()
-	return netutil.NewDefaultRetrier(s.log).Do(ctx, func() error { return s.updateServerEntry(ctx, addr) })
+	return netutil.NewDefaultRetrier(s.log).Do(ctx, func() error {
+		return s.updateServerEntry(ctx, addr)
+	})
 }
 
-func (s *ServerEntity) handleSession(conn net.Conn) {
+func (s *Server) handleSession(conn net.Conn) {
 	var log logrus.FieldLogger //nolint:gosimple
 	log = s.log.WithField("remote_tcp", conn.RemoteAddr())
 
 	dSes, err := makeServerSession(&s.EntityCommon, conn)
 	if err != nil {
 		log = log.WithError(err)
-		_ = conn.Close() //nolint:errcheck
+		if err := conn.Close(); err != nil {
+			s.log.WithError(err).
+				Debug("On handleSession() failure, close connection resulted in error.")
+		}
 		return
 	}
 
@@ -114,8 +123,7 @@ func (s *ServerEntity) handleSession(conn net.Conn) {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		awaitDone(ctx, s.done)
-		_ = dSes.Close() //nolint:errcheck
-		log.Info("Stopped session.")
+		log.WithError(dSes.Close()).Info("Stopped session.")
 	}()
 
 	if s.setSession(ctx, dSes.SessionCommon) {
