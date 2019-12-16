@@ -75,22 +75,17 @@ func (ss *ServerSession) serveStream(yStr *yamux.Stream) error {
 		return req, nil
 	}
 
-	log := ss.log.WithField("fn", "serveStream")
-
 	// Read request.
 	req, err := readRequest()
 	if err != nil {
 		return err
 	}
-	log.Info("Request read.")
 
 	// Obtain next session.
-	log.Infof("attempting to get PK: %s", req.DstAddr.PK)
 	ss2, ok := ss.entity.ServerSession(req.DstAddr.PK)
 	if !ok {
 		return ErrReqNoSession
 	}
-	log.Info("Next session obtained.")
 
 	// Forward request and obtain/check response.
 	yStr2, resp, err := ss2.forwardRequest(req)

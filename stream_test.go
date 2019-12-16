@@ -18,7 +18,7 @@ import (
 	"github.com/SkycoinProject/dmsg/noise"
 )
 
-func TestEntity(t *testing.T) {
+func TestStream(t *testing.T) {
 	// Prepare mock discovery.
 	dc := disc.NewMock()
 
@@ -68,7 +68,33 @@ func TestEntity(t *testing.T) {
 		}
 	}
 
-	t.Run("test_listeners", func(t *testing.T) {
+	t.Run("test_large_data_io", func(t *testing.T) {
+		const port = 8080
+		lis, makePipe := makePiper(clientA, clientB, port)
+		connA, connB, stop, errA := makePipe()
+		require.NoError(t, errA)
+
+		fmt.Println(connA.LocalAddr(), connA.RemoteAddr())
+		fmt.Println(connB.LocalAddr(), connB.RemoteAddr())
+
+		largeData := cipher.RandByte(noise.MaxWriteSize)
+
+		nA, errA := connA.Write(largeData)
+		require.NoError(t, errA)
+		require.Equal(t, len(largeData), nA)
+
+		readB := make([]byte, len(largeData))
+		nB, errB := io.ReadFull(connB, readB)
+		require.NoError(t, errB)
+		require.Equal(t, len(largeData), nB)
+		require.Equal(t, largeData, readB)
+
+		// Closing logic.
+		stop()
+		require.NoError(t, lis.Close())
+	})
+
+	t.Run("nettest.TestConn()", func(t *testing.T) {
 		const rounds = 3
 		listeners := make([]net.Listener, 0, rounds*2)
 
@@ -88,7 +114,7 @@ func TestEntity(t *testing.T) {
 		}
 	})
 
-	t.Run("test_concurrent_listeners", func(t *testing.T) {
+	t.Run("nettest.TestConn() concurrent", func(t *testing.T) {
 		const rounds = 10
 		listeners := make([]net.Listener, 0, rounds*2)
 
@@ -117,32 +143,6 @@ func TestEntity(t *testing.T) {
 		for _, lis := range listeners {
 			require.NoError(t, lis.Close())
 		}
-	})
-
-	t.Run("test_large_data_io", func(t *testing.T) {
-		const port = 8080
-		lis, makePipe := makePiper(clientA, clientB, port)
-		connA, connB, stop, errA := makePipe()
-		require.NoError(t, errA)
-
-		fmt.Println(connA.LocalAddr(), connA.RemoteAddr())
-		fmt.Println(connB.LocalAddr(), connB.RemoteAddr())
-
-		largeData := cipher.RandByte(noise.MaxWriteSize)
-
-		nA, errA := connA.Write(largeData)
-		require.NoError(t, errA)
-		require.Equal(t, len(largeData), nA)
-
-		readB := make([]byte, len(largeData))
-		nB, errB := io.ReadFull(connB, readB)
-		require.NoError(t, errB)
-		require.Equal(t, len(largeData), nB)
-		require.Equal(t, largeData, readB)
-
-		// Closing logic.
-		stop()
-		require.NoError(t, lis.Close())
 	})
 
 	// Closing logic.
