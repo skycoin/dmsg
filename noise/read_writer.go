@@ -83,15 +83,6 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 	return ioutil.BufRead(&rw.input, plaintext, p)
 }
 
-func isStopped(ch <-chan time.Time) bool {
-	select {
-	case <-ch:
-		return true
-	default:
-		return false
-	}
-}
-
 func (rw *ReadWriter) Write(p []byte) (n int, err error) {
 	rw.wMx.Lock()
 	defer rw.wMx.Unlock()
