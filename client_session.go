@@ -64,8 +64,10 @@ func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream, err error) {
 // Serve accepts incoming streams from remote clients.
 func (cs *ClientSession) Serve() error {
 	defer func() {
-		cs.log.WithError(cs.Close()).
-			Debug("On Serve() return, close client session resulted in error.")
+		if err := cs.Close(); err != nil {
+			cs.log.WithError(err).
+				Debug("On (*ClientSession).Serve() return, close client session resulted in error.")
+		}
 	}()
 	for {
 		if _, err := cs.acceptStream(); err != nil {
@@ -83,8 +85,10 @@ func (cs *ClientSession) acceptStream() (dStr *Stream, err error) {
 	// Close stream on failure.
 	defer func() {
 		if err != nil {
-			cs.log.WithError(dStr.Close()).
-				Debug("On acceptStream() failure, close stream resulted in error.")
+			if scErr := dStr.Close(); scErr != nil {
+				cs.log.WithError(scErr).
+					Debug("On (*ClientSession).acceptStream() failure, close stream resulted in error.")
+			}
 		}
 	}()
 
