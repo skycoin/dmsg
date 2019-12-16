@@ -170,11 +170,6 @@ func WrapConn(conn net.Conn, ns *Noise, hsTimeout time.Duration) (*Conn, error) 
 	return &Conn{Conn: conn, ns: rw}, nil
 }
 
-// Makes a noise.Conn without handshake.
-func MakeConn(conn net.Conn, ns *Noise) *Conn {
-	return &Conn{Conn: conn, ns: NewReadWriter(conn, ns)}
-}
-
 // Read reads from the noise-encrypted connection.
 func (c *Conn) Read(b []byte) (int, error) {
 	return c.ns.Read(b)
@@ -199,18 +194,6 @@ func (c *Conn) RemoteAddr() net.Addr {
 		PK:   c.ns.RemoteStatic(),
 		Addr: c.Conn.RemoteAddr(),
 	}
-}
-
-func (c *Conn) SetDeadline(t time.Time) error {
-	return c.Conn.SetDeadline(t)
-}
-
-func (c *Conn) SetReadDeadline(t time.Time) error {
-	return c.Conn.SetReadDeadline(t)
-}
-
-func (c *Conn) SetWriteDeadline(t time.Time) error {
-	return c.Conn.SetWriteDeadline(t)
 }
 
 // Listener accepts incoming connections and encrypts with noise.

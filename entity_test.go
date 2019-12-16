@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"sync"
 	"testing"
@@ -157,13 +156,4 @@ func GenKeyPair(t *testing.T, seed string) (cipher.PubKey, cipher.SecKey) {
 	pk, sk, err := cipher.GenerateDeterministicKeyPair([]byte(seed))
 	require.NoError(t, err)
 	return pk, sk
-}
-
-func makeLargeData(reps int) []byte {
-	section := cipher.RandByte(math.MaxUint16)
-	b := make([]byte, 0, len(section)*reps)
-	for i := 0; i < reps; i++ {
-		b = append(b, section...)
-	}
-	return b
 }

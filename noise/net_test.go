@@ -315,12 +315,9 @@ func prepareConns(t *testing.T) (*Conn, *Conn, func()) {
 	require.NoError(t, err)
 
 	closeFunc := func() {
-		_ = aConn.Close()
-		_ = bConn.Close()
-		_ = aLis.Close()
-		//require.NoError(t, aConn.Close())
-		//require.NoError(t, bConn.Close())
-		//require.NoError(t, aLis.Close())
+		_ = aConn.Close() //nolint:errcheck
+		_ = bConn.Close() //nolint:errcheck
+		_ = aLis.Close()  //nolint:errcheck
 	}
 
 	aRW := NewReadWriter(aConn, aNs)
@@ -338,28 +335,6 @@ func prepareConns(t *testing.T) (*Conn, *Conn, func()) {
 
 	return a, b, closeFunc
 }
-
-// checkForTimeoutError checks that the error satisfies the Error interface
-// and that Timeout returns true.
-func checkForTimeoutError(t *testing.T, err error) {
-	t.Helper()
-	if nerr, ok := err.(net.Error); ok {
-		if !nerr.Timeout() {
-			t.Errorf("err.Timeout() = false, want true")
-		}
-	} else {
-		t.Errorf("got %T, want net.Error", err)
-	}
-}
-
-//func makeLargeData(reps int) []byte {
-//	section := cipher.RandByte(math.MaxUint16)
-//	b := make([]byte, 0, len(section)*reps)
-//	for i := 0; i < reps; i++ {
-//		b = append(b, section...)
-//	}
-//	return b
-//}
 
 func TestListener(t *testing.T) {
 	const (

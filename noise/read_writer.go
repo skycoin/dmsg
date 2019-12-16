@@ -244,6 +244,7 @@ func ReadRawFrame(r *bufio.Reader) (p []byte, err error) {
 	return b[prefixSize:], nil
 }
 
+// IsCompleteFrame determines if a frame is fully formed.
 func IsCompleteFrame(b []byte) bool {
 	if len(b) < prefixSize || len(b[prefixSize:]) != int(binary.BigEndian.Uint16(b)) {
 		return false
@@ -251,6 +252,7 @@ func IsCompleteFrame(b []byte) bool {
 	return true
 }
 
+// FillIncompleteFrame takes in an incomplete frame, and returns empty bytes to fill the incomplete frame.
 func FillIncompleteFrame(b []byte) []byte {
 	originalLen := len(b)
 
