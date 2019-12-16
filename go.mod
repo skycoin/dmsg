@@ -18,5 +18,3 @@ require (
 	golang.org/x/tools v0.0.0-20191206204035-259af5ff87bd // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )
-
-replace github.com/SkycoinProject/yamux => ../yamux
