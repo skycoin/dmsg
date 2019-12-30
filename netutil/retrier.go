@@ -62,7 +62,7 @@ func (r *Retrier) WithErrWhitelist(errors ...error) *Retrier {
 
 // Do takes a RetryFunc and attempts to execute it, if it fails with an error it will be retried a maximum of given times with an expBackoff, until it returns
 // nil or an error that is whitelisted
-func (r Retrier) Do(ctx context.Context, f RetryFunc) error {
+func (r *Retrier) Do(ctx context.Context, f RetryFunc) error {
 	if r.times == 0 {
 		return r.retryUntilSuccess(ctx, f)
 	}
@@ -70,7 +70,7 @@ func (r Retrier) Do(ctx context.Context, f RetryFunc) error {
 	return r.retryNTimes(f)
 }
 
-func (r Retrier) retryNTimes(f RetryFunc) error {
+func (r *Retrier) retryNTimes(f RetryFunc) error {
 	currentBackoff := r.expBackoff
 
 	for i := uint32(0); i < r.times; i++ {
@@ -92,7 +92,7 @@ func (r Retrier) retryNTimes(f RetryFunc) error {
 	return ErrMaximumRetriesReached
 }
 
-func (r Retrier) retryUntilSuccess(ctx context.Context, f RetryFunc) error {
+func (r *Retrier) retryUntilSuccess(ctx context.Context, f RetryFunc) error {
 	currentBackoff := r.expBackoff
 
 	for {
@@ -119,7 +119,7 @@ func (r Retrier) retryUntilSuccess(ctx context.Context, f RetryFunc) error {
 	}
 }
 
-func (r Retrier) isWhitelisted(err error) bool {
+func (r *Retrier) isWhitelisted(err error) bool {
 	_, ok := r.errWhitelist[err]
 	return ok
 }
