@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -40,8 +41,8 @@ func New(storer store2.Storer, logger *logging.Logger, metrics metrics.Recorder)
 	}
 
 	// routes
-	mux.HandleFunc("/messaging-discovery/entry/", api.muxEntry())
-	mux.HandleFunc("/messaging-discovery/available_servers", api.getAvailableServer())
+	mux.HandleFunc("/dmsg-discovery/entry/", api.muxEntry())
+	mux.HandleFunc("/dmsg-discovery/available_servers", api.getAvailableServer())
 
 	return api
 }
@@ -108,6 +109,7 @@ func (a *API) getEntry(w http.ResponseWriter, r *http.Request) {
 // Args:
 //	json serialized entry object
 func (a *API) setEntry(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("START: setEntry")
 	entry := &disc.Entry{}
 
 	err := json.NewDecoder(r.Body).Decode(entry)
