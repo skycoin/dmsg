@@ -21,7 +21,7 @@ func main() {
 	var initPort, respPort uint16 = 1563, 1563
 
 	// instantiate discovery
-	// dc := disc.NewHTTP("https://dmsg.discovery.skywire.skycoin.com")
+	//dc := disc.NewHTTP("http://127.0.0.1:9090")
 	dc := disc.NewMock()
 
 	// instantiate server
