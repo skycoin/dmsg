@@ -145,6 +145,55 @@ func TestStream(t *testing.T) {
 		}
 	})
 
+	t.Run("test_concurrent_dialing", func(t *testing.T) {
+		const port = 8080
+		const rounds = 100
+
+		aErrs := make([]error, rounds)
+		bErrs := make([]error, rounds)
+
+		wgA := new(sync.WaitGroup)
+		wgA.Add(rounds)
+
+		lis, err := clientA.Listen(port)
+		require.NoError(t, err)
+
+		go func() {
+			for i := 0; i < rounds; i++ {
+				connA, err := lis.Accept()
+				if err != nil {
+					aErrs[i] = err
+				} else {
+					_ = connA.Close() //nolint:errcheck
+				}
+				wgA.Done()
+			}
+		}()
+
+		for i := 0; i < rounds; i++ {
+			go func(i int) {
+				connB, err := clientB.Dial(context.TODO(), lis.DmsgAddr())
+				if err != nil {
+					bErrs[i] = err
+				} else {
+					_ = connB.Close() //nolint:errcheck
+				}
+			}(i)
+		}
+
+		wgA.Wait()
+
+		for _, err := range aErrs {
+			require.NoError(t, err)
+		}
+		for _, err := range bErrs {
+			require.NoError(t, err)
+		}
+
+		// Closing logic.
+		require.NoError(t, lis.Close())
+	})
+
 	// Closing logic.
 	require.NoError(t, clientB.Close())
 	require.NoError(t, clientA.Close())

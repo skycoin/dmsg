@@ -47,7 +47,7 @@ func TestEntriesEndpoint(t *testing.T) {
 		{
 			name:            "get entry",
 			method:          http.MethodGet,
-			endpoint:        fmt.Sprintf("/messaging-discovery/entry/%s", pk),
+			endpoint:        fmt.Sprintf("/dmsg-discovery/entry/%s", pk),
 			status:          http.StatusOK,
 			contentType:     "application/json",
 			responseIsEntry: true,
@@ -64,7 +64,7 @@ func TestEntriesEndpoint(t *testing.T) {
 		{
 			name:            "get not valid entry",
 			method:          http.MethodGet,
-			endpoint:        fmt.Sprintf("/messaging-discovery/entry/%s", pk),
+			endpoint:        fmt.Sprintf("/dmsg-discovery/entry/%s", pk),
 			status:          http.StatusNotFound,
 			contentType:     "application/json",
 			responseIsEntry: false,
@@ -74,7 +74,7 @@ func TestEntriesEndpoint(t *testing.T) {
 		{
 			name:            "set entry right",
 			method:          http.MethodPost,
-			endpoint:        fmt.Sprintf("/messaging-discovery/entry/%s", pk),
+			endpoint:        fmt.Sprintf("/dmsg-discovery/entry/%s", pk),
 			status:          http.StatusOK,
 			contentType:     "application/json",
 			responseIsEntry: false,
@@ -89,7 +89,7 @@ func TestEntriesEndpoint(t *testing.T) {
 		{
 			name:            "set new entry non-zero sequence",
 			method:          http.MethodPost,
-			endpoint:        fmt.Sprintf("/messaging-discovery/entry/%s", pk),
+			endpoint:        fmt.Sprintf("/dmsg-discovery/entry/%s", pk),
 			status:          http.StatusUnprocessableEntity,
 			contentType:     "application/json",
 			responseIsEntry: false,
@@ -105,7 +105,7 @@ func TestEntriesEndpoint(t *testing.T) {
 		{
 			name:            "set entry iteration",
 			method:          http.MethodPost,
-			endpoint:        fmt.Sprintf("/messaging-discovery/entry/%s", pk),
+			endpoint:        fmt.Sprintf("/dmsg-discovery/entry/%s", pk),
 			status:          http.StatusOK,
 			contentType:     "application/json",
 			responseIsEntry: false,
@@ -132,7 +132,7 @@ func TestEntriesEndpoint(t *testing.T) {
 		{
 			name:            "set entry iteration wrong sequence",
 			method:          http.MethodPost,
-			endpoint:        fmt.Sprintf("/messaging-discovery/entry/%s", pk),
+			endpoint:        fmt.Sprintf("/dmsg-discovery/entry/%s", pk),
 			status:          http.StatusUnprocessableEntity,
 			contentType:     "application/json",
 			responseIsEntry: false,
@@ -157,7 +157,7 @@ func TestEntriesEndpoint(t *testing.T) {
 		{
 			name:            "set entry iteration unauthorized",
 			method:          http.MethodPost,
-			endpoint:        fmt.Sprintf("/messaging-discovery/entry/%s", pk),
+			endpoint:        fmt.Sprintf("/dmsg-discovery/entry/%s", pk),
 			status:          http.StatusUnauthorized,
 			contentType:     "application/json",
 			responseIsEntry: false,

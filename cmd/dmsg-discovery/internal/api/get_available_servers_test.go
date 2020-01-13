@@ -46,7 +46,7 @@ func TestGetAvailableServers(t *testing.T) {
 	}{
 		{
 			name:            "get 3 server entries",
-			endpoint:        "/messaging-discovery/available_servers",
+			endpoint:        "/dmsg-discovery/available_servers",
 			method:          http.MethodGet,
 			status:          http.StatusOK,
 			responseIsError: false,
@@ -80,7 +80,7 @@ func TestGetAvailableServers(t *testing.T) {
 		},
 		{
 			name:            "get no entries",
-			endpoint:        "/messaging-discovery/available_servers",
+			endpoint:        "/dmsg-discovery/available_servers",
 			method:          http.MethodGet,
 			status:          http.StatusOK,
 			responseIsError: false,
