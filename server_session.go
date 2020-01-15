@@ -61,16 +61,21 @@ func (ss *ServerSession) Serve() {
 }
 
 func (ss *ServerSession) serveStream(yStr *yamux.Stream) error {
-	readRequest := func() (StreamDialRequest, error) {
-		var req StreamDialRequest
-		if err := ss.readEncryptedGob(yStr, &req); err != nil {
-			return req, err
+	readRequest := func() (StreamRequest, error) {
+		obj, err := ss.readObject(yStr)
+		if err != nil {
+			return StreamRequest{}, err
 		}
-		if err := req.Verify(0); err != nil { // TODO(evanlinjin): timestamp tracker.
-			return req, ErrReqInvalidTimestamp
+		req, err := obj.ObtainStreamRequest()
+		if err != nil {
+			return StreamRequest{}, err
+		}
+		// TODO(evanlinjin): Implement timestamp tracker.
+		if err := req.Verify(0); err != nil {
+			return StreamRequest{}, err
 		}
 		if req.SrcAddr.PK != ss.rPK {
-			return req, ErrReqInvalidSrcPK
+			return StreamRequest{}, ErrReqInvalidSrcPK
 		}
 		return req, nil
 	}
@@ -94,7 +99,7 @@ func (ss *ServerSession) serveStream(yStr *yamux.Stream) error {
 	}
 
 	// Forward response.
-	if err := ss.writeEncryptedGob(yStr, resp); err != nil {
+	if err := ss.writeObject(yStr, resp); err != nil {
 		return err
 	}
 
@@ -102,23 +107,28 @@ func (ss *ServerSession) serveStream(yStr *yamux.Stream) error {
 	return netutil.CopyReadWriteCloser(yStr, yStr2)
 }
 
-func (ss *ServerSession) forwardRequest(req StreamDialRequest) (*yamux.Stream, StreamDialResponse, error) {
+func (ss *ServerSession) forwardRequest(req StreamRequest) (*yamux.Stream, SignedObject, error) {
 	yStr, err := ss.ys.OpenStream()
 	if err != nil {
-		return nil, StreamDialResponse{}, err
+		return nil, nil, err
 	}
-	if err := ss.writeEncryptedGob(yStr, req); err != nil {
+	if err := ss.writeObject(yStr, req.raw); err != nil {
 		_ = yStr.Close() //nolint:errcheck
-		return nil, StreamDialResponse{}, err
+		return nil, nil, err
 	}
-	var resp StreamDialResponse
-	if err := ss.readEncryptedGob(yStr, &resp); err != nil {
+	respObj, err := ss.readObject(yStr)
+	if err != nil {
 		_ = yStr.Close() //nolint:errcheck
-		return nil, StreamDialResponse{}, err
+		return nil, nil, err
 	}
-	if err := resp.Verify(req.DstAddr.PK, req.Hash()); err != nil {
+	resp, err := respObj.ObtainStreamResponse()
+	if err != nil {
 		_ = yStr.Close() //nolint:errcheck
-		return nil, StreamDialResponse{}, err
+		return nil, nil, err
 	}
-	return yStr, resp, nil
+	if err := resp.Verify(req); err != nil {
+		_ = yStr.Close() //nolint:errcheck
+		return nil, nil, err
+	}
+	return yStr, respObj, nil
 }

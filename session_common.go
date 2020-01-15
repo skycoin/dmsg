@@ -95,10 +95,9 @@ func (sc *SessionCommon) initServer(entity *EntityCommon, conn net.Conn) error {
 }
 
 // writeEncryptedGob encrypts with noise and prefixed with uint16 (2 additional bytes).
-func (sc *SessionCommon) writeEncryptedGob(w io.Writer, v interface{}) error {
-	raw := encodeGob(v)
+func (sc *SessionCommon) writeObject(w io.Writer, obj SignedObject) error {
 	sc.wMx.Lock()
-	p := sc.ns.EncryptUnsafe(raw)
+	p := sc.ns.EncryptUnsafe(obj)
 	sc.wMx.Unlock()
 	p = append(make([]byte, 2), p...)
 	binary.BigEndian.PutUint16(p, uint16(len(p)-2))
@@ -106,28 +105,25 @@ func (sc *SessionCommon) writeEncryptedGob(w io.Writer, v interface{}) error {
 	return err
 }
 
-func (sc *SessionCommon) readEncryptedGob(r io.Reader, v interface{}) error {
+func (sc *SessionCommon) readObject(r io.Reader) (SignedObject, error) {
 	lb := make([]byte, 2)
 	if _, err := io.ReadFull(r, lb); err != nil {
-		return err
+		return nil, err
 	}
 	pb := make([]byte, binary.BigEndian.Uint16(lb))
 	if _, err := io.ReadFull(r, pb); err != nil {
-		return err
+		return nil, err
 	}
 
 	sc.rMx.Lock()
 	if sc.nMap == nil {
 		sc.rMx.Unlock()
-		return ErrSessionClosed
+		return nil, ErrSessionClosed
 	}
-	b, err := sc.ns.DecryptWithNonceMap(sc.nMap, pb)
+	obj, err := sc.ns.DecryptWithNonceMap(sc.nMap, pb)
 	sc.rMx.Unlock()
 
-	if err != nil {
-		return err
-	}
-	return decodeGob(v, b)
+	return obj, err
 }
 
 func (sc *SessionCommon) localSK() cipher.SecKey { return sc.entity.sk }
