@@ -151,8 +151,6 @@ func (req StreamRequest) Verify(lastTimestamp int64) error {
 	}
 
 	// Check signature.
-	fmt.Printf("[   StreamRequest.Verify] %d: %v\n", len(req.raw), req.raw)
-	fmt.Printf("[   StreamRequest.Verify] SrcPK: %s\n", req.SrcAddr.PK)
 	if err := cipher.VerifyPubKeySignedPayload(req.SrcAddr.PK, req.raw.Sig(), req.raw.Object()); err != nil {
 		return ErrReqInvalidSig
 	}
