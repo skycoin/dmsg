@@ -153,36 +153,35 @@ func TestStream(t *testing.T) {
 		aErrs := make([]error, rounds)
 		bErrs := make([]error, rounds)
 
-		wgA := new(sync.WaitGroup)
-		wgA.Add(rounds)
+		wgB := new(sync.WaitGroup)
+		wgB.Add(rounds)
 
 		lis, err := clientA.Listen(port)
 		require.NoError(t, err)
 
-		go func() {
-			for i := 0; i < rounds; i++ {
-				connA, err := lis.Accept()
-				if err != nil {
-					aErrs[i] = err
-				} else {
-					_ = connA.Close() //nolint:errcheck
-				}
-				wgA.Done()
-			}
-		}()
-
 		for i := 0; i < rounds; i++ {
 			go func(i int) {
-				connB, err := clientB.Dial(context.TODO(), lis.DmsgAddr())
+				connB, err := clientB.Dial(context.TODO(), lis.DmsgAddr()) // TODO(evanlinjin): Race condition?
 				if err != nil {
 					bErrs[i] = err
 				} else {
 					_ = connB.Close() //nolint:errcheck
 				}
+				wgB.Done()
 			}(i)
 		}
 
-		wgA.Wait()
+		for i := 0; i < rounds; i++ {
+			connA, err := lis.Accept()
+			if err != nil {
+				aErrs[i] = err
+			} else {
+				_ = connA.Close() //nolint:errcheck
+			}
+
+		}
+
+		wgB.Wait()
 
 		for _, err := range aErrs {
 			require.NoError(t, err)
