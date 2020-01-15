@@ -148,7 +148,7 @@ func TestStream(t *testing.T) {
 
 	t.Run("test_concurrent_dialing", func(t *testing.T) {
 		const port = 8080
-		const rounds = 100
+		const rounds = 50
 
 		aErrs := make([]error, rounds)
 		bErrs := make([]error, rounds)
