@@ -1,212 +1,207 @@
 package dmsg
 
 import (
-	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"net"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/net/nettest"
 
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/disc"
+	"github.com/SkycoinProject/dmsg/noise"
 )
 
-func TestNewStream(t *testing.T) {
-	log := logging.MustGetLogger("dmsg_test")
-	tr := NewStream(nil, log, Addr{}, Addr{}, 0, maxFwdPayLen, func() {})
-	assert.NotNil(t, tr)
-}
-
-func BenchmarkNewStream(b *testing.B) {
-	log := logging.MustGetLogger("dmsg_test")
-	for i := 0; i < b.N; i++ {
-		NewStream(nil, log, Addr{}, Addr{}, 0, maxFwdPayLen, func() {})
-	}
-}
-
-func TestStream_close(t *testing.T) {
-	log := logging.MustGetLogger("dmsg_test")
-	tr := NewStream(nil, log, Addr{}, Addr{}, 0, maxFwdPayLen, func() {})
-
-	closed := tr.close()
-
-	t.Run("Valid close() result (1st attempt)", func(t *testing.T) {
-		assert.True(t, closed)
-	})
-
-	t.Run("Channel closed (1st attempt)", func(t *testing.T) {
-		_, ok := <-tr.done
-		assert.False(t, ok)
-	})
-
-	closed = tr.close()
-
-	t.Run("Valid close() result (2nd attempt)", func(t *testing.T) {
-		assert.False(t, closed)
-	})
-
-	t.Run("Channel closed (2nd attempt)", func(t *testing.T) {
-		_, ok := <-tr.done
-		assert.False(t, ok)
-	})
-
-	t.Run("No panic with nil pointer receiver", func(t *testing.T) {
-		var tr1, tr2 *Stream
-		assert.NoError(t, tr1.Close())
-		assert.False(t, tr2.close())
-	})
-}
-
-func BenchmarkStream_Read(b *testing.B) {
-	initTr, respTr, err := createBenchmarkClients()
-	if err != nil {
-		b.Error(err)
-	}
-
-	const messageSize = 50000
-	const bufSize = 10
-	message := bytes.Repeat([]byte("a"), messageSize)
-	go func() {
-		for {
-			if _, err := initTr.Write(message); err != nil {
-				b.Error(err)
-			}
-		}
-	}()
-
-	b.ResetTimer()
-	buf := make([]byte, bufSize)
-	for i := 0; i < b.N; i++ {
-		if _, err := respTr.Read(buf); err != nil {
-			b.Error(err)
-		}
-	}
-}
-
-func BenchmarkStream_Write(b *testing.B) {
-	initTr, _, err := createBenchmarkClients()
-	if err != nil {
-		b.Error(err)
-	}
-
-	const bufSize = 50000
-	buf := make([]byte, bufSize)
-	go func() {
-		for {
-			if _, err := initTr.Read(buf); err != nil {
-				b.Error(err)
-			}
-		}
-	}()
-
-	b.ResetTimer()
-	message := []byte("a")
-	for i := 0; i < b.N; i++ {
-		if _, err := initTr.Write(message); err != nil {
-			b.Error(err)
-		}
-	}
-}
-
-func createBenchmarkClients() (initTp, respTp *Stream, err error) {
+func TestStream(t *testing.T) {
+	// Prepare mock discovery.
 	dc := disc.NewMock()
-	ctx := context.TODO()
 
-	if _, _, err := createServer(dc); err != nil {
-		return nil, nil, err
+	// Prepare dmsg server.
+	pkSrv, skSrv := GenKeyPair(t, "server")
+	srv := NewServer(pkSrv, skSrv, dc)
+	srv.SetLogger(logging.MustGetLogger("server"))
+	lisSrv, err := net.Listen("tcp", "")
+	require.NoError(t, err)
+
+	// Serve dmsg server.
+	chSrv := make(chan error, 1)
+	go func() { chSrv <- srv.Serve(lisSrv, "") }() //nolint:errcheck
+
+	// Prepare and serve dmsg client A.
+	pkA, skA := GenKeyPair(t, "client A")
+	clientA := NewClient(pkA, skA, dc, DefaultConfig())
+	clientA.SetLogger(logging.MustGetLogger("client_A"))
+	go clientA.Serve()
+
+	// Prepare and serve dmsg client B.
+	pkB, skB := GenKeyPair(t, "client B")
+	clientB := NewClient(pkB, skB, dc, DefaultConfig())
+	clientB.SetLogger(logging.MustGetLogger("client_B"))
+	go clientB.Serve()
+
+	// Ensure all entities are registered in discovery before continuing.
+	time.Sleep(time.Second * 2)
+
+	// Helper functions.
+	makePiper := func(dialer, listener *Client, port uint16) (net.Listener, nettest.MakePipe) {
+		lis, err := listener.Listen(port)
+		require.NoError(t, err)
+
+		return lis, func() (c1, c2 net.Conn, stop func(), err error) {
+			if c1, err = dialer.DialStream(context.TODO(), Addr{PK: listener.LocalPK(), Port: port}); err != nil {
+				return
+			}
+			if c2, err = lis.Accept(); err != nil {
+				return
+			}
+			stop = func() {
+				_ = c1.Close() //nolint:errcheck
+				_ = c2.Close() //nolint:errcheck
+			}
+			return
+		}
 	}
 
-	responderPK, responderSK := cipher.GenerateKeyPair()
-	initiatorPK, initiatorSK := cipher.GenerateKeyPair()
-	responder := NewClient(responderPK, responderSK, dc, SetLogger(logging.MustGetLogger("responder")))
-	err = responder.InitiateServerConnections(ctx, 1)
-	if err != nil {
-		return nil, nil, err
-	}
+	t.Run("test_large_data_io", func(t *testing.T) {
+		const port = 8080
+		lis, makePipe := makePiper(clientA, clientB, port)
+		connA, connB, stop, errA := makePipe()
+		require.NoError(t, errA)
 
-	initiator := NewClient(initiatorPK, initiatorSK, dc, SetLogger(logging.MustGetLogger("initiator")))
-	err = initiator.InitiateServerConnections(ctx, 1)
-	if err != nil {
-		return nil, nil, err
-	}
+		fmt.Println(connA.LocalAddr(), connA.RemoteAddr())
+		fmt.Println(connB.LocalAddr(), connB.RemoteAddr())
 
-	initTp, err = initiator.Dial(ctx, responder.pk, port)
-	if err != nil {
-		return nil, nil, err
-	}
+		largeData := cipher.RandByte(noise.MaxWriteSize)
 
-	listener, err := responder.Listen(port)
-	if err != nil {
-		return nil, nil, err
-	}
+		nA, errA := connA.Write(largeData)
+		require.NoError(t, errA)
+		require.Equal(t, len(largeData), nA)
 
-	respTp, err = listener.AcceptStream()
-	if err != nil {
-		return nil, nil, err
-	}
+		readB := make([]byte, len(largeData))
+		nB, errB := io.ReadFull(connB, readB)
+		require.NoError(t, errB)
+		require.Equal(t, len(largeData), nB)
+		require.Equal(t, largeData, readB)
 
-	return initTp, respTp, nil
+		// Closing logic.
+		stop()
+		require.NoError(t, lis.Close())
+	})
+
+	t.Run("nettest.TestConn()", func(t *testing.T) {
+		const rounds = 3
+		listeners := make([]net.Listener, 0, rounds*2)
+
+		for port := uint16(1); port <= rounds; port++ {
+			lis1, makePipe1 := makePiper(clientA, clientB, port)
+			listeners = append(listeners, lis1)
+			nettest.TestConn(t, makePipe1)
+
+			lis2, makePipe2 := makePiper(clientB, clientA, port)
+			listeners = append(listeners, lis2)
+			nettest.TestConn(t, makePipe2)
+		}
+
+		// Closing logic.
+		for _, lis := range listeners {
+			require.NoError(t, lis.Close())
+		}
+	})
+
+	// TODO(evanlinjin): Ensure this passes via travis.
+	//t.Run("nettest.TestConn() concurrent", func(t *testing.T) {
+	//	const rounds = 10
+	//	listeners := make([]net.Listener, 0, rounds*2)
+	//
+	//	wg := new(sync.WaitGroup)
+	//	wg.Add(rounds * 2)
+	//
+	//	for port := uint16(1); port <= rounds; port++ {
+	//		lis1, makePipe1 := makePiper(clientA, clientB, port)
+	//		listeners = append(listeners, lis1)
+	//		go func(makePipe1 nettest.MakePipe) {
+	//			nettest.TestConn(t, makePipe1)
+	//			wg.Done()
+	//		}(makePipe1)
+	//
+	//		lis2, makePipe2 := makePiper(clientB, clientA, port)
+	//		listeners = append(listeners, lis2)
+	//		go func(makePipe2 nettest.MakePipe) {
+	//			nettest.TestConn(t, makePipe2)
+	//			wg.Done()
+	//		}(makePipe2)
+	//	}
+	//
+	//	wg.Wait()
+	//
+	//	// Closing logic.
+	//	for _, lis := range listeners {
+	//		require.NoError(t, lis.Close())
+	//	}
+	//})
+
+	t.Run("test_concurrent_dialing", func(t *testing.T) {
+		const port = 8080
+		const rounds = 50
+
+		aErrs := make([]error, rounds)
+		bErrs := make([]error, rounds)
+
+		wg := new(sync.WaitGroup)
+		wg.Add(rounds * 2)
+
+		lis, err := clientA.Listen(port)
+		require.NoError(t, err)
+
+		for i := 0; i < rounds; i++ {
+			go func(i int) {
+				connB, err := clientB.Dial(context.TODO(), lis.DmsgAddr())
+				if err != nil {
+					bErrs[i] = err
+				} else {
+					_ = connB.Close() //nolint:errcheck
+				}
+				wg.Done()
+			}(i)
+			go func(i int) {
+				connA, err := lis.Accept()
+				if err != nil {
+					aErrs[i] = err
+				} else {
+					_ = connA.Close() //nolint:errcheck
+				}
+				wg.Done()
+			}(i)
+		}
+
+		wg.Wait()
+
+		for _, err := range aErrs {
+			require.NoError(t, err)
+		}
+		for _, err := range bErrs {
+			require.NoError(t, err)
+		}
+
+		// Closing logic.
+		require.NoError(t, lis.Close())
+	})
+
+	// Closing logic.
+	require.NoError(t, clientB.Close())
+	require.NoError(t, clientA.Close())
+	require.NoError(t, srv.Close())
+	require.NoError(t, <-chSrv)
 }
 
-// TODO(evanlinjin): Re-enable this test when it passes.
-//func TestTransport(t *testing.T) {
-//	mp := func() (c1, c2 net.Conn, stop func(), err error) {
-//		respPK, respSK := cipher.GenerateKeyPair()
-//		initPK, initSK := cipher.GenerateKeyPair()
-//
-//		var initPort, respPort uint16 = 1563, 1563
-//
-//		dc := disc.NewMock()
-//
-//		srv, err := CreateDmsgTestServer(dc)
-//		if err != nil {
-//			return nil, nil, nil, err
-//		}
-//		defer func() { require.NoError(t, srv.Close()) }()
-//
-//		respC := NewClient(respPK, respSK, dc)
-//		initC := NewClient(initPK, initSK, dc)
-//
-//		if err := respC.InitiateServerConnections(context.Background(), 1); err != nil {
-//			return nil, nil, nil, err
-//		}
-//
-//		if err := initC.InitiateServerConnections(context.Background(), 1); err != nil {
-//			return nil, nil, nil, err
-//		}
-//
-//		initL, err := initC.Listen(initPort)
-//		if err != nil {
-//			return nil, nil, nil, err
-//		}
-//
-//		respL, err := respC.Listen(respPort)
-//		if err != nil {
-//			return nil, nil, nil, err
-//		}
-//
-//		initTp, err := initC.Dial(context.Background(), respPK, respPort)
-//		if err != nil {
-//			return nil, nil, nil, err
-//		}
-//
-//		respTp, err := respL.AcceptTransport()
-//		if err != nil {
-//			return nil, nil, nil, err
-//		}
-//
-//		closeFunc := func() {
-//			require.NoError(t, initTp.Close())
-//			require.NoError(t, respTp.Close())
-//			require.NoError(t, initL.Close())
-//			require.NoError(t, respL.Close())
-//			require.NoError(t, initC.Close())
-//			require.NoError(t, respC.Close())
-//		}
-//
-//		return initTp, respTp, closeFunc, nil
-//	}
-//
-//	nettest.TestConn(t, mp)
-//}
+func GenKeyPair(t *testing.T, seed string) (cipher.PubKey, cipher.SecKey) {
+	pk, sk, err := cipher.GenerateDeterministicKeyPair([]byte(seed))
+	require.NoError(t, err)
+	return pk, sk
+}

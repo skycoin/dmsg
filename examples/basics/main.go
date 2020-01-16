@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"log"
+	"time"
+
+	"golang.org/x/net/nettest"
 
 	"github.com/SkycoinProject/dmsg"
 	"github.com/SkycoinProject/dmsg/cipher"
@@ -18,29 +21,28 @@ func main() {
 	var initPort, respPort uint16 = 1563, 1563
 
 	// instantiate discovery
-	// dc := disc.NewHTTP("https://dmsg.discovery.skywire.skycoin.com")
+	//dc := disc.NewHTTP("http://127.0.0.1:9090")
 	dc := disc.NewMock()
 
 	// instantiate server
-	srv, err := dmsg.CreateDmsgTestServer(dc)
+	sPK, sSK := cipher.GenerateKeyPair()
+	srv := dmsg.NewServer(sPK, sSK, dc)
+
+	lis, err := nettest.NewLocalListener("tcp")
 	if err != nil {
-		log.Fatalf("Error initiating server: %v", err)
+		panic(err)
 	}
-	defer func() { _ = srv.Close() }() //nolint:errcheck
+	go func() { _ = srv.Serve(lis, "") }() //nolint:errcheck
+	time.Sleep(time.Second)
 
 	// instantiate clients
-	respC := dmsg.NewClient(respPK, respSK, dc)
-	initC := dmsg.NewClient(initPK, initSK, dc)
+	respC := dmsg.NewClient(respPK, respSK, dc, nil)
+	go respC.Serve()
 
-	// connect to the DMSG server
-	if err := respC.InitiateServerConnections(context.Background(), 1); err != nil {
-		log.Fatalf("Error initiating server connections by responder: %v", err)
-	}
+	initC := dmsg.NewClient(initPK, initSK, dc, nil)
+	go initC.Serve()
 
-	// connect to the DMSG server
-	if err := initC.InitiateServerConnections(context.Background(), 1); err != nil {
-		log.Fatalf("Error initiating server connections by initiator: %v", err)
-	}
+	time.Sleep(time.Second)
 
 	// bind to port and start listening for incoming messages
 	initL, err := initC.Listen(initPort)
@@ -55,7 +57,7 @@ func main() {
 	}
 
 	// dial responder via DMSG
-	initTp, err := initC.Dial(context.Background(), respPK, respPort)
+	initTp, err := initC.DialStream(context.Background(), dmsg.Addr{PK: respPK, Port: respPort})
 	if err != nil {
 		log.Fatalf("Error dialing responder: %v", err)
 	}

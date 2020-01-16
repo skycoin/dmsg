@@ -90,12 +90,12 @@ func TestNewReadWriter(t *testing.T) {
 
 		for i := 0; i < msgCount; i++ {
 			w := <-wCh
-			fmt.Printf("write_result[%d]: b(%s) err(%v)\n", i, string(w.b), w.err)
+			t.Logf("write_result[%d]: b(%s) err(%v)\n", i, string(w.b), w.err)
 			assert.NoError(t, w.err)
 			assert.True(t, w.n > 0)
 
 			r := <-rCh
-			fmt.Printf(" read_result[%d]: b(%s) err(%v)\n", i, string(r.b), r.err)
+			t.Logf(" read_result[%d]: b(%s) err(%v)\n", i, string(r.b), r.err)
 			assert.NoError(t, r.err)
 			assert.True(t, r.n > 0)
 		}
