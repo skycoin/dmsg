@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net"
 	"net/rpc"
 	"sync"
@@ -265,31 +266,41 @@ func TestConn(t *testing.T) {
 	})
 
 	t.Run("TestLargeDataIO", func(t *testing.T) {
-		c1, c2, stop := prepareConns(t)
-		defer stop()
+		do := func(t *testing.T, n int) {
+			c1, c2, stop := prepareConns(t)
+			defer stop()
 
-		writeB := cipher.RandByte(MaxWriteSize)
-		readB := make([]byte, len(writeB))
+			writeB := cipher.RandByte(n)
+			readB := make([]byte, len(writeB))
 
-		var (
-			n2   int
-			err2 = make(chan error, 1)
-		)
-		go func() {
-			var err error
-			n2, err = io.ReadFull(c2, readB)
-			err2 <- err
-			close(err2)
-		}()
+			var (
+				n2   int
+				err2 = make(chan error, 1)
+			)
+			go func() {
+				var err error
+				n2, err = io.ReadFull(c2, readB)
+				err2 <- err
+				close(err2)
+			}()
 
-		n1, err1 := c1.Write(writeB)
-		require.NoError(t, err1)
-		require.Equal(t, len(writeB), n1)
+			n1, err1 := c1.Write(writeB)
+			require.NoError(t, err1)
+			require.Equal(t, len(writeB), n1)
 
-		require.NoError(t, <-err2)
-		require.Equal(t, len(readB), n2)
+			require.NoError(t, <-err2)
+			require.Equal(t, len(readB), n2)
 
-		require.Equal(t, writeB, readB)
+			require.Equal(t, writeB, readB)
+		}
+
+		rand.Seed(time.Now().UnixNano())
+		for i := 0; i < 10; i++ {
+			n := rand.Intn(10000000)
+			t.Run(fmt.Sprintf("%dBytes", n), func(t *testing.T) {
+				do(t, n)
+			})
+		}
 	})
 }
 

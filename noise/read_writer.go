@@ -87,32 +87,32 @@ func (rw *ReadWriter) Write(p []byte) (n int, err error) {
 	rw.wMx.Lock()
 	defer rw.wMx.Unlock()
 
-	if _, err = rw.origin.Write(nil); err != nil {
-		return 0, err
-	}
-
 	for rw.wPad.Len() > 0 {
 		if _, err = rw.wPad.WriteTo(rw.origin); err != nil {
 			return 0, err
 		}
 	}
 
-	// Enforce max frame size.
-	if len(p) > maxPayloadSize {
-		p, err = p[:maxPayloadSize], io.ErrShortWrite
+	for len(p) > 0 {
+		// Enforce max frame size.
+		wn := len(p)
+		if len(p) > maxPayloadSize {
+			wn = maxPayloadSize
+		}
+
+		writtenB, err := WriteRawFrame(rw.origin, rw.ns.EncryptUnsafe(p[:wn]))
+		if !IsCompleteFrame(writtenB) {
+			rw.wPad.Reset(FillIncompleteFrame(writtenB))
+		}
+		if err != nil {
+			return n, err
+		}
+
+		n += wn
+		p = p[wn:]
 	}
 
-	writtenB, wErr := WriteRawFrame(rw.origin, rw.ns.EncryptUnsafe(p))
-
-	if !IsCompleteFrame(writtenB) {
-		rw.wPad.Reset(FillIncompleteFrame(writtenB))
-	}
-
-	if wErr != nil {
-		return 0, wErr
-	}
-
-	return len(p), err
+	return n, err
 }
 
 // Handshake performs a Noise handshake using the provided io.ReadWriter.
