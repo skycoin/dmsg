@@ -39,6 +39,8 @@ var (
 	ErrValidationWrongSequence = NewEntryValidationError("sequence field of new entry is not sequence of old entry + 1")
 	// ErrValidationWrongTime occurs in case when previous entry timestamp is not set before current entry timestamp
 	ErrValidationWrongTime = NewEntryValidationError("previous entry timestamp is not set before current entry timestamp")
+	// ErrValidationServerAddress occurs in case when entry server address is a local host address
+	ErrValidationServerAddress = NewEntryValidationError("server address is a loopback interface")
 
 	errReverseMap = map[string]error{
 		ErrKeyNotFound.Error():                ErrKeyNotFound,

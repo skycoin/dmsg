@@ -24,6 +24,7 @@ var (
 	logEnabled  bool
 	syslogAddr  string
 	tag         string
+	testMode bool
 )
 
 var rootCmd = &cobra.Command{
@@ -40,8 +41,7 @@ var rootCmd = &cobra.Command{
 			log.Fatal("Failed to open listener: ", err)
 		}
 
-		logger := logging.MustGetLogger(tag)
-		apiLogger := logger
+		apiLogger := logging.MustGetLogger(tag)
 		if !logEnabled {
 			apiLogger = nil
 		}
@@ -54,7 +54,7 @@ var rootCmd = &cobra.Command{
 			logging.AddHook(hook)
 		}
 
-		api := api.New(s, apiLogger, metrics.NewPrometheus("msgdiscovery"))
+		api := api.New(s, api.Logger(apiLogger), api.Metrics(metrics.NewPrometheus("msgdiscovery")),api.UseTestingMode(testMode))
 
 		go func() {
 			http.Handle("/metrics", promhttp.Handler())
@@ -77,6 +77,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&logEnabled, "log", "l", true, "enable request logging")
 	rootCmd.Flags().StringVar(&syslogAddr, "syslog", "", "syslog server address. E.g. localhost:514")
 	rootCmd.Flags().StringVar(&tag, "tag", "messaging-discovery", "logging tag")
+	rootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
 }
 
 // Execute executes root CLI command.

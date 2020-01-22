@@ -24,20 +24,62 @@ const maxServers = 10
 
 // API represents the api of the messaging-discovery service`
 type API struct {
-	mux     *http.ServeMux
-	store   store2.Storer
-	logger  *logging.Logger
-	metrics metrics.Recorder
+	mux         *http.ServeMux
+	store       store2.Storer
+	logger      *logging.Logger
+	metrics     metrics.Recorder
+	testingMode bool
+}
+
+// Options is a structure with API configurations
+type Options struct {
+	logger      *logging.Logger
+	metrics     metrics.Recorder
+	testingMode bool
+}
+
+// Option is a wrapper that allows Functional Options
+type Option func(*Options)
+
+// Logger is a function to pass logger option to API
+func Logger(logger *logging.Logger) Option {
+	return func(args *Options) {
+		if logger == nil {
+			args.logger = &logging.Logger{}
+		} else {
+			args.logger = logger
+		}
+	}
+}
+
+// Metrics is a function to pass metric option to API
+func Metrics(metrics metrics.Recorder) Option {
+	return func(args *Options) {
+		args.metrics = metrics
+	}
+}
+
+// UseTestingMode is a function to pass testing mode option to API
+func UseTestingMode(testing bool) Option {
+	return func(args *Options) {
+		args.testingMode = testing
+	}
 }
 
 // New returns a new API object, which can be started as a server
-func New(storer store2.Storer, logger *logging.Logger, metrics metrics.Recorder) *API {
+func New(storer store2.Storer, options ...Option) *API {
+	var args Options
+	for _, option := range options {
+		option(&args)
+	}
+
 	mux := http.NewServeMux()
 	api := &API{
-		mux:     mux,
-		store:   storer,
-		logger:  logger,
-		metrics: metrics,
+		mux:         mux,
+		store:       storer,
+		logger:      args.logger,
+		metrics:     args.metrics,
+		testingMode: args.testingMode,
 	}
 
 	// routes
@@ -124,6 +166,14 @@ func (a *API) setEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if entry.Server != nil && !a.testingMode {
+		if ok, err := isLoopbackAddr(entry.Server.Address); ok {
+			if err != nil && a.logger != nil {
+				a.logger.Warningf("failed to parse hostname and port: %s", err)
+			}
+			a.handleError(w, disc.ErrValidationServerAddress)
+		}
+	}
 	err = entry.Validate()
 	if err != nil {
 		a.handleError(w, err)
@@ -186,6 +236,18 @@ func (a *API) getAvailableServer() http.HandlerFunc {
 
 		a.writeJSON(w, http.StatusOK, entries)
 	}
+}
+
+// isLoopbackAddr checks if string is loopback interface
+func isLoopbackAddr(addr string) (bool, error) {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return false, err
+	}
+	if host == "" {
+		return true, nil
+	}
+	return net.ParseIP(host).IsLoopback(), nil
 }
 
 // retrievePkFromURL returns the id used on endpoints of the form path/:pk
