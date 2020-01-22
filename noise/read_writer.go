@@ -87,6 +87,11 @@ func (rw *ReadWriter) Write(p []byte) (n int, err error) {
 	rw.wMx.Lock()
 	defer rw.wMx.Unlock()
 
+	// Check for timeout errors.
+	if _, err = rw.origin.Write(nil); err != nil {
+		return 0, err
+	}
+
 	for rw.wPad.Len() > 0 {
 		if _, err = rw.wPad.WriteTo(rw.origin); err != nil {
 			return 0, err
