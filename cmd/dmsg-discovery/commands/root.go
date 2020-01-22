@@ -24,7 +24,7 @@ var (
 	logEnabled  bool
 	syslogAddr  string
 	tag         string
-	testMode bool
+	testMode    bool
 )
 
 var rootCmd = &cobra.Command{
@@ -54,7 +54,7 @@ var rootCmd = &cobra.Command{
 			logging.AddHook(hook)
 		}
 
-		api := api.New(s, api.Logger(apiLogger), api.Metrics(metrics.NewPrometheus("msgdiscovery")),api.UseTestingMode(testMode))
+		api := api.New(s, api.Logger(apiLogger), api.Metrics(metrics.NewPrometheus("msgdiscovery")), api.UseTestingMode(testMode))
 
 		go func() {
 			http.Handle("/metrics", promhttp.Handler())
