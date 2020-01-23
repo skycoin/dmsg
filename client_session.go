@@ -66,7 +66,7 @@ func (cs *ClientSession) serve() error {
 	defer func() {
 		if err := cs.Close(); err != nil {
 			cs.log.WithError(err).
-				Debug("On (*clientSession).serve() return, close client session resulted in error.")
+				Debug("On (*ClientSession).serve() return, close client session resulted in error.")
 		}
 	}()
 	for {
@@ -87,7 +87,7 @@ func (cs *ClientSession) acceptStream() (dStr *Stream, err error) {
 		if err != nil {
 			if scErr := dStr.Close(); scErr != nil {
 				cs.log.WithError(scErr).
-					Debug("On (*clientSession).acceptStream() failure, close stream resulted in error.")
+					Debug("On (*ClientSession).acceptStream() failure, close stream resulted in error.")
 			}
 		}
 	}()
