@@ -70,7 +70,9 @@ func UseTestingMode(testing bool) Option {
 func New(storer store2.Storer, options ...Option) *API {
 	var args Options
 	for _, option := range options {
-		option(&args)
+		if option != nil {
+			option(&args)
+		}
 	}
 
 	mux := http.NewServeMux()
