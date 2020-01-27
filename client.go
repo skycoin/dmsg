@@ -199,7 +199,7 @@ func (ce *Client) DialStream(ctx context.Context, addr Addr) (*Stream, error) {
 	// Range client's delegated servers.
 	// Attempt to connect to a delegated server.
 	for _, srvPK := range entry.Client.DelegatedServers {
-		dSes, err := ce.EnsureSession(ctx, srvPK)
+		dSes, err := ce.EnsureAndObtainSession(ctx, srvPK)
 		if err != nil {
 			continue
 		}
@@ -219,10 +219,10 @@ func (ce *Client) AllSessions() []ClientSession {
 	return ce.allClientSessions(ce.porter)
 }
 
-// EnsureSession attempts to obtain a session.
+// EnsureAndObtainSession attempts to obtain a session.
 // If the session does not exist, we will attempt to establish one.
 // It returns an error if the session does not exist AND cannot be established.
-func (ce *Client) EnsureSession(ctx context.Context, srvPK cipher.PubKey) (ClientSession, error) {
+func (ce *Client) EnsureAndObtainSession(ctx context.Context, srvPK cipher.PubKey) (ClientSession, error) {
 	ce.sesMx.Lock()
 	defer ce.sesMx.Unlock()
 
@@ -256,7 +256,7 @@ func (ce *Client) ensureSession(ctx context.Context, entry *disc.Entry) error {
 
 // It is expected that the session is created and served before the context cancels, otherwise an error will be returned.
 // NOTE: This should not be called directly as it may lead to session duplicates.
-// Only `ensureSession` or `EnsureSession` should call this function.
+// Only `ensureSession` or `EnsureAndObtainSession` should call this function.
 func (ce *Client) dialSession(ctx context.Context, entry *disc.Entry) (ClientSession, error) {
 	ce.log.WithField("remote_pk", entry.Static).Info("Dialing session...")
 
