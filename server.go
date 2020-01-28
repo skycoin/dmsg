@@ -93,15 +93,9 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 	}
 }
 
-// AwaitReady blocks until server begins serving (in which case it returns nil),
-// or when context finishes (in which it returns the context's error).
-func (s *Server) AwaitReady(ctx context.Context) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-s.ready:
-		return nil
-	}
+// Ready blocks until server begins serving.
+func (s *Server) Ready() <-chan struct{} {
+	return s.ready
 }
 
 func (s *Server) updateEntryLoop(addr string) error {
