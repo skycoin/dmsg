@@ -17,6 +17,9 @@ import (
 type Server struct {
 	EntityCommon
 
+	ready     chan struct{} // Closed once dmsg.Server is serving.
+	readyOnce sync.Once
+
 	done chan struct{}
 	once sync.Once
 	wg   sync.WaitGroup
@@ -26,6 +29,7 @@ type Server struct {
 func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient) *Server {
 	s := new(Server)
 	s.EntityCommon.init(pk, sk, dc, logging.MustGetLogger("dmsg_server"))
+	s.ready = make(chan struct{})
 	s.done = make(chan struct{})
 	return s
 }
@@ -56,7 +60,7 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 	}()
 
 	go func() {
-		<-s.done
+		<-s.done // TODO(evanlinjin): Race condition?
 		log.WithError(lis.Close()).
 			Info("Stopping server, net.Listener closed.")
 	}()
@@ -70,8 +74,9 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 	}
 
 	log.Info("Accepting sessions...")
+	s.readyOnce.Do(func() { close(s.ready) })
 	for {
-		conn, err := lis.Accept()
+		conn, err := lis.Accept() // TODO(evanlinjin): Race condition?
 		if err != nil {
 			// If server is closed, there is no error to report.
 			if isClosed(s.done) {
@@ -85,6 +90,17 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 			s.handleSession(conn)
 			s.wg.Done()
 		}(conn)
+	}
+}
+
+// AwaitReady blocks until server begins serving (in which case it returns nil),
+// or when context finishes (in which it returns the context's error).
+func (s *Server) AwaitReady(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-s.ready:
+		return nil
 	}
 }
 
@@ -127,7 +143,7 @@ func (s *Server) handleSession(conn net.Conn) {
 	}()
 
 	if s.setSession(ctx, dSes.SessionCommon) {
-		dSes.Serve()
+		dSes.Serve() // TODO(evanlinjin): Race condition?
 	}
 	s.delSession(ctx, dSes.RemotePK())
 	cancel()

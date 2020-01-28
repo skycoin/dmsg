@@ -41,7 +41,7 @@ func (ss *ServerSession) Close() (err error) {
 // Serve serves the session.
 func (ss *ServerSession) Serve() {
 	for {
-		yStr, err := ss.ys.AcceptStream()
+		yStr, err := ss.ys.AcceptStream() // TODO(evanlinjin): Race condition?
 		if err != nil {
 			switch err {
 			case yamux.ErrSessionShutdown, io.EOF:
