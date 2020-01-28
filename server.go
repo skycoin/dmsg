@@ -93,7 +93,7 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 	}
 }
 
-// Ready blocks until server begins serving.
+// Ready returns a chan which blocks until the server begins serving.
 func (s *Server) Ready() <-chan struct{} {
 	return s.ready
 }
