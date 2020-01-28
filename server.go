@@ -60,7 +60,7 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 	}()
 
 	go func() {
-		<-s.done // TODO(evanlinjin): Race condition?
+		<-s.done
 		log.WithError(lis.Close()).
 			Info("Stopping server, net.Listener closed.")
 	}()
@@ -76,7 +76,7 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 	log.Info("Accepting sessions...")
 	s.readyOnce.Do(func() { close(s.ready) })
 	for {
-		conn, err := lis.Accept() // TODO(evanlinjin): Race condition?
+		conn, err := lis.Accept()
 		if err != nil {
 			// If server is closed, there is no error to report.
 			if isClosed(s.done) {
@@ -137,7 +137,7 @@ func (s *Server) handleSession(conn net.Conn) {
 	}()
 
 	if s.setSession(ctx, dSes.SessionCommon) {
-		dSes.Serve() // TODO(evanlinjin): Race condition?
+		dSes.Serve()
 	}
 	s.delSession(ctx, dSes.RemotePK())
 	cancel()
