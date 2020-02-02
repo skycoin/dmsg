@@ -71,7 +71,7 @@ func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry) error {
 
 // AvailableServers implements Storer AvailableServers method for redisdb database
 func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*disc.Entry, error) {
-	entries := make([]*disc.Entry, 0)
+	var entries []*disc.Entry
 
 	pks, err := r.client.SRandMemberN("servers", int64(maxCount)).Result()
 	if err != nil {
@@ -91,6 +91,7 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 		var entry *disc.Entry
 		if err := json.Unmarshal([]byte(payload.(string)), &entry); err != nil {
 			log.WithError(err).Warnf("Failed to unmarshal payload %s", payload.(string))
+			continue
 		}
 		entries = append(entries, entry)
 	}

@@ -236,6 +236,12 @@ func (a *API) getAvailableServer() http.HandlerFunc {
 			return
 		}
 
+		if len(entries) == 0 {
+			const code = http.StatusNotFound
+			a.writeJSON(w, code, disc.HTTPMessage{Code: code, Message: disc.ErrKeyNotFound.Error()})
+			return
+		}
+
 		a.writeJSON(w, http.StatusOK, entries)
 	}
 }
