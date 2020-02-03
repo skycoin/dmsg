@@ -82,13 +82,17 @@ func TestGetAvailableServers(t *testing.T) {
 			name:            "get no entries",
 			endpoint:        "/dmsg-discovery/available_servers",
 			method:          http.MethodGet,
-			status:          http.StatusOK,
-			responseIsError: false,
+			status:          http.StatusNotFound,
+			responseIsError: true,
 			databaseAndEntries: func(t *testing.T) (store2.Storer, []*disc.Entry) {
 				db, err := store2.NewStore("mock", "")
 				require.NoError(t, err)
 
 				return db, []*disc.Entry{}
+			},
+			errorMessage: disc.HTTPMessage{
+				Message: disc.ErrKeyNotFound.Error(),
+				Code:    http.StatusNotFound,
 			},
 		},
 	}
@@ -122,9 +126,8 @@ func TestGetAvailableServers(t *testing.T) {
 				err = json.NewDecoder(rr.Body).Decode(&resMessage)
 				require.NoError(t, err)
 
-				require.Equal(t, tc.errorMessage, &resMessage)
+				require.Equal(t, tc.errorMessage, resMessage)
 			}
-
 		})
 	}
 }
