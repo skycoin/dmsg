@@ -4,8 +4,6 @@ import (
 	"github.com/SkycoinProject/dmsg/cipher"
 )
 
-
-
 // WhitelistGateway is the configuration gateway.
 type WhitelistGateway struct {
 	wl Whitelist

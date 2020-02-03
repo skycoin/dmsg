@@ -2,10 +2,11 @@ package dmsgpty
 
 import (
 	"errors"
-	"github.com/creack/pty"
 	"os"
 	"os/exec"
 	"sync"
+
+	"github.com/creack/pty"
 )
 
 // Pty errors.

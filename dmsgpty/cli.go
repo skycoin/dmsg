@@ -3,21 +3,22 @@ package dmsgpty
 import (
 	"context"
 	"fmt"
-	"github.com/SkycoinProject/skycoin/src/util/logging"
-	"github.com/creack/pty"
-	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/SkycoinProject/skycoin/src/util/logging"
+	"github.com/creack/pty"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 type CLI struct {
 	Log  logrus.FieldLogger `json:"-"`
-	Net  string `json:"cli_network"`
-	Addr string `json:"cli_address"`
+	Net  string             `json:"cli_network"`
+	Addr string             `json:"cli_address"`
 }
 
 func (cli *CLI) setDefaults() {
@@ -127,4 +128,3 @@ func ptyResizeLoop(ctx context.Context, ptyC *PtyClient) error {
 func getPtySize(t *os.File) (*pty.Winsize, error) {
 	return pty.GetsizeFull(t)
 }
-

@@ -3,15 +3,17 @@ package dmsgpty
 import (
 	"context"
 	"fmt"
-	"github.com/SkycoinProject/dmsg"
-	"github.com/SkycoinProject/dmsg/cipher"
-	"github.com/SkycoinProject/skycoin/src/util/logging"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net"
 	"net/rpc"
 	"net/url"
 	"sync/atomic"
+
+	"github.com/SkycoinProject/skycoin/src/util/logging"
+	"github.com/sirupsen/logrus"
+
+	"github.com/SkycoinProject/dmsg"
+	"github.com/SkycoinProject/dmsg/cipher"
 )
 
 type Host struct {

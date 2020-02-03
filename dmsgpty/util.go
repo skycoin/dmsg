@@ -34,4 +34,3 @@ func processRPCError(err error) error {
 	}
 	return nil
 }
-

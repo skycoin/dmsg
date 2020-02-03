@@ -1,9 +1,10 @@
 package dmsgpty
 
 import (
-	"github.com/SkycoinProject/dmsg/cipher"
 	"io"
 	"net/rpc"
+
+	"github.com/SkycoinProject/dmsg/cipher"
 )
 
 type WhitelistClient struct {
@@ -11,7 +12,7 @@ type WhitelistClient struct {
 }
 
 func MakeWhitelistClient(conn io.ReadWriteCloser) WhitelistClient {
-	return WhitelistClient{ c: rpc.NewClient(conn) }
+	return WhitelistClient{c: rpc.NewClient(conn)}
 }
 
 // ViewWhitelist obtains the whitelist entries from host.

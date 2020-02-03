@@ -20,7 +20,7 @@ type LocalPtyGateway struct {
 
 // NewPtyGateway creates a new gateway to a local pty.
 func NewPtyGateway(ses *Pty) PtyGateway {
-	return &LocalPtyGateway{ ses: ses }
+	return &LocalPtyGateway{ses: ses}
 }
 
 // CommandReq represents a pty command.
