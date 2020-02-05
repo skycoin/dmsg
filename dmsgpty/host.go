@@ -33,6 +33,12 @@ func NewHost(dmsgC *dmsg.Client, wl Whitelist) *Host {
 }
 
 func (h *Host) prepareMux() {
+
+	h.mux.Handle("dmsgpty/whitelist",
+		func(ctx context.Context, uri *url.URL, rpcS *rpc.Server) error {
+			return rpcS.RegisterName(WhitelistRPCName, NewWhitelistGateway(h.wl))
+		})
+
 	h.mux.Handle("dmsgpty/pty",
 		func(ctx context.Context, uri *url.URL, rpcS *rpc.Server) error {
 			pty := NewPty()
@@ -41,11 +47,6 @@ func (h *Host) prepareMux() {
 				_ = pty.Stop()
 			}()
 			return rpcS.RegisterName(PtyRPCName, NewPtyGateway(pty))
-		})
-
-	h.mux.Handle("dmsgpty/whitelist",
-		func(ctx context.Context, uri *url.URL, rpcS *rpc.Server) error {
-			return rpcS.RegisterName(WhitelistRPCName, NewWhitelistGateway(h.wl))
 		})
 
 	h.mux.Handle("dmsgpty/proxy",
@@ -67,12 +68,21 @@ func (h *Host) prepareMux() {
 			if err != nil {
 				return err
 			}
+			defer func() {
+				h.log().
+					WithError(stream.Close()).
+					Debug("Closed proxied dmsg stream.")
+			}()
 			if err := writeRequest(stream, "dmsgpty/pty"); err != nil {
 				return err
 			}
 
-			//log := stream.Logger().WithField("dmsgpty", "proxied_stream")
 			ptyC := NewPtyClient(stream)
+			defer func() {
+				h.log().
+					WithError(ptyC.Close()).
+					Debug("Closed proxed pty client.")
+			}()
 			return rpcS.RegisterName(PtyRPCName, NewProxyGateway(ptyC))
 		})
 }
