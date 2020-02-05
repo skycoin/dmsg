@@ -33,9 +33,7 @@ func (s *Pty) Start(name string, args []string, size *pty.Winsize) error {
 	}
 
 	cmd := exec.Command(name, args...)
-	cmd.Env = append(
-		os.Environ(),
-	)
+	cmd.Env = os.Environ()
 
 	f, err := pty.StartWithSize(cmd, size) //nolint:gosec
 	if err != nil {
