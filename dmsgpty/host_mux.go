@@ -38,7 +38,7 @@ func (h *hostMux) ServeConn(ctx context.Context, conn net.Conn) error {
 
 	go func() {
 		<-ctx.Done()
-		_ = conn.Close()
+		_ = conn.Close() //nolint:errcheck
 	}()
 
 	uri, err := readRequest(conn)

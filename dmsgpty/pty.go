@@ -15,15 +15,18 @@ var (
 	ErrPtyNotRunning     = errors.New("no active pty session")
 )
 
+// Pty runs a local pty.
 type Pty struct {
 	pty *os.File
 	mx  sync.RWMutex
 }
 
+// NewPty creates a new Pty.
 func NewPty() *Pty {
 	return new(Pty)
 }
 
+// Start runs a command with the given command name, args and optional window size.
 func (s *Pty) Start(name string, args []string, size *pty.Winsize) error {
 	s.mx.Lock()
 	defer s.mx.Unlock()
@@ -32,7 +35,7 @@ func (s *Pty) Start(name string, args []string, size *pty.Winsize) error {
 		return ErrPtyAlreadyRunning
 	}
 
-	cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, args...) //nolint:gosec
 	cmd.Env = os.Environ()
 
 	f, err := pty.StartWithSize(cmd, size) //nolint:gosec
@@ -44,6 +47,7 @@ func (s *Pty) Start(name string, args []string, size *pty.Winsize) error {
 	return nil
 }
 
+// Stop stops the running command and closes the pty.
 func (s *Pty) Stop() error {
 	s.mx.Lock()
 	defer s.mx.Unlock()
@@ -57,6 +61,7 @@ func (s *Pty) Stop() error {
 	return err
 }
 
+// Read reads any stdout or stderr outputs from the pty.
 func (s *Pty) Read(b []byte) (int, error) {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
@@ -68,6 +73,7 @@ func (s *Pty) Read(b []byte) (int, error) {
 	return s.pty.Read(b)
 }
 
+// Write writes to the stdin of the pty.
 func (s *Pty) Write(b []byte) (int, error) {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
@@ -79,6 +85,7 @@ func (s *Pty) Write(b []byte) (int, error) {
 	return s.pty.Write(b)
 }
 
+// SetPtySize sets the pty size.
 func (s *Pty) SetPtySize(size *pty.Winsize) error {
 	s.mx.RLock()
 	defer s.mx.RUnlock()

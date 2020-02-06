@@ -22,24 +22,27 @@ type PtyClient struct {
 	once sync.Once
 }
 
+// NewPtyClient creates a new pty client that interacts with a local pty.
 func NewPtyClient(conn io.ReadWriteCloser) (*PtyClient, error) {
 	if err := writeRequest(conn, PtyURI); err != nil {
 		return nil, err
 	}
 	return &PtyClient{
-		log:  logging.MustGetLogger("dmsgpty-client"),
+		log:  logging.MustGetLogger("dmsgpty:pty-client"),
 		rpcC: rpc.NewClient(conn),
 		done: make(chan struct{}),
 	}, nil
 }
 
-func NewPtyProxyClient(conn io.ReadWriteCloser, rPK cipher.PubKey, rPort uint16) (*PtyClient, error) {
+// NewProxyClient creates a new pty client that interacts with a remote pty hosted on the given dmsg pk and port.
+// Interactions are proxied via the local dmsgpty.Host
+func NewProxyClient(conn io.ReadWriteCloser, rPK cipher.PubKey, rPort uint16) (*PtyClient, error) {
 	uri := fmt.Sprintf("%s?pk=%s&port=%d", PtyProxyURI, rPK, rPort)
 	if err := writeRequest(conn, uri); err != nil {
 		return nil, err
 	}
 	return &PtyClient{
-		log:  logging.MustGetLogger("dmsgpty-client"),
+		log:  logging.MustGetLogger("dmsgpty:proxy-client"),
 		rpcC: rpc.NewClient(conn),
 		done: make(chan struct{}),
 	}, nil

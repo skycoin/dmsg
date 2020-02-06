@@ -16,6 +16,7 @@ import (
 	"github.com/SkycoinProject/dmsg/cipher"
 )
 
+// Host represents the main instance of dmsgpty.
 type Host struct {
 	dmsgC *dmsg.Client
 	wl    Whitelist
@@ -24,6 +25,7 @@ type Host struct {
 	cliN uint32
 }
 
+// NewHost creates a new dmsgpty.Host with a given dmsg.Client and whitelist.
 func NewHost(dmsgC *dmsg.Client, wl Whitelist) *Host {
 	host := new(Host)
 	host.dmsgC = dmsgC
@@ -32,63 +34,65 @@ func NewHost(dmsgC *dmsg.Client, wl Whitelist) *Host {
 	return host
 }
 
+// prepareMux prepares the endpoints of the host.
+// These endpoints can be accessed via CLI or dmsg (if the remote entity is whitelisted).
 func (h *Host) prepareMux() {
 
-	h.mux.Handle("dmsgpty/whitelist",
-		func(ctx context.Context, uri *url.URL, rpcS *rpc.Server) error {
-			return rpcS.RegisterName(WhitelistRPCName, NewWhitelistGateway(h.wl))
-		})
+	h.mux.Handle(WhitelistURI, func(ctx context.Context, uri *url.URL, rpcS *rpc.Server) error {
+		return rpcS.RegisterName(WhitelistRPCName, NewWhitelistGateway(h.wl))
+	})
 
-	h.mux.Handle("dmsgpty/pty",
-		func(ctx context.Context, uri *url.URL, rpcS *rpc.Server) error {
-			pty := NewPty()
-			go func() {
-				<-ctx.Done()
-				_ = pty.Stop()
-			}()
-			return rpcS.RegisterName(PtyRPCName, NewPtyGateway(pty))
-		})
+	h.mux.Handle(PtyURI, func(ctx context.Context, uri *url.URL, rpcS *rpc.Server) error {
+		pty := NewPty()
+		go func() {
+			<-ctx.Done()
+			h.log().
+				WithError(pty.Stop()).
+				Debug("PTY stopped.")
+		}()
+		return rpcS.RegisterName(PtyRPCName, NewPtyGateway(pty))
+	})
 
-	h.mux.Handle("dmsgpty/proxy",
-		func(ctx context.Context, uri *url.URL, rpcS *rpc.Server) error {
-			q := uri.Query()
+	h.mux.Handle(PtyProxyURI, func(ctx context.Context, uri *url.URL, rpcS *rpc.Server) error {
+		q := uri.Query()
 
-			// Get query values.
-			var pk cipher.PubKey
-			if err := pk.Set(q.Get("pk")); err != nil {
-				return fmt.Errorf("invalid query value 'pk': %v", err)
-			}
-			var port uint16
-			if _, err := fmt.Sscan(q.Get("port"), &port); err != nil {
-				return fmt.Errorf("invalid query value 'port': %v", err)
-			}
+		// Get query values.
+		var pk cipher.PubKey
+		if err := pk.Set(q.Get("pk")); err != nil {
+			return fmt.Errorf("invalid query value 'pk': %v", err)
+		}
+		var port uint16
+		if _, err := fmt.Sscan(q.Get("port"), &port); err != nil {
+			return fmt.Errorf("invalid query value 'port': %v", err)
+		}
 
-			// Proxy request.
-			stream, err := h.dmsgC.DialStream(ctx, dmsg.Addr{PK: pk, Port: port})
-			if err != nil {
-				return err
-			}
-			go func() {
-				<-ctx.Done()
-				h.log().
-					WithError(stream.Close()).
-					Debug("Closed proxy dmsg stream.")
-			}()
+		// Proxy request.
+		stream, err := h.dmsgC.DialStream(ctx, dmsg.Addr{PK: pk, Port: port})
+		if err != nil {
+			return err
+		}
+		go func() {
+			<-ctx.Done()
+			h.log().
+				WithError(stream.Close()).
+				Debug("Closed proxy dmsg stream.")
+		}()
 
-			ptyC, err := NewPtyClient(stream)
-			if err != nil {
-				return err
-			}
-			go func() {
-				<-ctx.Done()
-				h.log().
-					WithError(ptyC.Close()).
-					Debug("Closed proxy pty client.")
-			}()
-			return rpcS.RegisterName(PtyRPCName, NewProxyGateway(ptyC))
-		})
+		ptyC, err := NewPtyClient(stream)
+		if err != nil {
+			return err
+		}
+		go func() {
+			<-ctx.Done()
+			h.log().
+				WithError(ptyC.Close()).
+				Debug("Closed proxy pty client.")
+		}()
+		return rpcS.RegisterName(PtyRPCName, NewProxyGateway(ptyC))
+	})
 }
 
+// ServeCLI listens for CLI connections via the provided listener.
 func (h *Host) ServeCLI(ctx context.Context, lis net.Listener) error {
 	log := logging.MustGetLogger("dmsgpty:cli-server")
 
@@ -114,6 +118,7 @@ func (h *Host) ServeCLI(ctx context.Context, lis net.Listener) error {
 	}
 }
 
+// ListenAndServe serves the host over the dmsg network via the given dmsg port.
 func (h *Host) ListenAndServe(ctx context.Context, port uint16) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -164,6 +169,7 @@ func (h *Host) ListenAndServe(ctx context.Context, port uint16) error {
 	}
 }
 
+// serveConn serves a CLI connection or dmsg stream.
 func (h *Host) serveConn(ctx context.Context, log logrus.FieldLogger, conn net.Conn) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -178,6 +184,7 @@ func (h *Host) serveConn(ctx context.Context, log logrus.FieldLogger, conn net.C
 		Info("serveConn() stopped serving.")
 }
 
+// authorize returns true if the provided public key is whitelisted.
 func (h *Host) authorize(log logrus.FieldLogger, rPK cipher.PubKey) bool {
 	ok, err := h.wl.Get(rPK)
 	if err != nil {
@@ -191,6 +198,7 @@ func (h *Host) authorize(log logrus.FieldLogger, rPK cipher.PubKey) bool {
 	return true
 }
 
+// log returns the logrus.FieldLogger that should be used for all log outputs.
 func (h *Host) log() logrus.FieldLogger {
 	return h.dmsgC.Logger().WithField("dmsgpty", "host")
 }

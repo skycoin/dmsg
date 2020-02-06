@@ -53,6 +53,7 @@ func (s *Stream) Close() error {
 	return s.yStr.Close()
 }
 
+// Logger returns the internal logrus.FieldLogger instance.
 func (s *Stream) Logger() logrus.FieldLogger {
 	return s.log
 }
@@ -179,6 +180,7 @@ func (s *Stream) LocalAddr() net.Addr {
 	return s.lAddr
 }
 
+// RawLocalAddr returns the local address as dmsg.Addr type.
 func (s *Stream) RawLocalAddr() Addr {
 	return s.lAddr
 }
@@ -188,6 +190,7 @@ func (s *Stream) RemoteAddr() net.Addr {
 	return s.rAddr
 }
 
+// RawRemoteAddr returns the remote address as dmsg.Addr type.
 func (s *Stream) RawRemoteAddr() Addr {
 	return s.rAddr
 }

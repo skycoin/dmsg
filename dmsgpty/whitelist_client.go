@@ -7,10 +7,12 @@ import (
 	"github.com/SkycoinProject/dmsg/cipher"
 )
 
+// WhitelistClient interacts with a whitelist's API.
 type WhitelistClient struct {
 	c *rpc.Client
 }
 
+// NewWhitelistClient creates a new whitelist client.
 func NewWhitelistClient(conn io.ReadWriteCloser) (*WhitelistClient, error) {
 	if err := writeRequest(conn, WhitelistURI); err != nil {
 		return nil, err

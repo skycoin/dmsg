@@ -109,7 +109,7 @@ func TestHost(t *testing.T) {
 		hostB := NewHost(dcB, wl)
 		go hostB.serveConn(ctx, logging.MustGetLogger("hostB_conn"), connB)
 
-		ptyB, err := NewPtyProxyClient(connCLI, dcA.LocalPK(), port)
+		ptyB, err := NewProxyClient(connCLI, dcA.LocalPK(), port)
 		require.NoError(t, err)
 
 		msg := "Hello world!"

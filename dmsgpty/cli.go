@@ -17,12 +17,14 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
+// CLI connects with and has ownership over a dmsgpty.Host.
 type CLI struct {
 	Log  logrus.FieldLogger `json:"-"`
 	Net  string             `json:"cli_network"`
 	Addr string             `json:"cli_address"`
 }
 
+// WhitelistClient returns a client that interacts with the Host's whitelist.
 func (cli *CLI) WhitelistClient() (*WhitelistClient, error) {
 	conn, err := cli.prepareConn()
 	if err != nil {
@@ -31,6 +33,7 @@ func (cli *CLI) WhitelistClient() (*WhitelistClient, error) {
 	return NewWhitelistClient(conn)
 }
 
+// StartLocalPty starts a pty on the host.
 func (cli *CLI) StartLocalPty(ctx context.Context, cmd string, args []string) error {
 	conn, err := cli.prepareConn()
 	if err != nil {
@@ -51,13 +54,14 @@ func (cli *CLI) StartLocalPty(ctx context.Context, cmd string, args []string) er
 	return cli.servePty(ctx, ptyC, cmd, args)
 }
 
+// StartRemotePty starts a pty on a remote host, proxied via the local pty.
 func (cli *CLI) StartRemotePty(ctx context.Context, rPK cipher.PubKey, rPort uint16, cmd string, args []string) error {
 	conn, err := cli.prepareConn()
 	if err != nil {
 		return err
 	}
 
-	ptyC, err := NewPtyProxyClient(conn, rPK, rPort)
+	ptyC, err := NewProxyClient(conn, rPK, rPort)
 	if err != nil {
 		return err
 	}
