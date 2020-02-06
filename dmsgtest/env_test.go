@@ -1,7 +1,6 @@
 package dmsgtest
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -48,7 +47,7 @@ func TestEnv(t *testing.T) {
 
 		// NewClient should result in n(clients) == 1.
 		// Closing the created client should result in n(clients) == 0 after some time.
-		client, err := env.NewClient(context.TODO(), nil)
+		client, err := env.NewClient(nil)
 		require.NoError(t, err)
 		require.Len(t, env.AllClients(), 1)
 		require.NoError(t, client.Close())

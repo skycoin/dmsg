@@ -14,6 +14,9 @@ import (
 	"github.com/SkycoinProject/dmsg/disc"
 )
 
+// DefaultTimeout is the recommended timeout for the Env.
+const DefaultTimeout = time.Minute
+
 // Env can run an entire local dmsg environment inclusive of a mock discovery, dmsg servers and clients.
 type Env struct {
 	t       *testing.T
@@ -44,26 +47,21 @@ func NewEnv(t *testing.T, timeout time.Duration) *Env {
 
 // Startup runs the specified number of dmsg servers and clients.
 // The input 'conf' is optional, and is passed when creating clients.
-func (env *Env) Startup(srvCount, clientCount int, conf *dmsg.Config) error {
-	ctx := context.Background()
-
-	if env.timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithDeadline(context.Background(), time.Now().Add(env.timeout))
-		defer cancel()
-	}
+func (env *Env) Startup(servers, clients int, conf *dmsg.Config) error {
+	ctx, cancel := timeoutContext(env.timeout)
+	defer cancel()
 
 	env.mx.Lock()
 	defer env.mx.Unlock()
 
 	env.d = disc.NewMock()
 
-	for i := 0; i < srvCount; i++ {
+	for i := 0; i < servers; i++ {
 		if _, err := env.newServer(ctx); err != nil {
 			return err
 		}
 	}
-	for i := 0; i < clientCount; i++ {
+	for i := 0; i < clients; i++ {
 		if _, err := env.newClient(ctx, conf); err != nil {
 			return err
 		}
@@ -72,7 +70,10 @@ func (env *Env) Startup(srvCount, clientCount int, conf *dmsg.Config) error {
 }
 
 // NewServer runs a new server.
-func (env *Env) NewServer(ctx context.Context) (*dmsg.Server, error) {
+func (env *Env) NewServer() (*dmsg.Server, error) {
+	ctx, cancel := timeoutContext(env.timeout)
+	defer cancel()
+
 	env.mx.Lock()
 	defer env.mx.Unlock()
 
@@ -111,7 +112,10 @@ func (env *Env) newServer(ctx context.Context) (*dmsg.Server, error) {
 }
 
 // NewClient runs a new client.
-func (env *Env) NewClient(ctx context.Context, conf *dmsg.Config) (*dmsg.Client, error) {
+func (env *Env) NewClient(conf *dmsg.Config) (*dmsg.Client, error) {
+	ctx, cancel := timeoutContext(env.timeout)
+	defer cancel()
+
 	env.mx.Lock()
 	defer env.mx.Unlock()
 
@@ -200,4 +204,12 @@ func (env *Env) CloseAllServers() {
 		}
 	}
 	env.sWg.Wait()
+}
+
+func timeoutContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+	ctx := context.Background()
+	if timeout > 0 {
+		return context.WithDeadline(ctx, time.Now().Add(timeout))
+	}
+	return context.WithCancel(ctx)
 }

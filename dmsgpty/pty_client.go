@@ -1,10 +1,13 @@
 package dmsgpty
 
 import (
+	"fmt"
 	"io"
 	"net/rpc"
 	"os"
 	"sync"
+
+	"github.com/SkycoinProject/dmsg/cipher"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
 	"github.com/creack/pty"
@@ -19,12 +22,27 @@ type PtyClient struct {
 	once sync.Once
 }
 
-func NewPtyClient(conn io.ReadWriteCloser) *PtyClient {
+func NewPtyClient(conn io.ReadWriteCloser) (*PtyClient, error) {
+	if err := writeRequest(conn, PtyURI); err != nil {
+		return nil, err
+	}
 	return &PtyClient{
 		log:  logging.MustGetLogger("dmsgpty-client"),
 		rpcC: rpc.NewClient(conn),
 		done: make(chan struct{}),
+	}, nil
+}
+
+func NewPtyProxyClient(conn io.ReadWriteCloser, rPK cipher.PubKey, rPort uint16) (*PtyClient, error) {
+	uri := fmt.Sprintf("%s?pk=%s&port=%d", PtyProxyURI, rPK, rPort)
+	if err := writeRequest(conn, uri); err != nil {
+		return nil, err
 	}
+	return &PtyClient{
+		log:  logging.MustGetLogger("dmsgpty-client"),
+		rpcC: rpc.NewClient(conn),
+		done: make(chan struct{}),
+	}, nil
 }
 
 // Close closes the pty and closes the connection to the remote.

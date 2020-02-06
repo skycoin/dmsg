@@ -11,8 +11,11 @@ type WhitelistClient struct {
 	c *rpc.Client
 }
 
-func NewWhitelistClient(conn io.ReadWriteCloser) *WhitelistClient {
-	return &WhitelistClient{c: rpc.NewClient(conn)}
+func NewWhitelistClient(conn io.ReadWriteCloser) (*WhitelistClient, error) {
+	if err := writeRequest(conn, WhitelistURI); err != nil {
+		return nil, err
+	}
+	return &WhitelistClient{c: rpc.NewClient(conn)}, nil
 }
 
 // ViewWhitelist obtains the whitelist entries from host.
@@ -23,12 +26,12 @@ func (wc WhitelistClient) ViewWhitelist() ([]cipher.PubKey, error) {
 }
 
 // WhitelistAdd adds a whitelist entry to host.
-func (wc WhitelistClient) WhitelistAdd(conn io.ReadWriteCloser, pks ...cipher.PubKey) error {
+func (wc WhitelistClient) WhitelistAdd(pks ...cipher.PubKey) error {
 	return wc.c.Call(wc.rpcMethod("WhitelistAdd"), &pks, &empty)
 }
 
 // WhitelistRemove removes a whitelist entry from host.
-func (wc WhitelistClient) WhitelistRemove(conn io.ReadWriteCloser, pks ...cipher.PubKey) error {
+func (wc WhitelistClient) WhitelistRemove(pks ...cipher.PubKey) error {
 	return wc.c.Call(wc.rpcMethod("WhitelistRemove"), &pks, &empty)
 }
 

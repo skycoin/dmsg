@@ -24,15 +24,20 @@ type CLI struct {
 }
 
 func (cli *CLI) WhitelistClient() (*WhitelistClient, error) {
-	conn, err := cli.prepareConn("dmsgpty/whitelist")
+	conn, err := cli.prepareConn()
 	if err != nil {
 		return nil, err
 	}
-	return NewWhitelistClient(conn), nil
+	return NewWhitelistClient(conn)
 }
 
 func (cli *CLI) StartLocalPty(ctx context.Context, cmd string, args []string) error {
-	conn, err := cli.prepareConn("dmsgpty/pty")
+	conn, err := cli.prepareConn()
+	if err != nil {
+		return err
+	}
+
+	ptyC, err := NewPtyClient(conn)
 	if err != nil {
 		return err
 	}
@@ -43,13 +48,16 @@ func (cli *CLI) StartLocalPty(ctx context.Context, cmd string, args []string) er
 	}
 	defer restore()
 
-	return cli.servePty(ctx, NewPtyClient(conn), cmd, args)
+	return cli.servePty(ctx, ptyC, cmd, args)
 }
 
 func (cli *CLI) StartRemotePty(ctx context.Context, rPK cipher.PubKey, rPort uint16, cmd string, args []string) error {
-	uri := fmt.Sprintf("dmsgpty/proxy?pk=%s&port=%d", rPK.String(), rPort)
+	conn, err := cli.prepareConn()
+	if err != nil {
+		return err
+	}
 
-	conn, err := cli.prepareConn(uri)
+	ptyC, err := NewPtyProxyClient(conn, rPK, rPort)
 	if err != nil {
 		return err
 	}
@@ -60,11 +68,11 @@ func (cli *CLI) StartRemotePty(ctx context.Context, rPK cipher.PubKey, rPort uin
 	}
 	defer restore()
 
-	return cli.servePty(ctx, NewPtyClient(conn), cmd, args)
+	return cli.servePty(ctx, ptyC, cmd, args)
 }
 
 // prepareConn prepares a connection with the dmsgpty-host.
-func (cli *CLI) prepareConn(uri string) (net.Conn, error) {
+func (cli *CLI) prepareConn() (net.Conn, error) {
 
 	// Set defaults.
 	if cli.Log == nil {
@@ -79,15 +87,11 @@ func (cli *CLI) prepareConn(uri string) (net.Conn, error) {
 
 	cli.Log.
 		WithField("address", fmt.Sprintf("%s://%s", cli.Net, cli.Addr)).
-		WithField("uri", uri).
 		Infof("Requesting...")
 
 	conn, err := net.Dial(cli.Net, cli.Addr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to dmsgpty-host: %v", err)
-	}
-	if err := writeRequest(conn, uri); err != nil {
-		return nil, fmt.Errorf("failed to initiate request to dmsgpty-host: %v", err)
 	}
 	return conn, nil
 }

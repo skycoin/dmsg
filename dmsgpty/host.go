@@ -68,20 +68,22 @@ func (h *Host) prepareMux() {
 			if err != nil {
 				return err
 			}
-			defer func() {
+			go func() {
+				<-ctx.Done()
 				h.log().
 					WithError(stream.Close()).
-					Debug("Closed proxied dmsg stream.")
+					Debug("Closed proxy dmsg stream.")
 			}()
-			if err := writeRequest(stream, "dmsgpty/pty"); err != nil {
+
+			ptyC, err := NewPtyClient(stream)
+			if err != nil {
 				return err
 			}
-
-			ptyC := NewPtyClient(stream)
-			defer func() {
+			go func() {
+				<-ctx.Done()
 				h.log().
 					WithError(ptyC.Close()).
-					Debug("Closed proxed pty client.")
+					Debug("Closed proxy pty client.")
 			}()
 			return rpcS.RegisterName(PtyRPCName, NewProxyGateway(ptyC))
 		})
