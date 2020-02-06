@@ -23,7 +23,7 @@ const (
 )
 
 // empty is used for RPC calls.
-var empty = new(struct{})
+var empty struct{}
 
 func processRPCError(err error) error {
 	if err != nil {

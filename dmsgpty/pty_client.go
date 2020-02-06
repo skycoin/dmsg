@@ -73,12 +73,12 @@ func (sc *PtyClient) Start(name string, arg ...string) error {
 		sc.log.WithError(err).Warn("failed to obtain terminal size")
 		size = nil
 	}
-	return sc.call("Start", &CommandReq{Name: name, Arg: arg, Size: size}, empty)
+	return sc.call("Start", &CommandReq{Name: name, Arg: arg, Size: size}, &empty)
 }
 
 // Stop stops the pty.
 func (sc *PtyClient) Stop() error {
-	return sc.call("Stop", empty, empty)
+	return sc.call("Stop", &empty, &empty)
 }
 
 // Read reads from the pty.
@@ -98,7 +98,7 @@ func (sc *PtyClient) Write(b []byte) (int, error) {
 
 // SetPtySize sets the pty size.
 func (sc *PtyClient) SetPtySize(size *pty.Winsize) error {
-	return sc.call("SetPtySize", size, empty)
+	return sc.call("SetPtySize", size, &empty)
 }
 
 func (*PtyClient) rpcMethod(m string) string {
