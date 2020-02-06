@@ -34,7 +34,7 @@ func (cli *CLI) WhitelistClient() (*WhitelistClient, error) {
 }
 
 // StartLocalPty starts a pty on the host.
-func (cli *CLI) StartLocalPty(ctx context.Context, cmd string, args []string) error {
+func (cli *CLI) StartLocalPty(ctx context.Context, cmd string, args ...string) error {
 	conn, err := cli.prepareConn()
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (cli *CLI) StartLocalPty(ctx context.Context, cmd string, args []string) er
 }
 
 // StartRemotePty starts a pty on a remote host, proxied via the local pty.
-func (cli *CLI) StartRemotePty(ctx context.Context, rPK cipher.PubKey, rPort uint16, cmd string, args []string) error {
+func (cli *CLI) StartRemotePty(ctx context.Context, rPK cipher.PubKey, rPort uint16, cmd string, args ...string) error {
 	conn, err := cli.prepareConn()
 	if err != nil {
 		return err
