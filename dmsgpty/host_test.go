@@ -2,6 +2,7 @@ package dmsgpty
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -45,15 +46,7 @@ func TestHost(t *testing.T) {
 		wlC, err := NewWhitelistClient(connC)
 		require.NoError(t, err)
 
-		for i := 0; i < 10; i++ {
-			pks, err := wlC.ViewWhitelist()
-			require.NoError(t, err)
-			require.Len(t, pks, 2)
-
-			pk, _ := cipher.GenerateKeyPair()
-			require.NoError(t, wlC.WhitelistAdd(pk), i)
-			require.NoError(t, wlC.WhitelistRemove(pk), i)
-		}
+		checkWhitelist(t, wlC, 2, 10)
 
 		// Closing logic.
 		cancel()
@@ -72,14 +65,7 @@ func TestHost(t *testing.T) {
 		ptyC, err := NewPtyClient(connC)
 		require.NoError(t, err)
 
-		msg := "Hello world!"
-		require.NoError(t, ptyC.Start("echo", msg))
-
-		readB := make([]byte, len(msg))
-		n, err := io.ReadFull(ptyC, readB)
-		require.NoError(t, err)
-		require.Equal(t, len(readB), n)
-		require.Equal(t, msg, string(readB))
+		checkPty(t, ptyC, "Hello World!")
 
 		// Closing logic.
 		cancel()
@@ -105,14 +91,7 @@ func TestHost(t *testing.T) {
 		ptyB, err := NewProxyClient(connCLI, dcA.LocalPK(), port)
 		require.NoError(t, err)
 
-		msg := "Hello world!"
-		require.NoError(t, ptyB.Start("echo", msg))
-
-		readB := make([]byte, len(msg))
-		n, err := io.ReadFull(ptyB, readB)
-		require.NoError(t, err)
-		require.Equal(t, len(readB), n)
-		require.Equal(t, msg, string(readB))
+		checkPty(t, ptyB, "Hello World!")
 
 		// Closing logic.
 		cancel()
@@ -142,26 +121,44 @@ func TestHost(t *testing.T) {
 		}()
 
 		cliB := &CLI{
+			Log:  logging.MustGetLogger("dmsgpty-cli"),
 			Net:  cliL.Addr().Network(),
 			Addr: cliL.Addr().String(),
 		}
 
-		t.Run("CLI.WhitelistClient", func(t *testing.T) {
+		t.Run("whitelist", func(t *testing.T) {
 			wlC, err := cliB.WhitelistClient()
 			require.NoError(t, err)
-			pks, err := wlC.ViewWhitelist()
+
+			checkWhitelist(t, wlC, 2, 10)
+		})
+
+		t.Run("pty", func(t *testing.T) {
+			conn, err := cliB.prepareConn()
 			require.NoError(t, err)
-			require.Len(t, pks, 2)
+
+			ptyC, err := NewPtyClient(conn)
+			require.NoError(t, err)
+
+			for i := 20; i < 100; i += 10 {
+				checkPty(t, ptyC, fmt.Sprintf("Hello World! %d", i))
+			}
+
+			require.NoError(t, conn.Close())
 		})
 
-		t.Run("CLI.StartLocalPty", func(t *testing.T) {
-			// TODO(evanlinjin): Complete.
-			//msg := "Hello World!"
-			//require.NoError(t, cliB.StartLocalPty(ctx, "echo", msg))
-		})
+		t.Run("proxy", func(t *testing.T) {
+			conn, err := cliB.prepareConn()
+			require.NoError(t, err)
 
-		t.Run("CLI.StartRemotePty", func(t *testing.T) {
-			// TODO(evanlinjin): Complete.
+			ptyC, err := NewProxyClient(conn, dcA.LocalPK(), port)
+			require.NoError(t, err)
+
+			for i := 20; i < 100; i += 10 {
+				checkPty(t, ptyC, fmt.Sprintf("Hello World! %d", i))
+			}
+
+			require.NoError(t, conn.Close())
 		})
 
 		// Closing logic.
@@ -188,5 +185,41 @@ func tempWhitelist(t *testing.T) (Whitelist, func()) {
 
 	return wl, func() {
 		require.NoError(t, os.Remove(fName))
+	}
+}
+
+func checkPty(t *testing.T, ptyC *PtyClient, msg string) {
+	require.NoError(t, ptyC.Start("echo", msg))
+
+	readB := make([]byte, len(msg))
+	n, err := io.ReadFull(ptyC, readB)
+	require.NoError(t, err)
+	require.Equal(t, len(readB), n)
+	require.Equal(t, msg, string(readB))
+
+	require.NoError(t, ptyC.Stop())
+}
+
+func checkWhitelist(t *testing.T, wlC *WhitelistClient, initN, rounds int) {
+	pks, err := wlC.ViewWhitelist()
+	require.NoError(t, err)
+	require.Len(t, pks, initN)
+
+	newPKS := make([]cipher.PubKey, rounds)
+	for i := 0; i < rounds; i++ {
+		pk, _ := cipher.GenerateKeyPair()
+		require.NoError(t, wlC.WhitelistAdd(pk), i)
+		newPKS[i] = pk
+
+		pks, err := wlC.ViewWhitelist()
+		require.NoError(t, err)
+		require.Len(t, pks, initN+i+1)
+	}
+	for i, newPK := range newPKS {
+		require.NoError(t, wlC.WhitelistRemove(newPK))
+
+		pks, err := wlC.ViewWhitelist()
+		require.NoError(t, err)
+		require.Len(t, pks, initN+len(newPKS)-i-1)
 	}
 }
