@@ -22,10 +22,11 @@ import (
 
 func TestHost(t *testing.T) {
 	const port = uint16(22)
+	defaultConf := dmsg.Config{MinSessions: 2}
 
 	// Prepare dmsg env.
 	env := dmsgtest.NewEnv(t, dmsgtest.DefaultTimeout)
-	require.NoError(t, env.Startup(1, 2, nil))
+	require.NoError(t, env.Startup(2, 2, &defaultConf))
 
 	dcA := env.AllClients()[0]
 	dcB := env.AllClients()[1]
@@ -41,7 +42,8 @@ func TestHost(t *testing.T) {
 		connH, connC := net.Pipe()
 
 		host := NewHost(dcA, wl)
-		go host.serveConn(ctx, logging.MustGetLogger("host_conn"), connH)
+		hMux := cliEndpoints(host)
+		go host.serveConn(ctx, logging.MustGetLogger("host_conn"), &hMux, connH)
 
 		wlC, err := NewWhitelistClient(connC)
 		require.NoError(t, err)
@@ -60,7 +62,8 @@ func TestHost(t *testing.T) {
 		connH, connC := net.Pipe()
 
 		host := NewHost(dcA, wl)
-		go host.serveConn(ctx, logging.MustGetLogger("host_conn"), connH)
+		hMux := cliEndpoints(host)
+		go host.serveConn(ctx, logging.MustGetLogger("host_conn"), &hMux, connH)
 
 		ptyC, err := NewPtyClient(connC)
 		require.NoError(t, err)
@@ -86,7 +89,8 @@ func TestHost(t *testing.T) {
 		}()
 
 		hostB := NewHost(dcB, wl)
-		go hostB.serveConn(ctx, logging.MustGetLogger("hostB_conn"), connB)
+		hBMux := cliEndpoints(hostB)
+		go hostB.serveConn(ctx, logging.MustGetLogger("hostB_conn"), &hBMux, connB)
 
 		ptyB, err := NewProxyClient(connCLI, dcA.LocalPK(), port)
 		require.NoError(t, err)
@@ -126,46 +130,80 @@ func TestHost(t *testing.T) {
 			Addr: cliL.Addr().String(),
 		}
 
-		t.Run("whitelist", func(t *testing.T) {
+		t.Run("endpoint_whitelist", func(t *testing.T) {
 			wlC, err := cliB.WhitelistClient()
 			require.NoError(t, err)
 
 			checkWhitelist(t, wlC, 2, 10)
 		})
 
-		t.Run("pty", func(t *testing.T) {
+		t.Run("endpoint_pty", func(t *testing.T) {
 			conn, err := cliB.prepareConn()
 			require.NoError(t, err)
 
-			ptyC, err := NewPtyClient(conn)
+			ptyB, err := NewPtyClient(conn)
 			require.NoError(t, err)
 
 			for i := 20; i < 100; i += 10 {
-				checkPty(t, ptyC, fmt.Sprintf("Hello World! %d", i))
+				checkPty(t, ptyB, fmt.Sprintf("Hello World! %d", i))
 			}
 
 			require.NoError(t, conn.Close())
 		})
 
-		t.Run("proxy", func(t *testing.T) {
+		t.Run("endpoint_proxy", func(t *testing.T) {
 			conn, err := cliB.prepareConn()
 			require.NoError(t, err)
 
-			ptyC, err := NewProxyClient(conn, dcA.LocalPK(), port)
+			ptyB, err := NewProxyClient(conn, dcA.LocalPK(), port)
 			require.NoError(t, err)
 
 			for i := 20; i < 100; i += 10 {
-				checkPty(t, ptyC, fmt.Sprintf("Hello World! %d", i))
+				checkPty(t, ptyB, fmt.Sprintf("Hello World! %d", i))
 			}
 
 			require.NoError(t, conn.Close())
+		})
+
+		// A non-whitelisted host should have no access to hostA's pty.
+		t.Run("no_access", func(t *testing.T) {
+			dcC, err := env.NewClient(&defaultConf)
+			require.NoError(t, err)
+
+			lisC, err := nettest.NewLocalListener("tcp")
+			require.NoError(t, err)
+
+			ctx, cancel := context.WithCancel(ctx)
+			hostC := NewHost(dcC, wl)
+			cErr := make(chan error, 1)
+			go func() {
+				cErr <- hostC.ServeCLI(ctx, lisC)
+				close(cErr)
+			}()
+
+			cliC := CLI{
+				Log:  logging.MustGetLogger("cli_c"),
+				Net:  lisC.Addr().Network(),
+				Addr: lisC.Addr().String(),
+			}
+
+			conn, err := cliC.prepareConn()
+			require.NoError(t, err)
+
+			_, err = NewProxyClient(conn, dcA.LocalPK(), port)
+			require.Error(t, err)
+
+			// Closing logic.
+			cancel()
+			require.NoError(t, lisC.Close())
+			require.NoError(t, <-cErr)
 		})
 
 		// Closing logic.
 		cancel()
 		require.NoError(t, cliL.Close())
 		require.EqualError(t, <-errA, dmsg.ErrEntityClosed.Error())
-		require.Error(t, <-errB)
+		require.NoError(t, <-errB)
 	})
 
 	// Closing logic.

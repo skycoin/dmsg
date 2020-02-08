@@ -17,6 +17,9 @@ func NewWhitelistClient(conn io.ReadWriteCloser) (*WhitelistClient, error) {
 	if err := writeRequest(conn, WhitelistURI); err != nil {
 		return nil, err
 	}
+	if err := readResponse(conn); err != nil {
+		return nil, err
+	}
 	return &WhitelistClient{c: rpc.NewClient(conn)}, nil
 }
 

@@ -27,6 +27,9 @@ func NewPtyClient(conn io.ReadWriteCloser) (*PtyClient, error) {
 	if err := writeRequest(conn, PtyURI); err != nil {
 		return nil, err
 	}
+	if err := readResponse(conn); err != nil {
+		return nil, err
+	}
 	return &PtyClient{
 		log:  logging.MustGetLogger("dmsgpty:pty-client"),
 		rpcC: rpc.NewClient(conn),
@@ -39,6 +42,9 @@ func NewPtyClient(conn io.ReadWriteCloser) (*PtyClient, error) {
 func NewProxyClient(conn io.ReadWriteCloser, rPK cipher.PubKey, rPort uint16) (*PtyClient, error) {
 	uri := fmt.Sprintf("%s?pk=%s&port=%d", PtyProxyURI, rPK, rPort)
 	if err := writeRequest(conn, uri); err != nil {
+		return nil, err
+	}
+	if err := readResponse(conn); err != nil {
 		return nil, err
 	}
 	return &PtyClient{

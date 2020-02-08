@@ -43,7 +43,7 @@ func (h *hostMux) ServeConn(ctx context.Context, conn net.Conn) error {
 
 	uri, err := readRequest(conn)
 	if err != nil {
-		return err
+		return writeResponse(conn, err)
 	}
 	for _, entry := range h.entries {
 		ok, err := path.Match(entry.pat, uri.EscapedPath())
@@ -57,8 +57,11 @@ func (h *hostMux) ServeConn(ctx context.Context, conn net.Conn) error {
 		if err := entry.fn(ctx, uri, rpcS); err != nil {
 			return err
 		}
+		if err := writeResponse(conn, nil); err != nil {
+			return err
+		}
 		rpcS.ServeConn(conn)
 		return nil
 	}
-	return errors.New("invalid request")
+	return writeResponse(conn, errors.New("invalid request"))
 }
