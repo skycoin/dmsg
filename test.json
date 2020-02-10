@@ -1,0 +1,9 @@
+{
+  "addr": "/tmp/dmsgpty.sock",
+  "disc": "http://dmsg.discovery.skywire.cc",
+  "net": "unix",
+  "port": "22",
+  "seckey": "0000000000000000000000000000000000000000000000000000000000000000",
+  "sessions": 1,
+  "whitelist": ""
+}

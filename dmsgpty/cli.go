@@ -17,11 +17,20 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
+
 // CLI connects with and has ownership over a dmsgpty.Host.
 type CLI struct {
 	Log  logrus.FieldLogger `json:"-"`
 	Net  string             `json:"cli_network"`
 	Addr string             `json:"cli_address"`
+}
+
+func DefaultCLI() CLI {
+	return CLI{
+		Log:  logging.MustGetLogger("dmsgpty-cli"),
+		Net:  DefaultCLINet,
+		Addr: DefaultCLIAddr,
+	}
 }
 
 // WhitelistClient returns a client that interacts with the Host's whitelist.
@@ -83,10 +92,10 @@ func (cli *CLI) prepareConn() (net.Conn, error) {
 		cli.Log = logging.MustGetLogger("dmsgpty-cli")
 	}
 	if cli.Net == "" {
-		cli.Net = "unix"
+		cli.Net = DefaultCLINet
 	}
 	if cli.Addr == "" {
-		cli.Addr = "/tmp/dmsgpty.sock"
+		cli.Addr = DefaultCLIAddr
 	}
 
 	cli.Log.

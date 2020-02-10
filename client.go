@@ -31,7 +31,7 @@ func (c Config) PrintWarnings(log logrus.FieldLogger) {
 // DefaultConfig returns the default configuration for a dmsg client entity.
 func DefaultConfig() *Config {
 	return &Config{
-		MinSessions: 1,
+		MinSessions: DefaultMinSessions,
 	}
 }
 

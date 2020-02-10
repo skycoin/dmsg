@@ -15,7 +15,9 @@ require (
 	github.com/prometheus/client_golang v1.3.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/skycoin/skycoin v0.26.0 // indirect
+	github.com/spf13/cast v1.3.0
 	github.com/spf13/cobra v0.0.5
+	github.com/spf13/viper v1.6.2
 	github.com/stretchr/testify v1.4.0
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
 	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
