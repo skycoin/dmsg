@@ -2,8 +2,10 @@ package commands
 
 import (
 	"fmt"
-	"github.com/SkycoinProject/dmsg/cipher"
+
 	"github.com/spf13/cobra"
+
+	"github.com/SkycoinProject/dmsg/cipher"
 )
 
 func init() {
@@ -14,7 +16,7 @@ func init() {
 }
 
 var whitelistCmd = &cobra.Command{
-	Use: "whitelist",
+	Use:   "whitelist",
 	Short: "lists all whitelisted public keys",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		wlC, err := cli.WhitelistClient()
@@ -33,9 +35,9 @@ var whitelistCmd = &cobra.Command{
 }
 
 var whitelistAddCmd = &cobra.Command{
-	Use: "whitelist-add <public-key>...",
+	Use:   "whitelist-add <public-key>...",
 	Short: "adds public key(s) to the whitelist",
-	Args: cobra.MinimumNArgs(1),
+	Args:  cobra.MinimumNArgs(1),
 	RunE: func(_ *cobra.Command, args []string) error {
 		pks, err := pksFromArgs(args)
 		if err != nil {
@@ -50,9 +52,9 @@ var whitelistAddCmd = &cobra.Command{
 }
 
 var whitelistRemoveCmd = &cobra.Command{
-	Use: "whitelist-remove <public-key>...",
+	Use:   "whitelist-remove <public-key>...",
 	Short: "removes public key(s) from the whitelist",
-	Args: cobra.MinimumNArgs(1),
+	Args:  cobra.MinimumNArgs(1),
 	RunE: func(_ *cobra.Command, args []string) error {
 		pks, err := pksFromArgs(args)
 		if err != nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/SkycoinProject/dmsg/cipher"
 )
@@ -17,7 +18,7 @@ type Whitelist interface {
 	Remove(pks ...cipher.PubKey) error
 }
 
-// NewJSONFileWhiteList represents a JSON file implementation of a whitelist.
+// NewJSONFileWhiteList creates a JSON file implementation of a whitelist.
 func NewJSONFileWhiteList(fileName string) (Whitelist, error) {
 	fileName, err := filepath.Abs(fileName)
 	if err != nil {
@@ -104,5 +105,52 @@ func jsonFileErr(err error) error {
 	if err != nil {
 		return fmt.Errorf("json file whitelist: %v", err)
 	}
+	return nil
+}
+
+// NewMemoryWhitelist creates a memory implementation of a whitelist.
+func NewMemoryWhitelist() Whitelist {
+	return &memoryWhitelist{
+		m: make(map[cipher.PubKey]struct{}),
+	}
+}
+
+type memoryWhitelist struct {
+	m   map[cipher.PubKey]struct{}
+	mux sync.RWMutex
+}
+
+func (w *memoryWhitelist) Get(pk cipher.PubKey) (bool, error) {
+	w.mux.RLock()
+	_, ok := w.m[pk]
+	w.mux.RUnlock()
+	return ok, nil
+}
+
+func (w *memoryWhitelist) All() (map[cipher.PubKey]bool, error) {
+	out := make(map[cipher.PubKey]bool)
+	w.mux.RLock()
+	for k := range w.m {
+		out[k] = true
+	}
+	w.mux.RUnlock()
+	return out, nil
+}
+
+func (w *memoryWhitelist) Add(pks ...cipher.PubKey) error {
+	w.mux.Lock()
+	for _, pk := range pks {
+		w.m[pk] = struct{}{}
+	}
+	w.mux.Unlock()
+	return nil
+}
+
+func (w *memoryWhitelist) Remove(pks ...cipher.PubKey) error {
+	w.mux.Lock()
+	for _, pk := range pks {
+		delete(w.m, pk)
+	}
+	w.mux.Unlock()
 	return nil
 }

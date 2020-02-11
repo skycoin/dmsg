@@ -17,7 +17,6 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-
 // CLI connects with and has ownership over a dmsgpty.Host.
 type CLI struct {
 	Log  logrus.FieldLogger `json:"-"`

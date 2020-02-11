@@ -2,10 +2,12 @@ package cmdutil
 
 import (
 	"errors"
-	"github.com/SkycoinProject/dmsg/cipher"
-	"github.com/stretchr/testify/require"
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/SkycoinProject/dmsg/cipher"
 )
 
 func TestCatch(t *testing.T) {

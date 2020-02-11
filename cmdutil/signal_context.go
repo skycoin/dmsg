@@ -2,10 +2,11 @@ package cmdutil
 
 import (
 	"context"
-	"github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/sirupsen/logrus"
 )
 
 // SignalContext returns a context that cancels on given syscall signals.
