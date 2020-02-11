@@ -31,7 +31,6 @@ var log = logging.MustGetLogger("dmsgpty-host:init")
 // variables
 var (
 	// persistent flags (with viper references)
-	skGen        = false
 	sk           cipher.SecKey
 	wlPath       = ""
 	dmsgDisc     = dmsg.DefaultDiscAddr
@@ -41,6 +40,7 @@ var (
 	cliAddr      = dmsgpty.DefaultCLIAddr
 
 	// persistent flags (without viper references)
+	skGen     = false
 	envPrefix = defaultEnvPrefix
 
 	// root command flags (without viper references)
@@ -54,9 +54,6 @@ func init() {
 
 	// Prepare flags with env/config references.
 	// We will bind flags to associated viper values so that they can be set with envs and config file.
-
-	rootCmd.PersistentFlags().BoolVar(&skGen, "skgen", skGen,
-		"if set, a random secret key will be generated")
 
 	rootCmd.PersistentFlags().Var(&sk, "sk",
 		"secret key of the dmsgpty-host")
@@ -82,6 +79,9 @@ func init() {
 	cmdutil.Catch(viper.BindPFlags(rootCmd.PersistentFlags())) // Bind above flags with env/config references.
 
 	// Prepare flags without associated env/config references.
+
+	rootCmd.PersistentFlags().BoolVar(&skGen, "skgen", skGen,
+		"if set, a random secret key will be generated")
 
 	rootCmd.PersistentFlags().StringVar(&envPrefix, "envprefix", envPrefix,
 		"env prefix")
@@ -143,7 +143,7 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 	// Grab final values of variables.
 
 	// Grab secret key (from 'sk' and 'skgen' flags).
-	if skGen = viper.GetBool("skgen"); skGen {
+	if skGen {
 		if !sk.Null() {
 			log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
 		}

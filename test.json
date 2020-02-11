@@ -1,9 +1,9 @@
 {
-  "addr": "/tmp/dmsgpty.sock",
-  "disc": "http://dmsg.discovery.skywire.cc",
-  "net": "unix",
-  "port": "22",
-  "seckey": "0000000000000000000000000000000000000000000000000000000000000000",
-  "sessions": 1,
-  "whitelist": ""
+  "cliaddr": "/tmp/dmsgpty.sock",
+  "clinet": "unix",
+  "dmsgdisc": "http://dmsg.discovery.skywire.cc",
+  "dmsgport": "22",
+  "dmsgsessions": 1,
+  "sk": "92d8d29e35ef178990f15589a6cc8400363e0cd28b246cd1d74a7211124ef514",
+  "wl": ""
 }
