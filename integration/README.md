@@ -16,5 +16,5 @@
     ```
 4. Start `dmsg-server`.
     ```bash
-    $ ./bin/dmsg-server ./integration/configs/dmsg-server.json
+    $ ./bin/dmsg-server ./integration/configs/dmsgserver1.json
     ```

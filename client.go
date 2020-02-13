@@ -115,6 +115,11 @@ func (ce *Client) Serve() {
 			time.Sleep(time.Second) // TODO(evanlinjin): Implement exponential back off.
 			continue
 		}
+		if len(entries) == 0 {
+			wait := time.Second
+			ce.log.Warnf("No entries found. Retrying after %s...", wait.String())
+			time.Sleep(wait)
+		}
 
 		for _, entry := range entries {
 			if isClosed(ce.done) {

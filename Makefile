@@ -38,6 +38,10 @@ dep: ## Sorts dependencies
 build: ## Build binaries into ./bin
 	${OPTS} go install ./cmd/*
 
+run-dmsg-env: build ## Run a local dmsg env.
+	${OPTS} ./integration/scripts/run-dmsg-env.sh
+
+# TODO(evanlinjin): We should get rid of this at some point.
 bin: ## Build `dmsg-discovery`, `dmsg-server`
 	${OPTS} go build ${BUILD_OPTS} -o ./dmsg-discovery ./cmd/dmsg-discovery
 	${OPTS} go build ${BUILD_OPTS} -o ./dmsg-server  ./cmd/dmsg-server

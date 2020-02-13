@@ -37,6 +37,15 @@ func NewHost(dmsgC *dmsg.Client, wl Whitelist) *Host {
 
 // ServeCLI listens for CLI connections via the provided listener.
 func (h *Host) ServeCLI(ctx context.Context, lis net.Listener) error {
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	go func() {
+		<-ctx.Done()
+		_ = lis.Close() //nolint:errcheck
+	}()
+
 	log := logging.MustGetLogger("dmsgpty:cli-server")
 
 	mux := cliEndpoints(h)
@@ -93,7 +102,8 @@ func (h *Host) ListenAndServe(ctx context.Context, port uint16) error {
 				log.Warn("Failed to accept dmsg.Stream with temporary error, continuing...")
 				continue
 			}
-			if err == io.ErrClosedPipe || strings.Contains(err.Error(), "use of closed network connection") {
+			if err == io.ErrClosedPipe || err == dmsg.ErrEntityClosed ||
+				strings.Contains(err.Error(), "use of closed network connection") {
 				log.Info("Cleanly stopped serving.")
 				return nil
 			}
