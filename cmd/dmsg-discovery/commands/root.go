@@ -76,7 +76,7 @@ func init() {
 	rootCmd.Flags().StringVar(&redisURL, "redis", "redis://localhost:6379", "connections string for a redis store")
 	rootCmd.Flags().BoolVarP(&logEnabled, "log", "l", true, "enable request logging")
 	rootCmd.Flags().StringVar(&syslogAddr, "syslog", "", "syslog server address. E.g. localhost:514")
-	rootCmd.Flags().StringVar(&tag, "tag", "messaging-discovery", "logging tag")
+	rootCmd.Flags().StringVar(&tag, "tag", "dmsg-discovery", "logging tag")
 	rootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
 }
 

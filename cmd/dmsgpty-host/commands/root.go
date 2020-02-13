@@ -218,6 +218,9 @@ var rootCmd = &cobra.Command{
 		wg.Add(2)
 
 		// Prepare CLI.
+		if cliNet == "unix" {
+			_ = os.Remove(cliAddr) //nolint:errcheck
+		}
 		cliL, err := net.Listen(cliNet, cliAddr)
 		cmdutil.CatchWithLog(log, "failed to serve CLI", err)
 		log.WithField("addr", cliL.Addr()).Info("Listening for CLI connections.")

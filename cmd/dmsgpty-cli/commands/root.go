@@ -15,10 +15,10 @@ import (
 var cli = dmsgpty.DefaultCLI()
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&cli.Net, "cli-net", cli.Net,
+	rootCmd.PersistentFlags().StringVar(&cli.Net, "clinet", cli.Net,
 		"network to use for dialing to dmsgpty-host")
 
-	rootCmd.PersistentFlags().StringVar(&cli.Addr, "cli-addr", cli.Addr,
+	rootCmd.PersistentFlags().StringVar(&cli.Addr, "cliaddr", cli.Addr,
 		"address to use for dialing to dmsgpty-host")
 }
 
@@ -27,7 +27,7 @@ var cmdName = os.Getenv("SHELL")
 var cmdArgs []string
 
 func init() {
-	rootCmd.Flags().VarP(&remoteAddr, "addr", "a",
+	rootCmd.Flags().Var(&remoteAddr, "addr",
 		"remote dmsg address of format 'pk:port'. If unspecified, the pty will start locally")
 
 	rootCmd.Flags().StringVarP(&cmdName, "cmd", "c", cmdName,

@@ -94,7 +94,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.Flags().StringVarP(&metricsAddr, "metrics", "m", ":2121", "address to bind metrics API to")
 	rootCmd.Flags().StringVar(&syslogAddr, "syslog", "", "syslog server address. E.g. localhost:514")
-	rootCmd.Flags().StringVar(&tag, "tag", "messaging-server", "logging tag")
+	rootCmd.Flags().StringVar(&tag, "tag", "dmsg-server", "logging tag")
 	rootCmd.Flags().BoolVarP(&cfgFromStdin, "stdin", "i", false, "read configuration from STDIN")
 }
 
