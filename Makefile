@@ -38,34 +38,34 @@ dep: ## Sorts dependencies
 build: ## Build binaries into ./bin
 	${OPTS} go install ./cmd/*
 
-env-init-db: ## Init local database env.
+start-db: ## Init local database env.
 	source ./integration/env.sh && init_redis
 
-env-stop-db: ## Stop local database env.
+stop-db: ## Stop local database env.
 	source ./integration/env.sh && stop_redis
 
-env-attach-db: ## Attach local database env.
+attach-db: ## Attach local database env.
 	source ./integration/env.sh && attach_redis
 
-env-init-dmsg: build ## Init local dmsg env.
+start-dmsg: build ## Init local dmsg env.
 	source ./integration/env.sh && init_dmsg
 
-env-stop-dmsg: ## Stop local dmsg env.
+stop-dmsg: ## Stop local dmsg env.
 	source ./integration/env.sh && stop_dmsg
 
-env-attach-dmsg: ## Attach local dmsg tmux session.
+attach-dmsg: ## Attach local dmsg tmux session.
 	source ./integration/env.sh && attach_dmsg
 
-env-init-dmsgpty: build ## Init local dmsgpty env.
+start-pty: build ## Init local dmsgpty env.
 	source ./integration/env.sh && init_dmsgpty
 
-env-stop-dmsgpty: ## Stop local dmsgpty env.
+stop-pty: ## Stop local dmsgpty env.
 	source ./integration/env.sh && stop_dmsgpty
 
-env-attach-dmsgpty: ## Attach local dmsgpty tmux session.
+attach-pty: ## Attach local dmsgpty tmux session.
 	source ./integration/env.sh && attach_dmsgpty
 
-env-stop-all: env-stop-dmsgpty env-stop-dmsg env-stop-db ## Stop all local tmux sessions.
+stop-all: stop-pty stop-dmsg stop-db ## Stop all local tmux sessions.
 
 # TODO(evanlinjin): We should get rid of this at some point.
 bin: ## Build `dmsg-discovery`, `dmsg-server`
