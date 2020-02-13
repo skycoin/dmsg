@@ -24,6 +24,7 @@ type CLI struct {
 	Addr string             `json:"cli_address"`
 }
 
+// DefaultCLI returns a CLI with default values.
 func DefaultCLI() CLI {
 	return CLI{
 		Log:  logging.MustGetLogger("dmsgpty-cli"),

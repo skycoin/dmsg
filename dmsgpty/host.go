@@ -24,7 +24,7 @@ type Host struct {
 	wl    Whitelist
 
 	cliN  int32
-	dmsgN int32
+	connN int32
 }
 
 // NewHost creates a new dmsgpty.Host with a given dmsg.Client and whitelist.
@@ -51,8 +51,6 @@ func (h *Host) ServeCLI(ctx context.Context, lis net.Listener) error {
 	mux := cliEndpoints(h)
 
 	for {
-		log := log.WithField("cli_id", atomic.AddInt32(&h.cliN, 1))
-
 		conn, err := lis.Accept()
 		if err != nil {
 			if err, ok := err.(net.Error); ok && err.Temporary() {
@@ -67,6 +65,7 @@ func (h *Host) ServeCLI(ctx context.Context, lis net.Listener) error {
 			return err
 		}
 
+		log := log.WithField("cli_id", atomic.AddInt32(&h.cliN, 1))
 		log.Info("CLI connection accepted.")
 		go func() {
 			h.serveConn(ctx, log, &mux, conn)
@@ -126,9 +125,13 @@ func (h *Host) ListenAndServe(ctx context.Context, port uint16) error {
 			continue
 		}
 
+		log = log.WithField("conn_id", atomic.AddInt32(&h.connN, 1))
 		log.Info("dmsg.Stream accepted.")
 		log = stream.Logger().WithField("dmsgpty", "stream")
-		go h.serveConn(ctx, log, &mux, stream)
+		go func() {
+			h.serveConn(ctx, log, &mux, stream)
+			atomic.AddInt32(&h.connN, -1)
+		}()
 	}
 }
 

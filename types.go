@@ -87,6 +87,7 @@ func (a *Addr) Set(s string) error {
 	}
 }
 
+// Type implements pflag.Value for Addr.
 func (Addr) Type() string {
 	return "dmsg.Addr"
 }

@@ -99,7 +99,7 @@ func TestHost(t *testing.T) {
 
 		// Closing logic.
 		cancel()
-		require.EqualError(t, <-errA, dmsg.ErrEntityClosed.Error())
+		require.NoError(t, <-errA)
 		require.NoError(t, connB.Close())
 		require.NoError(t, connCLI.Close())
 	})
@@ -195,14 +195,12 @@ func TestHost(t *testing.T) {
 
 			// Closing logic.
 			cancel()
-			require.NoError(t, lisC.Close())
 			require.NoError(t, <-cErr)
 		})
 
 		// Closing logic.
 		cancel()
-		require.NoError(t, cliL.Close())
-		require.EqualError(t, <-errA, dmsg.ErrEntityClosed.Error())
+		require.NoError(t, <-errA)
 		require.NoError(t, <-errB)
 	})
 

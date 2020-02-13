@@ -52,10 +52,9 @@ var rootCmd = &cobra.Command{
 		if remoteAddr.PK.Null() {
 			// Local pty.
 			return cli.StartLocalPty(ctx, cmdName, cmdArgs...)
-		} else {
-			// Remote pty.
-			return cli.StartRemotePty(ctx, remoteAddr.PK, remoteAddr.Port, cmdName, cmdArgs...)
 		}
+		// Remote pty.
+		return cli.StartRemotePty(ctx, remoteAddr.PK, remoteAddr.Port, cmdName, cmdArgs...)
 	},
 }
 

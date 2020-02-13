@@ -13,10 +13,9 @@ import (
 func TestCatch(t *testing.T) {
 	fn := func(ok bool) (int, error) {
 		if ok {
-			return rand.Int(), nil
-		} else {
-			return 0, errors.New("not okay")
+			return rand.Int(), nil //nolint:gosec
 		}
+		return 0, errors.New("not okay")
 	}
 
 	t.Run("should_not_panic", func(t *testing.T) {
@@ -43,7 +42,7 @@ func TestCatch(t *testing.T) {
 		expected := cipher.RandByte(rounds)
 		actual := make([]byte, 0, rounds)
 
-		addFn := func(i int) error {
+		addFn := func(i int) error { //nolint:unparam
 			actual = append(actual, expected[i])
 			return nil
 		}

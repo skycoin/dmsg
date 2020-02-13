@@ -19,6 +19,7 @@ const (
 	DefaultCLIAddr = "/tmp/dmsgpty.sock"
 )
 
+// Constants related to dmsg.
 const (
 	DefaultPort = uint16(22)
 )
