@@ -29,7 +29,7 @@ var (
 	cfgFromStdin bool
 )
 
-// Config is a messaging-server config
+// Config is a dmsg-server config
 type Config struct {
 	PubKey        cipher.PubKey `json:"public_key"`
 	SecKey        cipher.SecKey `json:"secret_key"`
@@ -40,8 +40,8 @@ type Config struct {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "messaging-server [config.json]",
-	Short: "Messaging Server for skywire",
+	Use:   "dmsg-server [config.json]",
+	Short: "Dmsg Server for skywire",
 	Run: func(_ *cobra.Command, args []string) {
 		// Config
 		configFile := "config.json"
@@ -94,7 +94,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.Flags().StringVarP(&metricsAddr, "metrics", "m", ":2121", "address to bind metrics API to")
 	rootCmd.Flags().StringVar(&syslogAddr, "syslog", "", "syslog server address. E.g. localhost:514")
-	rootCmd.Flags().StringVar(&tag, "tag", "messaging-server", "logging tag")
+	rootCmd.Flags().StringVar(&tag, "tag", "dmsg-server", "logging tag")
 	rootCmd.Flags().BoolVarP(&cfgFromStdin, "stdin", "i", false, "read configuration from STDIN")
 }
 
