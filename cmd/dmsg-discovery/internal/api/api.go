@@ -22,7 +22,7 @@ var log = logging.MustGetLogger("dmsg-discovery")
 
 const maxServers = 10
 
-// API represents the api of the messaging-discovery service`
+// API represents the api of the dmsg-discovery service`
 type API struct {
 	mux         *http.ServeMux
 	store       store2.Storer
@@ -111,7 +111,7 @@ func (a *API) Start(listener net.Listener) error {
 }
 
 // muxEntry calls either getEntry or setEntry depending on the
-// http method used on the endpoint /messaging-discovery/entry/:pk
+// http method used on the endpoint /dmsg-discovery/entry/:pk
 func (a *API) muxEntry() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -124,7 +124,7 @@ func (a *API) muxEntry() http.HandlerFunc {
 }
 
 // getEntry returns the entry associated with the given public key
-// URI: /messaging-discovery/entry/:pk
+// URI: /dmsg-discovery/entry/:pk
 // Method: GET
 func (a *API) getEntry(w http.ResponseWriter, r *http.Request) {
 	staticPK, err := retrievePkFromURL(r.URL)
@@ -148,7 +148,7 @@ func (a *API) getEntry(w http.ResponseWriter, r *http.Request) {
 // setEntry adds a new entry associated with the given public key
 // or updates a previous one if signed by the same instance that
 // created the previous one
-// URI: /messaging-discovery/entry/
+// URI: /dmsg-discovery/entry/
 // Method: POST
 // Args:
 //	json serialized entry object
@@ -226,7 +226,7 @@ func (a *API) setEntry(w http.ResponseWriter, r *http.Request) {
 }
 
 // getAvailableServers returns all available server entries as an array of json codified entry objects
-// URI: /messaging-discovery/available_servers
+// URI: /dmsg-discovery/available_servers
 // Method: GET
 func (a *API) getAvailableServer() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

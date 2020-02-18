@@ -5,7 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-// DmsgMetrics record messaging metrics
+// DmsgMetrics record dmsg metrics
 type DmsgMetrics struct {
 	ClientConns prometheus.Gauge
 	Bandwidth   prometheus.Summary
