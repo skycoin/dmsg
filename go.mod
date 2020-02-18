@@ -8,7 +8,7 @@ require (
 	github.com/creack/pty v1.1.9
 	github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6
 	github.com/go-redis/redis v6.15.6+incompatible
-	github.com/google/uuid v1.1.1 // indirect
+	github.com/google/uuid v1.1.1
 	github.com/gorilla/handlers v1.4.2
 	github.com/hashicorp/yamux v0.0.0-20190923154419-df201c70410d // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect

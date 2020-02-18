@@ -79,6 +79,11 @@ func (sc *PtyClient) Start(name string, arg ...string) error {
 		sc.log.WithError(err).Warn("failed to obtain terminal size")
 		size = nil
 	}
+	return sc.StartWithSize(name, arg, size)
+}
+
+// StartWithSize starts the pty with a specified size.
+func (sc *PtyClient) StartWithSize(name string, arg []string, size *pty.Winsize) error {
 	return sc.call("Start", &CommandReq{Name: name, Arg: arg, Size: size}, &empty)
 }
 

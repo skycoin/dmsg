@@ -1,28 +1,40 @@
 package dmsgpty
 
 import (
-	"encoding/json"
-	"net/http"
+	"fmt"
 	"sort"
 	"sync"
 
 	"github.com/google/uuid"
 )
 
-// UISession represents a UI's session.
-type UISession struct {
+type UIConfig struct {
+	TermCols int
+	TermRows int
+	CmdName  string
+	CmdArgs  []string
+}
 
+func DefaultUIConfig() UIConfig {
+	return UIConfig{
+		TermCols: 100,
+		TermRows: 30,
+		CmdName: "/bin/bash",
+		CmdArgs: nil,
+	}
 }
 
 type UI struct {
-	ss  map[uuid.UUID]*UISession
-	mux sync.RWMutex
+	conf   UIConfig
+	dialer UIDialer
+	ptys   map[uuid.UUID]UISession // upstream host's PTYs.
+	mux    sync.RWMutex
 }
 
-func (ui *UI) getSessionIDs() []uuid.UUID {
+func (ui *UI) getPtyIDs() []uuid.UUID {
 	ui.mux.RLock()
-	ids := make([]uuid.UUID, 0, len(ui.ss))
-	for id := range ui.ss {
+	ids := make([]uuid.UUID, 0, len(ui.ptys))
+	for id := range ui.ptys {
 		ids = append(ids, id)
 	}
 	ui.mux.RUnlock()
@@ -30,18 +42,36 @@ func (ui *UI) getSessionIDs() []uuid.UUID {
 	return ids
 }
 
-func handleListSessions(ui *UI) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func (ui *UI) newPty() (*UISession, error) {
+	id := uuid.New()
 
-		w.WriteHeader(http.StatusOK)
-		w.Header().Add("Content-Type", "application/json")
-
-		ids := ui.getSessionIDs()
-		enc := json.NewEncoder(w)
-		enc.SetEscapeHTML(true)
-		if err := enc.Encode(ids); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-
-		}
+	hostConn, err := ui.dialer.Dial()
+	if err != nil {
+		return nil,
+			fmt.Errorf("failed to dial to upstream dmsgpty host: %v", err)
 	}
+
+	ptyC, err := NewPtyClient(hostConn)
+	if err != nil {
+		return nil,
+			fmt.Errorf("failed to establish pty session with upstream dmsgpty host: %v", err)
+	}
+
+	if err := ptyC.StartWithSize(ui.conf.CmdName, ui.conf.CmdArgs, nil); err != nil {
+		return nil,
+			fmt.Errorf("failed to start pty in upstream dmsgpty host: %v", err)
+	}
+
+	ses := UISession{
+		id: id,
+		hc: ptyC,
+		vm: newViewManager(ptyC.log.WithField("ui_id", id.String()), defaultCacheCap),
+	}
+
+	ui.mux.Lock()
+	ui.ptys[id] = ses
+	ui.mux.Unlock()
+
+	return &ses, nil
 }
+
