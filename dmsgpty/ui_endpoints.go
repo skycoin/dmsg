@@ -1,11 +1,20 @@
 package dmsgpty
 
 import (
-	"github.com/SkycoinProject/dmsg/httputil"
+	"fmt"
+
 	"github.com/google/uuid"
+	"nhooyr.io/websocket"
+
+	"github.com/SkycoinProject/dmsg/httputil"
+
 	"net/http"
 	"net/url"
 	"path"
+)
+
+const (
+	wsMsgT = websocket.MessageText
 )
 
 type SessionsJSON struct {
@@ -59,6 +68,47 @@ func handleNewSession(ui *UI) http.HandlerFunc {
 		httputil.WriteJSON(w, r, http.StatusOK,
 			makeSessionJSON(ses.id, r.URL))
 	}
+}
+
+func handleDeleteSession(ui *UI, id uuid.UUID) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ui.delPty(id)
+		handleListSessions(ui).ServeHTTP(w, r)
+	}
+}
+
+func handleOpenSession(ui *UI, id uuid.UUID) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := ui.getPty(id)
+		if !ok {
+			err := fmt.Errorf("ui session of ID %s does not exist", id)
+			writeError(w, r, err, http.StatusNotFound)
+			return
+		}
+
+		// Serve web page.
+		if !isWebsocket(r.Header) {
+			if _, err := writeTermHTML(w); err != nil {
+				// TODO: log.
+			}
+			return
+		}
+
+		// Serve websocket connection.
+		ws, err := websocket.Accept(w, r, nil)
+		if err != nil {
+			// TODO: Log.
+			return
+		}
+		defer func() { _ = ws.Close(websocket.StatusNormalClosure, "") }() //nolint:errcheck
+
+		conn := websocket.NetConn(r.Context(), ws, wsMsgT)
+		_, _ = session.ServeView(conn) //nolint:errcheck
+	}
+}
+
+func parseSessionID(r *http.Request) (uuid.UUID, error) {
+	return uuid.Parse(path.Base(r.URL.EscapedPath()))
 }
 
 func isWebsocket(h http.Header) bool {

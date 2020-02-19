@@ -2,8 +2,9 @@ package dmsgpty
 
 import (
 	"context"
-	"github.com/SkycoinProject/dmsg"
 	"net"
+
+	"github.com/SkycoinProject/dmsg"
 )
 
 type UIDialer interface {
@@ -12,11 +13,11 @@ type UIDialer interface {
 }
 
 func DmsgUIDialer(dmsgC *dmsg.Client, rAddr dmsg.Addr) UIDialer {
-	return &dmsgUIDialer{ dmsgC: dmsgC, rAddr: rAddr }
+	return &dmsgUIDialer{dmsgC: dmsgC, rAddr: rAddr}
 }
 
 func NetUIDialer(network, address string) UIDialer {
-	return &netUIDialer{ network: network, address: address }
+	return &netUIDialer{network: network, address: address}
 }
 
 type dmsgUIDialer struct {

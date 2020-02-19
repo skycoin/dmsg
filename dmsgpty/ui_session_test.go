@@ -1,10 +1,12 @@
 package dmsgpty
 
 import (
-	"github.com/SkycoinProject/dmsg/cipher"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/SkycoinProject/dmsg/cipher"
 )
 
 func TestCacheView_Write(t *testing.T) {
@@ -28,10 +30,10 @@ func TestCacheView_Write(t *testing.T) {
 	})
 	t.Run("multi_write_overflow", func(t *testing.T) {
 		const (
-			cacheLen = 64
-			write1 = 60
-			write2 = 5
-			writeTotal = write1+write2
+			cacheLen   = 64
+			write1     = 60
+			write2     = 5
+			writeTotal = write1 + write2
 		)
 
 		data := cipher.RandByte(writeTotal)

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path"
 	"sync"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
@@ -123,7 +122,7 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 	viper.AutomaticEnv()
 
 	// Prepare how config file is sourced (if root command).
-	if cmd.Name() == rootCmdName() {
+	if cmd.Name() == cmdutil.RootCmdName() {
 		viper.SetConfigName("config")
 		viper.SetConfigType("json")
 		if confStdin {
@@ -174,12 +173,8 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 	pLog.Info("Init complete.")
 }
 
-func rootCmdName() string {
-	return path.Base(os.Args[0])
-}
-
 var rootCmd = &cobra.Command{
-	Use:    rootCmdName(),
+	Use:    cmdutil.RootCmdName(),
 	Short:  "runs a standalone dmsgpty-host instance",
 	PreRun: prepareVariables,
 	Run: func(cmd *cobra.Command, args []string) {
