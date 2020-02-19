@@ -109,8 +109,12 @@ func (s *Server) updateEntryLoop(addr string) error {
 		}
 	}()
 	return netutil.NewDefaultRetrier(s.log).Do(ctx, func() error {
-		return s.updateServerEntry(ctx, addr)
+		return s.updateServerEntry(ctx, addr, nil)
 	})
+}
+
+func (s *Server) updateServerSession(addr string) error {
+
 }
 
 func (s *Server) handleSession(conn net.Conn) {

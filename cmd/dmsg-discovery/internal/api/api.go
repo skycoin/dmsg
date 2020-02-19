@@ -119,10 +119,31 @@ func (a *API) muxEntry() http.HandlerFunc {
 		switch r.Method {
 		case http.MethodPost:
 			a.setEntry(w, r)
+		case http.MethodPut:
+			a.updateServerSession(w, r)
 		default:
 			a.getEntry(w, r)
 		}
 	}
+}
+
+// updateServerSession updates the number of available sessions of a (server) entry
+// URI: /dmsg-discovery/entry/:pk
+// Method: PUT
+func (a *API) updateServerSession(w http.ResponseWriter, r *http.Request) {
+	staticPK, err := retrievePkFromURL(r.URL)
+	if err != nil {
+		a.handleError(w, disc.ErrBadInput)
+		return
+	}
+
+	err = a.store.UpdateEntry(r.Context(), staticPK)
+	if err != nil {
+		a.handleError(w, err)
+		return
+	}
+
+	a.writeJSON(w, http.StatusOK, disc.MsgEntryUpdated)
 }
 
 // getEntry returns the entry associated with the given public key

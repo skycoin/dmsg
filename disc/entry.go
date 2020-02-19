@@ -154,6 +154,9 @@ type Server struct {
 
 	// Number of connections still available.
 	AvailableConnections int `json:"available_connections"`
+
+	// Number of sessions
+	AvailableSessions int `json:"available_sessions"`
 }
 
 // String implements stringer

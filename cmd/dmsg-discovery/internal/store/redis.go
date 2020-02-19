@@ -73,6 +73,23 @@ func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry) error {
 	return nil
 }
 
+func (r *redisStore) UpdateEntry(ctx context.Context, staticPubKey cipher.PubKey) error {
+	entry, err := r.Entry(ctx, staticPubKey)
+	if err != nil {
+		return err
+	}
+
+	// increment the session count by 1
+	entry.Server.AvailableSessions+=1
+
+	err = r.SetEntry(ctx,entry)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // AvailableServers implements Storer AvailableServers method for redisdb database
 func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*disc.Entry, error) {
 	var entries []*disc.Entry

@@ -27,6 +27,9 @@ type Storer interface {
 	// This is unsafe and does not check signature.
 	SetEntry(ctx context.Context, entry *disc.Entry) error
 
+	// UpdateEntry updates an entry's sessions
+	UpdateEntry(ctx context.Context, staticPubKey cipher.PubKey) error
+
 	// AvailableServers discovers available dmsg servers.
 	AvailableServers(ctx context.Context, maxCount int) ([]*disc.Entry, error)
 }

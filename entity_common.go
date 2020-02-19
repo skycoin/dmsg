@@ -2,6 +2,8 @@ package dmsg
 
 import (
 	"context"
+	"github.com/prometheus/common/log"
+	"net/http"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -119,17 +121,25 @@ func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
 }
 
 // updateServerEntry updates the dmsg server's entry within dmsg discovery.
-func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string) error {
+func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, s *struct{}) error {
 	entry, err := c.dc.Entry(ctx, c.pk)
 	if err != nil {
 		entry = disc.NewServerEntry(c.pk, 0, addr, 10)
 		if err := entry.Sign(c.sk); err != nil {
 			return err
 		}
-		return c.dc.SetEntry(ctx, entry)
+		return c.dc.SetEntry(ctx, entry, http.MethodPost)
 	}
+
+	if s != nil {
+		log.Info("Updating sessions...")
+		entry.Server.AvailableSessions+=1
+		return c.dc.UpdateEntry(ctx, c.sk,entry, &struct{}{})
+	}
+
 	entry.Server.Address = addr
-	return c.dc.UpdateEntry(ctx, c.sk, entry)
+
+	return c.dc.UpdateEntry(ctx, c.sk, entry, nil)
 }
 
 func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}) error {
@@ -147,11 +157,11 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}
 		if err := entry.Sign(c.sk); err != nil {
 			return err
 		}
-		return c.dc.SetEntry(ctx, entry)
+		return c.dc.SetEntry(ctx, entry, http.MethodPost)
 	}
 	entry.Client.DelegatedServers = srvPKs
 	c.log.WithField("entry", entry).Info("Updating entry.")
-	return c.dc.UpdateEntry(ctx, c.sk, entry)
+	return c.dc.UpdateEntry(ctx, c.sk, entry, nil)
 }
 
 func getServerEntry(ctx context.Context, dc disc.APIClient, srvPK cipher.PubKey) (*disc.Entry, error) {
