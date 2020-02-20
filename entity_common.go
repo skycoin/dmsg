@@ -128,7 +128,7 @@ func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, s *st
 		if err := entry.Sign(c.sk); err != nil {
 			return err
 		}
-		return c.dc.SetEntry(ctx, entry, http.MethodPost)
+		return c.dc.SetEntry(ctx, entry, http.MethodPost, nil)
 	}
 
 	if s != nil {
@@ -157,7 +157,7 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}
 		if err := entry.Sign(c.sk); err != nil {
 			return err
 		}
-		return c.dc.SetEntry(ctx, entry, http.MethodPost)
+		return c.dc.SetEntry(ctx, entry, http.MethodPost, nil)
 	}
 	entry.Client.DelegatedServers = srvPKs
 	c.log.WithField("entry", entry).Info("Updating entry.")

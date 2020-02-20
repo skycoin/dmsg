@@ -21,7 +21,7 @@ var log = logging.MustGetLogger("disc")
 // APIClient implements dmsg discovery API client.
 type APIClient interface {
 	Entry(context.Context, cipher.PubKey) (*Entry, error)
-	SetEntry(context.Context, *Entry, string) error
+	SetEntry(context.Context, *Entry, string, interface{}) error
 	UpdateEntry(context.Context, cipher.SecKey, *Entry, *struct{}) error
 	AvailableServers(context.Context) ([]*Entry, error)
 }
@@ -85,8 +85,14 @@ func (c *httpClient) Entry(ctx context.Context, publicKey cipher.PubKey) (*Entry
 }
 
 // SetEntry creates a new Entry.
-func (c *httpClient) SetEntry(ctx context.Context, e *Entry, m string) error {
-	endpoint := c.address + "/dmsg-discovery/entry/"
+func (c *httpClient) SetEntry(ctx context.Context, e *Entry, m string, v interface{}) error {
+	var endpoint string
+	if m == http.MethodPost {
+		endpoint = c.address + "/dmsg-discovery/entry/"
+	} else {
+		endpoint = fmt.Sprintf("%s/dmsg-discovery/entry/%s", c.address, v.(cipher.PubKey))
+	}
+
 	marshaledEntry, err := json.Marshal(e)
 	if err != nil {
 		return err
@@ -136,7 +142,7 @@ func (c *httpClient) UpdateEntry(ctx context.Context, sk cipher.SecKey, e *Entry
 	defer c.updateMux.Unlock()
 
 	if s != nil {
-		err := c.SetEntry(ctx, e, http.MethodPut)
+		err := c.SetEntry(ctx, e, http.MethodPut, e.Static)
 		if err != nil {
 			return err
 		}
@@ -152,7 +158,7 @@ func (c *httpClient) UpdateEntry(ctx context.Context, sk cipher.SecKey, e *Entry
 		if err != nil {
 			return err
 		}
-		err = c.SetEntry(ctx, e, http.MethodPost)
+		err = c.SetEntry(ctx, e, http.MethodPost, nil)
 		if err == nil {
 			return nil
 		}

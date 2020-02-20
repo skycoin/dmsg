@@ -87,6 +87,25 @@ func (ms *MockStore) SetEntry(ctx context.Context, entry *disc.Entry) error {
 	return nil
 }
 
+
+// UpdateEntry implements Storer UpdateEntry method for MockStore
+func (ms *MockStore) UpdateEntry(ctx context.Context, staticPubKey cipher.PubKey) error {
+	entry, err := ms.Entry(ctx, staticPubKey)
+	if err != nil {
+		return err
+	}
+
+	// increment the session count by 1
+	entry.Server.AvailableSessions+=1
+
+	err = ms.SetEntry(ctx,entry)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Clear its a mock-only method to clear the mock store data
 func (ms *MockStore) Clear() {
 	ms.m = map[string][]byte{}

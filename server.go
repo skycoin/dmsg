@@ -113,8 +113,8 @@ func (s *Server) updateEntryLoop(addr string) error {
 	})
 }
 
-func (s *Server) updateServerSession(addr string) error {
-
+func (s *Server) updateServerSession(ctx context.Context) error {
+	return s.updateServerEntry(ctx, "", &struct{}{})
 }
 
 func (s *Server) handleSession(conn net.Conn) {
@@ -133,6 +133,19 @@ func (s *Server) handleSession(conn net.Conn) {
 
 	log = log.WithField("remote_pk", dSes.RemotePK())
 	log.Info("Started session.")
+
+	if err := s.updateServerSession(context.Background()); err != nil {
+		s.log.WithError(err).
+			Warn("Failed to update session in server")
+	} else {
+		s.log.Info("Available sessions updated")
+		e, err := s.dc.Entry(context.Background(), s.pk)
+		if err != nil {
+			s.log.Warn(err)
+		}
+
+		s.log.Infof("Current number of sessions: %d", e.Server.AvailableSessions)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
