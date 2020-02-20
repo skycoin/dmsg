@@ -31,7 +31,7 @@ func TestStream(t *testing.T) {
 
 	// Serve dmsg server.
 	chSrv := make(chan error, 1)
-	go func() { chSrv <- srv.Serve(lisSrv, "") }() //nolint:errcheck
+	go func() { chSrv <- srv.Serve(lisSrv, "", 10) }() //nolint:errcheck
 
 	// Prepare and serve dmsg client A.
 	pkA, skA := GenKeyPair(t, "client A")

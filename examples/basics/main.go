@@ -32,7 +32,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	go func() { _ = srv.Serve(lis, "") }() //nolint:errcheck
+	go func() { _ = srv.Serve(lis, "", 10) }() //nolint:errcheck
 	time.Sleep(time.Second)
 
 	// instantiate clients

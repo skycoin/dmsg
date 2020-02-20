@@ -86,7 +86,7 @@ var rootCmd = &cobra.Command{
 
 		defer func() { logger.WithError(srv.Close()).Info("Closed server.") }()
 
-		if err := srv.Serve(lis, conf.PublicAddress); err != nil {
+		if err := srv.Serve(lis, conf.PublicAddress, conf.AvailableConnections); err != nil {
 			log.Fatal(err)
 		}
 	},
