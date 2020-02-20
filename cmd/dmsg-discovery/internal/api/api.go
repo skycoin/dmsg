@@ -131,13 +131,21 @@ func (a *API) muxEntry() http.HandlerFunc {
 // URI: /dmsg-discovery/entry/:pk
 // Method: PUT
 func (a *API) updateServerSession(w http.ResponseWriter, r *http.Request) {
-	staticPK, err := retrievePkFromURL(r.URL)
+	entry := &disc.Entry{}
+	err := json.NewDecoder(r.Body).Decode(entry)
+	defer func() {
+		if err := r.Body.Close(); err != nil {
+			log.WithError(err).Warn("Failed to decode HTTP response body")
+		}
+	}()
+
 	if err != nil {
-		a.handleError(w, disc.ErrBadInput)
+		a.handleError(w, disc.ErrUnexpected)
 		return
 	}
 
-	err = a.store.UpdateEntry(r.Context(), staticPK)
+	a.logger.Info("[MSGD] => AVAILABLE SESSIONS: ", entry.Server.AvailableSessions)
+	err = a.store.UpdateEntry(r.Context(), entry)
 	if err != nil {
 		a.handleError(w, err)
 		return

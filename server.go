@@ -25,6 +25,10 @@ type Server struct {
 	wg   sync.WaitGroup
 }
 
+type SessionCount struct {
+	Cmd string
+}
+
 // NewServer creates a new dmsg server entity.
 func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient) *Server {
 	s := new(Server)
@@ -113,8 +117,8 @@ func (s *Server) updateEntryLoop(addr string) error {
 	})
 }
 
-func (s *Server) updateServerSession(ctx context.Context) error {
-	return s.updateServerEntry(ctx, "", &struct{}{})
+func (s *Server) updateServerSession(ctx context.Context, cmd SessionCount) error {
+	return s.updateServerEntry(ctx, "", cmd)
 }
 
 func (s *Server) handleSession(conn net.Conn) {
@@ -134,9 +138,9 @@ func (s *Server) handleSession(conn net.Conn) {
 	log = log.WithField("remote_pk", dSes.RemotePK())
 	log.Info("Started session.")
 
-	if err := s.updateServerSession(context.Background()); err != nil {
+	if err := s.updateServerSession(context.Background(), SessionCount{"incr"}); err != nil {
 		s.log.WithError(err).
-			Warn("Failed to update session in server")
+			Warn("Failed to increase server sessions")
 	} else {
 		s.log.Info("Available sessions updated")
 		e, err := s.dc.Entry(context.Background(), s.pk)
@@ -151,6 +155,11 @@ func (s *Server) handleSession(conn net.Conn) {
 	go func() {
 		awaitDone(ctx, s.done)
 		log.WithError(dSes.Close()).Info("Stopped session.")
+
+		if err := s.updateServerSession(context.Background(), SessionCount{"dcr"}); err != nil {
+			s.log.WithError(err).
+				Warn("Failed to decrease server sessions")
+		}
 	}()
 
 	if s.setSession(ctx, dSes.SessionCommon) {

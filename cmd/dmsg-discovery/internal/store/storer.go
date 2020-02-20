@@ -28,7 +28,7 @@ type Storer interface {
 	SetEntry(ctx context.Context, entry *disc.Entry) error
 
 	// UpdateEntry updates an entry's sessions
-	UpdateEntry(ctx context.Context, staticPubKey cipher.PubKey) error
+	UpdateEntry(ctx context.Context, entry *disc.Entry) error
 
 	// AvailableServers discovers available dmsg servers.
 	AvailableServers(ctx context.Context, maxCount int) ([]*disc.Entry, error)

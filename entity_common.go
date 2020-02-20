@@ -121,19 +121,24 @@ func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
 }
 
 // updateServerEntry updates the dmsg server's entry within dmsg discovery.
-func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, s *struct{}) error {
+func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, v interface{}) error {
 	entry, err := c.dc.Entry(ctx, c.pk)
 	if err != nil {
-		entry = disc.NewServerEntry(c.pk, 0, addr, 10)
+		entry = disc.NewServerEntry(c.pk, 0, addr, 10, 0)
 		if err := entry.Sign(c.sk); err != nil {
 			return err
 		}
 		return c.dc.SetEntry(ctx, entry, http.MethodPost, nil)
 	}
 
-	if s != nil {
+	if v != nil {
 		log.Info("Updating sessions...")
-		entry.Server.AvailableSessions+=1
+		if v.(SessionCount).Cmd == "incr" {
+			entry.Server.AvailableSessions+=1
+		} else {
+			entry.Server.AvailableSessions-=1
+		}
+
 		return c.dc.UpdateEntry(ctx, c.sk,entry, &struct{}{})
 	}
 

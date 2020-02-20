@@ -73,18 +73,15 @@ func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry) error {
 	return nil
 }
 
-func (r *redisStore) UpdateEntry(ctx context.Context, staticPubKey cipher.PubKey) error {
-	entry, err := r.Entry(ctx, staticPubKey)
+func (r *redisStore) UpdateEntry(ctx context.Context, entry *disc.Entry) error {
+	payload, err := json.Marshal(entry)
 	if err != nil {
-		return err
+		return disc.ErrUnexpected
 	}
 
-	// increment the session count by 1
-	entry.Server.AvailableSessions+=1
-
-	err = r.SetEntry(ctx,entry)
+	err = r.client.Set(entry.Static.Hex(), payload, 0).Err()
 	if err != nil {
-		return err
+		return disc.ErrUnexpected
 	}
 
 	return nil
@@ -116,6 +113,11 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 		}
 
 		entries = append(entries, entry)
+		if entry.Server.AvailableSessions < entry.Server.AvailableConnections {
+			entries = append(entries, entry)
+		} else {
+			log.Info("AVAILABLE CONNECTIONS EXCEEDED...")
+		}
 	}
 
 	return entries, nil

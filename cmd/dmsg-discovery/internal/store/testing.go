@@ -89,8 +89,8 @@ func (ms *MockStore) SetEntry(ctx context.Context, entry *disc.Entry) error {
 
 
 // UpdateEntry implements Storer UpdateEntry method for MockStore
-func (ms *MockStore) UpdateEntry(ctx context.Context, staticPubKey cipher.PubKey) error {
-	entry, err := ms.Entry(ctx, staticPubKey)
+func (ms *MockStore) UpdateEntry(ctx context.Context, entry *disc.Entry) error {
+	entry, err := ms.Entry(ctx, entry.Static)
 	if err != nil {
 		return err
 	}
