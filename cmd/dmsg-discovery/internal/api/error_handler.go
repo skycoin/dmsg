@@ -26,8 +26,10 @@ var apiErrors = map[error]func() (int, string){
 }
 
 func (a *API) handleError(w http.ResponseWriter, e error) {
-	var code int
-	var msg string
+	var (
+		code int
+		msg  string
+	)
 
 	if _, ok := e.(disc.EntryValidationError); ok {
 		code = http.StatusUnprocessableEntity

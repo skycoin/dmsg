@@ -5,6 +5,7 @@ import (
 	"log/syslog"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -16,6 +17,8 @@ import (
 
 	"github.com/SkycoinProject/dmsg/metrics"
 )
+
+const redisPasswordEnvName = "REDIS_PASSWORD"
 
 var (
 	addr        string
@@ -31,7 +34,9 @@ var rootCmd = &cobra.Command{
 	Use:   "messaging-discovery",
 	Short: "Messaging Discovery Server for skywire",
 	Run: func(_ *cobra.Command, _ []string) {
-		s, err := store.NewStore("redis", redisURL)
+		redisPassword := os.Getenv(redisPasswordEnvName)
+
+		s, err := store.NewStore("redis", redisURL, redisPassword)
 		if err != nil {
 			log.Fatal("Failed to initialize redis store: ", err)
 		}
@@ -54,7 +59,11 @@ var rootCmd = &cobra.Command{
 			logging.AddHook(hook)
 		}
 
-		api := api.New(s, api.Logger(apiLogger), api.Metrics(metrics.NewPrometheus("msgdiscovery")), api.UseTestingMode(testMode))
+		logger := api.Logger(apiLogger)
+		metrics := api.Metrics(metrics.NewPrometheus("msgdiscovery"))
+		testingMode := api.UseTestingMode(testMode)
+
+		api := api.New(s, logger, metrics, testingMode)
 
 		go func() {
 			http.Handle("/metrics", promhttp.Handler())

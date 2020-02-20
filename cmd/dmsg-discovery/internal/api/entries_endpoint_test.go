@@ -68,7 +68,7 @@ func TestEntriesEndpoint(t *testing.T) {
 			status:          http.StatusNotFound,
 			contentType:     "application/json",
 			responseIsEntry: false,
-			httpResponse:    &disc.HTTPMessage{Code: 404, Message: "entry of public key is not found"},
+			httpResponse:    &disc.HTTPMessage{Code: http.StatusNotFound, Message: "entry of public key is not found"},
 			entry:           baseEntry,
 		},
 		{
@@ -78,7 +78,7 @@ func TestEntriesEndpoint(t *testing.T) {
 			status:          http.StatusOK,
 			contentType:     "application/json",
 			responseIsEntry: false,
-			httpResponse:    &disc.HTTPMessage{Code: 200, Message: "wrote a new entry"},
+			httpResponse:    &disc.HTTPMessage{Code: http.StatusOK, Message: "wrote a new entry"},
 			entry:           baseEntry,
 			entryPreHook: func(t *testing.T, e *disc.Entry, body *string) {
 				err := e.Sign(sk)
@@ -93,8 +93,11 @@ func TestEntriesEndpoint(t *testing.T) {
 			status:          http.StatusUnprocessableEntity,
 			contentType:     "application/json",
 			responseIsEntry: false,
-			httpResponse:    &disc.HTTPMessage{Code: http.StatusUnprocessableEntity, Message: disc.ErrValidationNonZeroSequence.Error()},
-			entry:           baseEntry,
+			httpResponse: &disc.HTTPMessage{
+				Code:    http.StatusUnprocessableEntity,
+				Message: disc.ErrValidationNonZeroSequence.Error(),
+			},
+			entry: baseEntry,
 			entryPreHook: func(t *testing.T, e *disc.Entry, body *string) {
 				e.Sequence = 1
 				err := e.Sign(sk)
@@ -161,7 +164,7 @@ func TestEntriesEndpoint(t *testing.T) {
 			status:          http.StatusUnauthorized,
 			contentType:     "application/json",
 			responseIsEntry: false,
-			httpResponse:    &disc.HTTPMessage{Code: 401, Message: "invalid signature"},
+			httpResponse:    &disc.HTTPMessage{Code: http.StatusUnauthorized, Message: "invalid signature"},
 			entry:           baseEntry,
 			entryPreHook: func(t *testing.T, e *disc.Entry, body *string) {
 				err := e.Sign(sk)
@@ -225,7 +228,6 @@ func TestEntriesEndpoint(t *testing.T) {
 
 				require.Equal(t, tc.httpResponse, &resMessage)
 			}
-
 		})
 	}
 }

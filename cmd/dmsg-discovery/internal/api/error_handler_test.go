@@ -21,7 +21,11 @@ var errHandlerTestCases = []struct {
 	{disc.ErrUnexpected, http.StatusInternalServerError, "something unexpected happened"},
 	{disc.ErrUnauthorized, http.StatusUnauthorized, "invalid signature"},
 	{disc.ErrBadInput, http.StatusBadRequest, "error bad input"},
-	{disc.NewEntryValidationError("entry Keys is nil"), http.StatusUnprocessableEntity, "entry validation error: entry Keys is nil"},
+	{
+		disc.NewEntryValidationError("entry Keys is nil"),
+		http.StatusUnprocessableEntity,
+		"entry validation error: entry Keys is nil",
+	},
 }
 
 func TestErrorHandler(t *testing.T) {
