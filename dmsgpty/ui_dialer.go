@@ -7,15 +7,18 @@ import (
 	"github.com/SkycoinProject/dmsg"
 )
 
+// UIDialer represents a dialer for dmsgpty-ui.
 type UIDialer interface {
 	Dial() (net.Conn, error)
 	AddrString() string
 }
 
+// DmsgUIDialer returns a UIDialer that dials with dmsg.
 func DmsgUIDialer(dmsgC *dmsg.Client, rAddr dmsg.Addr) UIDialer {
 	return &dmsgUIDialer{dmsgC: dmsgC, rAddr: rAddr}
 }
 
+// NetUIDialer returns a UIDialer that dials with stdlib net.
 func NetUIDialer(network, address string) UIDialer {
 	return &netUIDialer{network: network, address: address}
 }

@@ -33,23 +33,20 @@ func init() {
 
 	rootCmd.PersistentFlags().StringArrayVar(&conf.CmdArgs, "arg", conf.CmdArgs,
 		"command arguments to include when initiating pty")
-
-	rootCmd.PersistentFlags().IntVar(&conf.TermCols, "cols", conf.TermCols,
-		"default number of columns across for terminals")
-
-	rootCmd.PersistentFlags().IntVar(&conf.TermRows, "rows", conf.TermRows,
-		"default number of columns across for terminals")
 }
 
 var rootCmd = &cobra.Command{
 	Use:   cmdutil.RootCmdName(),
 	Short: "hosts a UI server for a dmsgpty-host",
 	Run: func(cmd *cobra.Command, args []string) {
-		hostDialer := dmsgpty.NetUIDialer(hostNet, hostAddr)
-		ui := dmsgpty.NewUI(hostDialer, conf)
-
+		ui := dmsgpty.NewUI(dmsgpty.NetUIDialer(hostNet, hostAddr), conf)
 		logrus.
-			WithError(http.ListenAndServe(addr, ui.UIServeMux("/dmsgpty"))).
+			WithField("addr", addr).
+			Info("Serving.")
+
+		err := http.ListenAndServe(addr, ui.Handler())
+		logrus.
+			WithError(err).
 			Info("Stopped serving.")
 	},
 }

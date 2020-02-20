@@ -25,5 +25,5 @@ require (
 	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
 	golang.org/x/tools v0.0.0-20200124021010-5c352bb417e0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	nhooyr.io/websocket v1.8.0
+	nhooyr.io/websocket v1.8.2
 )
