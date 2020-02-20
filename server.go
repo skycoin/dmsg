@@ -113,7 +113,7 @@ func (s *Server) updateEntryLoop(addr string) error {
 		}
 	}()
 	return netutil.NewDefaultRetrier(s.log).Do(ctx, func() error {
-		return s.updateServerEntry(ctx, addr, nil)
+		return s.updateServerEntry(ctx, addr ,nil)
 	})
 }
 
@@ -158,7 +158,7 @@ func (s *Server) handleSession(conn net.Conn) {
 
 		if err := s.updateServerSession(context.Background(), SessionCount{"dcr"}); err != nil {
 			s.log.WithError(err).
-				Warn("Failed to decrease server sessions")
+				Warn("Failed to update server sessions")
 		}
 	}()
 

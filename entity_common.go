@@ -2,7 +2,6 @@ package dmsg
 
 import (
 	"context"
-	"github.com/prometheus/common/log"
 	"net/http"
 	"sync"
 
@@ -124,7 +123,7 @@ func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
 func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, v interface{}) error {
 	entry, err := c.dc.Entry(ctx, c.pk)
 	if err != nil {
-		entry = disc.NewServerEntry(c.pk, 0, addr, 10, 0)
+		entry = disc.NewServerEntry(c.pk, 0, addr, 3, 0)
 		if err := entry.Sign(c.sk); err != nil {
 			return err
 		}
@@ -132,7 +131,7 @@ func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, v int
 	}
 
 	if v != nil {
-		log.Info("Updating sessions...")
+		c.log.Info("Updating server sessions...")
 		if v.(SessionCount).Cmd == "incr" {
 			entry.Server.AvailableSessions+=1
 		} else {

@@ -31,12 +31,13 @@ var (
 
 // Config is a dmsg-server config
 type Config struct {
-	PubKey        cipher.PubKey `json:"public_key"`
-	SecKey        cipher.SecKey `json:"secret_key"`
-	Discovery     string        `json:"discovery"`
-	LocalAddress  string        `json:"local_address"`
-	PublicAddress string        `json:"public_address"`
-	LogLevel      string        `json:"log_level"`
+	PubKey               cipher.PubKey `json:"public_key"`
+	SecKey               cipher.SecKey `json:"secret_key"`
+	Discovery            string        `json:"discovery"`
+	LocalAddress         string        `json:"local_address"`
+	PublicAddress        string        `json:"public_address"`
+	AvailableConnections int           `json:"available_connections"`
+	LogLevel             string        `json:"log_level"`
 }
 
 var rootCmd = &cobra.Command{

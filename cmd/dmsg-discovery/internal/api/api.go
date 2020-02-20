@@ -20,7 +20,7 @@ import (
 
 var log = logging.MustGetLogger("dmsg-discovery")
 
-const maxServers = 10
+const maxServers = 512
 
 // API represents the api of the dmsg-discovery service`
 type API struct {
@@ -144,7 +144,6 @@ func (a *API) updateServerSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.logger.Info("[MSGD] => AVAILABLE SESSIONS: ", entry.Server.AvailableSessions)
 	err = a.store.UpdateEntry(r.Context(), entry)
 	if err != nil {
 		a.handleError(w, err)
