@@ -87,7 +87,6 @@ func (ms *MockStore) SetEntry(ctx context.Context, entry *disc.Entry) error {
 	return nil
 }
 
-
 // UpdateEntry implements Storer UpdateEntry method for MockStore
 func (ms *MockStore) UpdateEntry(ctx context.Context, entry *disc.Entry) error {
 	entry, err := ms.Entry(ctx, entry.Static)
@@ -95,10 +94,7 @@ func (ms *MockStore) UpdateEntry(ctx context.Context, entry *disc.Entry) error {
 		return err
 	}
 
-	// increment the session count by 1
-	entry.Server.AvailableSessions+=1
-
-	err = ms.SetEntry(ctx,entry)
+	err = ms.SetEntry(ctx, entry)
 	if err != nil {
 		return err
 	}

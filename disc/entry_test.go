@@ -48,7 +48,7 @@ func TestNewClientEntryIsValid(t *testing.T) {
 		{
 			name: "NewServerEntry is valid",
 			entry: func() *disc.Entry {
-				return disc.NewServerEntry(pk, 0, "localhost:8080", 5)
+				return disc.NewServerEntry(pk, 0, "localhost:8080", 5, 0)
 			},
 		},
 	}
