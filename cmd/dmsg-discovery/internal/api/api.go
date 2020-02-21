@@ -69,6 +69,7 @@ func UseTestingMode(testing bool) Option {
 // New returns a new API object, which can be started as a server
 func New(storer store2.Storer, options ...Option) *API {
 	var args Options
+
 	for _, option := range options {
 		if option != nil {
 			option(&args)
@@ -94,6 +95,7 @@ func New(storer store2.Storer, options ...Option) *API {
 // ServeHTTP implements http.Handler.
 func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var h http.Handler
+
 	if a.logger != nil {
 		logger := a.logger.WithField("_module", "dmsgdisc_api")
 		h = handlers.CustomLoggingHandler(logger.Writer(), a.mux, httputil.WriteLog)
@@ -154,9 +156,11 @@ func (a *API) getEntry(w http.ResponseWriter, r *http.Request) {
 //	json serialized entry object
 func (a *API) setEntry(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("START: setEntry")
+
 	entry := &disc.Entry{}
 
 	err := json.NewDecoder(r.Body).Decode(entry)
+
 	defer func() {
 		if err := r.Body.Close(); err != nil {
 			log.WithError(err).Warn("Failed to decode HTTP response body")
@@ -173,9 +177,11 @@ func (a *API) setEntry(w http.ResponseWriter, r *http.Request) {
 			if err != nil && a.logger != nil {
 				a.logger.Warningf("failed to parse hostname and port: %s", err)
 			}
+
 			a.handleError(w, disc.ErrValidationServerAddress)
 		}
 	}
+
 	err = entry.Validate()
 	if err != nil {
 		a.handleError(w, err)
@@ -202,9 +208,10 @@ func (a *API) setEntry(w http.ResponseWriter, r *http.Request) {
 			a.handleError(w, setErr)
 			return
 		}
-		a.writeJSON(w, http.StatusOK, disc.MsgEntrySet)
-		return
 
+		a.writeJSON(w, http.StatusOK, disc.MsgEntrySet)
+
+		return
 	} else if err != nil {
 		a.handleError(w, err)
 		return
@@ -237,8 +244,11 @@ func (a *API) getAvailableServer() http.HandlerFunc {
 		}
 
 		if len(entries) == 0 {
-			const code = http.StatusNotFound
-			a.writeJSON(w, code, disc.HTTPMessage{Code: code, Message: disc.ErrKeyNotFound.Error()})
+			a.writeJSON(w, http.StatusNotFound, disc.HTTPMessage{
+				Code:    http.StatusNotFound,
+				Message: disc.ErrKeyNotFound.Error(),
+			})
+
 			return
 		}
 
@@ -252,9 +262,11 @@ func isLoopbackAddr(addr string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
 	if host == "" {
 		return true, nil
 	}
+
 	return net.ParseIP(host).IsLoopback(), nil
 }
 
@@ -278,6 +290,7 @@ func (a *API) writeJSON(w http.ResponseWriter, code int, object interface{}) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
+
 	_, err = w.Write(jsonObject)
 	if err != nil {
 		a.logger.Warnf("Failed to write response: %s", err)

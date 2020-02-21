@@ -29,6 +29,7 @@ func (ms *MockStore) entry(staticPubkey string) ([]byte, bool) {
 	defer ms.mLock.RUnlock()
 
 	e, ok := ms.m[staticPubkey]
+
 	return e, ok
 }
 
@@ -118,8 +119,10 @@ func arrayFromMap(m map[string][]byte) [][]byte {
 	entries := make([][]byte, 0)
 
 	for _, value := range m {
-		var buf = make([]byte, len(value))
+		buf := make([]byte, len(value))
+
 		copy(buf, value)
+
 		entries = append(entries, buf)
 	}
 

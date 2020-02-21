@@ -14,11 +14,13 @@ type redisStore struct {
 	client *redis.Client
 }
 
-func newRedis(url string) (Storer, error) {
+func newRedis(url, password string) (Storer, error) {
 	opt, err := redis.ParseURL(url)
 	if err != nil {
 		return nil, err
 	}
+
+	opt.Password = password
 
 	client := redis.NewClient(opt)
 
@@ -37,6 +39,7 @@ func (r *redisStore) Entry(ctx context.Context, staticPubKey cipher.PubKey) (*di
 		if err == redis.Nil {
 			return nil, disc.ErrKeyNotFound
 		}
+
 		return nil, disc.ErrUnexpected
 	}
 
@@ -44,6 +47,7 @@ func (r *redisStore) Entry(ctx context.Context, staticPubKey cipher.PubKey) (*di
 	if err := json.Unmarshal(payload, &entry); err != nil {
 		log.WithError(err).Warnf("Failed to unmarshal payload %q", payload)
 	}
+
 	return entry, nil
 }
 
@@ -93,6 +97,7 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 			log.WithError(err).Warnf("Failed to unmarshal payload %s", payload.(string))
 			continue
 		}
+
 		entries = append(entries, entry)
 	}
 

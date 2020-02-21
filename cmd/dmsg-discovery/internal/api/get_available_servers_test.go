@@ -19,10 +19,13 @@ import (
 func TestGetAvailableServers(t *testing.T) {
 	pk, sk, err := cipher.GenerateDeterministicKeyPair([]byte(`test`))
 	require.NoError(t, err)
+
 	ephemeralPk1, ephemeralSk1, err := cipher.GenerateDeterministicKeyPair([]byte(`test ephemeral 1`))
 	require.NoError(t, err)
+
 	ephemeralPk2, ephemeralSk2, err := cipher.GenerateDeterministicKeyPair([]byte(`test ephemeral 2`))
 	require.NoError(t, err)
+
 	baseEntry := disc.Entry{
 		Static:    pk,
 		Timestamp: time.Now().Unix(),
@@ -59,19 +62,24 @@ func TestGetAvailableServers(t *testing.T) {
 
 				err := entry1.Sign(sk)
 				require.NoError(t, err)
+
 				entry2.Static = ephemeralPk1
 				err = entry2.Sign(ephemeralSk1)
 				require.NoError(t, err)
+
 				entry3.Static = ephemeralPk2
 				err = entry3.Sign(ephemeralSk2)
 				require.NoError(t, err)
 
 				db, err := store2.NewStore("mock", "")
 				require.NoError(t, err)
+
 				err = db.SetEntry(context.Background(), &entry1)
 				require.NoError(t, err)
+
 				err = db.SetEntry(context.Background(), &entry2)
 				require.NoError(t, err)
+
 				err = db.SetEntry(context.Background(), &entry3)
 				require.NoError(t, err)
 

@@ -14,8 +14,13 @@ import (
 	"github.com/SkycoinProject/dmsg/disc"
 )
 
+const (
+	redisURL      = "redis://localhost:6379"
+	redisPassword = ""
+)
+
 func TestRedisStoreClientEntry(t *testing.T) {
-	redis, err := newRedis("redis://localhost:6379")
+	redis, err := newRedis(redisURL, redisPassword)
 	require.NoError(t, err)
 	require.NoError(t, redis.(*redisStore).client.FlushDB().Err())
 
@@ -45,7 +50,7 @@ func TestRedisStoreClientEntry(t *testing.T) {
 }
 
 func TestRedisStoreServerEntry(t *testing.T) {
-	redis, err := newRedis("redis://localhost:6379")
+	redis, err := newRedis(redisURL, redisPassword)
 	require.NoError(t, err)
 	require.NoError(t, redis.(*redisStore).client.FlushDB().Err())
 
@@ -62,6 +67,7 @@ func TestRedisStoreServerEntry(t *testing.T) {
 		Version:  "0",
 		Sequence: 1,
 	}
+
 	require.NoError(t, entry.Sign(sk))
 
 	require.NoError(t, redis.SetEntry(ctx, entry))
@@ -75,6 +81,7 @@ func TestRedisStoreServerEntry(t *testing.T) {
 	assert.Len(t, entries, 1)
 
 	require.NoError(t, redis.SetEntry(ctx, entry))
+
 	entries, err = redis.AvailableServers(ctx, 2)
 	require.NoError(t, err)
 	assert.Len(t, entries, 1)
