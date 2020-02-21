@@ -93,7 +93,7 @@ func (env *Env) newServer(ctx context.Context) (*dmsg.Server, error) {
 	}
 
 	go func() {
-		if err := srv.Serve(l, ""); err != nil && env.t != nil {
+		if err := srv.Serve(l, "", 10); err != nil && env.t != nil {
 			env.t.Logf("dmsgtest.Env: dmsg server of pk %s stopped serving with error: %v", pk, err)
 		}
 		env.mx.Lock()

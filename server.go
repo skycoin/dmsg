@@ -127,6 +127,14 @@ func (s *Server) handleSession(conn net.Conn) {
 	var log logrus.FieldLogger //nolint:gosimple
 	log = s.log.WithField("remote_tcp", conn.RemoteAddr())
 
+	getSession := func() (int, error) {
+		e, err := s.dc.Entry(context.Background(), s.pk)
+		if err != nil {
+			return -1, err
+		}
+		return e.Server.AvailableSessions, nil
+	}
+
 	dSes, err := makeServerSession(&s.EntityCommon, conn)
 	if err != nil {
 		log = log.WithError(err)
@@ -144,13 +152,13 @@ func (s *Server) handleSession(conn net.Conn) {
 		s.log.WithError(err).
 			Warn("Failed to update server sessions")
 	} else {
-		s.log.Info("Available sessions updated")
-		e, err := s.dc.Entry(context.Background(), s.pk)
+		s.log.Info("Server sessions updated")
+		i, err := getSession()
 		if err != nil {
 			s.log.Warn(err)
 		}
 
-		s.log.Infof("Current number of sessions: %d", e.Server.AvailableSessions)
+		s.log.Infof("Current number of sessions: %d", i)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -162,6 +170,13 @@ func (s *Server) handleSession(conn net.Conn) {
 			s.log.WithError(err).
 				Warn("Failed to update server sessions")
 		}
+
+		i, err := getSession()
+		if err != nil {
+			s.log.Warn(err)
+		}
+
+		s.log.Infof("Current number of server sessions: %d", i)
 	}()
 
 	if s.setSession(ctx, dSes.SessionCommon) {
