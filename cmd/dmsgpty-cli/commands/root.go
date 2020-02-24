@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"log"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -23,7 +22,7 @@ func init() {
 }
 
 var remoteAddr dmsg.Addr
-var cmdName = os.Getenv("SHELL")
+var cmdName = dmsgpty.DefaultCmd
 var cmdArgs []string
 
 func init() {

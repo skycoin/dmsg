@@ -21,5 +21,6 @@ const (
 
 // Constants related to dmsg.
 const (
-	DefaultPort = uint16(22)
+	DefaultPort = uint16(222)
+	DefaultCmd  = "/bin/bash"
 )
