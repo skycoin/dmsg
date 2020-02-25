@@ -154,3 +154,78 @@ func (w *memoryWhitelist) Remove(pks ...cipher.PubKey) error {
 	w.mux.Unlock()
 	return nil
 }
+
+// NewCombinedWhitelist returns a combined whitelist.
+// 'modI' defines the index of the internal whitelist in which Add and Remove operations are performed on.
+// If 'modI < 0', Add and Remove operations are performed on all internal whitelists.
+func NewCombinedWhitelist(modI int, lists ...Whitelist) Whitelist {
+	if modI >= len(lists) {
+		panic(fmt.Errorf("NewCombinedWhitelist: modI > len(lists)"))
+	}
+	return &combinedWhitelist{
+		modI:  modI,
+		lists: lists,
+	}
+}
+
+type combinedWhitelist struct {
+	modI  int
+	lists []Whitelist
+}
+
+func (w *combinedWhitelist) Get(pk cipher.PubKey) (bool, error) {
+	for _, list := range w.lists {
+		ok, err := list.Get(pk)
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (w *combinedWhitelist) All() (map[cipher.PubKey]bool, error) {
+	all := make(map[cipher.PubKey]bool)
+	for _, list := range w.lists {
+		pks, err := list.All()
+		if err != nil {
+			return nil, err
+		}
+		for pk, ok := range pks {
+			if ok {
+				all[pk] = ok
+			}
+		}
+	}
+	return all, nil
+}
+
+func (w *combinedWhitelist) Add(pks ...cipher.PubKey) error {
+	// Add to all internal whitelists if modI < 0
+	if w.modI < 0 {
+		for _, list := range w.lists {
+			if err := list.Add(pks...); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	// Otherwise, add to the specified internal whitelist at index.
+	return w.lists[w.modI].Add(pks...)
+}
+
+func (w *combinedWhitelist) Remove(pks ...cipher.PubKey) error {
+	// Remove from all internal whitelists if modI < 0
+	if w.modI < 0 {
+		for _, list := range w.lists {
+			if err := list.Remove(pks...); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	// Otherwise, remove from the specified internal whitelist at index.
+	return w.lists[w.modI].Remove(pks...)
+}
