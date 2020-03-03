@@ -15,10 +15,10 @@ var (
 
 // Default values for retrier.
 const (
-	DefaultInitBackoff       = 100 * time.Millisecond
-	DefaultMaxBackoff        = time.Minute
-	DefaultTries             = int64(0)
-	DefaultFactor            = float64(1.5)
+	DefaultInitBackoff = time.Second
+	DefaultMaxBackoff  = time.Second * 20
+	DefaultTries       = int64(0)
+	DefaultFactor      = float64(1.3)
 )
 
 // RetryFunc is a function used as argument of (*Retrier).Do(), which will retry on error unless it is whitelisted
@@ -66,26 +66,25 @@ func (r *Retrier) WithErrWhitelist(errors ...error) *Retrier {
 func (r *Retrier) Do(ctx context.Context, f RetryFunc) error {
 	bo := r.initBO
 
+	t := time.NewTimer(bo)
+	defer t.Stop()
+
 	for i := int64(0); r.tries == 0 || i < r.tries; i++ {
 		if err := f(); err != nil {
 			if _, ok := r.errWl[err]; ok {
 				return err
 			}
-			if newBO := bo * time.Duration(r.factor); r.maxBO == 0 || newBO <= r.maxBO {
+			if newBO := time.Duration(float64(bo) * r.factor); r.maxBO == 0 || newBO <= r.maxBO {
 				bo = newBO
 			}
 			if r.log != nil {
-				r.log.
-					WithError(err).
-					WithField("current_backoff", bo).
-					Warn("Retrier: retrying...")
+				r.log.WithError(err).WithField("current_backoff", bo).Debug("Retrying...")
 			}
-			t := time.NewTimer(bo)
 			select {
 			case <-t.C:
+				t.Reset(bo)
 				continue
 			case <-ctx.Done():
-				t.Stop()
 				return ctx.Err()
 			}
 		}
