@@ -23,11 +23,11 @@ type Storer interface {
 	// Entry obtains a single dmsg instance entry.
 	Entry(ctx context.Context, staticPubKey cipher.PubKey) (*disc.Entry, error)
 
-	// SetEntry set's an entry.
+	// PostEntry set's an entry.
 	// This is unsafe and does not check signature.
 	SetEntry(ctx context.Context, entry *disc.Entry) error
 
-	// UpdateEntry updates an entry's sessions
+	// PutEntry updates an entry's sessions
 	UpdateEntry(ctx context.Context, entry *disc.Entry) error
 
 	// AvailableServers discovers available dmsg servers.

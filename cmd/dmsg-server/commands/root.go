@@ -31,13 +31,13 @@ var (
 
 // Config is a dmsg-server config
 type Config struct {
-	PubKey               cipher.PubKey `json:"public_key"`
-	SecKey               cipher.SecKey `json:"secret_key"`
-	Discovery            string        `json:"discovery"`
-	LocalAddress         string        `json:"local_address"`
-	PublicAddress        string        `json:"public_address"`
-	AvailableConnections int           `json:"available_connections"`
-	LogLevel             string        `json:"log_level"`
+	PubKey        cipher.PubKey `json:"public_key"`
+	SecKey        cipher.SecKey `json:"secret_key"`
+	Discovery     string        `json:"discovery"`
+	LocalAddress  string        `json:"local_address"`
+	PublicAddress string        `json:"public_address"`
+	MaxSessions   int           `json:"max_sessions"`
+	LogLevel      string        `json:"log_level"`
 }
 
 var rootCmd = &cobra.Command{
@@ -81,12 +81,12 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Start
-		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery))
+		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery), conf.MaxSessions)
 		srv.SetLogger(logger)
 
 		defer func() { logger.WithError(srv.Close()).Info("Closed server.") }()
 
-		if err := srv.Serve(lis, conf.PublicAddress, conf.AvailableConnections); err != nil {
+		if err := srv.Serve(lis, conf.PublicAddress); err != nil {
 			log.Fatal(err)
 		}
 	},

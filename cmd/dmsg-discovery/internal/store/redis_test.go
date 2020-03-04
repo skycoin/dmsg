@@ -61,8 +61,8 @@ func TestRedisStoreServerEntry(t *testing.T) {
 		Static:    pk,
 		Timestamp: time.Now().Unix(),
 		Server: &disc.Server{
-			Address:              "localhost:8080",
-			AvailableConnections: 3,
+			Address:     "localhost:8080",
+			MaxSessions: 3,
 		},
 		Version:  "0",
 		Sequence: 1,

@@ -120,30 +120,26 @@ func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
 }
 
 // updateServerEntry updates the dmsg server's entry within dmsg discovery.
-func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, conns int, v interface{}) error {
+func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, maxSessions, sessionCount int, ) error {
 	entry, err := c.dc.Entry(ctx, c.pk)
 	if err != nil {
-		entry = disc.NewServerEntry(c.pk, 0, addr, conns, 0)
+		entry = disc.NewServerEntry(c.pk, 0, addr, maxSessions, 0)
 		if err := entry.Sign(c.sk); err != nil {
 			return err
 		}
-		return c.dc.SetEntry(ctx, entry, http.MethodPost, nil)
+		return c.dc.PostEntry(ctx, entry, http.MethodPost)
 	}
 
-	if v != nil {
+	if sessionCount != 0 {
 		c.log.Info("Updating server sessions...")
-		if v.(SessionCmd).Cmd == "incr" {
-			entry.Server.AvailableSessions++
-		} else {
-			entry.Server.AvailableSessions--
-		}
-
-		return c.dc.UpdateEntry(ctx, c.sk, entry, &struct{}{})
+		entry.Server.AvailableSessions+=sessionCount
+		return c.dc.PutEntry(ctx, c.sk, entry)
 	}
 
 	entry.Server.Address = addr
+	entry.Server.AvailableSessions = sessionCount
 
-	return c.dc.UpdateEntry(ctx, c.sk, entry, nil)
+	return c.dc.PutEntry(ctx, c.sk, entry)
 }
 
 func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}) error {
@@ -161,11 +157,11 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}
 		if err := entry.Sign(c.sk); err != nil {
 			return err
 		}
-		return c.dc.SetEntry(ctx, entry, http.MethodPost, nil)
+		return c.dc.PostEntry(ctx, entry, http.MethodPost)
 	}
 	entry.Client.DelegatedServers = srvPKs
 	c.log.WithField("entry", entry).Info("Updating entry.")
-	return c.dc.UpdateEntry(ctx, c.sk, entry, nil)
+	return c.dc.PutEntry(ctx, c.sk, entry)
 }
 
 func getServerEntry(ctx context.Context, dc disc.APIClient, srvPK cipher.PubKey) (*disc.Entry, error) {

@@ -23,20 +23,17 @@ type Server struct {
 	done chan struct{}
 	once sync.Once
 	wg   sync.WaitGroup
-}
 
-// SessionCmd represents the type of action (increase/decrease) to take
-// when updating a server's session count
-type SessionCmd struct {
-	Cmd string
+	maxSessions int
 }
 
 // NewServer creates a new dmsg server entity.
-func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient) *Server {
+func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, maxSessions int) *Server {
 	s := new(Server)
 	s.EntityCommon.init(pk, sk, dc, logging.MustGetLogger("dmsg_server"))
 	s.ready = make(chan struct{})
 	s.done = make(chan struct{})
+	s.maxSessions = maxSessions
 	return s
 }
 
@@ -53,7 +50,7 @@ func (s *Server) Close() error {
 }
 
 // Serve serves the server.
-func (s *Server) Serve(lis net.Listener, addr string, availableConns int) error {
+func (s *Server) Serve(lis net.Listener, addr string) error {
 	var log logrus.FieldLogger //nolint:gosimple
 	log = s.log.WithField("local_addr", addr).WithField("local_pk", s.pk)
 
@@ -75,7 +72,7 @@ func (s *Server) Serve(lis net.Listener, addr string, availableConns int) error 
 	if addr == "" {
 		addr = lis.Addr().String()
 	}
-	if err := s.updateEntryLoop(addr, availableConns); err != nil {
+	if err := s.updateEntryLoop(addr); err != nil {
 		return err
 	}
 
@@ -104,7 +101,7 @@ func (s *Server) Ready() <-chan struct{} {
 	return s.ready
 }
 
-func (s *Server) updateEntryLoop(addr string, conns int) error {
+func (s *Server) updateEntryLoop(addr string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -115,12 +112,8 @@ func (s *Server) updateEntryLoop(addr string, conns int) error {
 		}
 	}()
 	return netutil.NewDefaultRetrier(s.log).Do(ctx, func() error {
-		return s.updateServerEntry(ctx, addr, conns, nil)
+		return s.updateServerEntry(ctx, addr, s.maxSessions, 0)
 	})
-}
-
-func (s *Server) updateServerSession(ctx context.Context, cmd SessionCmd) error {
-	return s.updateServerEntry(ctx, "", 0, cmd)
 }
 
 func (s *Server) handleSession(conn net.Conn) {
@@ -148,7 +141,7 @@ func (s *Server) handleSession(conn net.Conn) {
 	log = log.WithField("remote_pk", dSes.RemotePK())
 	log.Info("Started session.")
 
-	if err := s.updateServerSession(context.Background(), SessionCmd{"incr"}); err != nil {
+	if err := s.updateServerEntry(context.Background(), "", 0, 1); err != nil {
 		s.log.WithError(err).
 			Warn("Failed to update server sessions")
 	} else {
@@ -166,7 +159,7 @@ func (s *Server) handleSession(conn net.Conn) {
 		awaitDone(ctx, s.done)
 		log.WithError(dSes.Close()).Info("Stopped session.")
 
-		if err := s.updateServerSession(context.Background(), SessionCmd{"dcr"}); err != nil {
+		if err := s.updateServerEntry(context.Background(), "", 0, -1); err != nil {
 			s.log.WithError(err).
 				Warn("Failed to update server sessions")
 		}

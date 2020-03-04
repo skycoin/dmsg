@@ -22,8 +22,8 @@ func TestNewMockGetAvailableServers(t *testing.T) {
 		Timestamp: time.Now().Unix(),
 		Client:    &disc.Client{},
 		Server: &disc.Server{
-			Address:              "localhost:8080",
-			AvailableConnections: 3,
+			Address:     "localhost:8080",
+			MaxSessions: 3,
 		},
 		Version:  "0",
 		Sequence: 1,
@@ -45,21 +45,21 @@ func TestNewMockGetAvailableServers(t *testing.T) {
 
 				err := entry1.Sign(sk)
 				require.NoError(t, err)
-				err = mockClient.SetEntry(context.TODO(), &entry1, http.MethodPost, nil)
+				err = mockClient.PostEntry(context.TODO(), &entry1, http.MethodPost, nil)
 				require.NoError(t, err)
 
 				pk1, sk1 := cipher.GenerateKeyPair()
 				entry2.Static = pk1
 				err = entry2.Sign(sk1)
 				require.NoError(t, err)
-				err = mockClient.SetEntry(context.TODO(), &entry2, http.MethodPost, nil)
+				err = mockClient.PostEntry(context.TODO(), &entry2, http.MethodPost, nil)
 				require.NoError(t, err)
 
 				pk2, sk2 := cipher.GenerateKeyPair()
 				entry3.Static = pk2
 				err = entry3.Sign(sk2)
 				require.NoError(t, err)
-				err = mockClient.SetEntry(context.TODO(), &entry3, http.MethodPost, nil)
+				err = mockClient.PostEntry(context.TODO(), &entry3, http.MethodPost, nil)
 				require.NoError(t, err)
 
 				*entries = append(*entries, &entry1, &entry2, &entry3)
@@ -117,7 +117,7 @@ func TestNewMockEntriesEndpoint(t *testing.T) {
 				require.NoError(t, err)
 			},
 			storerPreHook: func(t *testing.T, apiClient disc.APIClient, e *disc.Entry) {
-				err := apiClient.SetEntry(context.TODO(), e, http.MethodPost, nil)
+				err := apiClient.PostEntry(context.TODO(), e, http.MethodPost, nil)
 				require.NoError(t, err)
 			},
 		},
@@ -191,7 +191,7 @@ func TestNewMockSetEntriesEndpoint(t *testing.T) {
 				oldEntry.Sequence = 0
 				err := oldEntry.Sign(sk)
 				require.NoError(t, err)
-				err = s.SetEntry(context.TODO(), &oldEntry, http.MethodPost, nil)
+				err = s.PostEntry(context.TODO(), &oldEntry, http.MethodPost, nil)
 				require.NoError(t, err)
 				e.Sequence = 1
 				e.Timestamp += 3
@@ -209,7 +209,7 @@ func TestNewMockSetEntriesEndpoint(t *testing.T) {
 			},
 			storerPreHook: func(t *testing.T, s disc.APIClient, e *disc.Entry) {
 				e.Sequence = 2
-				err := s.SetEntry(context.TODO(), e, http.MethodPost, nil)
+				err := s.PostEntry(context.TODO(), e, http.MethodPost, nil)
 				require.NoError(t, err)
 			},
 		},
@@ -223,7 +223,7 @@ func TestNewMockSetEntriesEndpoint(t *testing.T) {
 			},
 			storerPreHook: func(t *testing.T, s disc.APIClient, e *disc.Entry) {
 				e.Sequence = 0
-				err := s.SetEntry(context.TODO(), e, http.MethodPost, nil)
+				err := s.PostEntry(context.TODO(), e, http.MethodPost, nil)
 				require.NoError(t, err)
 				e.Signature = ""
 				e.Sequence = 1
@@ -249,7 +249,7 @@ func TestNewMockSetEntriesEndpoint(t *testing.T) {
 			}
 
 			fmt.Println("key in: ", entry.Static)
-			err := clientServer.SetEntry(context.TODO(), &entry, http.MethodPost, nil)
+			err := clientServer.PostEntry(context.TODO(), &entry, http.MethodPost, nil)
 
 			if tc.responseShouldError {
 				assert.Error(t, err)
@@ -305,7 +305,7 @@ func TestNewMockUpdateEntriesEndpoint(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			clientServer := disc.NewMock()
-			err := clientServer.SetEntry(context.TODO(), &baseEntry, http.MethodPost, nil)
+			err := clientServer.PostEntry(context.TODO(), &baseEntry, http.MethodPost, nil)
 			require.NoError(t, err)
 
 			entry := baseEntry
@@ -318,7 +318,7 @@ func TestNewMockUpdateEntriesEndpoint(t *testing.T) {
 				tc.storerPreHook(clientServer, &entry)
 			}
 
-			err = clientServer.UpdateEntry(context.TODO(), tc.secretKey, &entry, nil)
+			err = clientServer.PutEntry(context.TODO(), tc.secretKey, &entry, nil)
 
 			if tc.responseShouldError {
 				assert.Error(t, err)
@@ -338,13 +338,13 @@ func TestNewMockUpdateEntrySequence(t *testing.T) {
 		Static:   pk,
 	}
 
-	err := clientServer.UpdateEntry(context.TODO(), sk, entry, nil)
+	err := clientServer.PutEntry(context.TODO(), sk, entry, nil)
 	require.NoError(t, err)
 
 	v1Entry, err := clientServer.Entry(context.TODO(), pk)
 	require.NoError(t, err)
 
-	err = clientServer.UpdateEntry(context.TODO(), sk, entry, nil)
+	err = clientServer.PutEntry(context.TODO(), sk, entry, nil)
 	require.NoError(t, err)
 
 	v2Entry, err := clientServer.Entry(context.TODO(), pk)
@@ -359,8 +359,8 @@ func newTestEntry(pk cipher.PubKey) disc.Entry {
 		Timestamp: time.Now().UnixNano(),
 		Client:    &disc.Client{},
 		Server: &disc.Server{
-			Address:              "localhost:8080",
-			AvailableConnections: 3,
+			Address:     "localhost:8080",
+			MaxSessions: 3,
 		},
 		Version:  "0",
 		Sequence: 0,

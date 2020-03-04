@@ -71,7 +71,7 @@ func (ms *MockStore) Entry(ctx context.Context, staticPubKey cipher.PubKey) (*di
 	return &entry, nil
 }
 
-// SetEntry implements Storer SetEntry method for MockStore
+// PostEntry implements Storer PostEntry method for MockStore
 func (ms *MockStore) SetEntry(ctx context.Context, entry *disc.Entry) error {
 	payload, err := json.Marshal(entry)
 	if err != nil {
@@ -87,7 +87,7 @@ func (ms *MockStore) SetEntry(ctx context.Context, entry *disc.Entry) error {
 	return nil
 }
 
-// UpdateEntry implements Storer UpdateEntry method for MockStore
+// PutEntry implements Storer PutEntry method for MockStore
 func (ms *MockStore) UpdateEntry(ctx context.Context, entry *disc.Entry) error {
 	entry, err := ms.Entry(ctx, entry.Static)
 	if err != nil {
