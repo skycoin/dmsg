@@ -10,10 +10,16 @@ import (
 	"time"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
+	"github.com/creack/pty"
 	"github.com/sirupsen/logrus"
 	"nhooyr.io/websocket"
 
 	"github.com/SkycoinProject/dmsg/httputil"
+)
+
+const (
+	wsCols = 100
+	wsRows = 30
 )
 
 // UIConfig configures the dmsgpty-ui.
@@ -136,7 +142,7 @@ func (ui *UI) Handler() http.HandlerFunc {
 		}
 		defer func() { log.WithError(ptyC.Close()).Debug("Closed ptyC.") }()
 
-		if err := ptyC.StartWithSize(ui.conf.CmdName, ui.conf.CmdArgs, nil); err != nil {
+		if err := ptyC.StartWithSize(ui.conf.CmdName, ui.conf.CmdArgs, &pty.Winsize{Rows: wsRows, Cols: wsCols}); err != nil {
 			writeError(log, w, r, err, http.StatusServiceUnavailable)
 			return
 		}
