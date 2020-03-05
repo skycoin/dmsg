@@ -98,7 +98,6 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 			continue
 		}
 
-		entries = append(entries, entry)
 		if entry.Server.MaxSessions > 0 {
 			entries = append(entries, entry)
 		} else {

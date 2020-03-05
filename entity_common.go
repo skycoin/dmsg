@@ -140,6 +140,7 @@ func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, maxSe
 	}
 
 	entry.Server.Address = addr
+	entry.Server.MaxSessions = maxSessions
 
 	return c.dc.PutEntry(ctx, c.sk, entry)
 }
