@@ -154,9 +154,6 @@ type Server struct {
 
 	// Maximum Number of connections a server can accept.
 	MaxSessions int `json:"max_sessions"`
-
-	// Number of sessions
-	AvailableSessions int `json:"available_sessions"`
 }
 
 // String implements stringer
