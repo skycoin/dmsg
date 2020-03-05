@@ -99,7 +99,7 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 		}
 
 		entries = append(entries, entry)
-		if entry.Server.AvailableSessions < entry.Server.MaxSessions {
+		if entry.Server.MaxSessions > 0 {
 			entries = append(entries, entry)
 		} else {
 			log.Warnf("Server <pk: %s> is at max capacity", entry.Static)

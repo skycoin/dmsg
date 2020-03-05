@@ -181,11 +181,11 @@ func NewClientEntry(pubkey cipher.PubKey, sequence uint64, delegatedServers []ci
 }
 
 // NewServerEntry constructs a new Server entry.
-func NewServerEntry(pubkey cipher.PubKey, sequence uint64, address string, maxSessions, availableSession int) *Entry {
+func NewServerEntry(pubkey cipher.PubKey, sequence uint64, address string, maxSessions int) *Entry {
 	return &Entry{
 		Version:   currentVersion,
 		Sequence:  sequence,
-		Server:    &Server{Address: address, MaxSessions: maxSessions, AvailableSessions: availableSession},
+		Server:    &Server{Address: address, MaxSessions: maxSessions},
 		Static:    pubkey,
 		Timestamp: time.Now().UnixNano(),
 	}

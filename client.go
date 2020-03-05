@@ -59,7 +59,7 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 
 	// Init common fields.
 	c.EntityCommon.init(pk, sk, dc, logging.MustGetLogger("dmsg_client"))
-	c.EntityCommon.setSessionCallback = func(ctx context.Context) error {
+	c.EntityCommon.setSessionCallback = func(ctx context.Context, sessionCount int) error {
 		err := c.EntityCommon.updateClientEntry(ctx, c.done)
 		if err == nil {
 			// Client is 'ready' once we have successfully updated the discovery entry
@@ -68,7 +68,7 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 		}
 		return err
 	}
-	c.EntityCommon.delSessionCallback = func(ctx context.Context) error {
+	c.EntityCommon.delSessionCallback = func(ctx context.Context, sessionCount int) error {
 		return c.EntityCommon.updateClientEntry(ctx, c.done)
 	}
 

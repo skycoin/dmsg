@@ -22,8 +22,8 @@ type EntityCommon struct {
 
 	log logrus.FieldLogger
 
-	setSessionCallback func(ctx context.Context) error
-	delSessionCallback func(ctx context.Context) error
+	setSessionCallback func(ctx context.Context, sessionCount int) error
+	delSessionCallback func(ctx context.Context, sessionCount int) error
 }
 
 func (c *EntityCommon) init(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, log logrus.FieldLogger) {
@@ -95,7 +95,7 @@ func (c *EntityCommon) setSession(ctx context.Context, dSes *SessionCommon) bool
 
 	c.sessions[dSes.RemotePK()] = dSes
 	if c.setSessionCallback != nil {
-		if err := c.setSessionCallback(ctx); err != nil {
+		if err := c.setSessionCallback(ctx, 1); err != nil {
 			c.log.
 				WithError(err).
 				Warn("setSession() callback returned non-nil error.")
@@ -109,7 +109,7 @@ func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
 	c.sessionsMx.Lock()
 	delete(c.sessions, pk)
 	if c.delSessionCallback != nil {
-		if err := c.delSessionCallback(ctx); err != nil {
+		if err := c.delSessionCallback(ctx, -1); err != nil {
 			c.log.
 				WithError(err).
 				Warn("delSession() callback returned non-nil error.")
@@ -122,7 +122,7 @@ func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
 func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, maxSessions, sessionCount int) error {
 	entry, err := c.dc.Entry(ctx, c.pk)
 	if err != nil {
-		entry = disc.NewServerEntry(c.pk, 0, addr, maxSessions, sessionCount)
+		entry = disc.NewServerEntry(c.pk, 0, addr, maxSessions)
 		if err := entry.Sign(c.sk); err != nil {
 			return err
 		}
@@ -131,12 +131,11 @@ func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, maxSe
 
 	if sessionCount != 0 {
 		c.log.Info("Updating server sessions...")
-		entry.Server.AvailableSessions += sessionCount
+		entry.Server.MaxSessions -= sessionCount
 		return c.dc.PutEntry(ctx, c.sk, entry)
 	}
 
 	entry.Server.Address = addr
-	entry.Server.AvailableSessions = sessionCount
 
 	return c.dc.PutEntry(ctx, c.sk, entry)
 }

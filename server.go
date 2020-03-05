@@ -34,11 +34,11 @@ func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, maxSession
 	s.ready = make(chan struct{})
 	s.done = make(chan struct{})
 	s.maxSessions = maxSessions
-	s.setSessionCallback = func(ctx context.Context) error {
-		return s.updateServerEntry(ctx, "", 0, 1)
+	s.setSessionCallback = func(ctx context.Context, sessionCount int) error {
+		return s.updateServerEntry(ctx, "", 0, sessionCount)
 	}
-	s.delSessionCallback = func(ctx context.Context) error {
-		return s.updateServerEntry(ctx, "", 0, -1)
+	s.delSessionCallback = func(ctx context.Context, sessionCount int) error {
+		return s.updateServerEntry(ctx, "", 0, sessionCount)
 	}
 	return s
 }
@@ -143,27 +143,14 @@ func (s *Server) handleSession(conn net.Conn) {
 	go func() {
 		awaitDone(ctx, s.done)
 		log.WithError(dSes.Close()).Info("Stopped session.")
-		if s.delSessionCallback != nil {
-			if err := s.delSessionCallback(context.Background()); err != nil {
-				s.log.WithError(err).
-					Warn("Failed to update server sessions")
-			}
-			s.log.Infof("Current number of server sessions: %d", s.SessionCount())
-		}
 	}()
 
 	if s.setSession(ctx, dSes.SessionCommon) {
-		if s.setSessionCallback != nil {
-			if err := s.setSessionCallback(ctx); err != nil {
-				s.log.WithError(err).
-					Warn("Failed to update server sessions")
-			} else {
-				s.log.Infof("Current number of sessions: %d", s.SessionCount())
-			}
-		}
-
+		s.log.Infof("Current number of sessions: %d", len(s.sessions))
 		dSes.Serve()
 	}
+
 	s.delSession(ctx, dSes.RemotePK())
+	s.log.Infof("Current number of sessions: %d", len(s.sessions))
 	cancel()
 }
