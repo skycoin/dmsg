@@ -131,7 +131,7 @@ func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, maxSe
 
 	if sessionCount != 0 {
 		c.log.Info("Updating server sessions...")
-		entry.Server.MaxSessions += sessionCount
+		entry.Server.AvailableSessions += sessionCount
 		return c.dc.PutEntry(ctx, c.sk, entry)
 	}
 
