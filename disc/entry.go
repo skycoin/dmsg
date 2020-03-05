@@ -160,7 +160,7 @@ type Server struct {
 func (s *Server) String() string {
 	res := fmt.Sprintf("\taddress: %s\n", s.Address)
 	res += fmt.Sprintf("\tport: %s\n", s.Port)
-	res += fmt.Sprintf("\tavailable connections: %d\n", s.MaxSessions)
+	res += fmt.Sprintf("\tmax sessions: %d\n", s.MaxSessions)
 
 	return res
 }
