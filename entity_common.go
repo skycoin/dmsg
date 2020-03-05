@@ -99,6 +99,8 @@ func (c *EntityCommon) setSession(ctx context.Context, dSes *SessionCommon) bool
 			c.log.
 				WithError(err).
 				Warn("setSession() callback returned non-nil error.")
+		} else {
+			c.log.Infof("Current number of sessions: %d", len(c.sessions))
 		}
 	}
 	c.sessionsMx.Unlock()
@@ -113,6 +115,8 @@ func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
 			c.log.
 				WithError(err).
 				Warn("delSession() callback returned non-nil error.")
+		} else {
+			c.log.Infof("Current number of sessions: %d", len(c.sessions))
 		}
 	}
 	c.sessionsMx.Unlock()

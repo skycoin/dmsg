@@ -146,11 +146,9 @@ func (s *Server) handleSession(conn net.Conn) {
 	}()
 
 	if s.setSession(ctx, dSes.SessionCommon) {
-		s.log.Infof("Current number of sessions: %d", len(s.sessions))
 		dSes.Serve()
 	}
 
 	s.delSession(ctx, dSes.RemotePK())
-	s.log.Infof("Current number of sessions: %d", len(s.sessions))
 	cancel()
 }
