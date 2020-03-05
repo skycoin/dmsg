@@ -21,17 +21,18 @@ import (
 func TestStream(t *testing.T) {
 	// Prepare mock discovery.
 	dc := disc.NewMock()
+	maxSessions := 10
 
 	// Prepare dmsg server.
 	pkSrv, skSrv := GenKeyPair(t, "server")
-	srv := NewServer(pkSrv, skSrv, dc)
+	srv := NewServer(pkSrv, skSrv, dc, maxSessions)
 	srv.SetLogger(logging.MustGetLogger("server"))
 	lisSrv, err := net.Listen("tcp", "")
 	require.NoError(t, err)
 
 	// Serve dmsg server.
 	chSrv := make(chan error, 1)
-	go func() { chSrv <- srv.Serve(lisSrv, "", 10) }() //nolint:errcheck
+	go func() { chSrv <- srv.Serve(lisSrv, "") }() //nolint:errcheck
 
 	// Prepare and serve dmsg client A.
 	pkA, skA := GenKeyPair(t, "client A")

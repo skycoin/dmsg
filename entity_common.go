@@ -2,7 +2,6 @@ package dmsg
 
 import (
 	"context"
-	"net/http"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -120,19 +119,19 @@ func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
 }
 
 // updateServerEntry updates the dmsg server's entry within dmsg discovery.
-func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, maxSessions, sessionCount int, ) error {
+func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, maxSessions, sessionCount int) error {
 	entry, err := c.dc.Entry(ctx, c.pk)
 	if err != nil {
-		entry = disc.NewServerEntry(c.pk, 0, addr, maxSessions, 0)
+		entry = disc.NewServerEntry(c.pk, 0, addr, maxSessions, sessionCount)
 		if err := entry.Sign(c.sk); err != nil {
 			return err
 		}
-		return c.dc.PostEntry(ctx, entry, http.MethodPost)
+		return c.dc.PostEntry(ctx, entry)
 	}
 
 	if sessionCount != 0 {
 		c.log.Info("Updating server sessions...")
-		entry.Server.AvailableSessions+=sessionCount
+		entry.Server.MaxSessions += sessionCount
 		return c.dc.PutEntry(ctx, c.sk, entry)
 	}
 
@@ -157,7 +156,7 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}
 		if err := entry.Sign(c.sk); err != nil {
 			return err
 		}
-		return c.dc.PostEntry(ctx, entry, http.MethodPost)
+		return c.dc.PostEntry(ctx, entry)
 	}
 	entry.Client.DelegatedServers = srvPKs
 	c.log.WithField("entry", entry).Info("Updating entry.")

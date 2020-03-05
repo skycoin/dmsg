@@ -21,7 +21,7 @@ var log = logging.MustGetLogger("disc")
 // APIClient implements dmsg discovery API client.
 type APIClient interface {
 	Entry(context.Context, cipher.PubKey) (*Entry, error)
-	PostEntry(context.Context, *Entry, string) error
+	PostEntry(context.Context, *Entry) error
 	PutEntry(context.Context, cipher.SecKey, *Entry) error
 	AvailableServers(context.Context) ([]*Entry, error)
 }
@@ -85,14 +85,14 @@ func (c *httpClient) Entry(ctx context.Context, publicKey cipher.PubKey) (*Entry
 }
 
 // PostEntry creates a new Entry.
-func (c *httpClient) PostEntry(ctx context.Context, e *Entry, method string) error {
+func (c *httpClient) PostEntry(ctx context.Context, e *Entry) error {
 	endpoint := c.address + "/dmsg-discovery/entry/"
 	marshaledEntry, err := json.Marshal(e)
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequest(method, endpoint, bytes.NewBuffer(marshaledEntry))
+	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewBuffer(marshaledEntry))
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func (c *httpClient) PutEntry(ctx context.Context, sk cipher.SecKey, entry *Entr
 		if err != nil {
 			return err
 		}
-		err = c.PostEntry(ctx, entry, http.MethodPost)
+		err = c.PostEntry(ctx, entry)
 		if err == nil {
 			return nil
 		}

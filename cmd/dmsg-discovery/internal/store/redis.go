@@ -73,20 +73,6 @@ func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry) error {
 	return nil
 }
 
-func (r *redisStore) UpdateEntry(ctx context.Context, entry *disc.Entry) error {
-	payload, err := json.Marshal(entry)
-	if err != nil {
-		return disc.ErrUnexpected
-	}
-
-	err = r.client.Set(entry.Static.Hex(), payload, 0).Err()
-	if err != nil {
-		return disc.ErrUnexpected
-	}
-
-	return nil
-}
-
 // AvailableServers implements Storer AvailableServers method for redisdb database
 func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*disc.Entry, error) {
 	var entries []*disc.Entry

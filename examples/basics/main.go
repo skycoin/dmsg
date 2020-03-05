@@ -23,16 +23,17 @@ func main() {
 	// instantiate discovery
 	//dc := disc.NewHTTP("http://127.0.0.1:9090")
 	dc := disc.NewMock()
+	maxSessions := 10
 
 	// instantiate server
 	sPK, sSK := cipher.GenerateKeyPair()
-	srv := dmsg.NewServer(sPK, sSK, dc)
+	srv := dmsg.NewServer(sPK, sSK, dc, maxSessions)
 
 	lis, err := nettest.NewLocalListener("tcp")
 	if err != nil {
 		panic(err)
 	}
-	go func() { _ = srv.Serve(lis, "", 10) }() //nolint:errcheck
+	go func() { _ = srv.Serve(lis, "") }() //nolint:errcheck
 	time.Sleep(time.Second)
 
 	// instantiate clients

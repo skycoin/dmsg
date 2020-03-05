@@ -34,6 +34,12 @@ func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, maxSession
 	s.ready = make(chan struct{})
 	s.done = make(chan struct{})
 	s.maxSessions = maxSessions
+	s.setSessionCallback = func(ctx context.Context) error {
+		return s.updateServerEntry(ctx, "", 0, 1)
+	}
+	s.delSessionCallback = func(ctx context.Context) error {
+		return s.updateServerEntry(ctx, "", 0, -1)
+	}
 	return s
 }
 
@@ -120,14 +126,6 @@ func (s *Server) handleSession(conn net.Conn) {
 	var log logrus.FieldLogger //nolint:gosimple
 	log = s.log.WithField("remote_tcp", conn.RemoteAddr())
 
-	getSession := func() (int, error) {
-		e, err := s.dc.Entry(context.Background(), s.pk)
-		if err != nil {
-			return -1, err
-		}
-		return e.Server.AvailableSessions, nil
-	}
-
 	dSes, err := makeServerSession(&s.EntityCommon, conn)
 	if err != nil {
 		log = log.WithError(err)
@@ -141,38 +139,29 @@ func (s *Server) handleSession(conn net.Conn) {
 	log = log.WithField("remote_pk", dSes.RemotePK())
 	log.Info("Started session.")
 
-	if err := s.updateServerEntry(context.Background(), "", 0, 1); err != nil {
-		s.log.WithError(err).
-			Warn("Failed to update server sessions")
-	} else {
-		s.log.Info("Server sessions updated")
-		i, err := getSession()
-		if err != nil {
-			s.log.Warn(err)
-		}
-
-		s.log.Infof("Current number of sessions: %d", i)
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		awaitDone(ctx, s.done)
 		log.WithError(dSes.Close()).Info("Stopped session.")
-
-		if err := s.updateServerEntry(context.Background(), "", 0, -1); err != nil {
-			s.log.WithError(err).
-				Warn("Failed to update server sessions")
+		if s.delSessionCallback != nil {
+			if err := s.delSessionCallback(context.Background()); err != nil {
+				s.log.WithError(err).
+					Warn("Failed to update server sessions")
+			}
+			s.log.Infof("Current number of server sessions: %d", s.SessionCount())
 		}
-
-		i, err := getSession()
-		if err != nil {
-			s.log.Warn(err)
-		}
-
-		s.log.Infof("Current number of server sessions: %d", i)
 	}()
 
 	if s.setSession(ctx, dSes.SessionCommon) {
+		if s.setSessionCallback != nil {
+			if err := s.setSessionCallback(ctx); err != nil {
+				s.log.WithError(err).
+					Warn("Failed to update server sessions")
+			} else {
+				s.log.Infof("Current number of sessions: %d", s.SessionCount())
+			}
+		}
+
 		dSes.Serve()
 	}
 	s.delSession(ctx, dSes.RemotePK())

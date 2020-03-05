@@ -61,7 +61,7 @@ func (m *mockClient) Entry(ctx context.Context, publicKey cipher.PubKey) (*Entry
 }
 
 // PostEntry sets an entry on the APIClient mock
-func (m *mockClient) PostEntry(ctx context.Context, e *Entry, method string) error {
+func (m *mockClient) PostEntry(ctx context.Context, e *Entry) error {
 	previousEntry, ok := m.entry(e.Static.Hex())
 	if ok {
 		err := previousEntry.ValidateIteration(e)
@@ -92,7 +92,7 @@ func (m *mockClient) PutEntry(ctx context.Context, sk cipher.SecKey, e *Entry) e
 		if err != nil {
 			return err
 		}
-		err = m.PostEntry(ctx, e, http.MethodPost)
+		err = m.PostEntry(ctx, e)
 		if err == nil {
 			return nil
 		}

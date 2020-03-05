@@ -119,38 +119,10 @@ func (a *API) muxEntry() http.HandlerFunc {
 		switch r.Method {
 		case http.MethodPost:
 			a.setEntry(w, r)
-		case http.MethodPut:
-			a.updateServerSession(w, r)
 		default:
 			a.getEntry(w, r)
 		}
 	}
-}
-
-// updateServerSession updates the number of available sessions of a (server) entry
-// URI: /dmsg-discovery/entry/:pk
-// Method: PUT
-func (a *API) updateServerSession(w http.ResponseWriter, r *http.Request) {
-	entry := &disc.Entry{}
-	err := json.NewDecoder(r.Body).Decode(entry)
-	defer func() {
-		if err := r.Body.Close(); err != nil {
-			log.WithError(err).Warn("Failed to decode HTTP response body")
-		}
-	}()
-
-	if err != nil {
-		a.handleError(w, disc.ErrUnexpected)
-		return
-	}
-
-	err = a.store.UpdateEntry(r.Context(), entry)
-	if err != nil {
-		a.handleError(w, err)
-		return
-	}
-
-	a.writeJSON(w, http.StatusOK, disc.MsgEntryUpdated)
 }
 
 // getEntry returns the entry associated with the given public key
