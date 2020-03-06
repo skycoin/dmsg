@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 
@@ -251,10 +250,8 @@ func (e *Entry) Validate() error {
 		return ErrValidationNoClientOrServer
 	}
 
-	if e.Server != nil {
-		if _, err := url.Parse(e.Server.Address); err != nil {
-			return fmt.Errorf("failed to parse server.address: %v", err)
-		}
+	if e.Server != nil && e.Server.Address == "" {
+		return errors.New("server.address cannot be empty")
 	}
 
 	return nil
