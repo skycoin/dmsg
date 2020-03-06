@@ -114,8 +114,8 @@ func TestValidateNonKeysEntry(t *testing.T) {
 		Timestamp: time.Now().Unix(),
 		Client:    &disc.Client{},
 		Server: &disc.Server{
-			Address:     "localhost:8080",
-			MaxSessions: 3,
+			Address:           "localhost:8080",
+			AvailableSessions: 3,
 		},
 		Version:  "0",
 		Sequence: 0,
@@ -255,7 +255,7 @@ func TestCopy(t *testing.T) {
 			src:  &entry,
 			dst: &disc.Entry{
 				Client:    &disc.Client{},
-				Server:    &disc.Server{Address: "s", MaxSessions: 0},
+				Server:    &disc.Server{Address: "s", AvailableSessions: 0},
 				Static:    cipher.PubKey{},
 				Timestamp: 3,
 				Sequence:  0,
@@ -273,7 +273,7 @@ func TestCopy(t *testing.T) {
 			src:  &disc.Entry{},
 			dst: &disc.Entry{
 				Client:    &disc.Client{},
-				Server:    &disc.Server{Address: "s", MaxSessions: 0},
+				Server:    &disc.Server{Address: "s", AvailableSessions: 0},
 				Static:    cipher.PubKey{},
 				Timestamp: 3,
 				Sequence:  0,

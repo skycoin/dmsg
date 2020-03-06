@@ -100,22 +100,24 @@ func init() {
 }
 
 func parseConfig(configFile string) *Config {
-	var rdr io.Reader
+	var r io.Reader
 	var err error
 	if !cfgFromStdin {
-		rdr, err = os.Open(filepath.Clean(configFile))
+		r, err = os.Open(filepath.Clean(configFile))
 		if err != nil {
 			log.Fatalf("Failed to open config: %s", err)
 		}
 	} else {
-		rdr = bufio.NewReader(os.Stdin)
+		r = bufio.NewReader(os.Stdin)
 	}
 
-	conf := &Config{}
-	if err := json.NewDecoder(rdr).Decode(&conf); err != nil {
-		log.Fatalf("Failed to decode %s: %s", rdr, err)
-	}
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
 
+	conf := new(Config)
+	if err := dec.Decode(&conf); err != nil {
+		log.Fatalf("Failed to decode config from %s: %s", r, err)
+	}
 	return conf
 }
 

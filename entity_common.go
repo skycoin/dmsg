@@ -2,6 +2,7 @@ package dmsg
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -87,20 +88,17 @@ func (c *EntityCommon) SessionCount() int {
 
 func (c *EntityCommon) setSession(ctx context.Context, dSes *SessionCommon) bool {
 	c.sessionsMx.Lock()
-
 	if _, ok := c.sessions[dSes.RemotePK()]; ok {
 		c.sessionsMx.Unlock()
 		return false
 	}
-
 	c.sessions[dSes.RemotePK()] = dSes
 	if c.setSessionCallback != nil {
-		if err := c.setSessionCallback(ctx, 1); err != nil {
+		if err := c.setSessionCallback(ctx, len(c.sessions)); err != nil {
 			c.log.
+				WithField("func", "EntityCommon.setSession").
 				WithError(err).
-				Warn("setSession() callback returned non-nil error.")
-		} else {
-			c.log.Infof("Current number of sessions: %d", len(c.sessions))
+				Warn("Callback returned non-nil error.")
 		}
 	}
 	c.sessionsMx.Unlock()
@@ -111,36 +109,50 @@ func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
 	c.sessionsMx.Lock()
 	delete(c.sessions, pk)
 	if c.delSessionCallback != nil {
-		if err := c.delSessionCallback(ctx, -1); err != nil {
+		if err := c.delSessionCallback(ctx, len(c.sessions)); err != nil {
 			c.log.
+				WithField("func", "EntityCommon.delSession").
 				WithError(err).
-				Warn("delSession() callback returned non-nil error.")
-		} else {
-			c.log.Infof("Current number of sessions: %d", len(c.sessions))
+				Warn("Callback returned non-nil error.")
 		}
 	}
 	c.sessionsMx.Unlock()
 }
 
 // updateServerEntry updates the dmsg server's entry within dmsg discovery.
-func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, maxSessions, sessionCount int) error {
+// If 'addr' is an empty string, the Entry.addr field will not be updated in discovery.
+func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, availableSessions int) error {
 	entry, err := c.dc.Entry(ctx, c.pk)
 	if err != nil {
-		entry = disc.NewServerEntry(c.pk, 0, addr, maxSessions)
+		entry = disc.NewServerEntry(c.pk, 0, addr, availableSessions)
 		if err := entry.Sign(c.sk); err != nil {
 			return err
 		}
 		return c.dc.PostEntry(ctx, entry)
 	}
 
-	if sessionCount != 0 {
-		c.log.Info("Updating server sessions...")
-		entry.Server.MaxSessions -= sessionCount
-		return c.dc.PutEntry(ctx, c.sk, entry)
+	if entry.Server == nil {
+		return errors.New("entry in discovery is not of a dmsg server")
 	}
 
-	entry.Server.Address = addr
-	entry.Server.MaxSessions = maxSessions
+	updateSessions := entry.Server.AvailableSessions != availableSessions
+	updateAddr := addr != "" && entry.Server.Address != addr
+
+	if !updateSessions && !updateAddr {
+		// Nothing to be done.
+		return nil
+	}
+
+	log := c.log
+	if updateSessions {
+		entry.Server.AvailableSessions = availableSessions
+		log = log.WithField("available_sessions", entry.Server.AvailableSessions)
+	}
+	if updateAddr {
+		entry.Server.Address = addr
+		log = log.WithField("addr", entry.Server.Address)
+	}
+	log.Info("Updating discovery entry...")
 
 	return c.dc.PutEntry(ctx, c.sk, entry)
 }

@@ -16,6 +16,9 @@ import (
 	"github.com/SkycoinProject/dmsg/netutil"
 )
 
+// TODO(evanlinjin): We should implement exponential backoff at some point.
+const serveWait = time.Second
+
 // Config configures a dmsg client entity.
 type Config struct {
 	MinSessions int
@@ -117,9 +120,8 @@ func (ce *Client) Serve() {
 			continue
 		}
 		if len(entries) == 0 {
-			wait := time.Second
-			ce.log.Warnf("No entries found. Retrying after %s...", wait.String())
-			time.Sleep(wait)
+			ce.log.Warnf("No entries found. Retrying after %s...", serveWait.String())
+			time.Sleep(serveWait)
 		}
 
 		for _, entry := range entries {
@@ -142,6 +144,7 @@ func (ce *Client) Serve() {
 
 			if err := ce.ensureSession(ctx, entry); err != nil {
 				ce.log.WithField("remote_pk", entry.Static).WithError(err).Warn("Failed to establish session.")
+				time.Sleep(serveWait)
 			}
 		}
 	}

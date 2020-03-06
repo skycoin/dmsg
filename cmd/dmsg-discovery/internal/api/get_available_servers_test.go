@@ -31,8 +31,8 @@ func TestGetAvailableServers(t *testing.T) {
 		Timestamp: time.Now().Unix(),
 		Client:    &disc.Client{},
 		Server: &disc.Server{
-			Address:     "localhost:8080",
-			MaxSessions: 3,
+			Address:           "localhost:8080",
+			AvailableSessions: 3,
 		},
 		Version:  "0",
 		Sequence: 1,

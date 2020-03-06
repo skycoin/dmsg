@@ -35,10 +35,12 @@ func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, maxSession
 	s.done = make(chan struct{})
 	s.maxSessions = maxSessions
 	s.setSessionCallback = func(ctx context.Context, sessionCount int) error {
-		return s.updateServerEntry(ctx, "", 0, sessionCount)
+		available := s.maxSessions - sessionCount
+		return s.updateServerEntry(ctx, "", available)
 	}
 	s.delSessionCallback = func(ctx context.Context, sessionCount int) error {
-		return s.updateServerEntry(ctx, "", 0, sessionCount)
+		available := s.maxSessions - sessionCount
+		return s.updateServerEntry(ctx, "", available)
 	}
 	return s
 }
@@ -57,8 +59,7 @@ func (s *Server) Close() error {
 
 // Serve serves the server.
 func (s *Server) Serve(lis net.Listener, addr string) error {
-	var log logrus.FieldLogger //nolint:gosimple
-	log = s.log.WithField("local_addr", addr).WithField("local_pk", s.pk)
+	log := logrus.FieldLogger(s.log.WithField("local_addr", addr).WithField("local_pk", s.pk))
 
 	log.Info("Serving server.")
 	s.wg.Add(1)
@@ -118,13 +119,19 @@ func (s *Server) updateEntryLoop(addr string) error {
 		}
 	}()
 	return netutil.NewDefaultRetrier(s.log).Do(ctx, func() error {
-		return s.updateServerEntry(ctx, addr, s.maxSessions, 0)
+		return s.updateServerEntry(ctx, addr, s.maxSessions)
 	})
 }
 
 func (s *Server) handleSession(conn net.Conn) {
-	var log logrus.FieldLogger //nolint:gosimple
-	log = s.log.WithField("remote_tcp", conn.RemoteAddr())
+	log := logrus.FieldLogger(s.log.WithField("remote_tcp", conn.RemoteAddr()))
+
+	if s.SessionCount() >= s.maxSessions {
+		s.log.WithError(conn.Close()).
+			WithField("max_sessions", s.maxSessions).
+			Warn("Session rejected: max sessions reached.")
+		return
+	}
 
 	dSes, err := makeServerSession(&s.EntityCommon, conn)
 	if err != nil {
