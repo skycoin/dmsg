@@ -99,7 +99,7 @@ func TestGetAvailableServers(t *testing.T) {
 				return db, []*disc.Entry{}
 			},
 			errorMessage: disc.HTTPMessage{
-				Message: disc.ErrKeyNotFound.Error(),
+				Message: disc.ErrNoAvailableServers.Error(),
 				Code:    http.StatusNotFound,
 			},
 		},

@@ -246,7 +246,7 @@ func (a *API) getAvailableServers() http.HandlerFunc {
 		if len(entries) == 0 {
 			a.writeJSON(w, http.StatusNotFound, disc.HTTPMessage{
 				Code:    http.StatusNotFound,
-				Message: disc.ErrKeyNotFound.Error(),
+				Message: disc.ErrNoAvailableServers.Error(),
 			})
 
 			return
