@@ -36,6 +36,7 @@ type Config struct {
 	Discovery     string        `json:"discovery"`
 	LocalAddress  string        `json:"local_address"`
 	PublicAddress string        `json:"public_address"`
+	MaxSessions   int           `json:"max_sessions"`
 	LogLevel      string        `json:"log_level"`
 }
 
@@ -80,7 +81,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Start
-		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery))
+		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery), conf.MaxSessions)
 		srv.SetLogger(logger)
 
 		defer func() { logger.WithError(srv.Close()).Info("Closed server.") }()
@@ -99,22 +100,24 @@ func init() {
 }
 
 func parseConfig(configFile string) *Config {
-	var rdr io.Reader
+	var r io.Reader
 	var err error
 	if !cfgFromStdin {
-		rdr, err = os.Open(filepath.Clean(configFile))
+		r, err = os.Open(filepath.Clean(configFile))
 		if err != nil {
 			log.Fatalf("Failed to open config: %s", err)
 		}
 	} else {
-		rdr = bufio.NewReader(os.Stdin)
+		r = bufio.NewReader(os.Stdin)
 	}
 
-	conf := &Config{}
-	if err := json.NewDecoder(rdr).Decode(&conf); err != nil {
-		log.Fatalf("Failed to decode %s: %s", rdr, err)
-	}
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
 
+	conf := new(Config)
+	if err := dec.Decode(&conf); err != nil {
+		log.Fatalf("Failed to decode config from %s: %s", r, err)
+	}
 	return conf
 }
 

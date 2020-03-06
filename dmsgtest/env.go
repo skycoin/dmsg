@@ -16,6 +16,7 @@ import (
 
 // DefaultTimeout is the recommended timeout for the Env.
 const DefaultTimeout = time.Minute
+const maxSessions = 10
 
 // Env can run an entire local dmsg environment inclusive of a mock discovery, dmsg servers and clients.
 type Env struct {
@@ -83,7 +84,7 @@ func (env *Env) NewServer() (*dmsg.Server, error) {
 func (env *Env) newServer(ctx context.Context) (*dmsg.Server, error) {
 	pk, sk := cipher.GenerateKeyPair()
 
-	srv := dmsg.NewServer(pk, sk, env.d)
+	srv := dmsg.NewServer(pk, sk, env.d, maxSessions)
 	env.s[pk] = srv
 	env.sWg.Add(1)
 

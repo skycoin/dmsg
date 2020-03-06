@@ -21,10 +21,11 @@ import (
 func TestStream(t *testing.T) {
 	// Prepare mock discovery.
 	dc := disc.NewMock()
+	maxSessions := 10
 
 	// Prepare dmsg server.
 	pkSrv, skSrv := GenKeyPair(t, "server")
-	srv := NewServer(pkSrv, skSrv, dc)
+	srv := NewServer(pkSrv, skSrv, dc, maxSessions)
 	srv.SetLogger(logging.MustGetLogger("server"))
 	lisSrv, err := net.Listen("tcp", "")
 	require.NoError(t, err)
