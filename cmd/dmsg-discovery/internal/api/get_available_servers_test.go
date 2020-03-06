@@ -31,8 +31,8 @@ func TestGetAvailableServers(t *testing.T) {
 		Timestamp: time.Now().Unix(),
 		Client:    &disc.Client{},
 		Server: &disc.Server{
-			Address:              "localhost:8080",
-			AvailableConnections: 3,
+			Address:           "localhost:8080",
+			AvailableSessions: 3,
 		},
 		Version:  "0",
 		Sequence: 1,
@@ -99,7 +99,7 @@ func TestGetAvailableServers(t *testing.T) {
 				return db, []*disc.Entry{}
 			},
 			errorMessage: disc.HTTPMessage{
-				Message: disc.ErrKeyNotFound.Error(),
+				Message: disc.ErrNoAvailableServers.Error(),
 				Code:    http.StatusNotFound,
 			},
 		},
