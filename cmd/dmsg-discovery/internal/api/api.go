@@ -20,7 +20,7 @@ import (
 
 var log = logging.MustGetLogger("dmsg-discovery")
 
-const maxServers = 512
+const maxGetAvailableServersResult = 512
 
 // API represents the api of the dmsg-discovery service`
 type API struct {
@@ -87,7 +87,7 @@ func New(storer store2.Storer, options ...Option) *API {
 
 	// routes
 	mux.HandleFunc("/dmsg-discovery/entry/", api.muxEntry())
-	mux.HandleFunc("/dmsg-discovery/available_servers", api.getAvailableServer())
+	mux.HandleFunc("/dmsg-discovery/available_servers", api.getAvailableServers())
 
 	return api
 }
@@ -235,9 +235,9 @@ func (a *API) setEntry(w http.ResponseWriter, r *http.Request) {
 // getAvailableServers returns all available server entries as an array of json codified entry objects
 // URI: /dmsg-discovery/available_servers
 // Method: GET
-func (a *API) getAvailableServer() http.HandlerFunc {
+func (a *API) getAvailableServers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		entries, err := a.store.AvailableServers(r.Context(), maxServers)
+		entries, err := a.store.AvailableServers(r.Context(), maxGetAvailableServersResult)
 		if err != nil {
 			a.handleError(w, err)
 			return
