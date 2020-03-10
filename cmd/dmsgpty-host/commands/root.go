@@ -5,11 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	stdlog "log"
 	"net"
 	"os"
 	"sync"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
+	"github.com/SkycoinProject/skywire-mainnet/pkg/util/buildinfo"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
 	"github.com/spf13/cobra"
@@ -178,6 +180,10 @@ var rootCmd = &cobra.Command{
 	Short:  "runs a standalone dmsgpty-host instance",
 	PreRun: prepareVariables,
 	Run: func(cmd *cobra.Command, args []string) {
+		if _, err := buildinfo.Get().WriteTo(stdlog.Writer()); err != nil {
+			log.Printf("Failed to output build info: %v", err)
+		}
+
 		log := logging.MustGetLogger("dmsgpty-host")
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)

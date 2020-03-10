@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/SkycoinProject/skywire-mainnet/pkg/util/buildinfo"
 	"github.com/spf13/cobra"
 
 	"github.com/SkycoinProject/dmsg"
@@ -45,6 +46,10 @@ var rootCmd = &cobra.Command{
 		}
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if _, err := buildinfo.Get().WriteTo(log.Writer()); err != nil {
+			log.Printf("Failed to output build info: %v", err)
+		}
+
 		ctx, cancel := cmdutil.SignalContext(context.Background(), nil)
 		defer cancel()
 

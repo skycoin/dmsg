@@ -1,9 +1,11 @@
 package commands
 
 import (
+	"log"
 	"net/http"
 	"os"
 
+	"github.com/SkycoinProject/skywire-mainnet/pkg/util/buildinfo"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -39,6 +41,10 @@ var rootCmd = &cobra.Command{
 	Use:   cmdutil.RootCmdName(),
 	Short: "hosts a UI server for a dmsgpty-host",
 	Run: func(cmd *cobra.Command, args []string) {
+		if _, err := buildinfo.Get().WriteTo(log.Writer()); err != nil {
+			log.Printf("Failed to output build info: %v", err)
+		}
+
 		ui := dmsgpty.NewUI(dmsgpty.NetUIDialer(hostNet, hostAddr), conf)
 		logrus.
 			WithField("addr", addr).

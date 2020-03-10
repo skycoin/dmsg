@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
+	"github.com/SkycoinProject/skywire-mainnet/pkg/util/buildinfo"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/spf13/cobra"
@@ -34,6 +35,10 @@ var rootCmd = &cobra.Command{
 	Use:   "dmsg-discovery",
 	Short: "Dmsg Discovery Server for skywire",
 	Run: func(_ *cobra.Command, _ []string) {
+		if _, err := buildinfo.Get().WriteTo(log.Writer()); err != nil {
+			log.Printf("Failed to output build info: %v", err)
+		}
+
 		redisPassword := os.Getenv(redisPasswordEnvName)
 
 		s, err := store.NewStore("redis", redisURL, redisPassword)

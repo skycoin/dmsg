@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
+	"github.com/SkycoinProject/skywire-mainnet/pkg/util/buildinfo"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/spf13/cobra"
 
@@ -44,6 +44,10 @@ var rootCmd = &cobra.Command{
 	Use:   "dmsg-server [config.json]",
 	Short: "Dmsg Server for skywire",
 	Run: func(_ *cobra.Command, args []string) {
+		if _, err := buildinfo.Get().WriteTo(log.Writer()); err != nil {
+			log.Printf("Failed to output build info: %v", err)
+		}
+
 		// Config
 		configFile := "config.json"
 		if len(args) > 0 {
