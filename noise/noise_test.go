@@ -5,10 +5,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/SkycoinProject/skycoin/src/util/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/SkycoinProject/skycoin/src/util/logging"
 
 	"github.com/SkycoinProject/dmsg/cipher"
 )
@@ -53,16 +52,16 @@ func TestKKAndSecp256k1(t *testing.T) {
 	require.NoError(t, err)
 
 	// -> e, es
-	msg, err := nI.HandshakeMessage()
+	msg, err := nI.MakeHandshakeMessage()
 	require.NoError(t, err)
-	require.Error(t, nR.ProcessMessage(append(msg, 1)))
-	require.NoError(t, nR.ProcessMessage(msg))
+	require.Error(t, nR.ProcessHandshakeMessage(append(msg, 1)))
+	require.NoError(t, nR.ProcessHandshakeMessage(msg))
 
 	// <- e, ee
-	msg, err = nR.HandshakeMessage()
+	msg, err = nR.MakeHandshakeMessage()
 	require.NoError(t, err)
-	require.Error(t, nI.ProcessMessage(append(msg, 1)))
-	require.NoError(t, nI.ProcessMessage(msg))
+	require.Error(t, nI.ProcessHandshakeMessage(append(msg, 1)))
+	require.NoError(t, nI.ProcessHandshakeMessage(msg))
 
 	require.True(t, nI.HandshakeFinished())
 	require.True(t, nR.HandshakeFinished())
@@ -107,19 +106,19 @@ func TestXKAndSecp256k1(t *testing.T) {
 	require.NoError(t, err)
 
 	// -> e, es
-	msg, err := nI.HandshakeMessage()
+	msg, err := nI.MakeHandshakeMessage()
 	require.NoError(t, err)
-	require.NoError(t, nR.ProcessMessage(msg))
+	require.NoError(t, nR.ProcessHandshakeMessage(msg))
 
 	// <- e, ee
-	msg, err = nR.HandshakeMessage()
+	msg, err = nR.MakeHandshakeMessage()
 	require.NoError(t, err)
-	require.NoError(t, nI.ProcessMessage(msg))
+	require.NoError(t, nI.ProcessHandshakeMessage(msg))
 
 	// -> s, se
-	msg, err = nI.HandshakeMessage()
+	msg, err = nI.MakeHandshakeMessage()
 	require.NoError(t, err)
-	require.NoError(t, nR.ProcessMessage(msg))
+	require.NoError(t, nR.ProcessHandshakeMessage(msg))
 
 	require.True(t, nI.HandshakeFinished())
 	require.True(t, nR.HandshakeFinished())
