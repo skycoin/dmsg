@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY : check lint install-linters dep test bin build
+.PHONY : check lint install-linters dep test build
 
 VERSION := $(shell git describe --always)
 
