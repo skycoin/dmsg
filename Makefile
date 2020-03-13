@@ -99,13 +99,5 @@ attach-pty: ## Attach local dmsgpty tmux session.
 
 stop-all: stop-pty stop-dmsg stop-db ## Stop all local tmux sessions.
 
-# TODO(evanlinjin): We should get rid of this at some point.
-bin: ## Build `dmsg-discovery`, `dmsg-server`
-	${OPTS} go build ${BUILD_OPTS} -o ./dmsg-discovery ./cmd/dmsg-discovery
-	${OPTS} go build ${BUILD_OPTS} -o ./dmsg-server ./cmd/dmsg-server
-	${OPTS} go build ${BUILD_OPTS} -o ./dmsgpty-cli ./cmd/dmsgpty-cli
-	${OPTS} go build ${BUILD_OPTS} -o ./dmsgpty-host ./cmd/dmsgpty-host
-	${OPTS} go build ${BUILD_OPTS} -o ./dmsgpty-ui ./cmd/dmsgpty-ui
-
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
