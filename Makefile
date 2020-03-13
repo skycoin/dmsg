@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 .PHONY : check lint install-linters dep test bin build
 
-VERSION := $(shell git describe)
+VERSION := $(shell git describe --always)
 
 RFC_3339 := "+%Y-%m-%dT%H:%M:%SZ"
 DATE := $(shell date -u $(RFC_3339))
