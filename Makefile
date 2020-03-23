@@ -19,14 +19,6 @@ ifneq (,$(findstring 64,$(GOARCH)))
     TEST_OPTS:=$(TEST_OPTS) $(RACE_FLAG)
 endif
 
-# TODO: Remove after https://github.com/etcd-io/bbolt/pull/201 is closed.
-DISABLE_CHECKPTR_FLAG:=-gcflags=all=-d=checkptr=0
-GO_VERSION:=$(shell go version)
-
-ifneq (,$(findstring go1.14,$(GO_VERSION)))
-    TEST_OPTS:=$(TEST_OPTS) $(DISABLE_CHECKPTR_FLAG)
-endif
-
 SKYWIRE_MAINNET := github.com/SkycoinProject/skywire-mainnet
 BUILDINFO_PATH := $(SKYWIRE_MAINNET)/pkg/util/buildinfo
 
