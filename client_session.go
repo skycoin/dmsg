@@ -79,7 +79,7 @@ func (cs *ClientSession) serve() error {
 			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
 				cs.log.
 					WithError(err).
-					Info("ClientSession.acceptStream() temporary error, continuing...")
+					Info("Failed to accept stream.")
 				continue
 			}
 			cs.log.WithError(err).Warn("Stopped accepting streams.")
