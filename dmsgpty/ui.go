@@ -162,7 +162,7 @@ func (ui *UI) Handler() http.HandlerFunc {
 
 		uiAddr := fmt.Sprintf("(%s) %s%s", r.Proto, r.Host, r.URL.Path)
 		if err := ui.writeBanner(wsConn, uiAddr, sID); err != nil {
-			err := fmt.Errorf("failed to write banner: %v", err)
+			err := fmt.Errorf("failed to write banner: %w", err)
 			writeWSError(log, wsConn, err)
 			return
 		}
