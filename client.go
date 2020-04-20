@@ -254,13 +254,13 @@ func (ce *Client) AllSessions() []ClientSession {
 	return ce.allClientSessions(ce.porter)
 }
 
-// ConnectedServer obtains all the servers client is connected to.
+// ConnectedServers obtains all the servers client is connected to.
 func (ce *Client) ConnectedServers() []string {
 	ce.connectedServersMx.Lock()
 	defer ce.connectedServersMx.Unlock()
 
 	addrs := make([]string, 0, len(ce.connectedServers))
-	for addr, _ := range ce.connectedServers {
+	for addr := range ce.connectedServers {
 		addrs = append(addrs, addr)
 	}
 
