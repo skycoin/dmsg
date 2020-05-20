@@ -137,6 +137,12 @@ func (sc *SessionCommon) LocalPK() cipher.PubKey { return sc.entity.pk }
 // RemotePK returns the remote public key of the session.
 func (sc *SessionCommon) RemotePK() cipher.PubKey { return sc.rPK }
 
+// LocalTCPAddr returns the local address of the underlying TCP connection.
+func (sc *SessionCommon) LocalTCPAddr() net.Addr { return sc.netConn.LocalAddr() }
+
+// RemoteTCPAddr returns the remote address of the underlying TCP connection.
+func (sc *SessionCommon) RemoteTCPAddr() net.Addr { return sc.netConn.RemoteAddr() }
+
 // Close closes the session.
 func (sc *SessionCommon) Close() (err error) {
 	if sc != nil {
