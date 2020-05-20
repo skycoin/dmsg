@@ -24,6 +24,16 @@ func makeClientSession(entity *EntityCommon, porter *netutil.Porter, conn net.Co
 	return cSes, nil
 }
 
+// LocalTCPAddr returns the local address of the underlying TCP connection.
+func (cs *ClientSession) LocalTCPAddr() net.Addr {
+	return cs.netConn.LocalAddr()
+}
+
+// RemoteTCPAddr returns the remote address of the underlying TCP connection.
+func (cs *ClientSession) RemoteTCPAddr() net.Addr {
+	return cs.netConn.RemoteAddr()
+}
+
 // DialStream attempts to dial a stream to a remote client via the dmsg server that this session is connected to.
 func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream, err error) {
 	log := cs.log.

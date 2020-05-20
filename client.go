@@ -53,9 +53,6 @@ type Client struct {
 	once  sync.Once
 
 	sesMx sync.Mutex
-
-	connectedServersMx sync.Mutex
-	connectedServers   map[string]struct{}
 }
 
 // NewClient creates a dmsg client entity.
@@ -88,8 +85,6 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 	c.porter = netutil.NewPorter(netutil.PorterMinEphemeral)
 	c.errCh = make(chan error, 10)
 	c.done = make(chan struct{})
-
-	c.connectedServers = make(map[string]struct{})
 
 	return c
 }
@@ -255,15 +250,14 @@ func (ce *Client) AllSessions() []ClientSession {
 }
 
 // ConnectedServers obtains all the servers client is connected to.
+//
+// Deprecated: we can now obtain the remote TCP address of a session from the ClientSession struct directly.
 func (ce *Client) ConnectedServers() []string {
-	ce.connectedServersMx.Lock()
-	defer ce.connectedServersMx.Unlock()
-
-	addrs := make([]string, 0, len(ce.connectedServers))
-	for addr := range ce.connectedServers {
-		addrs = append(addrs, addr)
+	sessions := ce.allClientSessions(ce.porter)
+	addrs := make([]string, len(sessions))
+	for i, s := range sessions {
+		addrs[i] = s.RemoteTCPAddr().String()
 	}
-
 	return addrs
 }
 
@@ -321,9 +315,7 @@ func (ce *Client) dialSession(ctx context.Context, entry *disc.Entry) (ClientSes
 		_ = dSes.Close() //nolint:errcheck
 		return ClientSession{}, errors.New("session already exists")
 	}
-	ce.connectedServersMx.Lock()
-	ce.connectedServers[entry.Server.Address] = struct{}{}
-	ce.connectedServersMx.Unlock()
+
 	go func() {
 		ce.log.WithField("remote_pk", dSes.RemotePK()).Info("Serving session.")
 		if err := dSes.serve(); !isClosed(ce.done) {
