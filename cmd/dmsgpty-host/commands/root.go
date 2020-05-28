@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
-	"github.com/SkycoinProject/skywire-mainnet/pkg/util/buildinfo"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
 	"github.com/spf13/cobra"
@@ -19,6 +18,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/SkycoinProject/dmsg"
+	"github.com/SkycoinProject/dmsg/buildinfo"
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/cmdutil"
 	"github.com/SkycoinProject/dmsg/disc"

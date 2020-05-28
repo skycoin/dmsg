@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/SkycoinProject/skywire-mainnet/pkg/util/buildinfo"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/SkycoinProject/dmsg/buildinfo"
 	"github.com/SkycoinProject/dmsg/cmdutil"
 	"github.com/SkycoinProject/dmsg/dmsgpty"
 )
