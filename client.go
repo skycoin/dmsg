@@ -115,6 +115,11 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 	return c
 }
 
+// Type returns the client's type (should always be "dmsg").
+func (*Client) Type() string {
+	return Type
+}
+
 // Serve serves the client.
 // It blocks until the client is closed.
 func (ce *Client) Serve() {
