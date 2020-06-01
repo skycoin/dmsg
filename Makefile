@@ -51,9 +51,13 @@ install-linters: ## Install linters
 	# However, they suggest `curl ... | bash` which we should not do
 	# ${OPTS} go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
 	${OPTS} go get -u golang.org/x/tools/cmd/goimports
+	${OPTS} go get -u github.com/incu6us/goimports-reviser
 
-format: ## Formats the code. Must have goimports installed (use make install-linters).
-	${OPTS} goimports -w -local ${DMSG_REPO} .
+format: ## Formats the code. Must have goimports and goimports-reviser installed (use make install-linters).
+	# TODO: Formats vendor folder which is not desired behavior.
+	# We need to consider removing it after testing goimports-reviser.
+	#${OPTS} goimports -w -local ${DMSG_REPO} .
+	find . -type f -name '*.go' -not -path "./vendor/*" -exec goimports-reviser -project-name ${DMSG_REPO} -file-path {} \;
 
 dep: ## Sorts dependencies
 	${OPTS} go mod download
