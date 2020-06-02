@@ -7,7 +7,8 @@ RFC_3339 := "+%Y-%m-%dT%H:%M:%SZ"
 DATE := $(shell date -u $(RFC_3339))
 COMMIT := $(shell git rev-list -1 HEAD)
 
-OPTS?=GO111MODULE=on GOBIN=${PWD}/bin
+BIN := ${PWD}/bin
+OPTS?=GO111MODULE=on
 BIN_DIR?=./bin
 
 TEST_OPTS:=-tags no_ci -cover -timeout=5m
@@ -64,7 +65,7 @@ dep: ## Sorts dependencies
 	${OPTS} go mod tidy -v
 
 build: ## Build binaries into ./bin
-	${OPTS} go install ${BUILD_OPTS} ./cmd/*
+	mkdir -p ${BIN}; go build ${BUILD_OPTS} -o ${BIN} ./cmd/*
 
 start-db: ## Init local database env.
 	source ./integration/env.sh && init_redis
