@@ -35,18 +35,16 @@ type Server struct {
 // NewServer creates a new dmsg server entity.
 func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, maxSessions int) *Server {
 	s := new(Server)
-	s.EntityCommon.init(pk, sk, dc, logging.MustGetLogger("dmsg_server"))
+	s.EntityCommon.init(pk, sk, dc, logging.MustGetLogger("dmsg_server"), DefaultUpdateInterval)
 	s.ready = make(chan struct{})
 	s.done = make(chan struct{})
 	s.addrDone = make(chan struct{})
 	s.maxSessions = maxSessions
 	s.setSessionCallback = func(ctx context.Context, sessionCount int) error {
-		available := s.maxSessions - sessionCount
-		return s.updateServerEntry(ctx, s.AdvertisedAddr(), available)
+		return s.updateServerEntry(ctx, s.AdvertisedAddr(), s.maxSessions)
 	}
 	s.delSessionCallback = func(ctx context.Context, sessionCount int) error {
-		available := s.maxSessions - sessionCount
-		return s.updateServerEntry(ctx, s.AdvertisedAddr(), available)
+		return s.updateServerEntry(ctx, s.AdvertisedAddr(), s.maxSessions)
 	}
 	return s
 }
@@ -78,13 +76,14 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 		s.wg.Done()
 	}()
 
+	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		<-s.done
-		log.WithError(lis.Close()).
-			Info("Stopping server, net.Listener closed.")
+		cancel()
+		log.WithError(lis.Close()).Info("Stopping server...")
 	}()
 
-	if err := s.updateEntryLoop(); err != nil {
+	if err := s.startUpdateEntryLoop(ctx); err != nil {
 		return err
 	}
 
@@ -116,6 +115,18 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 	}
 }
 
+func (s *Server) startUpdateEntryLoop(ctx context.Context) error {
+	err := netutil.NewDefaultRetrier(s.log).Do(ctx, func() error {
+		return s.updateServerEntry(ctx, s.AdvertisedAddr(), s.maxSessions)
+	})
+	if err != nil {
+		return err
+	}
+
+	go s.updateServerEntryLoop(ctx, s.AdvertisedAddr(), s.maxSessions)
+	return nil
+}
+
 // AdvertisedAddr returns the TCP address in which the dmsg server is advertised by.
 // This is the TCP address that should be contained within the dmsg discovery entry of this server.
 func (s *Server) AdvertisedAddr() string {
@@ -137,21 +148,6 @@ func (s *Server) SetAdvertisedAddr(lis net.Listener, addr *string) {
 // Ready returns a chan which blocks until the server begins serving.
 func (s *Server) Ready() <-chan struct{} {
 	return s.ready
-}
-
-func (s *Server) updateEntryLoop() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		select {
-		case <-ctx.Done():
-		case <-s.done:
-			cancel()
-		}
-	}()
-	return netutil.NewDefaultRetrier(s.log).Do(ctx, func() error {
-		return s.updateServerEntry(ctx, s.AdvertisedAddr(), s.maxSessions)
-	})
 }
 
 func (s *Server) handleSession(conn net.Conn) {

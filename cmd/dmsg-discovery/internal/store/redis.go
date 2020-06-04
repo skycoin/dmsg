@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/go-redis/redis"
 
@@ -11,25 +12,23 @@ import (
 )
 
 type redisStore struct {
-	client *redis.Client
+	client  *redis.Client
+	timeout time.Duration
 }
 
-func newRedis(url, password string) (Storer, error) {
+func newRedis(url, password string, timeout time.Duration) (Storer, error) {
 	opt, err := redis.ParseURL(url)
 	if err != nil {
 		return nil, err
 	}
-
 	opt.Password = password
 
 	client := redis.NewClient(opt)
-
-	_, err = client.Ping().Result()
-	if err != nil {
+	if _, err := client.Ping().Result(); err != nil {
 		return nil, err
 	}
 
-	return &redisStore{client: client}, nil
+	return &redisStore{client: client, timeout: timeout}, nil
 }
 
 // Entry implements Storer Entry method for redisdb database
@@ -58,7 +57,7 @@ func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry) error {
 		return disc.ErrUnexpected
 	}
 
-	err = r.client.Set(entry.Static.Hex(), payload, 0).Err()
+	err = r.client.Set(entry.Static.Hex(), payload, r.timeout).Err()
 	if err != nil {
 		return disc.ErrUnexpected
 	}

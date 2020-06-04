@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -155,19 +154,14 @@ func (a *API) getEntry(w http.ResponseWriter, r *http.Request) {
 // Args:
 //	json serialized entry object
 func (a *API) setEntry(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("START: setEntry")
-
-	entry := &disc.Entry{}
-
-	err := json.NewDecoder(r.Body).Decode(entry)
-
 	defer func() {
 		if err := r.Body.Close(); err != nil {
 			log.WithError(err).Warn("Failed to decode HTTP response body")
 		}
 	}()
 
-	if err != nil {
+	entry := new(disc.Entry)
+	if err := json.NewDecoder(r.Body).Decode(entry); err != nil {
 		a.handleError(w, disc.ErrUnexpected)
 		return
 	}
@@ -179,17 +173,16 @@ func (a *API) setEntry(w http.ResponseWriter, r *http.Request) {
 			}
 
 			a.handleError(w, disc.ErrValidationServerAddress)
+			return
 		}
 	}
 
-	err = entry.Validate()
-	if err != nil {
+	if err := entry.Validate(); err != nil {
 		a.handleError(w, err)
 		return
 	}
 
-	err = entry.VerifySignature()
-	if err != nil {
+	if err := entry.VerifySignature(); err != nil {
 		a.handleError(w, disc.ErrUnauthorized)
 		return
 	}
@@ -217,14 +210,12 @@ func (a *API) setEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = oldEntry.ValidateIteration(entry)
-	if err != nil {
+	if err := oldEntry.ValidateIteration(entry); err != nil {
 		a.handleError(w, err)
 		return
 	}
 
-	err = a.store.SetEntry(r.Context(), entry)
-	if err != nil {
+	if err := a.store.SetEntry(r.Context(), entry); err != nil {
 		a.handleError(w, err)
 		return
 	}

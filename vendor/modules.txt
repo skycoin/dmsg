@@ -8,7 +8,6 @@ github.com/SkycoinProject/skycoin/src/cipher/secp256k1-go/secp256k1-go2
 github.com/SkycoinProject/skycoin/src/util/logging
 # github.com/SkycoinProject/skywire-mainnet v0.0.0-20200309204032-14af5342da86
 ## explicit
-github.com/SkycoinProject/skywire-mainnet/pkg/util/buildinfo
 # github.com/SkycoinProject/yamux v0.0.0-20191213015001-a36efeefbf6a
 ## explicit
 github.com/SkycoinProject/yamux

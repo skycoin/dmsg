@@ -190,7 +190,7 @@ func TestEntriesEndpoint(t *testing.T) {
 				tc.entryPreHook(t, &tc.entry, &tc.httpBody)
 			}
 
-			dbMock, err := store2.NewStore("mock", "")
+			dbMock, err := store2.NewStore("mock", nil)
 			require.NoError(t, err)
 
 			if tc.storerPreHook != nil {
