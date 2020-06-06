@@ -191,11 +191,6 @@ func (a *API) setEntry(w http.ResponseWriter, r *http.Request) {
 	// If there was a previous entry we check the new one is a valid iteration
 	oldEntry, err := a.store.Entry(r.Context(), entry.Static)
 	if err == disc.ErrKeyNotFound {
-		if entry.Sequence != 0 {
-			a.handleError(w, disc.ErrValidationNonZeroSequence)
-			return
-		}
-
 		setErr := a.store.SetEntry(r.Context(), entry)
 		if setErr != nil {
 			a.handleError(w, setErr)
