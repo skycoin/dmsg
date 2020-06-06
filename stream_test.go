@@ -20,7 +20,7 @@ import (
 
 func TestStream(t *testing.T) {
 	// Prepare mock discovery.
-	dc := disc.NewMock()
+	dc := disc.NewMock(0)
 	maxSessions := 10
 
 	// Prepare dmsg server.

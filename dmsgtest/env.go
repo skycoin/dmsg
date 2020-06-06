@@ -55,7 +55,7 @@ func (env *Env) Startup(servers, clients int, conf *dmsg.Config) error {
 	env.mx.Lock()
 	defer env.mx.Unlock()
 
-	env.d = disc.NewMock()
+	env.d = disc.NewMock(0)
 
 	for i := 0; i < servers; i++ {
 		if _, err := env.newServer(ctx); err != nil {

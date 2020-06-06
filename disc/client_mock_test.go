@@ -74,7 +74,7 @@ func TestNewMockGetAvailableServers(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			clientServer := disc.NewMock()
+			clientServer := disc.NewMock(0)
 			expectedEntries := make([]*disc.Entry, 0)
 
 			if tc.databaseAndEntriesPrehook != nil {
@@ -133,7 +133,7 @@ func TestNewMockEntriesEndpoint(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			clientServer := disc.NewMock()
+			clientServer := disc.NewMock(0)
 
 			if tc.entryPreHook != nil {
 				tc.entryPreHook(t, &tc.entry)
@@ -236,7 +236,7 @@ func TestNewMockSetEntriesEndpoint(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			clientServer := disc.NewMock()
+			clientServer := disc.NewMock(0)
 			var entry disc.Entry
 			disc.Copy(&entry, &baseEntry)
 
@@ -304,7 +304,7 @@ func TestNewMockUpdateEntriesEndpoint(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			clientServer := disc.NewMock()
+			clientServer := disc.NewMock(0)
 			err := clientServer.PostEntry(context.TODO(), &baseEntry)
 			require.NoError(t, err)
 
@@ -331,7 +331,7 @@ func TestNewMockUpdateEntriesEndpoint(t *testing.T) {
 }
 
 func TestNewMockUpdateEntrySequence(t *testing.T) {
-	clientServer := disc.NewMock()
+	clientServer := disc.NewMock(0)
 	pk, sk := cipher.GenerateKeyPair()
 	entry := &disc.Entry{
 		Sequence: 0,

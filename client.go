@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
-	"github.com/sirupsen/logrus"
 
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/disc"
@@ -48,12 +47,18 @@ type Config struct {
 	Callbacks      *ClientCallbacks
 }
 
-// PrintWarnings prints warnings with config.
-func (c Config) PrintWarnings(log logrus.FieldLogger) {
-	log = log.WithField("location", "dmsg.Config")
-	if c.MinSessions < 1 {
-		log.Warn("Field 'MinSessions' has value < 1 : This will disallow establishment of dmsg streams.")
+// Ensure ensures all config values are set.
+func (c *Config) Ensure() {
+	if c.MinSessions == 0 {
+		c.MinSessions = DefaultMinSessions
 	}
+	if c.UpdateInterval == 0 {
+		c.UpdateInterval = DefaultUpdateInterval
+	}
+	if c.Callbacks == nil {
+		c.Callbacks = new(ClientCallbacks)
+	}
+	c.Callbacks.ensure()
 }
 
 // DefaultConfig returns the default configuration for a dmsg client entity.
@@ -94,12 +99,8 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 	if conf == nil {
 		conf = DefaultConfig()
 	}
-	if conf.Callbacks == nil {
-		conf.Callbacks = new(ClientCallbacks)
-	}
-	conf.Callbacks.ensure()
+	conf.Ensure()
 	c.conf = conf
-	c.conf.PrintWarnings(log)
 
 	// Init common fields.
 	c.EntityCommon.init(pk, sk, dc, log, conf.UpdateInterval)
