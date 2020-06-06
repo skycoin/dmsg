@@ -27,7 +27,7 @@ func main() {
 
 	// instantiate server
 	sPK, sSK := cipher.GenerateKeyPair()
-	srv := dmsg.NewServer(sPK, sSK, dc, maxSessions)
+	srv := dmsg.NewServer(sPK, sSK, dc, maxSessions, 0)
 
 	lis, err := nettest.NewLocalListener("tcp")
 	if err != nil {

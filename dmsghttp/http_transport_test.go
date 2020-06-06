@@ -104,7 +104,7 @@ func startDmsgEnv(t *testing.T, nSrvs, maxSessions int) disc.APIClient {
 	for i := 0; i < nSrvs; i++ {
 		pk, sk := cipher.GenerateKeyPair()
 
-		srv := dmsg.NewServer(pk, sk, dc, maxSessions)
+		srv := dmsg.NewServer(pk, sk, dc, maxSessions, 0)
 		srv.SetLogger(logging.MustGetLogger(fmt.Sprintf("server_%d", i)))
 
 		lis, err := nettest.NewLocalListener("tcp")

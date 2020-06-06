@@ -25,7 +25,7 @@ func TestStream(t *testing.T) {
 
 	// Prepare dmsg server.
 	pkSrv, skSrv := GenKeyPair(t, "server")
-	srv := NewServer(pkSrv, skSrv, dc, maxSessions)
+	srv := NewServer(pkSrv, skSrv, dc, maxSessions, 0)
 	srv.SetLogger(logging.MustGetLogger("server"))
 	lisSrv, err := net.Listen("tcp", "")
 	require.NoError(t, err)

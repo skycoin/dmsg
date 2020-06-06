@@ -262,7 +262,7 @@ func (e *Entry) Validate() error {
 	}
 
 	now, ts := time.Now(), time.Unix(0, e.Timestamp)
-	if ts.After(now) || ts.Before(now.Truncate(time.Minute)) {
+	if ts.After(now) || ts.Before(now.Add(-time.Minute)) {
 		return ErrValidationOutdatedTime
 	}
 

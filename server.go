@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
 	"github.com/sirupsen/logrus"
@@ -33,9 +34,13 @@ type Server struct {
 }
 
 // NewServer creates a new dmsg server entity.
-func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, maxSessions int) *Server {
+func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, maxSessions int, updateInterval time.Duration) *Server {
+	if updateInterval == 0 {
+		updateInterval = DefaultUpdateInterval
+	}
+
 	s := new(Server)
-	s.EntityCommon.init(pk, sk, dc, logging.MustGetLogger("dmsg_server"), DefaultUpdateInterval)
+	s.EntityCommon.init(pk, sk, dc, logging.MustGetLogger("dmsg_server"), updateInterval)
 	s.ready = make(chan struct{})
 	s.done = make(chan struct{})
 	s.addrDone = make(chan struct{})

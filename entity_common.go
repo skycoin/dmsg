@@ -307,11 +307,11 @@ func getClientEntry(ctx context.Context, dc disc.APIClient, clientPK cipher.PubK
 */
 
 func (c *EntityCommon) updateIsDue() (lastUpdate time.Time, isDue bool) {
-	lastUpdate = time.Unix(atomic.LoadInt64(&c.lastUpdate), 0)
+	lastUpdate = time.Unix(0, atomic.LoadInt64(&c.lastUpdate))
 	isDue = time.Since(lastUpdate) >= c.updateInterval
 	return lastUpdate, isDue
 }
 
 func (c *EntityCommon) recordUpdate() {
-	atomic.StoreInt64(&c.lastUpdate, time.Now().Unix())
+	atomic.StoreInt64(&c.lastUpdate, time.Now().UnixNano())
 }

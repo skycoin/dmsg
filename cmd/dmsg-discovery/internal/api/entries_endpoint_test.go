@@ -21,7 +21,7 @@ func TestEntriesEndpoint(t *testing.T) {
 	pk, sk := cipher.GenerateKeyPair()
 	baseEntry := disc.Entry{
 		Static:    pk,
-		Timestamp: time.Now().Unix(),
+		Timestamp: time.Now().UnixNano(),
 		Client:    &disc.Client{},
 		Server: &disc.Server{
 			Address:           "localhost:8080",
@@ -81,25 +81,6 @@ func TestEntriesEndpoint(t *testing.T) {
 			httpResponse:    &disc.HTTPMessage{Code: http.StatusOK, Message: "wrote a new entry"},
 			entry:           baseEntry,
 			entryPreHook: func(t *testing.T, e *disc.Entry, body *string) {
-				err := e.Sign(sk)
-				require.NoError(t, err)
-				*body = toJSON(t, e)
-			},
-		},
-		{
-			name:            "set new entry non-zero sequence",
-			method:          http.MethodPost,
-			endpoint:        fmt.Sprintf("/dmsg-discovery/entry/%s", pk),
-			status:          http.StatusUnprocessableEntity,
-			contentType:     "application/json",
-			responseIsEntry: false,
-			httpResponse: &disc.HTTPMessage{
-				Code:    http.StatusUnprocessableEntity,
-				Message: disc.ErrValidationNonZeroSequence.Error(),
-			},
-			entry: baseEntry,
-			entryPreHook: func(t *testing.T, e *disc.Entry, body *string) {
-				e.Sequence = 1
 				err := e.Sign(sk)
 				require.NoError(t, err)
 				*body = toJSON(t, e)
