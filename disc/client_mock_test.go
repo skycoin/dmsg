@@ -85,12 +85,25 @@ func TestNewMockGetAvailableServers(t *testing.T) {
 
 			if !tc.responseIsError {
 				assert.NoError(t, err)
-				assert.Equal(t, expectedEntries, entries)
+				checkEqualEntries(t, entries, expectedEntries)
 			} else {
 				require.Error(t, err)
 				assert.Equal(t, tc.errorMessage.String(), err.Error())
 			}
 		})
+	}
+}
+
+func checkEqualEntries(t *testing.T, entries, expected []*disc.Entry) {
+	require.Len(t, entries, len(expected))
+
+	expectedMap := make(map[cipher.PubKey]*disc.Entry, len(expected))
+	for _, expEntry := range expected {
+		expectedMap[expEntry.Static] = expEntry
+	}
+
+	for _, entry := range entries {
+		assert.Equal(t, expectedMap[entry.Static], entry)
 	}
 }
 
