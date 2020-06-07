@@ -1,12 +1,16 @@
 package dmsgget
 
-import "flag"
+import (
+	"flag"
 
-// Constants related to dmsgget
-const (
-	ExecName = "dmsgget"
-	Version  = "v0.1.0"
+	"github.com/SkycoinProject/dmsg/buildinfo"
 )
+
+// ExecName contains the execution name.
+const ExecName = "dmsgget"
+
+// Version contains the version string.
+var Version = buildinfo.Version()
 
 // FlagGroup represents a group of flags.
 type FlagGroup interface {
