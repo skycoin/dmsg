@@ -11,13 +11,12 @@ import (
 	"github.com/SkycoinProject/dmsg/dmsgget"
 )
 
-var (
-	log   = logging.MustGetLogger(dmsgget.ExecName)
-	skStr = os.Getenv("DMSGGET_SK")
-	dg    = dmsgget.New(flag.CommandLine)
-)
-
 func main() {
+	log := logging.MustGetLogger(dmsgget.ExecName)
+
+	skStr := os.Getenv("DMSGGET_SK")
+
+	dg := dmsgget.New(flag.CommandLine)
 	flag.Parse()
 
 	ctx, cancel := cmdutil.SignalContext(context.Background(), log)

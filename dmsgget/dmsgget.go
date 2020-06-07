@@ -27,8 +27,7 @@ type DmsgGet struct {
 	dmsgF  dmsgFlags
 	dlF    downloadFlags
 	httpF  httpFlags
-
-	fs *flag.FlagSet
+	fs     *flag.FlagSet
 }
 
 // New creates a new DmsgGet instance.
@@ -140,10 +139,11 @@ func parseKeyPair(skStr string) (pk cipher.PubKey, sk cipher.SecKey, err error) 
 		pk, sk = cipher.GenerateKeyPair()
 		return
 	}
+
 	if err = sk.Set(skStr); err != nil {
 		return
-
 	}
+
 	pk, err = sk.PubKey()
 	return
 }
@@ -152,13 +152,16 @@ func parseURL(args []string) (*URL, error) {
 	if len(args) == 0 {
 		return nil, ErrNoURLs
 	}
+
 	if len(args) > 1 {
 		return nil, ErrMultipleURLsNotSupported
 	}
+
 	var out URL
 	if err := out.Fill(args[0]); err != nil {
 		return nil, fmt.Errorf("provided URL is invalid: %w", err)
 	}
+
 	return &out, nil
 }
 

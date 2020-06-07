@@ -25,12 +25,15 @@ func (du *URL) Fill(str string) error {
 	if err != nil {
 		return err
 	}
+
 	if u.Scheme == "" {
 		return errors.New("URL is missing a scheme")
 	}
+
 	if u.Host == "" {
 		return errors.New("URL is missing a host")
 	}
+
 	du.URL = *u
 	return du.Addr.Set(u.Host)
 }
