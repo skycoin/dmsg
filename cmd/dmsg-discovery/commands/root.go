@@ -8,14 +8,13 @@ import (
 	"os"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
-	"github.com/SkycoinProject/skywire-mainnet/pkg/util/buildinfo"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/spf13/cobra"
 
+	"github.com/SkycoinProject/dmsg/buildinfo"
 	"github.com/SkycoinProject/dmsg/cmd/dmsg-discovery/internal/api"
 	"github.com/SkycoinProject/dmsg/cmd/dmsg-discovery/internal/store"
-
 	"github.com/SkycoinProject/dmsg/metrics"
 )
 

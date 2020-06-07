@@ -126,7 +126,7 @@ func startDmsgEnv(t *testing.T, nSrvs, maxSessions int) disc.APIClient {
 	return dc
 }
 
-// nolint:noparam
+// nolint:unparam
 func newDmsgClient(t *testing.T, dc disc.APIClient, minSessions int, name string) *dmsg.Client {
 	pk, sk := cipher.GenerateKeyPair()
 
