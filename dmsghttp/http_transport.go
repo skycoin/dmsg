@@ -33,18 +33,16 @@ func (t HTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	// TODO(evanlinjin): In the future, we should implement stream reuse to save bandwidth.
+	// We do not close the stream here as it is the user's responsibility to close the stream after resp.Body is fully
+	// read.
 	stream, err := t.dmsgC.DialStream(req.Context(), hostAddr)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		err := stream.Close()
-		t.dmsgC.Logger().WithError(err).WithField("func", "HTTPTransport.RoundTrip").
-			Debug("Underlying stream closed.")
-	}()
 
 	if err := req.Write(stream); err != nil {
 		return nil, err
 	}
-	return http.ReadResponse(bufio.NewReader(stream), req)
+	bufR := bufio.NewReader(stream)
+	return http.ReadResponse(bufR, req)
 }
