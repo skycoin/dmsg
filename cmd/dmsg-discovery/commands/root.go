@@ -16,7 +16,6 @@ import (
 	"github.com/SkycoinProject/dmsg/buildinfo"
 	"github.com/SkycoinProject/dmsg/cmd/dmsg-discovery/internal/api"
 	"github.com/SkycoinProject/dmsg/cmd/dmsg-discovery/internal/store"
-
 	"github.com/SkycoinProject/dmsg/metrics"
 )
 

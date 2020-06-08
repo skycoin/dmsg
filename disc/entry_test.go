@@ -7,14 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SkycoinProject/dmsg/disc"
-
+	"github.com/SkycoinProject/skycoin/src/util/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/SkycoinProject/skycoin/src/util/logging"
-
 	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/disc"
 )
 
 func TestMain(m *testing.M) {
