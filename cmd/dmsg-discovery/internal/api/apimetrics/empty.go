@@ -13,10 +13,5 @@ func NewEmpty() Metrics {
 
 type empty struct{}
 
-func (empty) Collectors() []prometheus.Collector {
-	return nil
-}
-
-func (empty) Handle(next http.Handler) http.HandlerFunc {
-	return next.ServeHTTP
-}
+func (empty) Collectors() []prometheus.Collector        { return nil }
+func (empty) Handle(next http.Handler) http.HandlerFunc { return next.ServeHTTP }

@@ -27,16 +27,11 @@ func makeServerSession(entity *EntityCommon, conn net.Conn) (ServerSession, erro
 }
 
 // Close implements io.Closer
-func (ss *ServerSession) Close() (err error) {
-	if ss != nil {
-		if ss.SessionCommon != nil {
-			err = ss.SessionCommon.Close()
-		}
-		ss.rMx.Lock()
-		ss.nMap = nil
-		ss.rMx.Unlock()
+func (ss *ServerSession) Close() error {
+	if ss == nil {
+		return nil
 	}
-	return err
+	return ss.SessionCommon.Close()
 }
 
 // Serve serves the session.
@@ -53,9 +48,7 @@ func (ss *ServerSession) Serve() {
 			return
 		}
 
-		var log logrus.FieldLogger = ss.log.
-			WithField("yamux_id", yStr.StreamID())
-
+		log := ss.log.WithField("yamux_id", yStr.StreamID())
 		log.Info("Initiating stream.")
 
 		go func(yStr *yamux.Stream) {

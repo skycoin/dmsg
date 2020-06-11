@@ -104,7 +104,7 @@ func prepareMetrics(log logrus.FieldLogger) apimetrics.Metrics {
 	}
 
 	log.WithField("addr", metricsAddr).Info("Serving prometheus client...")
-	m := apimetrics.New()
+	m := apimetrics.New(tag)
 
 	reg := prometheus.NewPedanticRegistry()
 	reg.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))

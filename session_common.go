@@ -144,12 +144,13 @@ func (sc *SessionCommon) LocalTCPAddr() net.Addr { return sc.netConn.LocalAddr()
 func (sc *SessionCommon) RemoteTCPAddr() net.Addr { return sc.netConn.RemoteAddr() }
 
 // Close closes the session.
-func (sc *SessionCommon) Close() (err error) {
-	if sc != nil {
-		err = sc.ys.Close()
-		sc.rMx.Lock()
-		sc.nMap = nil
-		sc.rMx.Unlock()
+func (sc *SessionCommon) Close() error {
+	if sc == nil {
+		return nil
 	}
+	err := sc.ys.Close()
+	sc.rMx.Lock()
+	sc.nMap = nil
+	sc.rMx.Unlock()
 	return err
 }
