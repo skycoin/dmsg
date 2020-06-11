@@ -8,6 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// Metrics collects metrics for prometheus.
 type Metrics interface {
 	Collectors() []prometheus.Collector
 	RecordSession(delta int)
@@ -15,6 +16,7 @@ type Metrics interface {
 	HandleDisc(next http.Handler) http.HandlerFunc
 }
 
+// New returns the default implementation of Metrics.
 func New(namespace string) Metrics {
 	activeSessions := prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: namespace,
