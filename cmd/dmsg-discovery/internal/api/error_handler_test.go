@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/SkycoinProject/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/SkycoinProject/dmsg/disc"
 )
 
@@ -33,7 +34,7 @@ func TestErrorHandler(t *testing.T) {
 		tc := tc
 		t.Run(tc.err.Error(), func(t *testing.T) {
 			w := httptest.NewRecorder()
-			api := New(nil, nil, nil)
+			api := New(nil, store.NewMock(), true)
 			api.handleError(w, tc.err)
 
 			msg := new(disc.HTTPMessage)

@@ -110,7 +110,7 @@ func TestGetAvailableServers(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			db, entries := tc.databaseAndEntries(t)
 
-			api := New(db, nil, nil)
+			api := New(nil, db, true)
 			req, err := http.NewRequest(tc.method, tc.endpoint, nil)
 			require.NoError(t, err)
 

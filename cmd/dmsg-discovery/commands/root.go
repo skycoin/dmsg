@@ -12,7 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
-	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
+	syslog2 "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/spf13/cobra"
 
 	"github.com/SkycoinProject/dmsg/buildinfo"
@@ -50,14 +50,12 @@ var rootCmd = &cobra.Command{
 	Short: "Dmsg Discovery Server for skywire",
 	Run: func(_ *cobra.Command, _ []string) {
 		log := prepareLogger()
-
 		db := prepareDB(log)
-
 		m := prepareMetrics(log)
+		a := api.New(log, db, testMode)
 
 		log.WithField("addr", addr).Info("Serving discovery API...")
-		discAPI := api.New(log, db, testMode)
-		log.Fatal(http.ListenAndServe(addr, m.Handle(discAPI)))
+		log.Fatal(http.ListenAndServe(addr, m.Handle(a)))
 	},
 }
 
@@ -75,7 +73,7 @@ func prepareLogger() logrus.FieldLogger {
 	mLog.SetLevel(lvl)
 
 	if syslogAddr != "" {
-		hook, err := logrussyslog.NewSyslogHook("udp", syslogAddr, syslog.LOG_INFO, tag)
+		hook, err := syslog2.NewSyslogHook("udp", syslogAddr, syslog.LOG_INFO, tag)
 		if err != nil {
 			log.Fatalf("Unable to connect to syslog daemon on %v", syslogAddr)
 		}

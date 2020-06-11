@@ -6,6 +6,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// NewEmpty implements Metrics, but does nothing.
 func NewEmpty() Metrics {
 	return empty{}
 }

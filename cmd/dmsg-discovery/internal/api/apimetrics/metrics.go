@@ -7,20 +7,24 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// Metrics represents a prometheus client.
 type Metrics interface {
 	Collectors() []prometheus.Collector
 	Handle(next http.Handler) http.HandlerFunc
 }
 
+// New returns the default implementation of Metrics.
 func New() Metrics {
 	reqCount := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "request_ongoing_count",
-		Help: "Current number of ongoing requests.",
+		Namespace: "dmsg_disc",
+		Name:      "request_ongoing_count",
+		Help:      "Current number of ongoing requests.",
 	})
 
 	reqDurations := prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name: "request_duration_seconds",
-		Help: "Histogram of request durations.",
+		Namespace: "dmsg_disc",
+		Name:      "request_duration",
+		Help:      "Histogram of request durations.",
 	}, []string{"code", "method"})
 
 	return &metrics{
@@ -42,6 +46,8 @@ func (m *metrics) Collectors() []prometheus.Collector {
 }
 
 func (m *metrics) Handle(next http.Handler) http.HandlerFunc {
-	h := promhttp.InstrumentHandlerInFlight(m.inFlight, next)
-	return promhttp.InstrumentHandlerDuration(m.durations, h)
+	return func(w http.ResponseWriter, r *http.Request) {
+		h := promhttp.InstrumentHandlerInFlight(m.inFlight, next)
+		promhttp.InstrumentHandlerDuration(m.durations, h).ServeHTTP(w, r)
+	}
 }
