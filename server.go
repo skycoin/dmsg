@@ -12,11 +12,28 @@ import (
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/disc"
 	"github.com/SkycoinProject/dmsg/netutil"
+	"github.com/SkycoinProject/dmsg/servermetrics"
 )
+
+// ServerConfig configues the Server
+type ServerConfig struct {
+	MaxSessions    int
+	UpdateInterval time.Duration
+}
+
+// DefaultServerConfig returns the default server config.
+func DefaultServerConfig() *ServerConfig {
+	return &ServerConfig{
+		MaxSessions:    DefaultMaxSessions,
+		UpdateInterval: DefaultUpdateInterval,
+	}
+}
 
 // Server represents a dsmg server entity.
 type Server struct {
 	EntityCommon
+
+	m servermetrics.Metrics
 
 	ready     chan struct{} // Closed once dmsg.Server is serving.
 	readyOnce sync.Once
@@ -34,17 +51,22 @@ type Server struct {
 }
 
 // NewServer creates a new dmsg server entity.
-func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, maxSessions int, updateInterval time.Duration) *Server {
-	if updateInterval == 0 {
-		updateInterval = DefaultUpdateInterval
+func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *ServerConfig, m servermetrics.Metrics) *Server {
+	if conf == nil {
+		conf = DefaultServerConfig()
 	}
+	if m == nil {
+		m = servermetrics.NewEmpty()
+	}
+	log := logging.MustGetLogger("dmsg_server")
 
 	s := new(Server)
-	s.EntityCommon.init(pk, sk, dc, logging.MustGetLogger("dmsg_server"), updateInterval)
+	s.EntityCommon.init(pk, sk, dc, log, conf.UpdateInterval)
+	s.m = m
 	s.ready = make(chan struct{})
 	s.done = make(chan struct{})
 	s.addrDone = make(chan struct{})
-	s.maxSessions = maxSessions
+	s.maxSessions = conf.MaxSessions
 	s.setSessionCallback = func(ctx context.Context, sessionCount int) error {
 		return s.updateServerEntry(ctx, s.AdvertisedAddr(), s.maxSessions)
 	}
@@ -158,12 +180,10 @@ func (s *Server) Ready() <-chan struct{} {
 func (s *Server) handleSession(conn net.Conn) {
 	log := logrus.FieldLogger(s.log.WithField("remote_tcp", conn.RemoteAddr()))
 
-	dSes, err := makeServerSession(&s.EntityCommon, conn)
+	dSes, err := makeServerSession(s.m, &s.EntityCommon, conn)
 	if err != nil {
-		log = log.WithError(err)
 		if err := conn.Close(); err != nil {
-			s.log.WithError(err).
-				Debug("On handleSession() failure, close connection resulted in error.")
+			log.WithError(err).Debug("On handleSession() failure, close connection resulted in error.")
 		}
 		return
 	}

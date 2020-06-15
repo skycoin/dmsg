@@ -10,4 +10,6 @@ const (
 	DefaultMinSessions = 1
 
 	DefaultUpdateInterval = time.Second * 15
+
+	DefaultMaxSessions = 100
 )

@@ -2,10 +2,8 @@ package servermetrics
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Metrics collects metrics for prometheus.
@@ -13,7 +11,6 @@ type Metrics interface {
 	Collectors() []prometheus.Collector
 	RecordSession(delta int)
 	RecordStream(delta int)
-	HandleDisc(next http.Handler) http.HandlerFunc
 }
 
 // New returns the default implementation of Metrics.
@@ -48,11 +45,6 @@ func New(namespace string) Metrics {
 		Name:      "stream_fail_total",
 		Help:      "Total number of failed stream dials.",
 	})
-	discReqDurations := prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: namespace,
-		Name:      "disc_request_duration",
-		Help:      "Histogram of discovery request durations.",
-	}, []string{"code", "method"})
 
 	return &metrics{
 		activeSessions:     activeSessions,
@@ -61,7 +53,6 @@ func New(namespace string) Metrics {
 		activeStreams:      activeStreams,
 		successfulStreams:  successfulStreams,
 		failedStreams:      failedStreams,
-		discReqDurations:   discReqDurations,
 	}
 }
 
@@ -73,8 +64,6 @@ type metrics struct {
 	activeStreams     prometheus.Gauge
 	successfulStreams prometheus.Counter
 	failedStreams     prometheus.Counter
-
-	discReqDurations prometheus.ObserverVec
 }
 
 func (m *metrics) Collectors() []prometheus.Collector {
@@ -85,7 +74,6 @@ func (m *metrics) Collectors() []prometheus.Collector {
 		m.activeStreams,
 		m.successfulStreams,
 		m.failedStreams,
-		m.discReqDurations,
 	}
 }
 
@@ -115,8 +103,4 @@ func (m *metrics) RecordStream(delta int) {
 	default:
 		panic(fmt.Errorf("invalid delta: %d", delta))
 	}
-}
-
-func (m *metrics) HandleDisc(next http.Handler) http.HandlerFunc {
-	return promhttp.InstrumentHandlerDuration(m.discReqDurations, next).ServeHTTP
 }

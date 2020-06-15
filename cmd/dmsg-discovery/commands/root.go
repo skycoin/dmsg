@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	syslog2 "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/spf13/cobra"
@@ -19,6 +17,7 @@ import (
 	"github.com/SkycoinProject/dmsg/cmd/dmsg-discovery/internal/api"
 	"github.com/SkycoinProject/dmsg/cmd/dmsg-discovery/internal/api/apimetrics"
 	"github.com/SkycoinProject/dmsg/cmd/dmsg-discovery/internal/store"
+	"github.com/SkycoinProject/dmsg/promutil"
 )
 
 const redisPasswordEnvName = "REDIS_PASSWORD"
@@ -103,18 +102,13 @@ func prepareMetrics(log logrus.FieldLogger) apimetrics.Metrics {
 		return apimetrics.NewEmpty()
 	}
 
-	log.WithField("addr", metricsAddr).Info("Serving prometheus client...")
 	m := apimetrics.New(tag)
 
-	reg := prometheus.NewPedanticRegistry()
-	reg.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
-	reg.MustRegister(prometheus.NewGoCollector())
-	reg.MustRegister(m.Collectors()...)
+	mux := http.NewServeMux()
+	promutil.AddMetricsHandle(mux, m.Collectors()...)
 
-	h := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
-	go func() {
-		log.Fatal(http.ListenAndServe(metricsAddr, h))
-	}()
+	log.WithField("addr", metricsAddr).Info("Serving metrics...")
+	go func() { log.Fatal(http.ListenAndServe(metricsAddr, mux)) }()
 
 	return m
 }

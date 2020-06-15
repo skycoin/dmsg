@@ -9,20 +9,24 @@ import (
 
 	"github.com/SkycoinProject/dmsg/netutil"
 	"github.com/SkycoinProject/dmsg/noise"
+	"github.com/SkycoinProject/dmsg/servermetrics"
 )
 
 // ServerSession represents a session from the perspective of a dmsg server.
 type ServerSession struct {
 	*SessionCommon
+	m servermetrics.Metrics
 }
 
-func makeServerSession(entity *EntityCommon, conn net.Conn) (ServerSession, error) {
+func makeServerSession(m servermetrics.Metrics, entity *EntityCommon, conn net.Conn) (ServerSession, error) {
 	var sSes ServerSession
 	sSes.SessionCommon = new(SessionCommon)
 	sSes.nMap = make(noise.NonceMap)
 	if err := sSes.SessionCommon.initServer(entity, conn); err != nil {
+		m.RecordSession(0) // record failed connection
 		return sSes, err
 	}
+	sSes.m = m
 	return sSes, nil
 }
 
@@ -36,6 +40,9 @@ func (ss *ServerSession) Close() error {
 
 // Serve serves the session.
 func (ss *ServerSession) Serve() {
+	ss.m.RecordSession(1)        // record successful connection
+	defer ss.m.RecordSession(-1) // record disconnection
+
 	for {
 		yStr, err := ss.ys.AcceptStream()
 		if err != nil {
@@ -81,6 +88,7 @@ func (ss *ServerSession) serveStream(log logrus.FieldLogger, yStr *yamux.Stream)
 	// Read request.
 	req, err := readRequest()
 	if err != nil {
+		ss.m.RecordStream(0) // record failed stream
 		return err
 	}
 
@@ -93,6 +101,7 @@ func (ss *ServerSession) serveStream(log logrus.FieldLogger, yStr *yamux.Stream)
 	// Obtain next session.
 	ss2, ok := ss.entity.serverSession(req.DstAddr.PK)
 	if !ok {
+		ss.m.RecordStream(0) // record failed stream
 		return ErrReqNoNextSession
 	}
 	log.Debug("Obtained next session.")
@@ -100,18 +109,22 @@ func (ss *ServerSession) serveStream(log logrus.FieldLogger, yStr *yamux.Stream)
 	// Forward request and obtain/check response.
 	yStr2, resp, err := ss2.forwardRequest(req)
 	if err != nil {
+		ss.m.RecordStream(0) // record failed stream
 		return err
 	}
 	log.Debug("Forwarded stream request.")
 
 	// Forward response.
 	if err := ss.writeObject(yStr, resp); err != nil {
+		ss.m.RecordStream(0) // record failed stream
 		return err
 	}
 	log.Debug("Forwarded stream response.")
 
 	// Serve stream.
 	log.Info("Serving stream.")
+	ss.m.RecordStream(1)        // record successful stream
+	defer ss.m.RecordStream(-1) // record disconnection
 	return netutil.CopyReadWriteCloser(yStr, yStr2)
 }
 

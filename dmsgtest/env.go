@@ -84,7 +84,11 @@ func (env *Env) NewServer(updateInterval time.Duration) (*dmsg.Server, error) {
 func (env *Env) newServer(ctx context.Context, updateInterval time.Duration) (*dmsg.Server, error) {
 	pk, sk := cipher.GenerateKeyPair()
 
-	srv := dmsg.NewServer(pk, sk, env.d, maxSessions, updateInterval)
+	conf := dmsg.ServerConfig{
+		MaxSessions:    maxSessions,
+		UpdateInterval: updateInterval,
+	}
+	srv := dmsg.NewServer(pk, sk, env.d, &conf, nil)
 	env.s[pk] = srv
 	env.sWg.Add(1)
 

@@ -25,7 +25,11 @@ func ExampleMakeHTTPTransport() {
 
 	// Create a dmsg server to relay all requests/responses.
 	srvPK, srvSK := cipher.GenerateKeyPair()
-	srv := dmsg.NewServer(srvPK, srvSK, dc, maxSessions, 0)
+	srvConf := dmsg.ServerConfig{
+		MaxSessions:    maxSessions,
+		UpdateInterval: 0,
+	}
+	srv := dmsg.NewServer(srvPK, srvSK, dc, &srvConf, nil)
 	defer func() {
 		if err := srv.Close(); err != nil {
 			panic(err)
