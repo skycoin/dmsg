@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -31,13 +32,14 @@ var (
 
 // Config is a dmsg-server config
 type Config struct {
-	PubKey        cipher.PubKey `json:"public_key"`
-	SecKey        cipher.SecKey `json:"secret_key"`
-	Discovery     string        `json:"discovery"`
-	LocalAddress  string        `json:"local_address"`
-	PublicAddress string        `json:"public_address"`
-	MaxSessions   int           `json:"max_sessions"`
-	LogLevel      string        `json:"log_level"`
+	PubKey         cipher.PubKey `json:"public_key"`
+	SecKey         cipher.SecKey `json:"secret_key"`
+	Discovery      string        `json:"discovery"`
+	LocalAddress   string        `json:"local_address"`
+	PublicAddress  string        `json:"public_address"`
+	MaxSessions    int           `json:"max_sessions"`
+	UpdateInterval time.Duration `json:"update_interval"`
+	LogLevel       string        `json:"log_level"`
 }
 
 var rootCmd = &cobra.Command{
@@ -85,7 +87,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Start
-		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery), conf.MaxSessions)
+		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery), conf.MaxSessions, conf.UpdateInterval)
 		srv.SetLogger(logger)
 
 		defer func() { logger.WithError(srv.Close()).Info("Closed server.") }()
@@ -122,6 +124,15 @@ func parseConfig(configFile string) *Config {
 	if err := dec.Decode(&conf); err != nil {
 		log.Fatalf("Failed to decode config from %s: %s", r, err)
 	}
+
+	// Ensure defaults.
+	if conf.MaxSessions == 0 {
+		conf.MaxSessions = 100
+	}
+	if conf.UpdateInterval == 0 {
+		conf.UpdateInterval = dmsg.DefaultUpdateInterval
+	}
+
 	return conf
 }
 

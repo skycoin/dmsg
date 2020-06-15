@@ -21,11 +21,11 @@ func ExampleMakeHTTPTransport() {
 	const dmsgHTTPPort = 80
 
 	// Create a mock dmsg discovery.
-	dc := disc.NewMock()
+	dc := disc.NewMock(0)
 
 	// Create a dmsg server to relay all requests/responses.
 	srvPK, srvSK := cipher.GenerateKeyPair()
-	srv := dmsg.NewServer(srvPK, srvSK, dc, maxSessions)
+	srv := dmsg.NewServer(srvPK, srvSK, dc, maxSessions, 0)
 	defer func() {
 		if err := srv.Close(); err != nil {
 			panic(err)

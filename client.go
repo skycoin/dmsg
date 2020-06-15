@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
-	"github.com/sirupsen/logrus"
 
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/disc"
@@ -43,23 +42,32 @@ func (sc *ClientCallbacks) ensure() {
 
 // Config configures a dmsg client entity.
 type Config struct {
-	MinSessions int
-	Callbacks   *ClientCallbacks
+	MinSessions    int
+	UpdateInterval time.Duration // Duration between discovery entry updates.
+	Callbacks      *ClientCallbacks
 }
 
-// PrintWarnings prints warnings with config.
-func (c Config) PrintWarnings(log logrus.FieldLogger) {
-	log = log.WithField("location", "dmsg.Config")
-	if c.MinSessions < 1 {
-		log.Warn("Field 'MinSessions' has value < 1 : This will disallow establishment of dmsg streams.")
+// Ensure ensures all config values are set.
+func (c *Config) Ensure() {
+	if c.MinSessions == 0 {
+		c.MinSessions = DefaultMinSessions
 	}
+	if c.UpdateInterval == 0 {
+		c.UpdateInterval = DefaultUpdateInterval
+	}
+	if c.Callbacks == nil {
+		c.Callbacks = new(ClientCallbacks)
+	}
+	c.Callbacks.ensure()
 }
 
 // DefaultConfig returns the default configuration for a dmsg client entity.
 func DefaultConfig() *Config {
-	return &Config{
-		MinSessions: DefaultMinSessions,
+	conf := &Config{
+		MinSessions:    DefaultMinSessions,
+		UpdateInterval: DefaultUpdateInterval,
 	}
+	return conf
 }
 
 // Client represents a dmsg client entity.
@@ -81,36 +89,39 @@ type Client struct {
 func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Config) *Client {
 	c := new(Client)
 	c.ready = make(chan struct{})
+	c.porter = netutil.NewPorter(netutil.PorterMinEphemeral)
+	c.errCh = make(chan error, 10)
+	c.done = make(chan struct{})
 
-	// Init common fields.
-	c.EntityCommon.init(pk, sk, dc, logging.MustGetLogger("dmsg_client"))
-	c.EntityCommon.setSessionCallback = func(ctx context.Context, sessionCount int) error {
-		err := c.EntityCommon.updateClientEntry(ctx, c.done)
-		if err == nil {
-			// Client is 'ready' once we have successfully updated the discovery entry
-			// with at least one delegated server.
-			c.readyOnce.Do(func() { close(c.ready) })
-		}
-		return err
-	}
-	c.EntityCommon.delSessionCallback = func(ctx context.Context, sessionCount int) error {
-		return c.EntityCommon.updateClientEntry(ctx, c.done)
-	}
+	log := logging.MustGetLogger("dmsg_client")
 
 	// Init config.
 	if conf == nil {
 		conf = DefaultConfig()
 	}
-	if conf.Callbacks == nil {
-		conf.Callbacks = new(ClientCallbacks)
-	}
-	conf.Callbacks.ensure()
+	conf.Ensure()
 	c.conf = conf
-	c.conf.PrintWarnings(c.log)
 
-	c.porter = netutil.NewPorter(netutil.PorterMinEphemeral)
-	c.errCh = make(chan error, 10)
-	c.done = make(chan struct{})
+	// Init common fields.
+	c.EntityCommon.init(pk, sk, dc, log, conf.UpdateInterval)
+
+	// Init callback: on set session.
+	c.EntityCommon.setSessionCallback = func(ctx context.Context, sessionCount int) error {
+		if err := c.EntityCommon.updateClientEntry(ctx, c.done); err != nil {
+			return err
+		}
+
+		// Client is 'ready' once we have successfully updated the discovery entry
+		// with at least one delegated server.
+		c.readyOnce.Do(func() { close(c.ready) })
+		return nil
+	}
+
+	// Init callback: on delete session.
+	c.EntityCommon.delSessionCallback = func(ctx context.Context, sessionCount int) error {
+		err := c.EntityCommon.updateClientEntry(ctx, c.done)
+		return err
+	}
 
 	return c
 }
@@ -137,6 +148,9 @@ func (ce *Client) Serve() {
 			cancel()
 		}
 	}(ctx)
+
+	// Ensure we start updateClientEntryLoop once only.
+	updateEntryLoopOnce := new(sync.Once)
 
 	for {
 		if isClosed(ce.done) {
@@ -177,6 +191,9 @@ func (ce *Client) Serve() {
 				ce.log.WithField("remote_pk", entry.Static).WithError(err).Warn("Failed to establish session.")
 				time.Sleep(serveWait)
 			}
+
+			// Only start the update entry loop once we have at least one session established.
+			updateEntryLoopOnce.Do(func() { go ce.updateClientEntryLoop(ctx, ce.done) })
 		}
 	}
 }

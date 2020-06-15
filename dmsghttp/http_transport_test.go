@@ -99,12 +99,12 @@ func TestHTTPTransport_RoundTrip(t *testing.T) {
 }
 
 func startDmsgEnv(t *testing.T, nSrvs, maxSessions int) disc.APIClient {
-	dc := disc.NewMock()
+	dc := disc.NewMock(0)
 
 	for i := 0; i < nSrvs; i++ {
 		pk, sk := cipher.GenerateKeyPair()
 
-		srv := dmsg.NewServer(pk, sk, dc, maxSessions)
+		srv := dmsg.NewServer(pk, sk, dc, maxSessions, 0)
 		srv.SetLogger(logging.MustGetLogger(fmt.Sprintf("server_%d", i)))
 
 		lis, err := nettest.NewLocalListener("tcp")

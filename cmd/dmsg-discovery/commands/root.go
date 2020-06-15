@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -21,13 +22,14 @@ import (
 const redisPasswordEnvName = "REDIS_PASSWORD"
 
 var (
-	addr        string
-	metricsAddr string
-	redisURL    string
-	logEnabled  bool
-	syslogAddr  string
-	tag         string
-	testMode    bool
+	addr         string
+	metricsAddr  string
+	redisURL     string
+	entryTimeout time.Duration
+	logEnabled   bool
+	syslogAddr   string
+	tag          string
+	testMode     bool
 )
 
 var rootCmd = &cobra.Command{
@@ -38,9 +40,13 @@ var rootCmd = &cobra.Command{
 			log.Printf("Failed to output build info: %v", err)
 		}
 
-		redisPassword := os.Getenv(redisPasswordEnvName)
+		conf := &store.Config{
+			URL:      redisURL,
+			Password: os.Getenv(redisPasswordEnvName),
+			Timeout:  entryTimeout,
+		}
 
-		s, err := store.NewStore("redis", redisURL, redisPassword)
+		s, err := store.NewStore("redis", conf)
 		if err != nil {
 			log.Fatal("Failed to initialize redis store: ", err)
 		}
@@ -86,7 +92,8 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.Flags().StringVarP(&addr, "addr", "a", ":9090", "address to bind to")
 	rootCmd.Flags().StringVarP(&metricsAddr, "metrics", "m", ":2121", "address to bind metrics API to")
-	rootCmd.Flags().StringVar(&redisURL, "redis", "redis://localhost:6379", "connections string for a redis store")
+	rootCmd.Flags().StringVar(&redisURL, "redis", store.DefaultURL, "connections string for a redis store")
+	rootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
 	rootCmd.Flags().BoolVarP(&logEnabled, "log", "l", true, "enable request logging")
 	rootCmd.Flags().StringVar(&syslogAddr, "syslog", "", "syslog server address. E.g. localhost:514")
 	rootCmd.Flags().StringVar(&tag, "tag", "dmsg-discovery", "logging tag")

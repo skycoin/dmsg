@@ -71,7 +71,7 @@ func TestGetAvailableServers(t *testing.T) {
 				err = entry3.Sign(ephemeralSk2)
 				require.NoError(t, err)
 
-				db, err := store2.NewStore("mock", "")
+				db, err := store2.NewStore("mock", nil)
 				require.NoError(t, err)
 
 				err = db.SetEntry(context.Background(), &entry1)
@@ -93,7 +93,7 @@ func TestGetAvailableServers(t *testing.T) {
 			status:          http.StatusNotFound,
 			responseIsError: true,
 			databaseAndEntries: func(t *testing.T) (store2.Storer, []*disc.Entry) {
-				db, err := store2.NewStore("mock", "")
+				db, err := store2.NewStore("mock", nil)
 				require.NoError(t, err)
 
 				return db, []*disc.Entry{}

@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
 
@@ -31,25 +32,39 @@ type Storer interface {
 	AvailableServers(ctx context.Context, maxCount int) ([]*disc.Entry, error)
 }
 
+// Config configures the Store object.
+type Config struct {
+	URL      string        // database URI
+	Password string        // database password
+	Timeout  time.Duration // database entry timeout (0 == none)
+}
+
+// Config defaults.
+const (
+	DefaultURL     = "redis://localhost:6379"
+	DefaultTimeout = time.Minute
+)
+
+// DefaultConfig returns a config with default values.
+func DefaultConfig() *Config {
+	return &Config{
+		URL:     DefaultURL,
+		Timeout: DefaultTimeout,
+	}
+}
+
 // NewStore returns an initialized store, name represents which
 // store to initialize
-func NewStore(name string, opts ...string) (Storer, error) {
+func NewStore(name string, conf *Config) (Storer, error) {
+	if conf == nil {
+		conf = DefaultConfig()
+	}
 	switch name {
 	case "mock":
 		return newMock(), nil
+	case "redis":
+		return newRedis(conf.URL, conf.Password, conf.Timeout)
 	default:
-		if len(opts) < 1 {
-			return nil, ErrTooFewArgs
-		}
-
-		url := opts[0]
-
-		// No password by default.
-		password := ""
-		if len(opts) > 1 {
-			password = opts[1]
-		}
-
-		return newRedis(url, password)
+		return nil, errors.New("no such store type")
 	}
 }
