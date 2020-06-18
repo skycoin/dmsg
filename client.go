@@ -244,7 +244,7 @@ func (ce *Client) Close() error {
 
 // Listen listens on a given dmsg port.
 func (ce *Client) Listen(port uint16) (*Listener, error) {
-	lis := newListener(Addr{PK: ce.pk, Port: port})
+	lis := newListener(ce.porter, Addr{PK: ce.pk, Port: port})
 	ok, doneFn := ce.porter.Reserve(port, lis)
 	if !ok {
 		lis.close()
@@ -396,8 +396,23 @@ func (ce *Client) dialSession(ctx context.Context, entry *disc.Entry) (cs Client
 }
 
 // RemoteClients returns all the remote clients the current client is connected to.
-func (ce *Client) RemoteClients() ([]*Stream, error) {
-	ce.porter.RangePortValues(func(port uint16, v interface{}) (next bool) {
+func (ce *Client) RemoteClients() []*Stream {
+	out := make([]*Stream, 0)
 
-	})
+	fn := func(port uint16, pv netutil.PorterValue) (next bool) {
+		if str, ok := pv.Value.(*Stream); ok {
+			out = append(out, str)
+			return true
+		}
+
+		for _, v := range pv.Children {
+			if str, ok := v.(*Stream); ok {
+				out = append(out, str)
+			}
+		}
+		return true
+	}
+
+	ce.porter.RangePortValuesAndChildren(fn)
+	return out
 }
