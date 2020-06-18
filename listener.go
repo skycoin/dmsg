@@ -47,6 +47,7 @@ func (l *Listener) introduceStream(tp *Stream) error {
 
 	select {
 	case l.accept <- tp:
+		// TODO: LC
 		return nil
 	case <-l.done:
 		_ = tp.Close() //nolint:errcheck

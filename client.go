@@ -394,3 +394,10 @@ func (ce *Client) dialSession(ctx context.Context, entry *disc.Entry) (cs Client
 
 	return dSes, nil
 }
+
+// RemoteClients returns all the remote clients the current client is connected to.
+func (ce *Client) RemoteClients() ([]*Stream, error) {
+	ce.porter.RangePortValues(func(port uint16, v interface{}) (next bool) {
+
+	})
+}
