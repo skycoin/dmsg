@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"log/syslog"
 	"net/http"
@@ -48,7 +49,12 @@ var rootCmd = &cobra.Command{
 	Use:   "dmsg-discovery",
 	Short: "Dmsg Discovery Server for skywire",
 	Run: func(_ *cobra.Command, _ []string) {
-		log := prepareLogger()
+		log, out := prepareLogger()
+
+		if _, err := buildinfo.Get().WriteTo(out); err != nil {
+			log.Printf("Failed to output build info: %v", err)
+		}
+
 		db := prepareDB(log)
 		m := prepareMetrics(log)
 		a := api.New(log, db, testMode)
@@ -58,12 +64,8 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-func prepareLogger() logrus.FieldLogger {
+func prepareLogger() (logrus.FieldLogger, io.Writer) {
 	mLog := logging.NewMasterLogger()
-
-	if _, err := buildinfo.Get().WriteTo(mLog.Out); err != nil {
-		log.Printf("Failed to output build info: %v", err)
-	}
 
 	lvl, err := logrus.ParseLevel(logLevel)
 	if err != nil {
@@ -79,7 +81,7 @@ func prepareLogger() logrus.FieldLogger {
 		mLog.AddHook(hook)
 	}
 
-	return mLog.PackageLogger(tag)
+	return mLog.PackageLogger(tag), mLog.Out
 }
 
 func prepareDB(log logrus.FieldLogger) store.Storer {

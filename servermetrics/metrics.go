@@ -9,8 +9,8 @@ import (
 // Metrics collects metrics for prometheus.
 type Metrics interface {
 	Collectors() []prometheus.Collector
-	RecordSession(delta int)
-	RecordStream(delta int)
+	RecordSession(delta DeltaType)
+	RecordStream(delta DeltaType)
 }
 
 // New returns the default implementation of Metrics.
@@ -77,7 +77,7 @@ func (m *metrics) Collectors() []prometheus.Collector {
 	}
 }
 
-func (m *metrics) RecordSession(delta int) {
+func (m *metrics) RecordSession(delta DeltaType) {
 	switch delta {
 	case 0:
 		m.failedSessions.Inc()
@@ -91,7 +91,7 @@ func (m *metrics) RecordSession(delta int) {
 	}
 }
 
-func (m *metrics) RecordStream(delta int) {
+func (m *metrics) RecordStream(delta DeltaType) {
 	switch delta {
 	case 0:
 		m.failedStreams.Inc()

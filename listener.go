@@ -51,9 +51,6 @@ func (l *Listener) introduceStream(tp *Stream) error {
 
 	select {
 	case l.accept <- tp:
-		if ok, closeFn := l.porter.ReserveChild(tp.lAddr.Port, tp.rAddr.Port, tp); ok {
-			tp.close = closeFn
-		}
 		return nil
 
 	case <-l.done:
@@ -74,13 +71,19 @@ func (l *Listener) Accept() (net.Conn, error) {
 // AcceptStream accepts a stream connection.
 func (l *Listener) AcceptStream() (*Stream, error) {
 	select {
-	case <-l.done:
-		return nil, ErrEntityClosed
 	case tp, ok := <-l.accept:
 		if !ok {
 			return nil, ErrEntityClosed
 		}
+
+		if ok, closeFn := l.porter.ReserveChild(tp.lAddr.Port, tp.rAddr.Port, tp); ok {
+			tp.close = closeFn
+		}
+
 		return tp, nil
+
+	case <-l.done:
+		return nil, ErrEntityClosed
 	}
 }
 

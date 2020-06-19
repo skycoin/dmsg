@@ -14,6 +14,6 @@ func NewEmpty() Metrics {
 type empty struct{}
 
 func (empty) Collectors() []prometheus.Collector            { return nil }
-func (empty) RecordSession(_ int)                           {}
-func (empty) RecordStream(_ int)                            {}
+func (empty) RecordSession(_ DeltaType)                     {}
+func (empty) RecordStream(_ DeltaType)                      {}
 func (empty) HandleDisc(next http.Handler) http.HandlerFunc { return next.ServeHTTP }
