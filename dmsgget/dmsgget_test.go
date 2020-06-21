@@ -35,7 +35,7 @@ const (
 // - Ensure the downloaded data (of all downloads) is the same as the original document.
 func TestDownload(t *testing.T) {
 	const (
-		fileSize  = 5120
+		fileSize  = 512
 		dlClients = 10 // number of clients to download from HTTP server.
 	)
 
@@ -73,8 +73,8 @@ func TestDownload(t *testing.T) {
 		assert.NoError(t, <-errs[i])
 
 		dstData, err := ioutil.ReadFile(dsts[i].Name())
-		assert.NoError(t, err)
-		assert.Equal(t, srcData, dstData)
+		assert.NoErrorf(t, err, "[%d] failed to read destination file", i)
+		assert.Equalf(t, srcData, dstData, "[%d] destination file data is not equal", i)
 	}
 }
 
