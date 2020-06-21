@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/SkycoinProject/yamux"
 	"github.com/sirupsen/logrus"
@@ -142,6 +143,9 @@ func (sc *SessionCommon) LocalTCPAddr() net.Addr { return sc.netConn.LocalAddr()
 
 // RemoteTCPAddr returns the remote address of the underlying TCP connection.
 func (sc *SessionCommon) RemoteTCPAddr() net.Addr { return sc.netConn.RemoteAddr() }
+
+// Ping obtains the round trip latency of the session.
+func (sc *SessionCommon) Ping() (time.Duration, error) { return sc.ys.Ping() }
 
 // Close closes the session.
 func (sc *SessionCommon) Close() error {
