@@ -94,7 +94,7 @@ func TestClient_RemoteClients(t *testing.T) {
 				// remote client ingress index (determines the next client to accept from)
 				nxtIngress = makeAdvanceClientFunc(rcs)
 
-				// saved streams. Length of this is also the expected number of elements of .RemoteClients() call
+				// saved streams. Length of this is also the expected number of elements of .AllStreams() call
 				savedConns = make([]*dmsg.Stream, 0, rcN)
 			)
 
@@ -211,6 +211,6 @@ func listenAndDiscard(t *testing.T, c *dmsg.Client, port uint16) {
 }
 
 func checkRemoteClients(t *testing.T, lc *dmsg.Client, expectedConnections int) {
-	conns := lc.RemoteClients()
+	conns := lc.AllStreams()
 	require.Len(t, conns, expectedConnections)
 }

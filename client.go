@@ -395,10 +395,8 @@ func (ce *Client) dialSession(ctx context.Context, entry *disc.Entry) (cs Client
 	return dSes, nil
 }
 
-// RemoteClients returns all the remote clients the current client is connected to.
-func (ce *Client) RemoteClients() []*Stream {
-	out := make([]*Stream, 0)
-
+// AllStreams returns all the streams of the current client.
+func (ce *Client) AllStreams() (out []*Stream) {
 	fn := func(port uint16, pv netutil.PorterValue) (next bool) {
 		if str, ok := pv.Value.(*Stream); ok {
 			out = append(out, str)
@@ -415,4 +413,36 @@ func (ce *Client) RemoteClients() []*Stream {
 
 	ce.porter.RangePortValuesAndChildren(fn)
 	return out
+}
+
+// ConnectionsSummary associates connected clients, and the servers that connect such clients.
+// Key: Client PK, Value: Slice of Server PKs
+type ConnectionsSummary map[cipher.PubKey][]cipher.PubKey
+
+// ConnectionsSummary returns a summary of all connected clients, and the associated servers that connect them.
+func (ce *Client) ConnectionsSummary() ConnectionsSummary {
+	streams := ce.AllStreams()
+	out := make(ConnectionsSummary, len(streams))
+
+	for _, s := range streams {
+		cPK := s.RawRemoteAddr().PK
+		sPK := s.ServerPK()
+
+		sPKs, ok := out[cPK]
+		if ok && hasPK(sPKs, sPK) {
+			continue
+		}
+		out[cPK] = append(sPKs, sPK)
+	}
+
+	return out
+}
+
+func hasPK(pks []cipher.PubKey, pk cipher.PubKey) bool {
+	for _, oldPK := range pks {
+		if oldPK == pk {
+			return true
+		}
+	}
+	return false
 }
