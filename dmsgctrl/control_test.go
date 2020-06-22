@@ -24,13 +24,15 @@ func TestControl_Ping(t *testing.T) {
 	})
 
 	for i := 0; i < times; i++ {
-		durA, err := ctrlA.Ping(context.TODO())
-		require.NoError(t, err)
+		// act
+		durA, errA := ctrlA.Ping(context.TODO())
+		durB, errB := ctrlB.Ping(context.TODO())
 		t.Log(durA)
-
-		durB, err := ctrlB.Ping(context.TODO())
-		require.NoError(t, err)
 		t.Log(durB)
+
+		// assert
+		assert.NoError(t, errA)
+		assert.NoError(t, errB)
 	}
 }
 
