@@ -5,10 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"sync"
 	"time"
-
-	"github.com/SkycoinProject/dmsg"
 )
 
 // Associated errors.
@@ -27,7 +26,7 @@ const (
 
 // Control wraps and takes over a dmsg.Stream and provides control features.
 type Control struct {
-	conn    *dmsg.Stream
+	conn    net.Conn
 	pongCh  chan time.Time
 	doneCh  chan struct{}
 	err     error // the resultant error after control stops serving
@@ -35,7 +34,7 @@ type Control struct {
 }
 
 // ControlStream wraps a dmsg.Stream and returns the Control.
-func ControlStream(conn *dmsg.Stream) *Control {
+func ControlStream(conn net.Conn) *Control {
 	const pongChSize = 10
 
 	ctrl := &Control{
@@ -131,7 +130,7 @@ func (c *Control) reportErr(err error) {
 	})
 }
 
-func isDone(done chan struct{}) bool {
+func isDone(done <-chan struct{}) bool {
 	select {
 	case <-done:
 		return true
