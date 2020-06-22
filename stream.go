@@ -138,8 +138,6 @@ func (s *Stream) writeResponse(reqHash cipher.SHA256) error {
 		return err
 	}
 
-	// TODO: LC
-
 	// Push stream to listener.
 	return lis.introduceStream(s)
 }
