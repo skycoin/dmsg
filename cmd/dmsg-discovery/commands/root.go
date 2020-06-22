@@ -11,7 +11,7 @@ import (
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
 	"github.com/sirupsen/logrus"
-	syslog2 "github.com/sirupsen/logrus/hooks/syslog"
+	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/spf13/cobra"
 
 	"github.com/SkycoinProject/dmsg/buildinfo"
@@ -74,7 +74,7 @@ func prepareLogger() (logrus.FieldLogger, io.Writer) {
 	mLog.SetLevel(lvl)
 
 	if syslogAddr != "" {
-		hook, err := syslog2.NewSyslogHook("udp", syslogAddr, syslog.LOG_INFO, tag)
+		hook, err := logrussyslog.NewSyslogHook("udp", syslogAddr, syslog.LOG_INFO, tag)
 		if err != nil {
 			log.Fatalf("Unable to connect to syslog daemon on %v", syslogAddr)
 		}

@@ -47,14 +47,12 @@ var rootCmd = &cobra.Command{
 			log.Printf("Failed to output build info: %v", err)
 		}
 
-		// Config
 		configFile := "config.json"
 		if len(args) > 0 {
 			configFile = args[0]
 		}
 		conf := parseConfig(configFile)
 
-		// Logger
 		logger := logging.MustGetLogger(tag)
 		logLevel, err := logging.LevelFromString(conf.LogLevel)
 		if err != nil {
@@ -70,16 +68,13 @@ var rootCmd = &cobra.Command{
 			logging.AddHook(hook)
 		}
 
-		// Metrics
 		m := prepareMetrics(logger, tag, metricsAddr)
 
-		// Listener
 		lis, err := net.Listen("tcp", conf.LocalAddress)
 		if err != nil {
 			logger.Fatalf("Error listening on %s: %v", conf.LocalAddress, err)
 		}
 
-		// Start
 		srvConf := dmsg.ServerConfig{
 			MaxSessions:    conf.MaxSessions,
 			UpdateInterval: conf.UpdateInterval,

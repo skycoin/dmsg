@@ -20,8 +20,8 @@ type PacketType byte
 
 // Packet types
 const (
-	Ping = PacketType(0x9)
-	Pong = PacketType(0xA)
+	PingType = PacketType(0x9)
+	PongType = PacketType(0xA)
 )
 
 // Control wraps and takes over a dmsg.Stream and provides control features.
@@ -58,13 +58,13 @@ func (c *Control) serve() {
 		}
 
 		switch pt := PacketType(rawType[0]); pt {
-		case Ping:
-			if _, err := c.conn.Write([]byte{byte(Pong)}); err != nil {
+		case PingType:
+			if _, err := c.conn.Write([]byte{byte(PongType)}); err != nil {
 				c.reportErr(fmt.Errorf("failed to write pong: %w", err))
 				return
 			}
 
-		case Pong:
+		case PongType:
 			select {
 			case c.pongCh <- time.Now():
 			default:
@@ -83,7 +83,7 @@ func (c *Control) serve() {
 func (c *Control) Ping(ctx context.Context) (time.Duration, error) {
 	start := time.Now()
 
-	if _, err := c.conn.Write([]byte{byte(Ping)}); err != nil {
+	if _, err := c.conn.Write([]byte{byte(PingType)}); err != nil {
 		return 0, err
 	}
 
@@ -97,6 +97,11 @@ func (c *Control) Ping(ctx context.Context) (time.Duration, error) {
 		}
 		return t.Sub(start), nil
 	}
+}
+
+// Conn returns the internal net.Conn
+func (c *Control) Conn() net.Conn {
+	return c.conn
 }
 
 // Close implements io.Closer
