@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sirupsen/logrus"
 	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/spf13/cobra"
 
@@ -21,6 +21,8 @@ import (
 	"github.com/SkycoinProject/dmsg/buildinfo"
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/disc"
+	"github.com/SkycoinProject/dmsg/promutil"
+	"github.com/SkycoinProject/dmsg/servermetrics"
 )
 
 var (
@@ -30,16 +32,11 @@ var (
 	cfgFromStdin bool
 )
 
-// Config is a dmsg-server config
-type Config struct {
-	PubKey         cipher.PubKey `json:"public_key"`
-	SecKey         cipher.SecKey `json:"secret_key"`
-	Discovery      string        `json:"discovery"`
-	LocalAddress   string        `json:"local_address"`
-	PublicAddress  string        `json:"public_address"`
-	MaxSessions    int           `json:"max_sessions"`
-	UpdateInterval time.Duration `json:"update_interval"`
-	LogLevel       string        `json:"log_level"`
+func init() {
+	rootCmd.Flags().StringVarP(&metricsAddr, "metrics", "m", "", "address to bind metrics API to")
+	rootCmd.Flags().StringVar(&syslogAddr, "syslog", "", "syslog server address. E.g. localhost:514")
+	rootCmd.Flags().StringVar(&tag, "tag", "dmsg_srv", "logging tag")
+	rootCmd.Flags().BoolVarP(&cfgFromStdin, "stdin", "i", false, "read configuration from STDIN")
 }
 
 var rootCmd = &cobra.Command{
@@ -50,14 +47,12 @@ var rootCmd = &cobra.Command{
 			log.Printf("Failed to output build info: %v", err)
 		}
 
-		// Config
 		configFile := "config.json"
 		if len(args) > 0 {
 			configFile = args[0]
 		}
 		conf := parseConfig(configFile)
 
-		// Logger
 		logger := logging.MustGetLogger(tag)
 		logLevel, err := logging.LevelFromString(conf.LogLevel)
 		if err != nil {
@@ -73,21 +68,18 @@ var rootCmd = &cobra.Command{
 			logging.AddHook(hook)
 		}
 
-		// Metrics
-		go func() {
-			http.Handle("/metrics", promhttp.Handler())
-			if err := http.ListenAndServe(metricsAddr, nil); err != nil {
-				logger.Println("Failed to start metrics API:", err)
-			}
-		}()
+		m := prepareMetrics(logger, tag, metricsAddr)
 
 		lis, err := net.Listen("tcp", conf.LocalAddress)
 		if err != nil {
 			logger.Fatalf("Error listening on %s: %v", conf.LocalAddress, err)
 		}
 
-		// Start
-		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery), conf.MaxSessions, conf.UpdateInterval)
+		srvConf := dmsg.ServerConfig{
+			MaxSessions:    conf.MaxSessions,
+			UpdateInterval: conf.UpdateInterval,
+		}
+		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery), &srvConf, m)
 		srv.SetLogger(logger)
 
 		defer func() { logger.WithError(srv.Close()).Info("Closed server.") }()
@@ -98,11 +90,16 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-func init() {
-	rootCmd.Flags().StringVarP(&metricsAddr, "metrics", "m", ":2121", "address to bind metrics API to")
-	rootCmd.Flags().StringVar(&syslogAddr, "syslog", "", "syslog server address. E.g. localhost:514")
-	rootCmd.Flags().StringVar(&tag, "tag", "dmsg-server", "logging tag")
-	rootCmd.Flags().BoolVarP(&cfgFromStdin, "stdin", "i", false, "read configuration from STDIN")
+// Config is a dmsg-server config
+type Config struct {
+	PubKey         cipher.PubKey `json:"public_key"`
+	SecKey         cipher.SecKey `json:"secret_key"`
+	Discovery      string        `json:"discovery"`
+	LocalAddress   string        `json:"local_address"`
+	PublicAddress  string        `json:"public_address"`
+	MaxSessions    int           `json:"max_sessions"`
+	UpdateInterval time.Duration `json:"update_interval"`
+	LogLevel       string        `json:"log_level"`
 }
 
 func parseConfig(configFile string) *Config {
@@ -134,6 +131,22 @@ func parseConfig(configFile string) *Config {
 	}
 
 	return conf
+}
+
+func prepareMetrics(log logrus.FieldLogger, tag, addr string) servermetrics.Metrics {
+	if addr == "" {
+		return servermetrics.NewEmpty()
+	}
+
+	m := servermetrics.New(tag)
+
+	mux := http.NewServeMux()
+	promutil.AddMetricsHandle(mux, m.Collectors()...)
+
+	log.WithField("addr", addr).Info("Serving metrics...")
+	go func() { log.Fatalln(http.ListenAndServe(addr, mux)) }()
+
+	return m
 }
 
 // Execute executes root CLI command.

@@ -35,7 +35,7 @@ const (
 // - Ensure the downloaded data (of all downloads) is the same as the original document.
 func TestDownload(t *testing.T) {
 	const (
-		fileSize  = 5120
+		fileSize  = 512
 		dlClients = 10 // number of clients to download from HTTP server.
 	)
 
@@ -73,8 +73,8 @@ func TestDownload(t *testing.T) {
 		assert.NoError(t, <-errs[i])
 
 		dstData, err := ioutil.ReadFile(dsts[i].Name())
-		assert.NoError(t, err)
-		assert.Equal(t, srcData, dstData)
+		assert.NoErrorf(t, err, "[%d] failed to read destination file", i)
+		assert.Equalf(t, srcData, dstData, "[%d] destination file data is not equal", i)
 	}
 }
 
@@ -102,7 +102,11 @@ func startDmsgEnv(t *testing.T, nSrvs, maxSessions int) disc.APIClient {
 	for i := 0; i < nSrvs; i++ {
 		pk, sk := cipher.GenerateKeyPair()
 
-		srv := dmsg.NewServer(pk, sk, dc, maxSessions, 0)
+		conf := dmsg.ServerConfig{
+			MaxSessions:    maxSessions,
+			UpdateInterval: 0,
+		}
+		srv := dmsg.NewServer(pk, sk, dc, &conf, nil)
 		srv.SetLogger(logging.MustGetLogger(fmt.Sprintf("server_%d", i)))
 
 		lis, err := nettest.NewLocalListener("tcp")

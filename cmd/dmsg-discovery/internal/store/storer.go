@@ -61,7 +61,7 @@ func NewStore(name string, conf *Config) (Storer, error) {
 	}
 	switch name {
 	case "mock":
-		return newMock(), nil
+		return NewMock(), nil
 	case "redis":
 		return newRedis(conf.URL, conf.Password, conf.Timeout)
 	default:
