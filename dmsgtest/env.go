@@ -201,6 +201,20 @@ func (env *Env) AllServers() []*dmsg.Server {
 	return servers
 }
 
+// ClientOfPK returns client of a given public key.
+func (env *Env) ClientOfPK(pk cipher.PubKey) (*dmsg.Client, bool) {
+	env.mx.RLock()
+	defer env.mx.RUnlock()
+
+	for cPK, c := range env.c {
+		if cPK == pk {
+			return c, true
+		}
+	}
+
+	return nil, false
+}
+
 // Shutdown closes all servers and clients of the Env.
 func (env *Env) Shutdown() {
 	env.CloseAllClients()
