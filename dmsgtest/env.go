@@ -63,7 +63,8 @@ func (env *Env) Startup(entryTimeout time.Duration, servers, clients int, conf *
 		}
 	}
 	for i := 0; i < clients; i++ {
-		if _, err := env.newClient(ctx, conf); err != nil {
+		pk, sk := cipher.GenerateKeyPair()
+		if _, err := env.newClientWithKeys(ctx, pk, sk, conf); err != nil {
 			return err
 		}
 	}
@@ -124,12 +125,22 @@ func (env *Env) NewClient(conf *dmsg.Config) (*dmsg.Client, error) {
 	env.mx.Lock()
 	defer env.mx.Unlock()
 
-	return env.newClient(ctx, conf)
+	pk, sk := cipher.GenerateKeyPair()
+	return env.newClientWithKeys(ctx, pk, sk, conf)
 }
 
-func (env *Env) newClient(ctx context.Context, conf *dmsg.Config) (*dmsg.Client, error) {
-	pk, sk := cipher.GenerateKeyPair()
+// NewClientWithKeys runs a new client with specified keys.
+func (env *Env) NewClientWithKeys(pk cipher.PubKey, sk cipher.SecKey, conf *dmsg.Config) (*dmsg.Client, error) {
+	ctx, cancel := timeoutContext(env.timeout)
+	defer cancel()
 
+	env.mx.Lock()
+	defer env.mx.Unlock()
+
+	return env.newClientWithKeys(ctx, pk, sk, conf)
+}
+
+func (env *Env) newClientWithKeys(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, conf *dmsg.Config) (*dmsg.Client, error) {
 	c := dmsg.NewClient(pk, sk, env.d, conf)
 	env.c[pk] = c
 	env.cWg.Add(1)
@@ -188,6 +199,20 @@ func (env *Env) AllServers() []*dmsg.Server {
 		return cI.Cmp(cJ) < 0
 	})
 	return servers
+}
+
+// ClientOfPK returns client of a given public key.
+func (env *Env) ClientOfPK(pk cipher.PubKey) (*dmsg.Client, bool) {
+	env.mx.RLock()
+	defer env.mx.RUnlock()
+
+	for cPK, c := range env.c {
+		if cPK == pk {
+			return c, true
+		}
+	}
+
+	return nil, false
 }
 
 // Shutdown closes all servers and clients of the Env.
