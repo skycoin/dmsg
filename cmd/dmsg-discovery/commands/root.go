@@ -16,7 +16,6 @@ import (
 
 	"github.com/SkycoinProject/dmsg/buildinfo"
 	"github.com/SkycoinProject/dmsg/cmd/dmsg-discovery/internal/api"
-	"github.com/SkycoinProject/dmsg/cmd/dmsg-discovery/internal/api/apimetrics"
 	"github.com/SkycoinProject/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/SkycoinProject/dmsg/promutil"
 )
@@ -99,12 +98,12 @@ func prepareDB(log logrus.FieldLogger) store.Storer {
 	return db
 }
 
-func prepareMetrics(log logrus.FieldLogger) apimetrics.Metrics {
+func prepareMetrics(log logrus.FieldLogger) promutil.HTTPMetrics {
 	if metricsAddr == "" {
-		return apimetrics.NewEmpty()
+		return promutil.NewEmptyHTTPMetrics()
 	}
 
-	m := apimetrics.New(tag)
+	m := promutil.NewHTTPMetrics(tag)
 
 	mux := http.NewServeMux()
 	promutil.AddMetricsHandle(mux, m.Collectors()...)
