@@ -3,6 +3,7 @@ package noise
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"fmt"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
@@ -135,12 +136,15 @@ func (ns *Noise) EncryptUnsafe(plaintext []byte) []byte {
 	return append(buf, ns.enc.Cipher().Encrypt(nil, ns.encNonce, nil, plaintext)...)
 }
 
+var (
+	errInvalidCipherText = errors.New("noise decrypt unsafe: cipher text cannot be less than 8 bytes")
+)
+
 // DecryptUnsafe decrypts ciphertext without interlocking, should only
 // be used with external lock.
 func (ns *Noise) DecryptUnsafe(ciphertext []byte) ([]byte, error) {
 	if len(ciphertext) < nonceSize {
-		//TODO(evanlinjin): Log the following: "noise decrypt unsafe: cipher text cannot be less than 8 bytes".
-		return make([]byte, 0), nil
+		return nil, errInvalidCipherText
 	}
 	recvSeq := binary.BigEndian.Uint64(ciphertext[:nonceSize])
 	if recvSeq <= ns.decNonce {
@@ -156,8 +160,7 @@ type NonceMap map[uint64]struct{}
 // DecryptWithNonceMap is equivalent to DecryptNonce, instead it uses NonceMap to track nonces instead of a counter.
 func (ns *Noise) DecryptWithNonceMap(nm NonceMap, ciphertext []byte) ([]byte, error) {
 	if len(ciphertext) < nonceSize {
-		//TODO(evanlinjin): Log the following: "noise decrypt unsafe: cipher text cannot be less than 8 bytes".
-		return make([]byte, 0), nil
+		return nil, errInvalidCipherText
 	}
 	recvSeq := binary.BigEndian.Uint64(ciphertext[:nonceSize])
 	if _, ok := nm[recvSeq]; ok {
