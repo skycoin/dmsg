@@ -91,6 +91,12 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 	}
 
 	for _, payload := range payloads {
+		// if there's no record for this PK, nil is returned. The below
+		// type assertion will panic in this case, so we skip
+		if payload == nil {
+			continue
+		}
+
 		var entry *disc.Entry
 		if err := json.Unmarshal([]byte(payload.(string)), &entry); err != nil {
 			log.WithError(err).Warnf("Failed to unmarshal payload %s", payload.(string))
