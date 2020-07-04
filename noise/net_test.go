@@ -255,18 +255,18 @@ func TestConn(t *testing.T) {
 	// TODO: The Timeout portions of these tests sometimes fail for currently unknown reasons.
 	// TODO: We need to look into whether nettest.TestConn is even suitable for dmsg.Stream.
 	// TODO: If so, we need to see how to fix the behavior.
-	//t.Run("TestConn", func(t *testing.T) {
-	//	// Subtle bugs do not always appear on the first run.
-	//	// This way can increase the probability of finding them.
-	//	const attempts = 1
+	// t.Run("TestConn", func(t *testing.T) {
+	// 	// Subtle bugs do not always appear on the first run.
+	// 	// This way can increase the probability of finding them.
+	// 	const attempts = 1
 	//
-	//	for i := 0; i < attempts; i++ {
-	//		nettest.TestConn(t, func() (c1, c2 net.Conn, stop func(), err error) {
-	//			c1, c2, stop = prepareConns(t)
-	//			return
-	//		})
-	//	}
-	//})
+	// 	for i := 0; i < attempts; i++ {
+	// 		nettest.TestConn(t, func() (c1, c2 net.Conn, stop func(), err error) {
+	// 			c1, c2, stop = prepareConns(t)
+	// 			return
+	// 		})
+	// 	}
+	// })
 
 	t.Run("TestLargeDataIO", func(t *testing.T) {
 		do := func(t *testing.T, n int) {
