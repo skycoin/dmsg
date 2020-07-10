@@ -21,10 +21,11 @@ import (
 
 // Associated errors.
 var (
-	ErrTagCannotBeEmpty = errors.New("tag cannot be empty")
-	ErrInvalidTag       = errors.New("tags can only contain alphanumeric values and underscore")
-	ErrInvalidLogString = errors.New("failed to convert string to log level")
-	ErrInvalidSyslogNet = errors.New("network type is unsupported for syslog")
+	ErrTagCannotBeEmpty           = errors.New("tag cannot be empty")
+	ErrTagHasInvalidChars         = errors.New("tag can only contain alphanumeric values and underscore")
+	ErrTagHasMisplacedUnderscores = errors.New("tag cannot start or end with an underscore or have two underscores back-to-back")
+	ErrInvalidLogString           = errors.New("failed to convert string to log level")
+	ErrInvalidSyslogNet           = errors.New("network type is unsupported for syslog")
 )
 
 const (
@@ -240,12 +241,28 @@ func ValidTag(tag string) error {
 	if tag == "" {
 		return ErrTagCannotBeEmpty
 	}
+
+	// check: valid characters
 	for _, c := range tag {
 		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' {
 			continue
 		}
-		return ErrInvalidTag
+		return ErrTagHasInvalidChars
 	}
+
+	// check: correct positioning of characters
+	for i, c := range tag {
+		if i == 0 || i == len(tag)-1 {
+			if c == '_' {
+				return ErrTagHasMisplacedUnderscores
+			}
+			continue
+		}
+		if c == '_' && (tag[i-1] == '_' || tag[i+1] == '_') {
+			return ErrTagHasMisplacedUnderscores
+		}
+	}
+
 	return nil
 }
 
