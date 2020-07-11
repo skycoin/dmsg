@@ -53,10 +53,10 @@ type ServiceFlags struct {
 
 // Init initiates the service flags.
 // The following are performed:
-// * Ensure 'defaultTag' is provided and valid.
-// * Set "library" defaults.
-// * Set "exec" defaults - provided by 'defaultTag' and 'defaultConf'.
-// * Add flags to 'rootCmd'.
+// 	* Ensure 'defaultTag' is provided and valid.
+// 	* Set "library" defaults.
+// 	* Set "exec" defaults - provided by 'defaultTag' and 'defaultConf'.
+// 	* Add flags to 'rootCmd'.
 func (sf *ServiceFlags) Init(rootCmd *cobra.Command, defaultTag, defaultConf string) {
 	if err := ValidTag(defaultTag); err != nil {
 		panic(err)

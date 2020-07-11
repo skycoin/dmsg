@@ -30,11 +30,11 @@ var rootCmd = &cobra.Command{
 	Short:   "Dmsg Server for Skywire.",
 	PreRunE: func(cmd *cobra.Command, args []string) error { return sf.Check() },
 	Run: func(_ *cobra.Command, args []string) {
-		if _, err := buildinfo.Get().WriteTo(os.Stdout); err != nil {
-			log.Printf("Failed to output build info: %v", err)
-		}
-
 		log := sf.Logger()
+
+		if _, err := buildinfo.Get().WriteTo(os.Stdout); err != nil {
+			log.WithError(err).Warn("Failed to output build info.")
+		}
 
 		var conf Config
 		if err := sf.ParseConfig(os.Args, true, &conf); err != nil {
