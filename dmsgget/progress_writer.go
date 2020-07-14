@@ -7,6 +7,7 @@ import (
 
 // ProgressWriter prints the progress of a download to stdout.
 type ProgressWriter struct {
+	// atomic requires 64-bit alignment for struct field access
 	Current int64
 	Total   int64
 }
