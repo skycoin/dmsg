@@ -16,6 +16,9 @@ import (
 
 // EntityCommon contains the common fields and methods for server and client entities.
 type EntityCommon struct {
+	// atomic requires 64-bit alignment for struct field access
+	lastUpdate int64 // Timestamp (in unix seconds) of last update.
+
 	pk cipher.PubKey
 	sk cipher.SecKey
 	dc disc.APIClient
@@ -24,7 +27,6 @@ type EntityCommon struct {
 	sessionsMx *sync.Mutex
 
 	updateInterval time.Duration // Minimum duration between discovery entry updates.
-	lastUpdate     int64         // Timestamp (in unix seconds) of last update.
 
 	log logrus.FieldLogger
 
