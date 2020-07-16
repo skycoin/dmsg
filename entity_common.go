@@ -177,7 +177,7 @@ func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, maxSe
 		entry.Server.Address = addr
 		log = log.WithField("addr", entry.Server.Address)
 	}
-	log.Info("Updating discovery entry...")
+	log.Debug("Updating entry.")
 
 	return c.dc.PutEntry(ctx, c.sk, entry)
 }
@@ -246,7 +246,7 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}
 	}
 
 	entry.Client.DelegatedServers = srvPKs
-	c.log.WithField("entry", entry).Info("Updating entry.")
+	c.log.WithField("entry", entry).Debug("Updating entry.")
 	return c.dc.PutEntry(ctx, c.sk, entry)
 }
 
