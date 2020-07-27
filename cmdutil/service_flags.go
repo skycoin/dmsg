@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"unicode"
 
 	"github.com/SkycoinProject/skycoin/src/util/logging"
 	"github.com/sirupsen/logrus"
@@ -244,7 +245,8 @@ func ValidTag(tag string) error {
 
 	// check: valid characters
 	for _, c := range tag {
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' {
+		ranges := []*unicode.RangeTable{unicode.Letter, unicode.Number}
+		if unicode.IsOneOf(ranges, c) || c == '_' {
 			continue
 		}
 		return ErrTagHasInvalidChars
