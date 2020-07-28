@@ -1,78 +1,51 @@
 package commands
 
 import (
-	"bufio"
-	"encoding/json"
-	"io"
 	"log"
-	"log/syslog"
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 
-	"github.com/SkycoinProject/skycoin/src/util/logging"
 	"github.com/sirupsen/logrus"
-	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/spf13/cobra"
 
 	"github.com/SkycoinProject/dmsg"
 	"github.com/SkycoinProject/dmsg/buildinfo"
 	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/cmdutil"
 	"github.com/SkycoinProject/dmsg/disc"
 	"github.com/SkycoinProject/dmsg/promutil"
 	"github.com/SkycoinProject/dmsg/servermetrics"
 )
 
-var (
-	metricsAddr  string
-	syslogAddr   string
-	tag          string
-	cfgFromStdin bool
-)
+var sf cmdutil.ServiceFlags
 
 func init() {
-	rootCmd.Flags().StringVarP(&metricsAddr, "metrics", "m", "", "address to bind metrics API to")
-	rootCmd.Flags().StringVar(&syslogAddr, "syslog", "", "syslog server address. E.g. localhost:514")
-	rootCmd.Flags().StringVar(&tag, "tag", "dmsg_srv", "logging tag")
-	rootCmd.Flags().BoolVarP(&cfgFromStdin, "stdin", "i", false, "read configuration from STDIN")
+	sf.Init(rootCmd, "dmsg_srv", "config.json")
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "dmsg-server [config.json]",
-	Short: "Dmsg Server for skywire",
+	Use:     "dmsg-server",
+	Short:   "Dmsg Server for Skywire.",
+	PreRunE: func(cmd *cobra.Command, args []string) error { return sf.Check() },
 	Run: func(_ *cobra.Command, args []string) {
-		if _, err := buildinfo.Get().WriteTo(log.Writer()); err != nil {
-			log.Printf("Failed to output build info: %v", err)
+		log := sf.Logger()
+
+		if _, err := buildinfo.Get().WriteTo(os.Stdout); err != nil {
+			log.WithError(err).Warn("Failed to output build info.")
 		}
 
-		configFile := "config.json"
-		if len(args) > 0 {
-			configFile = args[0]
-		}
-		conf := parseConfig(configFile)
-
-		logger := logging.MustGetLogger(tag)
-		logLevel, err := logging.LevelFromString(conf.LogLevel)
-		if err != nil {
-			log.Fatal("Failed to parse LogLevel: ", err)
-		}
-		logging.SetLevel(logLevel)
-
-		if syslogAddr != "" {
-			hook, err := logrussyslog.NewSyslogHook("udp", syslogAddr, syslog.LOG_INFO, tag)
-			if err != nil {
-				logger.Fatalf("Unable to connect to syslog daemon on %v", syslogAddr)
-			}
-			logging.AddHook(hook)
+		var conf Config
+		if err := sf.ParseConfig(os.Args, true, &conf); err != nil {
+			log.WithError(err).Fatal()
 		}
 
-		m := prepareMetrics(logger, tag, metricsAddr)
+		m := prepareMetrics(log, sf.Tag, sf.MetricsAddr)
 
 		lis, err := net.Listen("tcp", conf.LocalAddress)
 		if err != nil {
-			logger.Fatalf("Error listening on %s: %v", conf.LocalAddress, err)
+			log.Fatalf("Error listening on %s: %v", conf.LocalAddress, err)
 		}
 
 		srvConf := dmsg.ServerConfig{
@@ -80,9 +53,9 @@ var rootCmd = &cobra.Command{
 			UpdateInterval: conf.UpdateInterval,
 		}
 		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery), &srvConf, m)
-		srv.SetLogger(logger)
+		srv.SetLogger(log)
 
-		defer func() { logger.WithError(srv.Close()).Info("Closed server.") }()
+		defer func() { log.WithError(srv.Close()).Info("Closed server.") }()
 
 		if err := srv.Serve(lis, conf.PublicAddress); err != nil {
 			log.Fatal(err)
@@ -100,37 +73,6 @@ type Config struct {
 	MaxSessions    int           `json:"max_sessions"`
 	UpdateInterval time.Duration `json:"update_interval"`
 	LogLevel       string        `json:"log_level"`
-}
-
-func parseConfig(configFile string) *Config {
-	var r io.Reader
-	var err error
-	if !cfgFromStdin {
-		r, err = os.Open(filepath.Clean(configFile))
-		if err != nil {
-			log.Fatalf("Failed to open config: %s", err)
-		}
-	} else {
-		r = bufio.NewReader(os.Stdin)
-	}
-
-	dec := json.NewDecoder(r)
-	dec.DisallowUnknownFields()
-
-	conf := new(Config)
-	if err := dec.Decode(&conf); err != nil {
-		log.Fatalf("Failed to decode config from %s: %s", r, err)
-	}
-
-	// Ensure defaults.
-	if conf.MaxSessions == 0 {
-		conf.MaxSessions = 100
-	}
-	if conf.UpdateInterval == 0 {
-		conf.UpdateInterval = dmsg.DefaultUpdateInterval
-	}
-
-	return conf
 }
 
 func prepareMetrics(log logrus.FieldLogger, tag, addr string) servermetrics.Metrics {
