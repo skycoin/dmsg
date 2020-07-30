@@ -270,7 +270,7 @@ func (e *Entry) Validate() error {
 	latestAcceptable := now.Add(allowedEntryTimestampError) // in case when time on nodes mismatches a bit
 
 	if ts.After(latestAcceptable) || ts.Before(earliestAcceptable) {
-		log.Warnf("Entry timestamp: %v (now: %v)", ts, now)
+		log.Warnf("Entry timestamp %v is not correct (now: %v)", ts, now)
 		return ErrValidationOutdatedTime
 	}
 
