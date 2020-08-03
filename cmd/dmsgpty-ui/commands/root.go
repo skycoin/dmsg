@@ -9,8 +9,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/SkycoinProject/dmsg/cmdutil"
-	"github.com/SkycoinProject/dmsg/dmsgpty"
+	"github.com/skycoin/dmsg/cmdutil"
+	"github.com/skycoin/dmsg/dmsgpty"
 )
 
 var (

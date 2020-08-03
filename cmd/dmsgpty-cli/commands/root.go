@@ -7,9 +7,9 @@ import (
 	"github.com/SkycoinProject/skywire-mainnet/pkg/util/buildinfo"
 	"github.com/spf13/cobra"
 
-	"github.com/SkycoinProject/dmsg"
-	"github.com/SkycoinProject/dmsg/cmdutil"
-	"github.com/SkycoinProject/dmsg/dmsgpty"
+	"github.com/skycoin/dmsg"
+	"github.com/skycoin/dmsg/cmdutil"
+	"github.com/skycoin/dmsg/dmsgpty"
 )
 
 var cli = dmsgpty.DefaultCLI()

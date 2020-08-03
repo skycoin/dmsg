@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 
-	"github.com/SkycoinProject/dmsg/cipher"
-	"github.com/SkycoinProject/dmsg/disc"
-	"github.com/SkycoinProject/dmsg/noise"
+	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/disc"
+	"github.com/skycoin/dmsg/noise"
 )
 
 func TestStream(t *testing.T) {
