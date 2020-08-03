@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/gorilla/handlers"
+	"github.com/skycoin/skycoin/src/util/logging"
 
 	"github.com/skycoin/dmsg/cipher"
 	store2 "github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
