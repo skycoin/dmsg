@@ -53,7 +53,7 @@ install-linters: ## Install linters
 	${OPTS} go get -u golang.org/x/tools/cmd/goimports
 
 format: ## Formats the code. Must have goimports installed (use make install-linters).
-	${OPTS} goimports -w -local github.com/SkycoinProject/dmsg .
+	${OPTS} goimports -w -local github.com/skycoin/dmsg .
 
 dep: ## Sorts dependencies
 	${OPTS} go mod download

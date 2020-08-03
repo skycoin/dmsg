@@ -15,7 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"nhooyr.io/websocket"
 
-	"github.com/SkycoinProject/dmsg/httputil"
+	"github.com/skycoin/dmsg/httputil"
 )
 
 const (

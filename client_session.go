@@ -4,8 +4,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/SkycoinProject/dmsg/cipher"
-	"github.com/SkycoinProject/dmsg/netutil"
+	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/netutil"
 )
 
 // ClientSession represents a session from the perspective of a dmsg client.

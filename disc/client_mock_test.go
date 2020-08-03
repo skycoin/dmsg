@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SkycoinProject/dmsg/disc"
+	"github.com/skycoin/dmsg/disc"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/skycoin/dmsg/cipher"
 )
 
 func TestNewMockGetAvailableServers(t *testing.T) {
