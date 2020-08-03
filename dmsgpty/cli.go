@@ -9,12 +9,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/skycoin/dmsg/cipher"
-
 	"github.com/creack/pty"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 	"golang.org/x/crypto/ssh/terminal"
+
+	"github.com/skycoin/dmsg/cipher"
 )
 
 // CLI connects with and has ownership over a dmsgpty.Host.
