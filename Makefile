@@ -19,7 +19,7 @@ ifneq (,$(findstring 64,$(GOARCH)))
     TEST_OPTS:=$(TEST_OPTS) $(RACE_FLAG)
 endif
 
-SKYWIRE_MAINNET := github.com/SkycoinProject/skywire-mainnet
+SKYWIRE_MAINNET := github.com/skycoin/skywire
 BUILDINFO_PATH := $(SKYWIRE_MAINNET)/pkg/util/buildinfo
 
 BUILDINFO_VERSION := -X $(BUILDINFO_PATH).version=$(VERSION)

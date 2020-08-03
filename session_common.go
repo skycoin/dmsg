@@ -7,8 +7,8 @@ import (
 	"net"
 	"sync"
 
-	"github.com/SkycoinProject/yamux"
 	"github.com/sirupsen/logrus"
+	"github.com/skycoin/yamux"
 
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/noise"

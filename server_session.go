@@ -4,8 +4,8 @@ import (
 	"io"
 	"net"
 
-	"github.com/SkycoinProject/yamux"
 	"github.com/sirupsen/logrus"
+	"github.com/skycoin/yamux"
 
 	"github.com/skycoin/dmsg/netutil"
 	"github.com/skycoin/dmsg/noise"
