@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/SkycoinProject/dmsg/disc"
+	"github.com/skycoin/dmsg/disc"
 )
 
 var errHandlerTestCases = []struct {

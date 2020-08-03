@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/SkycoinProject/dmsg/ioutil"
+	"github.com/skycoin/dmsg/ioutil"
 )
 
 func TestUint16AckWaiter_Wait(t *testing.T) {

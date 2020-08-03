@@ -5,11 +5,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/SkycoinProject/yamux"
+	"github.com/skycoin/yamux"
 	"github.com/sirupsen/logrus"
 
-	"github.com/SkycoinProject/dmsg/cipher"
-	"github.com/SkycoinProject/dmsg/noise"
+	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/noise"
 )
 
 // Stream represents a dmsg connection between two dmsg clients.

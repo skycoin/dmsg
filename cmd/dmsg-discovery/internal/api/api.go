@@ -8,14 +8,14 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/SkycoinProject/skycoin/src/util/logging"
+	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/gorilla/handlers"
 
-	"github.com/SkycoinProject/dmsg/cipher"
-	store2 "github.com/SkycoinProject/dmsg/cmd/dmsg-discovery/internal/store"
-	"github.com/SkycoinProject/dmsg/disc"
-	"github.com/SkycoinProject/dmsg/httputil"
-	"github.com/SkycoinProject/dmsg/metrics"
+	"github.com/skycoin/dmsg/cipher"
+	store2 "github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
+	"github.com/skycoin/dmsg/disc"
+	"github.com/skycoin/dmsg/httputil"
+	"github.com/skycoin/dmsg/metrics"
 )
 
 var log = logging.MustGetLogger("dmsg-discovery")

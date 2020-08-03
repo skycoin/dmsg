@@ -3,7 +3,7 @@ package noise
 import (
 	"io"
 
-	"github.com/SkycoinProject/skycoin/src/cipher"
+	"github.com/skycoin/skycoin/src/cipher"
 	"github.com/flynn/noise"
 )
 

@@ -7,11 +7,11 @@ import (
 	"net"
 	"sync"
 
-	"github.com/SkycoinProject/yamux"
+	"github.com/skycoin/yamux"
 	"github.com/sirupsen/logrus"
 
-	"github.com/SkycoinProject/dmsg/cipher"
-	"github.com/SkycoinProject/dmsg/noise"
+	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/noise"
 )
 
 // SessionCommon contains the common fields and methods used by a session, whether it be it from the client or server

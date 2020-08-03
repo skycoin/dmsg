@@ -1,11 +1,11 @@
-module github.com/SkycoinProject/dmsg
+module github.com/skycoin/dmsg
 
 go 1.12
 
 require (
-	github.com/SkycoinProject/skycoin v0.27.0
-	github.com/SkycoinProject/skywire-mainnet v0.0.0-20200309204032-14af5342da86
-	github.com/SkycoinProject/yamux v0.0.0-20191213015001-a36efeefbf6a
+	github.com/skycoin/skycoin v0.26.0
+	github.com/skycoin/skywire v0.0.0-20200309204032-14af5342da86
+	github.com/skycoin/yamux v0.0.0-20191213015001-a36efeefbf6a
 	github.com/creack/pty v1.1.9
 	github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6
 	github.com/go-redis/redis v6.15.6+incompatible

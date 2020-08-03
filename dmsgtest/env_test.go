@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/SkycoinProject/dmsg"
+	"github.com/skycoin/dmsg"
 )
 
 func TestEnv(t *testing.T) {
