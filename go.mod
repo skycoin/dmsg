@@ -1,4 +1,4 @@
-module github.com/SkycoinProject/dmsg
+module github.com/skycoin/dmsg
 
 go 1.12
 
