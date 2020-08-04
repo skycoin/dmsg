@@ -3,8 +3,8 @@ package noise
 import (
 	"io"
 
-	"github.com/SkycoinProject/skycoin/src/cipher"
 	"github.com/flynn/noise"
+	"github.com/skycoin/skycoin/src/cipher"
 )
 
 // Secp256k1 implements `noise.DHFunc`.

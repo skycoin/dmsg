@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/SkycoinProject/dmsg.svg?branch=master)](https://travis-ci.com/SkycoinProject/dmsg)
+[![Build Status](https://travis-ci.com/skycoin/dmsg.svg?branch=master)](https://travis-ci.com/skycoin/dmsg)
 
 # dmsg
 

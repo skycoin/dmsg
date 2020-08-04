@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/skycoin/dmsg/cipher"
 )
 
 const (

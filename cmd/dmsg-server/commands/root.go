@@ -10,13 +10,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/SkycoinProject/dmsg"
-	"github.com/SkycoinProject/dmsg/buildinfo"
-	"github.com/SkycoinProject/dmsg/cipher"
-	"github.com/SkycoinProject/dmsg/cmdutil"
-	"github.com/SkycoinProject/dmsg/disc"
-	"github.com/SkycoinProject/dmsg/promutil"
-	"github.com/SkycoinProject/dmsg/servermetrics"
+	"github.com/skycoin/dmsg"
+	"github.com/skycoin/dmsg/buildinfo"
+	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/cmdutil"
+	"github.com/skycoin/dmsg/disc"
+	"github.com/skycoin/dmsg/promutil"
+	"github.com/skycoin/dmsg/servermetrics"
 )
 
 var sf cmdutil.ServiceFlags

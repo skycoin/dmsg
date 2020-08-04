@@ -5,10 +5,10 @@ import (
 	"flag"
 	"os"
 
-	"github.com/SkycoinProject/skycoin/src/util/logging"
+	"github.com/skycoin/skycoin/src/util/logging"
 
-	"github.com/SkycoinProject/dmsg/cmdutil"
-	"github.com/SkycoinProject/dmsg/dmsgget"
+	"github.com/skycoin/dmsg/cmdutil"
+	"github.com/skycoin/dmsg/dmsgget"
 )
 
 func main() {

@@ -11,9 +11,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/SkycoinProject/dmsg/cipher"
-	store2 "github.com/SkycoinProject/dmsg/cmd/dmsg-discovery/internal/store"
-	"github.com/SkycoinProject/dmsg/disc"
+	"github.com/skycoin/dmsg/cipher"
+	store2 "github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
+	"github.com/skycoin/dmsg/disc"
 )
 
 func TestGetAvailableServers(t *testing.T) {

@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SkycoinProject/dmsg/cipher"
-	"github.com/SkycoinProject/dmsg/ioutil"
+	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/ioutil"
 )
 
 // MaxWriteSize is the largest amount for a single write.

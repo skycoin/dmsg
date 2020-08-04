@@ -1,4 +1,4 @@
-module github.com/SkycoinProject/yamux
+module github.com/skycoin/yamux
 
 go 1.13
 

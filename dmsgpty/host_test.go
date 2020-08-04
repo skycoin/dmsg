@@ -1,6 +1,6 @@
 package dmsgpty
 
-// TODO: fix failing tests (https://github.com/SkycoinProject/dmsg/issues/73)
+// TODO: fix failing tests (https://github.com/skycoin/dmsg/issues/73)
 /*
 func TestHost(t *testing.T) {
 	const port = uint16(22)

@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/SkycoinProject/dmsg/disc"
+	"github.com/skycoin/dmsg/disc"
 )
 
 var apiErrors = map[error]func() (int, string){

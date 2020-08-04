@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/SkycoinProject/dmsg/cmd/dmsg-discovery/internal/store"
-	"github.com/SkycoinProject/dmsg/disc"
+	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
+	"github.com/skycoin/dmsg/disc"
 )
 
 var errHandlerTestCases = []struct {

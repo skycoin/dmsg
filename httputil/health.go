@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/SkycoinProject/skycoin/src/util/logging"
+	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/sirupsen/logrus"
 )
 

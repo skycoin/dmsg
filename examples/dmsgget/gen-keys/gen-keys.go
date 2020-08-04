@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/skycoin/dmsg/cipher"
 )
 
 func main() {

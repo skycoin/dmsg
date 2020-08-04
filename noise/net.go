@@ -9,7 +9,7 @@ import (
 
 	"github.com/flynn/noise"
 
-	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/skycoin/dmsg/cipher"
 )
 
 var (

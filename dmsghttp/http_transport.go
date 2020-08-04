@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/SkycoinProject/dmsg"
+	"github.com/skycoin/dmsg"
 )
 
 const defaultHTTPPort = uint16(80)
