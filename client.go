@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 
 	"github.com/skycoin/dmsg/cipher"
