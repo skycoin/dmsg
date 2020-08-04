@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/sirupsen/logrus"
+	"github.com/skycoin/skycoin/src/util/logging"
 
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
