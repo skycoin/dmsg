@@ -46,6 +46,9 @@ github.com/klauspost/compress/flate
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/kr/pretty v0.2.0
 ## explicit
+# github.com/kz/discordrus v1.2.0
+## explicit
+github.com/kz/discordrus
 # github.com/magiconair/properties v1.8.1
 github.com/magiconair/properties
 # github.com/mattn/go-colorable v0.1.6
