@@ -20,6 +20,7 @@ import (
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/disc"
+	"github.com/skycoin/dmsg/discord"
 )
 
 var (
@@ -68,6 +69,11 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				logger.Fatalf("Unable to connect to syslog daemon on %v", syslogAddr)
 			}
+			logging.AddHook(hook)
+		}
+
+		if discordWebhookURL := discord.GetWebhookURLFromEnv(); discordWebhookURL != "" {
+			hook := discord.NewHook(tag, discordWebhookURL)
 			logging.AddHook(hook)
 		}
 

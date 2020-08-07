@@ -39,6 +39,8 @@ github.com/inconshreveable/mousetrap
 github.com/klauspost/compress/flate
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
 github.com/konsorten/go-windows-terminal-sequences
+# github.com/kz/discordrus v1.2.0
+github.com/kz/discordrus
 # github.com/magiconair/properties v1.8.1
 github.com/magiconair/properties
 # github.com/mattn/go-colorable v0.1.6

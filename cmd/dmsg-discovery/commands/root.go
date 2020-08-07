@@ -15,6 +15,7 @@ import (
 
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/api"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
+	"github.com/skycoin/dmsg/discord"
 	"github.com/skycoin/dmsg/metrics"
 )
 
@@ -60,6 +61,11 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("Unable to connect to syslog daemon on %v", syslogAddr)
 			}
+			logging.AddHook(hook)
+		}
+
+		if discordWebhookURL := discord.GetWebhookURLFromEnv(); discordWebhookURL != "" {
+			hook := discord.NewHook(tag, discordWebhookURL)
 			logging.AddHook(hook)
 		}
 
