@@ -196,7 +196,7 @@ var rootCmd = &cobra.Command{
 		dmsgC := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc), &dmsg.Config{
 			MinSessions: dmsgSessions,
 		})
-		go dmsgC.Serve()
+		go dmsgC.Serve(context.Background())
 		select {
 		case <-ctx.Done():
 			cmdutil.CatchWithLog(log, "failed to wait unti dmsg client to be ready", ctx.Err())

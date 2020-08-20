@@ -1,6 +1,7 @@
 package dmsghttp_test
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -54,7 +55,7 @@ func ExampleMakeHTTPTransport() {
 			panic(err)
 		}
 	}()
-	go dmsgC1.Serve()
+	go dmsgC1.Serve(context.Background())
 	<-dmsgC1.Ready()
 
 	// Host HTTP server via dmsg client 1.
@@ -81,7 +82,7 @@ func ExampleMakeHTTPTransport() {
 			panic(err)
 		}
 	}()
-	go dmsgC2.Serve()
+	go dmsgC2.Serve(context.Background())
 	<-dmsgC2.Ready()
 
 	// Run HTTP client.

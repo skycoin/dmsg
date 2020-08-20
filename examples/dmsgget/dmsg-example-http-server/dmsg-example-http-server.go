@@ -51,7 +51,7 @@ func main() {
 		}
 	}()
 
-	go c.Serve()
+	go c.Serve(context.Background())
 
 	select {
 	case <-ctx.Done():
