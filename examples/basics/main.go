@@ -42,10 +42,10 @@ func main() {
 
 	// instantiate clients
 	respC := dmsg.NewClient(respPK, respSK, dc, nil)
-	go respC.Serve()
+	go respC.Serve(context.Background())
 
 	initC := dmsg.NewClient(initPK, initSK, dc, nil)
-	go initC.Serve()
+	go initC.Serve(context.Background())
 
 	time.Sleep(time.Second)
 
