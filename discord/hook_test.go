@@ -10,7 +10,6 @@ import (
 
 func TestHook_shouldFire(t *testing.T) {
 	hook := &Hook{
-		parent:     nil,
 		limit:      1 * time.Millisecond,
 		timestamps: make(map[string]time.Time),
 	}

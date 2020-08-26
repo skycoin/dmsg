@@ -12,12 +12,14 @@ const (
 	webhookURLEnvName = "DISCORD_WEBHOOK_URL"
 )
 
+// Hook is a Discord logger hook.
 type Hook struct {
-	parent     logrus.Hook
+	logrus.Hook
 	limit      time.Duration
 	timestamps map[string]time.Time
 }
 
+// Option defines an option for Discord logger hook.
 type Option func(*Hook)
 
 // WithLimit sets enables logger rate limiter with specified limit.
@@ -33,7 +35,7 @@ func NewHook(tag, webHookURL string, opts ...Option) logrus.Hook {
 	parent := discordrus.NewHook(webHookURL, logrus.ErrorLevel, discordOpts(tag))
 
 	hook := &Hook{
-		parent: parent,
+		Hook: parent,
 	}
 
 	for _, opt := range opts {
@@ -43,13 +45,10 @@ func NewHook(tag, webHookURL string, opts ...Option) logrus.Hook {
 	return hook
 }
 
-func (h *Hook) Levels() []logrus.Level {
-	return h.parent.Levels()
-}
-
+// Fire checks whether rate is fine and fires the underlying hook.
 func (h *Hook) Fire(entry *logrus.Entry) error {
 	if h.shouldFire(entry) {
-		return h.parent.Fire(entry)
+		return h.Hook.Fire(entry)
 	}
 
 	return nil
@@ -76,6 +75,7 @@ func discordOpts(tag string) *discordrus.Opts {
 	}
 }
 
+// GetWebhookURLFromEnv extracts webhook URL from an environment variable.
 func GetWebhookURLFromEnv() string {
 	return os.Getenv(webhookURLEnvName)
 }
