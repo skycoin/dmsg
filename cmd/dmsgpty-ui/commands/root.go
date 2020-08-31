@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/sirupsen/logrus"
-	"github.com/skycoin/skywire/pkg/util/buildinfo"
 	"github.com/spf13/cobra"
 
+	"github.com/skycoin/dmsg/buildinfo"
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/dmsgpty"
 )
