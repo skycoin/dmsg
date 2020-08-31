@@ -11,7 +11,7 @@ require (
 	github.com/prometheus/client_golang v1.3.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/skycoin/skycoin v0.26.0
-	github.com/skycoin/skywire v0.2.3-0.20200803142942-0f8b9981f6f9
+	github.com/skycoin/skywire v0.2.3-0.20200831124957-47a942882d2b
 	github.com/skycoin/yamux v0.0.0-20200803175205-571ceb89da9f
 	github.com/spf13/cast v1.3.0
 	github.com/spf13/cobra v0.0.5
