@@ -22,7 +22,7 @@ type Hook struct {
 // Option defines an option for Discord logger hook.
 type Option func(*Hook)
 
-// WithLimit sets enables logger rate limiter with specified limit.
+// WithLimit enables logger rate limiter with specified limit.
 func WithLimit(limit time.Duration) Option {
 	return func(h *Hook) {
 		h.limit = limit
