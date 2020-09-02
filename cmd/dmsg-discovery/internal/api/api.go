@@ -47,6 +47,7 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 	}
 	mux.HandleFunc("/dmsg-discovery/entry/", api.muxEntry())
 	mux.HandleFunc("/dmsg-discovery/available_servers", api.getAvailableServers())
+	mux.HandleFunc("/dmsg-discovery/health", api.health())
 	return api
 }
 
@@ -188,6 +189,14 @@ func (a *API) getAvailableServers() http.HandlerFunc {
 
 		a.writeJSON(w, http.StatusOK, entries)
 	}
+}
+
+// health returns status of dmsg discovery
+// URI: /dmsg-discovery/health
+// Method: GET
+func (a *API) health() http.HandlerFunc {
+	const expBase = "health"
+	return httputil.MakeHealthHandler(a.log, expBase, nil)
 }
 
 // isLoopbackAddr checks if string is loopback interface
