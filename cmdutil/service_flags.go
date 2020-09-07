@@ -148,7 +148,7 @@ func (sf *ServiceFlags) Logger() *logging.Logger {
 	}
 
 	if discordWebhookURL := discord.GetWebhookURLFromEnv(); discordWebhookURL != "" {
-		hook := discord.NewHook(sf.Tag, discordWebhookURL, discord.WithLimit(1*time.Second))
+		hook := discord.NewHook(sf.Tag, discordWebhookURL, discord.WithLimit(10*time.Minute))
 		logging.AddHook(hook)
 	}
 
