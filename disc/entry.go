@@ -118,6 +118,10 @@ type Entry struct {
 
 	// Signature for proving authenticity of an Entry.
 	Signature string `json:"signature,omitempty"`
+
+	// NeedTimeout defines whether a timeout is needed for an entry.
+	// It is used to differentiate visors up to v0.2.3 as their entries do not need a timeout.
+	NeedTimeout bool `json:"need_timeout,omitempty"`
 }
 
 func (e *Entry) String() string {
