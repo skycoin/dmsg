@@ -92,8 +92,6 @@ func (c *httpClient) PostEntry(ctx context.Context, e *Entry) error {
 	endpoint := c.address + "/dmsg-discovery/entry/"
 	log := log.WithField("endpoint", endpoint)
 
-	e.NeedTimeout = true // v0.3.0+
-
 	marshaledEntry, err := json.Marshal(e)
 	if err != nil {
 		return err
