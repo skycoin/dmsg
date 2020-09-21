@@ -184,7 +184,7 @@ func continuousRandomWrite(t *testing.T, conn net.Conn) {
 			close(errCh)
 		}()
 		for {
-			b := cipher.RandByte(rand.Intn(maxLen))
+			b := cipher.RandByte(rand.Intn(maxLen)) // nolint:gosec
 			if _, err := conn.Write(b); err != nil {
 				return
 			}
