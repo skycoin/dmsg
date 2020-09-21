@@ -19,4 +19,4 @@ install:
   - go mod vendor
 
 script:
-  - make test
+  - make check
