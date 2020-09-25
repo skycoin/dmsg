@@ -25,7 +25,7 @@ func discordOpts(tag string) *discordrus.Opts {
 	}
 }
 
-// GetWebhookURLFromEnv extract Discord webhook URL from env.
+// GetWebhookURLFromEnv extracts Discord webhook URL from environment variables.
 func GetWebhookURLFromEnv() string {
 	return os.Getenv(webhookURLEnvName)
 }
