@@ -21,13 +21,17 @@ func main() {
 	var initPort, respPort uint16 = 1563, 1563
 
 	// instantiate discovery
-	//dc := disc.NewHTTP("http://127.0.0.1:9090")
-	dc := disc.NewMock()
+	// dc := disc.NewHTTP("http://127.0.0.1:9090")
+	dc := disc.NewMock(0)
 	maxSessions := 10
 
 	// instantiate server
 	sPK, sSK := cipher.GenerateKeyPair()
-	srv := dmsg.NewServer(sPK, sSK, dc, maxSessions)
+	srvConf := dmsg.ServerConfig{
+		MaxSessions:    maxSessions,
+		UpdateInterval: 0,
+	}
+	srv := dmsg.NewServer(sPK, sSK, dc, &srvConf, nil)
 
 	lis, err := nettest.NewLocalListener("tcp")
 	if err != nil {
@@ -38,10 +42,10 @@ func main() {
 
 	// instantiate clients
 	respC := dmsg.NewClient(respPK, respSK, dc, nil)
-	go respC.Serve()
+	go respC.Serve(context.Background())
 
 	initC := dmsg.NewClient(initPK, initSK, dc, nil)
-	go initC.Serve()
+	go initC.Serve(context.Background())
 
 	time.Sleep(time.Second)
 

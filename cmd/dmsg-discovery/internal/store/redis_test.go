@@ -20,7 +20,7 @@ const (
 )
 
 func TestRedisStoreClientEntry(t *testing.T) {
-	redis, err := newRedis(redisURL, redisPassword)
+	redis, err := newRedis(redisURL, redisPassword, 0)
 	require.NoError(t, err)
 	require.NoError(t, redis.(*redisStore).client.FlushDB().Err())
 
@@ -50,7 +50,7 @@ func TestRedisStoreClientEntry(t *testing.T) {
 }
 
 func TestRedisStoreServerEntry(t *testing.T) {
-	redis, err := newRedis(redisURL, redisPassword)
+	redis, err := newRedis(redisURL, redisPassword, 0)
 	require.NoError(t, err)
 	require.NoError(t, redis.(*redisStore).client.FlushDB().Err())
 

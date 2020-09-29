@@ -40,8 +40,8 @@ func (ms *MockStore) setServer(staticPubKey string, payload []byte) {
 	ms.servers[staticPubKey] = payload
 }
 
-// newMock returns a storer mock
-func newMock() Storer {
+// NewMock returns a mock storer.
+func NewMock() Storer {
 	return &MockStore{
 		m:       map[string][]byte{},
 		servers: map[string][]byte{},

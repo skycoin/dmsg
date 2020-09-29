@@ -42,8 +42,8 @@ func (a *API) handleError(w http.ResponseWriter, e error) {
 		code, msg = f()
 	}
 
-	if a.logger != nil && code != http.StatusNotFound {
-		a.logger.Warnf("%d: %s", code, e)
+	if a.log != nil && code != http.StatusNotFound {
+		a.log.Warnf("%d: %s", code, e)
 	}
 
 	a.writeJSON(w, code, disc.HTTPMessage{Code: code, Message: msg})

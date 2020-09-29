@@ -73,7 +73,7 @@ func TestNewMockGetAvailableServers(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			clientServer := disc.NewMock()
+			clientServer := disc.NewMock(0)
 			expectedEntries := make([]*disc.Entry, 0)
 
 			if tc.databaseAndEntriesPrehook != nil {
@@ -84,12 +84,25 @@ func TestNewMockGetAvailableServers(t *testing.T) {
 
 			if !tc.responseIsError {
 				assert.NoError(t, err)
-				assert.Equal(t, expectedEntries, entries)
+				checkEqualEntries(t, entries, expectedEntries)
 			} else {
 				require.Error(t, err)
 				assert.Equal(t, tc.errorMessage.String(), err.Error())
 			}
 		})
+	}
+}
+
+func checkEqualEntries(t *testing.T, entries, expected []*disc.Entry) {
+	require.Len(t, entries, len(expected))
+
+	expectedMap := make(map[cipher.PubKey]*disc.Entry, len(expected))
+	for _, expEntry := range expected {
+		expectedMap[expEntry.Static] = expEntry
+	}
+
+	for _, entry := range entries {
+		assert.Equal(t, expectedMap[entry.Static], entry)
 	}
 }
 
@@ -132,7 +145,7 @@ func TestNewMockEntriesEndpoint(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			clientServer := disc.NewMock()
+			clientServer := disc.NewMock(0)
 
 			if tc.entryPreHook != nil {
 				tc.entryPreHook(t, &tc.entry)
@@ -235,7 +248,7 @@ func TestNewMockSetEntriesEndpoint(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			clientServer := disc.NewMock()
+			clientServer := disc.NewMock(0)
 			var entry disc.Entry
 			disc.Copy(&entry, &baseEntry)
 
@@ -303,7 +316,7 @@ func TestNewMockUpdateEntriesEndpoint(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			clientServer := disc.NewMock()
+			clientServer := disc.NewMock(0)
 			err := clientServer.PostEntry(context.TODO(), &baseEntry)
 			require.NoError(t, err)
 
@@ -330,7 +343,7 @@ func TestNewMockUpdateEntriesEndpoint(t *testing.T) {
 }
 
 func TestNewMockUpdateEntrySequence(t *testing.T) {
-	clientServer := disc.NewMock()
+	clientServer := disc.NewMock(0)
 	pk, sk := cipher.GenerateKeyPair()
 	entry := &disc.Entry{
 		Sequence: 0,

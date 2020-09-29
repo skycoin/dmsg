@@ -2,20 +2,19 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/gorilla/handlers"
+	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 
 	"github.com/skycoin/dmsg/cipher"
-	store2 "github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
+	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/httputil"
-	"github.com/skycoin/dmsg/metrics"
 )
 
 var log = logging.MustGetLogger("dmsg-discovery")
@@ -24,92 +23,41 @@ const maxGetAvailableServersResult = 512
 
 // API represents the api of the dmsg-discovery service`
 type API struct {
-	mux         *http.ServeMux
-	store       store2.Storer
-	logger      *logging.Logger
-	metrics     metrics.Recorder
-	testingMode bool
-}
-
-// Options is a structure with API configurations
-type Options struct {
-	logger      *logging.Logger
-	metrics     metrics.Recorder
-	testingMode bool
-}
-
-// Option is a wrapper that allows Functional Options
-type Option func(*Options)
-
-// Logger is a function to pass logger option to API
-func Logger(logger *logging.Logger) Option {
-	return func(args *Options) {
-		if logger == nil {
-			args.logger = &logging.Logger{}
-		} else {
-			args.logger = logger
-		}
-	}
-}
-
-// Metrics is a function to pass metric option to API
-func Metrics(metrics metrics.Recorder) Option {
-	return func(args *Options) {
-		args.metrics = metrics
-	}
-}
-
-// UseTestingMode is a function to pass testing mode option to API
-func UseTestingMode(testing bool) Option {
-	return func(args *Options) {
-		args.testingMode = testing
-	}
+	log      logrus.FieldLogger
+	db       store.Storer
+	testMode bool
+	mux      *http.ServeMux
 }
 
 // New returns a new API object, which can be started as a server
-func New(storer store2.Storer, options ...Option) *API {
-	var args Options
-
-	for _, option := range options {
-		if option != nil {
-			option(&args)
-		}
+func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
+	if log != nil {
+		log = logging.MustGetLogger("dmsg_disc")
+	}
+	if db == nil {
+		panic("cannot create new api without a store.Storer")
 	}
 
 	mux := http.NewServeMux()
 	api := &API{
-		mux:         mux,
-		store:       storer,
-		logger:      args.logger,
-		metrics:     args.metrics,
-		testingMode: args.testingMode,
+		log:      log,
+		db:       db,
+		testMode: testMode,
+		mux:      mux,
 	}
-
-	// routes
 	mux.HandleFunc("/dmsg-discovery/entry/", api.muxEntry())
 	mux.HandleFunc("/dmsg-discovery/available_servers", api.getAvailableServers())
-
+	mux.HandleFunc("/dmsg-discovery/health", api.health())
 	return api
 }
 
 // ServeHTTP implements http.Handler.
 func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var h http.Handler
+	log := a.log.WithField("_module", "dmsgdisc_api")
 
-	if a.logger != nil {
-		logger := a.logger.WithField("_module", "dmsgdisc_api")
-		h = handlers.CustomLoggingHandler(logger.Writer(), a.mux, httputil.WriteLog)
-	} else {
-		h = a.mux
-	}
-
-	metrics.Handler(a.metrics, h).ServeHTTP(w, r)
 	w.Header().Set("Content-Type", "application/json")
-}
-
-// Start starts the API server
-func (a *API) Start(listener net.Listener) error {
-	return http.Serve(listener, a)
+	handlers.CustomLoggingHandler(log.Writer(), a.mux, httputil.WriteLog).
+		ServeHTTP(w, r)
 }
 
 // muxEntry calls either getEntry or setEntry depending on the
@@ -135,7 +83,7 @@ func (a *API) getEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entry, err := a.store.Entry(r.Context(), staticPK)
+	entry, err := a.db.Entry(r.Context(), staticPK)
 
 	// If we make sure that every error is handled then we can
 	// remove the if and make the entry return the switch default
@@ -155,55 +103,44 @@ func (a *API) getEntry(w http.ResponseWriter, r *http.Request) {
 // Args:
 //	json serialized entry object
 func (a *API) setEntry(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("START: setEntry")
-
-	entry := &disc.Entry{}
-
-	err := json.NewDecoder(r.Body).Decode(entry)
-
 	defer func() {
 		if err := r.Body.Close(); err != nil {
 			log.WithError(err).Warn("Failed to decode HTTP response body")
 		}
 	}()
 
-	if err != nil {
+	entry := new(disc.Entry)
+	if err := json.NewDecoder(r.Body).Decode(entry); err != nil {
 		a.handleError(w, disc.ErrUnexpected)
 		return
 	}
 
-	if entry.Server != nil && !a.testingMode {
+	if entry.Server != nil && !a.testMode {
 		if ok, err := isLoopbackAddr(entry.Server.Address); ok {
-			if err != nil && a.logger != nil {
-				a.logger.Warningf("failed to parse hostname and port: %s", err)
+			if err != nil && a.log != nil {
+				a.log.Warningf("failed to parse hostname and port: %s", err)
 			}
 
 			a.handleError(w, disc.ErrValidationServerAddress)
+			return
 		}
 	}
 
-	err = entry.Validate()
-	if err != nil {
+	if err := entry.Validate(); err != nil {
 		a.handleError(w, err)
 		return
 	}
 
-	err = entry.VerifySignature()
-	if err != nil {
+	if err := entry.VerifySignature(); err != nil {
 		a.handleError(w, disc.ErrUnauthorized)
 		return
 	}
 
 	// Recover previous entry. If key not found we insert with sequence 0
 	// If there was a previous entry we check the new one is a valid iteration
-	oldEntry, err := a.store.Entry(r.Context(), entry.Static)
+	oldEntry, err := a.db.Entry(r.Context(), entry.Static)
 	if err == disc.ErrKeyNotFound {
-		if entry.Sequence != 0 {
-			a.handleError(w, disc.ErrValidationNonZeroSequence)
-			return
-		}
-
-		setErr := a.store.SetEntry(r.Context(), entry)
+		setErr := a.db.SetEntry(r.Context(), entry)
 		if setErr != nil {
 			a.handleError(w, setErr)
 			return
@@ -217,14 +154,12 @@ func (a *API) setEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = oldEntry.ValidateIteration(entry)
-	if err != nil {
+	if err := oldEntry.ValidateIteration(entry); err != nil {
 		a.handleError(w, err)
 		return
 	}
 
-	err = a.store.SetEntry(r.Context(), entry)
-	if err != nil {
+	if err := a.db.SetEntry(r.Context(), entry); err != nil {
 		a.handleError(w, err)
 		return
 	}
@@ -237,7 +172,7 @@ func (a *API) setEntry(w http.ResponseWriter, r *http.Request) {
 // Method: GET
 func (a *API) getAvailableServers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		entries, err := a.store.AvailableServers(r.Context(), maxGetAvailableServersResult)
+		entries, err := a.db.AvailableServers(r.Context(), maxGetAvailableServersResult)
 		if err != nil {
 			a.handleError(w, err)
 			return
@@ -254,6 +189,14 @@ func (a *API) getAvailableServers() http.HandlerFunc {
 
 		a.writeJSON(w, http.StatusOK, entries)
 	}
+}
+
+// health returns status of dmsg discovery
+// URI: /dmsg-discovery/health
+// Method: GET
+func (a *API) health() http.HandlerFunc {
+	const expBase = "health"
+	return httputil.MakeHealthHandler(a.log, expBase, nil)
 }
 
 // isLoopbackAddr checks if string is loopback interface
@@ -285,7 +228,7 @@ func retrievePkFromURL(url *url.URL) (cipher.PubKey, error) {
 func (a *API) writeJSON(w http.ResponseWriter, code int, object interface{}) {
 	jsonObject, err := json.Marshal(object)
 	if err != nil {
-		a.logger.Warnf("Failed to encode json response: %s", err)
+		a.log.Warnf("Failed to encode json response: %s", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -293,6 +236,6 @@ func (a *API) writeJSON(w http.ResponseWriter, code int, object interface{}) {
 
 	_, err = w.Write(jsonObject)
 	if err != nil {
-		a.logger.Warnf("Failed to write response: %s", err)
+		a.log.Warnf("Failed to write response: %s", err)
 	}
 }
