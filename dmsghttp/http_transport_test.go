@@ -1,6 +1,7 @@
 package dmsghttp
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -139,7 +140,7 @@ func newDmsgClient(t *testing.T, dc disc.APIClient, minSessions int, name string
 		Callbacks:   nil,
 	})
 	dmsgC.SetLogger(logging.MustGetLogger(name))
-	go dmsgC.Serve()
+	go dmsgC.Serve(context.Background())
 
 	t.Cleanup(func() {
 		assert.NoError(t, dmsgC.Close())

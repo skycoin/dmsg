@@ -42,13 +42,13 @@ func TestStream(t *testing.T) {
 	pkA, skA := GenKeyPair(t, "client A")
 	clientA := NewClient(pkA, skA, dc, DefaultConfig())
 	clientA.SetLogger(logging.MustGetLogger("client_A"))
-	go clientA.Serve()
+	go clientA.Serve(context.Background())
 
 	// Prepare and serve dmsg client B.
 	pkB, skB := GenKeyPair(t, "client B")
 	clientB := NewClient(pkB, skB, dc, DefaultConfig())
 	clientB.SetLogger(logging.MustGetLogger("client_B"))
-	go clientB.Serve()
+	go clientB.Serve(context.Background())
 
 	// Ensure all entities are registered in discovery before continuing.
 	time.Sleep(time.Second * 2)

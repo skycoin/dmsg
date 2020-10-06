@@ -57,7 +57,13 @@ func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry) error {
 		return disc.ErrUnexpected
 	}
 
-	err = r.client.Set(entry.Static.Hex(), payload, r.timeout).Err()
+	// v0.3.0 visors send entry.NeedTimeout == true, visors up to v0.2.4 do not.
+	timeout := time.Duration(0)
+	if entry.NeedTimeout {
+		timeout = r.timeout
+	}
+
+	err = r.client.Set(entry.Static.Hex(), payload, timeout).Err()
 	if err != nil {
 		return disc.ErrUnexpected
 	}

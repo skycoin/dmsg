@@ -1,6 +1,7 @@
 package dmsgget
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -133,7 +134,7 @@ func runHTTPSrv(t *testing.T, dc disc.APIClient, fName string) string {
 	httpPath := filepath.Base(fName)
 
 	dmsgC := dmsg.NewClient(pk, sk, dc, nil)
-	go dmsgC.Serve()
+	go dmsgC.Serve(context.Background())
 	t.Cleanup(func() { assert.NoError(t, dmsgC.Close()) })
 	<-dmsgC.Ready()
 
@@ -163,7 +164,7 @@ func newHTTPClient(t *testing.T, dc disc.APIClient) *http.Client {
 	pk, sk := cipher.GenerateKeyPair()
 
 	dmsgC := dmsg.NewClient(pk, sk, dc, nil)
-	go dmsgC.Serve()
+	go dmsgC.Serve(context.Background())
 	t.Cleanup(func() { assert.NoError(t, dmsgC.Close()) })
 	<-dmsgC.Ready()
 
