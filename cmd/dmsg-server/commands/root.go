@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"log"
 	"net"
 	"net/http"
@@ -67,9 +68,17 @@ var rootCmd = &cobra.Command{
 
 		defer func() { log.WithError(srv.Close()).Info("Closed server.") }()
 
-		if err := srv.Serve(lis, conf.PublicAddress); err != nil {
-			log.Fatal(err)
-		}
+		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+		defer cancel()
+
+		go func() {
+			if err := srv.Serve(lis, conf.PublicAddress); err != nil {
+				log.Errorf("Serve: %v", err)
+				cancel()
+			}
+		}()
+
+		<-ctx.Done()
 	},
 }
 

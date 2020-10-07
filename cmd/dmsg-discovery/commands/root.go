@@ -61,8 +61,18 @@ var rootCmd = &cobra.Command{
 
 		a := api.New(log, db, testMode)
 
+		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+		defer cancel()
+
 		log.WithField("addr", addr).Info("Serving discovery API...")
-		log.Fatal(http.ListenAndServe(addr, m.Handle(a)))
+		go func() {
+			if err := http.ListenAndServe(addr, m.Handle(a)); err != nil {
+				log.Errorf("ListenAndServe: %v", err)
+				cancel()
+			}
+		}()
+
+		<-ctx.Done()
 	},
 }
 
