@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -45,9 +46,14 @@ var rootCmd = &cobra.Command{
 
 		log := sf.Logger()
 
-		// Workaround for Discord logger hook. Actually, it's Info.
-		log.Error(discord.StartLogMessage)
-		defer log.Error(discord.StopLogMessage)
+		if discordWebhookURL := discord.GetWebhookURLFromEnv(); discordWebhookURL != "" {
+			// Workaround for Discord logger hook. Actually, it's Info.
+			log.Error(discord.StartLogMessage)
+			defer log.Error(discord.StopLogMessage)
+		} else {
+			log.Info(discord.StartLogMessage)
+			defer log.Info(discord.StopLogMessage)
+		}
 
 		m := sf.HTTPMetrics()
 

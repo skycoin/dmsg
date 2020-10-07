@@ -31,14 +31,19 @@ var rootCmd = &cobra.Command{
 	Short:   "Dmsg Server for Skywire.",
 	PreRunE: func(cmd *cobra.Command, args []string) error { return sf.Check() },
 	Run: func(_ *cobra.Command, args []string) {
+		if _, err := buildinfo.Get().WriteTo(os.Stdout); err != nil {
+			log.Printf("Failed to output build info: %v", err)
+		}
+
 		log := sf.Logger()
 
-		// Workaround for Discord logger hook. Actually, it's Info.
-		log.Error(discord.StartLogMessage)
-		defer log.Error(discord.StopLogMessage)
-
-		if _, err := buildinfo.Get().WriteTo(os.Stdout); err != nil {
-			log.WithError(err).Warn("Failed to output build info.")
+		if discordWebhookURL := discord.GetWebhookURLFromEnv(); discordWebhookURL != "" {
+			// Workaround for Discord logger hook. Actually, it's Info.
+			log.Error(discord.StartLogMessage)
+			defer log.Error(discord.StopLogMessage)
+		} else {
+			log.Info(discord.StartLogMessage)
+			defer log.Info(discord.StopLogMessage)
 		}
 
 		var conf Config
