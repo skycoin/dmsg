@@ -8,8 +8,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const webhookURLEnvName = "DISCORD_WEBHOOK_URL"
+
 const (
-	webhookURLEnvName = "DISCORD_WEBHOOK_URL"
+	loggedLevel       = logrus.ErrorLevel
+	startStopLogLevel = logrus.InfoLevel
+)
+
+const (
+	StartLogMessage = "Starting"
+	StopLogMessage  = "Stopping"
 )
 
 // Hook is a Discord logger hook.
@@ -32,7 +40,7 @@ func WithLimit(limit time.Duration) Option {
 
 // NewHook returns a new Hook.
 func NewHook(tag, webHookURL string, opts ...Option) logrus.Hook {
-	parent := discordrus.NewHook(webHookURL, logrus.ErrorLevel, discordOpts(tag))
+	parent := discordrus.NewHook(webHookURL, loggedLevel, discordOpts(tag))
 
 	hook := &Hook{
 		Hook: parent,
@@ -47,6 +55,15 @@ func NewHook(tag, webHookURL string, opts ...Option) logrus.Hook {
 
 // Fire checks whether rate is fine and fires the underlying hook.
 func (h *Hook) Fire(entry *logrus.Entry) error {
+	switch entry.Message {
+	case StartLogMessage, StopLogMessage:
+		// Start and stop messages should be logged by Hook but they should have Info level.
+		// With Info level, they would not be passed to hook.
+		// So we can use Error level in the codebase and change level to Info in the hook,
+		// then it appears as Info in logs.
+		entry.Level = startStopLogLevel
+	}
+
 	if h.shouldFire(entry) {
 		return h.Hook.Fire(entry)
 	}

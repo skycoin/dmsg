@@ -13,6 +13,7 @@ import (
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/api"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/cmdutil"
+	"github.com/skycoin/dmsg/discord"
 )
 
 const redisPasswordEnvName = "REDIS_PASSWORD"
@@ -43,6 +44,10 @@ var rootCmd = &cobra.Command{
 		}
 
 		log := sf.Logger()
+
+		// Workaround for Discord logger hook. Actually, it's Info.
+		log.Error(discord.StartLogMessage)
+		defer log.Error(discord.StopLogMessage)
 
 		m := sf.HTTPMetrics()
 

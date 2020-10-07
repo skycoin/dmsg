@@ -15,6 +15,7 @@ import (
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
+	"github.com/skycoin/dmsg/discord"
 	"github.com/skycoin/dmsg/promutil"
 	"github.com/skycoin/dmsg/servermetrics"
 )
@@ -31,6 +32,10 @@ var rootCmd = &cobra.Command{
 	PreRunE: func(cmd *cobra.Command, args []string) error { return sf.Check() },
 	Run: func(_ *cobra.Command, args []string) {
 		log := sf.Logger()
+
+		// Workaround for Discord logger hook. Actually, it's Info.
+		log.Error(discord.StartLogMessage)
+		defer log.Error(discord.StopLogMessage)
 
 		if _, err := buildinfo.Get().WriteTo(os.Stdout); err != nil {
 			log.WithError(err).Warn("Failed to output build info.")
