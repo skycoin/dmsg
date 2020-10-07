@@ -16,8 +16,10 @@ const (
 )
 
 const (
+	// StartLogMessage defines a message on binary starting.
 	StartLogMessage = "Starting"
-	StopLogMessage  = "Stopping"
+	// StopLogMessage defines a message on binary stopping.
+	StopLogMessage = "Stopping"
 )
 
 // Hook is a Discord logger hook.
