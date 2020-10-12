@@ -190,11 +190,11 @@ func TestEntriesEndpoint(t *testing.T) {
 			req.Header.Set("Content-Type", contentType)
 
 			rr := httptest.NewRecorder()
-			api.mux.ServeHTTP(rr, req)
+			api.router.ServeHTTP(rr, req)
 
 			status := rr.Code
-			require.Equal(t, tc.status, status, "case: %s, handler returned wrong status code: got `%v` want `%v`",
-				tc.name, status, tc.status)
+			require.Equal(t, tc.status, status, "case: %s, handler for %s %s returned wrong status code: got `%v` want `%v`",
+				tc.name, tc.method, tc.endpoint, status, tc.status)
 
 			if tc.responseIsEntry {
 				var resEntry disc.Entry

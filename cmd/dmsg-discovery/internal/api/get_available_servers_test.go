@@ -115,7 +115,7 @@ func TestGetAvailableServers(t *testing.T) {
 			require.NoError(t, err)
 
 			rr := httptest.NewRecorder()
-			api.mux.ServeHTTP(rr, req)
+			api.router.ServeHTTP(rr, req)
 
 			status := rr.Code
 			require.Equal(t, tc.status, status, "case: %s, handler returned wrong status code: got `%v` want `%v`",

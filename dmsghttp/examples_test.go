@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/go-chi/chi"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/nettest"
 
@@ -68,11 +69,12 @@ func ExampleMakeHTTPTransport() {
 			panic(err)
 		}
 	}()
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
+	r := chi.NewRouter()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("<html><body><h1>Hello World!</h1></body></html>")) //nolint:errcheck
 	})
-	go func() { _ = http.Serve(lis, mux) }() //nolint:errcheck
+	go func() { _ = http.Serve(lis, r) }() //nolint:errcheck
 
 	// Create dmsg client to run http client.
 	c2PK, c2SK := cipher.GenerateKeyPair()

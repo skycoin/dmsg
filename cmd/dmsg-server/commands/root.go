@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-chi/chi"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -101,11 +102,11 @@ func prepareMetrics(log logrus.FieldLogger, tag, addr string) servermetrics.Metr
 
 	m := servermetrics.New(tag)
 
-	mux := http.NewServeMux()
-	promutil.AddMetricsHandle(mux, m.Collectors()...)
+	r := chi.NewRouter()
+	promutil.AddMetricsHandle(r, m.Collectors()...)
 
 	log.WithField("addr", addr).Info("Serving metrics...")
-	go func() { log.Fatalln(http.ListenAndServe(addr, mux)) }()
+	go func() { log.Fatalln(http.ListenAndServe(addr, r)) }()
 
 	return m
 }

@@ -13,6 +13,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/go-chi/chi"
 	"github.com/sirupsen/logrus"
 	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -234,12 +235,12 @@ func (sf *ServiceFlags) HTTPMetrics() promutil.HTTPMetrics {
 	m := promutil.NewHTTPMetrics(sf.Tag)
 	sf.metrics = m
 
-	mux := http.NewServeMux()
-	promutil.AddMetricsHandle(mux, m.Collectors()...)
+	r := chi.NewRouter()
+	promutil.AddMetricsHandle(r, m.Collectors()...)
 
 	addr := sf.MetricsAddr
 	sf.logger.WithField("addr", addr).Info("Serving metrics.")
-	go func() { sf.logger.Fatal(http.ListenAndServe(addr, mux)) }()
+	go func() { sf.logger.Fatal(http.ListenAndServe(addr, r)) }()
 
 	return m
 }

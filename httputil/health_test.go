@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,10 +29,10 @@ func TestMakeHealthHandler(t *testing.T) {
 		mockEntry(http.StatusNotFound),
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/"+expBase, MakeHealthHandler(nil, expBase, entries))
+	r := chi.NewRouter()
+	r.Handle("/"+expBase, MakeHealthHandler(nil, expBase, entries))
 
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(r)
 	t.Cleanup(srv.Close)
 
 	buf := new(bytes.Buffer)
