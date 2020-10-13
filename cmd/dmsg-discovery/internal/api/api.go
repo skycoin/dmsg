@@ -46,7 +46,7 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 	}
 
 	r.Get("/dmsg-discovery/entry/{pk}", api.getEntry())
-	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
+	r.Post("/dmsg-discovery/entry/", api.setEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/health", api.health())
 
