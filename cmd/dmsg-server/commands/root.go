@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"log"
 	"net"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
+	"github.com/skycoin/dmsg/discord"
 	"github.com/skycoin/dmsg/promutil"
 	"github.com/skycoin/dmsg/servermetrics"
 )
@@ -30,10 +32,19 @@ var rootCmd = &cobra.Command{
 	Short:   "Dmsg Server for Skywire.",
 	PreRunE: func(cmd *cobra.Command, args []string) error { return sf.Check() },
 	Run: func(_ *cobra.Command, args []string) {
+		if _, err := buildinfo.Get().WriteTo(os.Stdout); err != nil {
+			log.Printf("Failed to output build info: %v", err)
+		}
+
 		log := sf.Logger()
 
-		if _, err := buildinfo.Get().WriteTo(os.Stdout); err != nil {
-			log.WithError(err).Warn("Failed to output build info.")
+		if discordWebhookURL := discord.GetWebhookURLFromEnv(); discordWebhookURL != "" {
+			// Workaround for Discord logger hook. Actually, it's Info.
+			log.Error(discord.StartLogMessage)
+			defer log.Error(discord.StopLogMessage)
+		} else {
+			log.Info(discord.StartLogMessage)
+			defer log.Info(discord.StopLogMessage)
 		}
 
 		var conf Config
@@ -57,9 +68,17 @@ var rootCmd = &cobra.Command{
 
 		defer func() { log.WithError(srv.Close()).Info("Closed server.") }()
 
-		if err := srv.Serve(lis, conf.PublicAddress); err != nil {
-			log.Fatal(err)
-		}
+		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+		defer cancel()
+
+		go func() {
+			if err := srv.Serve(lis, conf.PublicAddress); err != nil {
+				log.Errorf("Serve: %v", err)
+				cancel()
+			}
+		}()
+
+		<-ctx.Done()
 	},
 }
 

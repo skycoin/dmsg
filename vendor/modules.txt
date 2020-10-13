@@ -7,9 +7,6 @@ github.com/cespare/xxhash/v2
 github.com/creack/pty
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
-# github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6
-## explicit
-github.com/flynn/noise
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
 # github.com/go-redis/redis v6.15.6+incompatible
@@ -90,6 +87,9 @@ github.com/prometheus/procfs/internal/util
 ## explicit
 github.com/sirupsen/logrus
 github.com/sirupsen/logrus/hooks/syslog
+# github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
+## explicit
+github.com/skycoin/noise
 # github.com/skycoin/skycoin v0.26.0
 ## explicit
 github.com/skycoin/skycoin/src/cipher

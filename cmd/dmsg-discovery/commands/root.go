@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/api"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/cmdutil"
+	"github.com/skycoin/dmsg/discord"
 )
 
 const redisPasswordEnvName = "REDIS_PASSWORD"
@@ -44,14 +46,33 @@ var rootCmd = &cobra.Command{
 
 		log := sf.Logger()
 
+		if discordWebhookURL := discord.GetWebhookURLFromEnv(); discordWebhookURL != "" {
+			// Workaround for Discord logger hook. Actually, it's Info.
+			log.Error(discord.StartLogMessage)
+			defer log.Error(discord.StopLogMessage)
+		} else {
+			log.Info(discord.StartLogMessage)
+			defer log.Info(discord.StopLogMessage)
+		}
+
 		m := sf.HTTPMetrics()
 
 		db := prepareDB(log)
 
 		a := api.New(log, db, testMode)
 
+		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+		defer cancel()
+
 		log.WithField("addr", addr).Info("Serving discovery API...")
-		log.Fatal(http.ListenAndServe(addr, m.Handle(a)))
+		go func() {
+			if err := http.ListenAndServe(addr, m.Handle(a)); err != nil {
+				log.Errorf("ListenAndServe: %v", err)
+				cancel()
+			}
+		}()
+
+		<-ctx.Done()
 	},
 }
 
