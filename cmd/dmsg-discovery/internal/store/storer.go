@@ -26,7 +26,7 @@ type Storer interface {
 
 	// SetEntry set's an entry.
 	// This is unsafe and does not check signature.
-	SetEntry(ctx context.Context, entry *disc.Entry) error
+	SetEntry(ctx context.Context, entry *disc.Entry, timeout time.Duration) error
 
 	// AvailableServers discovers available dmsg servers.
 	AvailableServers(ctx context.Context, maxCount int) ([]*disc.Entry, error)

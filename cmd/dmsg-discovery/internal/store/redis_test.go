@@ -38,7 +38,7 @@ func TestRedisStoreClientEntry(t *testing.T) {
 	}
 	require.NoError(t, entry.Sign(sk))
 
-	require.NoError(t, redis.SetEntry(ctx, entry))
+	require.NoError(t, redis.SetEntry(ctx, entry, time.Duration(0)))
 
 	res, err := redis.Entry(ctx, pk)
 	require.NoError(t, err)
@@ -70,7 +70,7 @@ func TestRedisStoreServerEntry(t *testing.T) {
 
 	require.NoError(t, entry.Sign(sk))
 
-	require.NoError(t, redis.SetEntry(ctx, entry))
+	require.NoError(t, redis.SetEntry(ctx, entry, time.Duration(0)))
 
 	res, err := redis.Entry(ctx, pk)
 	require.NoError(t, err)
@@ -80,7 +80,7 @@ func TestRedisStoreServerEntry(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, entries, 1)
 
-	require.NoError(t, redis.SetEntry(ctx, entry))
+	require.NoError(t, redis.SetEntry(ctx, entry, time.Duration(0)))
 
 	entries, err = redis.AvailableServers(ctx, 2)
 	require.NoError(t, err)

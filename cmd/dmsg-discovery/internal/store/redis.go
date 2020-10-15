@@ -51,16 +51,10 @@ func (r *redisStore) Entry(ctx context.Context, staticPubKey cipher.PubKey) (*di
 }
 
 // Entry implements Storer Entry method for redisdb database
-func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry) error {
+func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry, timeout time.Duration) error {
 	payload, err := json.Marshal(entry)
 	if err != nil {
 		return disc.ErrUnexpected
-	}
-
-	// v0.3.0 visors send entry.NeedTimeout == true, visors up to v0.2.4 do not.
-	timeout := time.Duration(0)
-	if entry.NeedTimeout {
-		timeout = r.timeout
 	}
 
 	err = r.client.Set(entry.Static.Hex(), payload, timeout).Err()

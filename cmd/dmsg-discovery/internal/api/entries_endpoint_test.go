@@ -57,7 +57,7 @@ func TestEntriesEndpoint(t *testing.T) {
 				require.NoError(t, err)
 			},
 			storerPreHook: func(t *testing.T, s store2.Storer, e *disc.Entry) {
-				err := s.SetEntry(context.Background(), e)
+				err := s.SetEntry(context.Background(), e, time.Duration(0))
 				require.NoError(t, err)
 			},
 		},
@@ -109,7 +109,7 @@ func TestEntriesEndpoint(t *testing.T) {
 				e.Sequence = 0
 				err := e.Sign(sk)
 				require.NoError(t, err)
-				err = s.SetEntry(context.Background(), e)
+				err = s.SetEntry(context.Background(), e, time.Duration(0))
 				require.NoError(t, err)
 			},
 		},
@@ -134,7 +134,7 @@ func TestEntriesEndpoint(t *testing.T) {
 				e.Sequence = 1
 				err := e.Sign(sk)
 				require.NoError(t, err)
-				err = s.SetEntry(context.Background(), e)
+				err = s.SetEntry(context.Background(), e, time.Duration(0))
 				require.NoError(t, err)
 			},
 		},
@@ -158,7 +158,7 @@ func TestEntriesEndpoint(t *testing.T) {
 			},
 			storerPreHook: func(t *testing.T, s store2.Storer, e *disc.Entry) {
 				e.Sequence = 0
-				err := s.SetEntry(context.Background(), e)
+				err := s.SetEntry(context.Background(), e, time.Duration(0))
 				require.NoError(t, err)
 			},
 		},
