@@ -68,7 +68,7 @@ dep: ## Sorts dependencies
 build: ## Build binaries into ./bin
 	mkdir -p ${BIN}; go build ${BUILD_OPTS} -o ${BIN} ./cmd/*
 
-build-deploy:
+build-deploy: ## Build for deployment Docker images
 	go build -tags netgo ${BUILD_OPTS_DEPLOY} -o /release/dmsg-discovery ./cmd/dmsg-discovery
 	go build -tags netgo ${BUILD_OPTS_DEPLOY} -o /release/dmsg-server ./cmd/dmsg-server
 
