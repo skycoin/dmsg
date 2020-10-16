@@ -20,6 +20,7 @@ import (
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/discord"
 	"github.com/skycoin/dmsg/promutil"
+	"github.com/skycoin/dmsg/resourcemonitor"
 	"github.com/skycoin/dmsg/servermetrics"
 )
 
@@ -48,6 +49,9 @@ var rootCmd = &cobra.Command{
 			log.Info(discord.StartLogMessage)
 			defer log.Info(discord.StopLogMessage)
 		}
+
+		mon := resourcemonitor.New(log, resourcemonitor.DefaultOptions)
+		mon.StartInBackground(context.Background())
 
 		var conf Config
 		if err := sf.ParseConfig(os.Args, true, &conf); err != nil {

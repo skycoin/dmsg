@@ -15,6 +15,7 @@ import (
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/discord"
+	"github.com/skycoin/dmsg/resourcemonitor"
 )
 
 const redisPasswordEnvName = "REDIS_PASSWORD"
@@ -54,6 +55,9 @@ var rootCmd = &cobra.Command{
 			log.Info(discord.StartLogMessage)
 			defer log.Info(discord.StopLogMessage)
 		}
+
+		mon := resourcemonitor.New(log, resourcemonitor.DefaultOptions)
+		mon.StartInBackground(context.Background())
 
 		m := sf.HTTPMetrics()
 
