@@ -3,13 +3,10 @@ package httputil
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/gorilla/handlers"
 	"github.com/skycoin/skycoin/src/util/logging"
 )
 
@@ -54,23 +51,6 @@ func BoolFromQuery(r *http.Request, key string, defaultVal bool) (bool, error) {
 		return defaultVal, nil
 	default:
 		return false, fmt.Errorf("invalid '%s' query value of '%s'", key, q)
-	}
-}
-
-// WriteLog writes request and response parameters using format that
-// works well with logging.Logger.
-func WriteLog(writer io.Writer, params handlers.LogFormatterParams) {
-	host, _, err := net.SplitHostPort(params.Request.RemoteAddr)
-	if err != nil {
-		host = params.Request.RemoteAddr
-	}
-
-	_, err = fmt.Fprintf(
-		writer, "%s - \"%s %s %s\" %d\n",
-		host, params.Request.Method, params.URL.String(), params.Request.Proto, params.StatusCode,
-	)
-	if err != nil {
-		log.WithError(err).Warn("Failed to write log")
 	}
 }
 

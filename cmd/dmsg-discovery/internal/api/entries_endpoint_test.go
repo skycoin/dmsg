@@ -190,7 +190,7 @@ func TestEntriesEndpoint(t *testing.T) {
 			req.Header.Set("Content-Type", contentType)
 
 			rr := httptest.NewRecorder()
-			api.router.ServeHTTP(rr, req)
+			api.Handler.ServeHTTP(rr, req)
 
 			status := rr.Code
 			require.Equal(t, tc.status, status, "case: %s, handler for %s %s returned wrong status code: got `%v` want `%v`",

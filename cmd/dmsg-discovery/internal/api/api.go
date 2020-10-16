@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/gorilla/handlers"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 
@@ -23,10 +22,10 @@ const maxGetAvailableServersResult = 512
 
 // API represents the api of the dmsg-discovery service`
 type API struct {
+	http.Handler
 	log      logrus.FieldLogger
 	db       store.Storer
 	testMode bool
-	router   http.Handler
 }
 
 // New returns a new API object, which can be started as a server
@@ -40,10 +39,10 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 
 	r := chi.NewRouter()
 	api := &API{
+		Handler:  r,
 		log:      log,
 		db:       db,
 		testMode: testMode,
-		router:   r,
 	}
 
 	r.Use(middleware.RequestID)
@@ -58,15 +57,6 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 	r.Get("/dmsg-discovery/health", api.health())
 
 	return api
-}
-
-// ServeHTTP implements http.Handler.
-func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log := a.log.WithField("_module", "dmsgdisc_api")
-
-	w.Header().Set("Content-Type", "application/json")
-	handlers.CustomLoggingHandler(log.Writer(), a.router, httputil.WriteLog).
-		ServeHTTP(w, r)
 }
 
 // getEntry returns the entry associated with the given public key
