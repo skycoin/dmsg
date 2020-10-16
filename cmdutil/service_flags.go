@@ -14,6 +14,7 @@ import (
 	"unicode"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/sirupsen/logrus"
 	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -236,6 +237,12 @@ func (sf *ServiceFlags) HTTPMetrics() promutil.HTTPMetrics {
 	sf.metrics = m
 
 	r := chi.NewRouter()
+
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
 	promutil.AddMetricsHandle(r, m.Collectors()...)
 
 	addr := sf.MetricsAddr

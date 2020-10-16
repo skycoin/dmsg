@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -103,6 +104,12 @@ func prepareMetrics(log logrus.FieldLogger, tag, addr string) servermetrics.Metr
 	m := servermetrics.New(tag)
 
 	r := chi.NewRouter()
+
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
 	promutil.AddMetricsHandle(r, m.Collectors()...)
 
 	log.WithField("addr", addr).Info("Serving metrics...")

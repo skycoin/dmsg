@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/gorilla/handlers"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -44,6 +45,11 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 		testMode: testMode,
 		router:   r,
 	}
+
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 
 	r.Get("/dmsg-discovery/entry/{pk}", api.getEntry())
 	r.Post("/dmsg-discovery/entry/", api.setEntry())
