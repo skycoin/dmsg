@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
+	"time"
 
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/disc"
@@ -72,7 +73,7 @@ func (ms *MockStore) Entry(ctx context.Context, staticPubKey cipher.PubKey) (*di
 }
 
 // SetEntry implements Storer SetEntry method for MockStore
-func (ms *MockStore) SetEntry(ctx context.Context, entry *disc.Entry) error {
+func (ms *MockStore) SetEntry(ctx context.Context, entry *disc.Entry, timeout time.Duration) error {
 	payload, err := json.Marshal(entry)
 	if err != nil {
 		return disc.ErrUnexpected

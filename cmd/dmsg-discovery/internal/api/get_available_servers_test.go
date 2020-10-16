@@ -74,13 +74,13 @@ func TestGetAvailableServers(t *testing.T) {
 				db, err := store2.NewStore("mock", nil)
 				require.NoError(t, err)
 
-				err = db.SetEntry(context.Background(), &entry1)
+				err = db.SetEntry(context.Background(), &entry1, time.Duration(0))
 				require.NoError(t, err)
 
-				err = db.SetEntry(context.Background(), &entry2)
+				err = db.SetEntry(context.Background(), &entry2, time.Duration(0))
 				require.NoError(t, err)
 
-				err = db.SetEntry(context.Background(), &entry3)
+				err = db.SetEntry(context.Background(), &entry3, time.Duration(0))
 				require.NoError(t, err)
 
 				return db, []*disc.Entry{&entry1, &entry2, &entry3}

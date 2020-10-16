@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -90,7 +91,7 @@ func (a *API) getEntry() func(w http.ResponseWriter, r *http.Request) {
 // setEntry adds a new entry associated with the given public key
 // or updates a previous one if signed by the same instance that
 // created the previous one
-// URI: /dmsg-discovery/entry/
+// URI: /dmsg-discovery/entry/[?timeout={true|false}]
 // Method: POST
 // Args:
 //	json serialized entry object
@@ -101,6 +102,12 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 				log.WithError(err).Warn("Failed to decode HTTP response body")
 			}
 		}()
+
+		entryTimeout := time.Duration(0) // no timeout
+
+		if timeout := r.URL.Query().Get("timeout"); timeout == "true" {
+			entryTimeout = store.DefaultTimeout
+		}
 
 		entry := new(disc.Entry)
 		if err := json.NewDecoder(r.Body).Decode(entry); err != nil {
@@ -133,7 +140,7 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 		// If there was a previous entry we check the new one is a valid iteration
 		oldEntry, err := a.db.Entry(r.Context(), entry.Static)
 		if err == disc.ErrKeyNotFound {
-			setErr := a.db.SetEntry(r.Context(), entry)
+			setErr := a.db.SetEntry(r.Context(), entry, entryTimeout)
 			if setErr != nil {
 				a.handleError(w, r, setErr)
 				return
@@ -152,7 +159,7 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := a.db.SetEntry(r.Context(), entry); err != nil {
+		if err := a.db.SetEntry(r.Context(), entry, entryTimeout); err != nil {
 			a.handleError(w, r, err)
 			return
 		}

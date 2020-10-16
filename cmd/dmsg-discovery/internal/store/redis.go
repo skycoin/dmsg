@@ -39,6 +39,7 @@ func (r *redisStore) Entry(ctx context.Context, staticPubKey cipher.PubKey) (*di
 			return nil, disc.ErrKeyNotFound
 		}
 
+		log.WithError(err).WithField("pk", staticPubKey).Errorf("Failed to get entry from redis")
 		return nil, disc.ErrUnexpected
 	}
 
@@ -51,20 +52,15 @@ func (r *redisStore) Entry(ctx context.Context, staticPubKey cipher.PubKey) (*di
 }
 
 // Entry implements Storer Entry method for redisdb database
-func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry) error {
+func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry, timeout time.Duration) error {
 	payload, err := json.Marshal(entry)
 	if err != nil {
 		return disc.ErrUnexpected
 	}
 
-	// v0.3.0 visors send entry.NeedTimeout == true, visors up to v0.2.4 do not.
-	timeout := time.Duration(0)
-	if entry.NeedTimeout {
-		timeout = r.timeout
-	}
-
 	err = r.client.Set(entry.Static.Hex(), payload, timeout).Err()
 	if err != nil {
+		log.WithError(err).Errorf("Failed to set entry in redis")
 		return disc.ErrUnexpected
 	}
 
@@ -84,6 +80,7 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 
 	pks, err := r.client.SRandMemberN("servers", int64(maxCount)).Result()
 	if err != nil {
+		log.WithError(err).Errorf("Failed to get servers (SRandMemberN) from redis")
 		return nil, disc.ErrUnexpected
 	}
 
@@ -93,6 +90,7 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 
 	payloads, err := r.client.MGet(pks...).Result()
 	if err != nil {
+		log.WithError(err).Errorf("Failed to set servers (MGet) from redis")
 		return nil, disc.ErrUnexpected
 	}
 
