@@ -35,7 +35,7 @@ func TestErrorHandler(t *testing.T) {
 		t.Run(tc.err.Error(), func(t *testing.T) {
 			w := httptest.NewRecorder()
 			api := New(nil, store.NewMock(), true)
-			api.handleError(w, tc.err)
+			api.handleError(w, &http.Request{}, tc.err)
 
 			msg := new(disc.HTTPMessage)
 			err := json.NewDecoder(w.Body).Decode(&msg)

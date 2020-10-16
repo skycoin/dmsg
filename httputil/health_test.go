@@ -30,7 +30,7 @@ func TestMakeHealthHandler(t *testing.T) {
 	}
 
 	r := chi.NewRouter()
-	r.Handle("/"+expBase, MakeHealthHandler(nil, expBase, entries))
+	r.Handle("/"+expBase, MakeHealthHandler(expBase, entries))
 
 	srv := httptest.NewServer(r)
 	t.Cleanup(srv.Close)

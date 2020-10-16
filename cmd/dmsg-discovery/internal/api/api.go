@@ -23,7 +23,6 @@ const maxGetAvailableServersResult = 512
 // API represents the api of the dmsg-discovery service`
 type API struct {
 	http.Handler
-	log      logrus.FieldLogger
 	db       store.Storer
 	testMode bool
 }
@@ -33,6 +32,7 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 	if log != nil {
 		log = logging.MustGetLogger("dmsg_disc")
 	}
+
 	if db == nil {
 		panic("cannot create new api without a store.Storer")
 	}
@@ -40,7 +40,6 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 	r := chi.NewRouter()
 	api := &API{
 		Handler:  r,
-		log:      log,
 		db:       db,
 		testMode: testMode,
 	}
@@ -49,6 +48,7 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(httputil.SetLoggerMiddleware(log))
 
 	r.Get("/dmsg-discovery/entry/{pk}", api.getEntry())
 	r.Post("/dmsg-discovery/entry/", api.setEntry())
@@ -59,6 +59,10 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 	return api
 }
 
+func (a *API) log(r *http.Request) logrus.FieldLogger {
+	return httputil.GetLogger(r)
+}
+
 // getEntry returns the entry associated with the given public key
 // URI: /dmsg-discovery/entry/:pk
 // Method: GET
@@ -66,7 +70,7 @@ func (a *API) getEntry() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		staticPK := cipher.PubKey{}
 		if err := staticPK.UnmarshalText([]byte(chi.URLParam(r, "pk"))); err != nil {
-			a.handleError(w, disc.ErrBadInput)
+			a.handleError(w, r, disc.ErrBadInput)
 			return
 		}
 
@@ -75,11 +79,11 @@ func (a *API) getEntry() func(w http.ResponseWriter, r *http.Request) {
 		// If we make sure that every error is handled then we can
 		// remove the if and make the entry return the switch default
 		if err != nil {
-			a.handleError(w, err)
+			a.handleError(w, r, err)
 			return
 		}
 
-		a.writeJSON(w, http.StatusOK, entry)
+		a.writeJSON(w, r, http.StatusOK, entry)
 	}
 }
 
@@ -100,28 +104,28 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 
 		entry := new(disc.Entry)
 		if err := json.NewDecoder(r.Body).Decode(entry); err != nil {
-			a.handleError(w, disc.ErrUnexpected)
+			a.handleError(w, r, disc.ErrUnexpected)
 			return
 		}
 
 		if entry.Server != nil && !a.testMode {
 			if ok, err := isLoopbackAddr(entry.Server.Address); ok {
-				if err != nil && a.log != nil {
-					a.log.Warningf("failed to parse hostname and port: %s", err)
+				if err != nil {
+					a.log(r).Warningf("failed to parse hostname and port: %s", err)
 				}
 
-				a.handleError(w, disc.ErrValidationServerAddress)
+				a.handleError(w, r, disc.ErrValidationServerAddress)
 				return
 			}
 		}
 
 		if err := entry.Validate(); err != nil {
-			a.handleError(w, err)
+			a.handleError(w, r, err)
 			return
 		}
 
 		if err := entry.VerifySignature(); err != nil {
-			a.handleError(w, disc.ErrUnauthorized)
+			a.handleError(w, r, disc.ErrUnauthorized)
 			return
 		}
 
@@ -131,29 +135,29 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 		if err == disc.ErrKeyNotFound {
 			setErr := a.db.SetEntry(r.Context(), entry)
 			if setErr != nil {
-				a.handleError(w, setErr)
+				a.handleError(w, r, setErr)
 				return
 			}
 
-			a.writeJSON(w, http.StatusOK, disc.MsgEntrySet)
+			a.writeJSON(w, r, http.StatusOK, disc.MsgEntrySet)
 
 			return
 		} else if err != nil {
-			a.handleError(w, err)
+			a.handleError(w, r, err)
 			return
 		}
 
 		if err := oldEntry.ValidateIteration(entry); err != nil {
-			a.handleError(w, err)
+			a.handleError(w, r, err)
 			return
 		}
 
 		if err := a.db.SetEntry(r.Context(), entry); err != nil {
-			a.handleError(w, err)
+			a.handleError(w, r, err)
 			return
 		}
 
-		a.writeJSON(w, http.StatusOK, disc.MsgEntryUpdated)
+		a.writeJSON(w, r, http.StatusOK, disc.MsgEntryUpdated)
 	}
 }
 
@@ -164,12 +168,12 @@ func (a *API) getAvailableServers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		entries, err := a.db.AvailableServers(r.Context(), maxGetAvailableServersResult)
 		if err != nil {
-			a.handleError(w, err)
+			a.handleError(w, r, err)
 			return
 		}
 
 		if len(entries) == 0 {
-			a.writeJSON(w, http.StatusNotFound, disc.HTTPMessage{
+			a.writeJSON(w, r, http.StatusNotFound, disc.HTTPMessage{
 				Code:    http.StatusNotFound,
 				Message: disc.ErrNoAvailableServers.Error(),
 			})
@@ -177,7 +181,7 @@ func (a *API) getAvailableServers() http.HandlerFunc {
 			return
 		}
 
-		a.writeJSON(w, http.StatusOK, entries)
+		a.writeJSON(w, r, http.StatusOK, entries)
 	}
 }
 
@@ -186,7 +190,7 @@ func (a *API) getAvailableServers() http.HandlerFunc {
 // Method: GET
 func (a *API) health() http.HandlerFunc {
 	const expBase = "health"
-	return httputil.MakeHealthHandler(a.log, expBase, nil)
+	return httputil.MakeHealthHandler(expBase, nil)
 }
 
 // isLoopbackAddr checks if string is loopback interface
@@ -204,10 +208,10 @@ func isLoopbackAddr(addr string) (bool, error) {
 }
 
 // writeJSON writes a json object on a http.ResponseWriter with the given code.
-func (a *API) writeJSON(w http.ResponseWriter, code int, object interface{}) {
+func (a *API) writeJSON(w http.ResponseWriter, r *http.Request, code int, object interface{}) {
 	jsonObject, err := json.Marshal(object)
 	if err != nil {
-		a.log.Warnf("Failed to encode json response: %s", err)
+		a.log(r).Warnf("Failed to encode json response: %s", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -215,6 +219,6 @@ func (a *API) writeJSON(w http.ResponseWriter, code int, object interface{}) {
 
 	_, err = w.Write(jsonObject)
 	if err != nil {
-		a.log.Warnf("Failed to write response: %s", err)
+		a.log(r).Warnf("Failed to write response: %s", err)
 	}
 }

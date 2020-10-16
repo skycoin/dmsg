@@ -1,12 +1,15 @@
 package httputil
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/go-chi/chi/middleware"
+	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 )
 
@@ -63,4 +66,34 @@ func SplitRPCAddr(rpcAddr string) (host string, port uint16, err error) {
 	}
 
 	return addrToken[0], uint16(uint64port), nil
+}
+
+type ctxKeyLogger int
+
+// LoggerKey defines logger HTTP context key.
+const LoggerKey ctxKeyLogger = -1
+
+// GetLogger returns logger from HTTP context.
+func GetLogger(r *http.Request) logrus.FieldLogger {
+	if log, ok := r.Context().Value(LoggerKey).(logrus.FieldLogger); ok && log != nil {
+		return log
+	}
+
+	return logging.NewMasterLogger()
+}
+
+// SetLoggerMiddleware sets logger to context of HTTP requests.
+func SetLoggerMiddleware(log logrus.FieldLogger) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+
+			if reqID := middleware.GetReqID(ctx); reqID != "" && log != nil {
+				log = log.WithField("RequestID", reqID)
+				ctx = context.WithValue(ctx, LoggerKey, log)
+			}
+			next.ServeHTTP(w, r.WithContext(ctx))
+		}
+		return http.HandlerFunc(fn)
+	}
 }
