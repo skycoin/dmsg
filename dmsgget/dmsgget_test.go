@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/go-chi/chi"
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -138,8 +139,8 @@ func runHTTPSrv(t *testing.T, dc disc.APIClient, fName string) string {
 	t.Cleanup(func() { assert.NoError(t, dmsgC.Close()) })
 	<-dmsgC.Ready()
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/"+httpPath, func(w http.ResponseWriter, r *http.Request) {
+	r := chi.NewRouter()
+	r.HandleFunc("/"+httpPath, func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, fName)
 	})
 
@@ -148,7 +149,7 @@ func runHTTPSrv(t *testing.T, dc disc.APIClient, fName string) string {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- http.Serve(lis, mux)
+		errCh <- http.Serve(lis, r)
 		close(errCh)
 	}()
 
