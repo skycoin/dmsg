@@ -11,7 +11,7 @@ import (
 const webhookURLEnvName = "DISCORD_WEBHOOK_URL"
 
 const (
-	loggedLevel       = logrus.ErrorLevel
+	loggedLevel       = logrus.WarnLevel
 	startStopLogLevel = logrus.InfoLevel
 )
 
