@@ -13,7 +13,7 @@ import (
 const (
 	currentVersion             = "0.0.1"
 	entryLifetime              = 1 * time.Minute
-	allowedEntryTimestampError = 100 * time.Millisecond
+	allowedEntryTimestampError = 5 * time.Second
 )
 
 var (
