@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/skycoin/dmsg"
@@ -82,9 +83,9 @@ func (r httpClientResult) Assert(t *testing.T, i int) {
 }
 
 func startHTTPServer(t *testing.T, results chan httpServerResult, lis net.Listener) {
-	mux := http.NewServeMux()
+	r := chi.NewRouter()
 
-	mux.HandleFunc(endpointHTML, func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc(endpointHTML, func(w http.ResponseWriter, r *http.Request) {
 		result := httpServerResult{Path: endpointHTML}
 
 		n, err := w.Write(endpointHTMLData)
@@ -94,7 +95,7 @@ func startHTTPServer(t *testing.T, results chan httpServerResult, lis net.Listen
 		results <- result
 	})
 
-	mux.HandleFunc(endpointEcho, func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc(endpointEcho, func(w http.ResponseWriter, r *http.Request) {
 		result := httpServerResult{Path: endpointEcho}
 
 		data, err := ioutil.ReadAll(r.Body)
@@ -108,7 +109,7 @@ func startHTTPServer(t *testing.T, results chan httpServerResult, lis net.Listen
 		results <- result
 	})
 
-	mux.HandleFunc(endpointHash, func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc(endpointHash, func(w http.ResponseWriter, r *http.Request) {
 		result := httpServerResult{Path: endpointHash}
 
 		data, err := ioutil.ReadAll(r.Body)
@@ -126,7 +127,7 @@ func startHTTPServer(t *testing.T, results chan httpServerResult, lis net.Listen
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- http.Serve(lis, mux)
+		errCh <- http.Serve(lis, r)
 		close(errCh)
 	}()
 
