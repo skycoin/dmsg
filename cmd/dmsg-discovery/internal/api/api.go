@@ -126,7 +126,8 @@ func (a *API) setEntry(enableLoadTesting bool) func(w http.ResponseWriter, r *ht
 			}
 		}
 
-		if err := entry.Validate(); err != nil {
+		validateTimestamp := !enableLoadTesting
+		if err := entry.Validate(validateTimestamp); err != nil {
 			a.handleError(w, r, err)
 			return
 		}
