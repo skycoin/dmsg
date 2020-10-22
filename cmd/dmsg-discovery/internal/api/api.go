@@ -29,7 +29,7 @@ type API struct {
 }
 
 // New returns a new API object, which can be started as a server
-func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
+func New(log logrus.FieldLogger, db store.Storer, testMode, enableLoadTesting bool) *API {
 	if log != nil {
 		log = logging.MustGetLogger("dmsg_disc")
 	}
@@ -52,8 +52,8 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 	r.Use(httputil.SetLoggerMiddleware(log))
 
 	r.Get("/dmsg-discovery/entry/{pk}", api.getEntry())
-	r.Post("/dmsg-discovery/entry/", api.setEntry())
-	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
+	r.Post("/dmsg-discovery/entry/", api.setEntry(enableLoadTesting))
+	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry(enableLoadTesting))
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/health", api.health())
 
@@ -95,7 +95,7 @@ func (a *API) getEntry() func(w http.ResponseWriter, r *http.Request) {
 // Method: POST
 // Args:
 //	json serialized entry object
-func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
+func (a *API) setEntry(enableLoadTesting bool) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := r.Body.Close(); err != nil {
@@ -131,9 +131,11 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := entry.VerifySignature(); err != nil {
-			a.handleError(w, r, disc.ErrUnauthorized)
-			return
+		if !enableLoadTesting {
+			if err := entry.VerifySignature(); err != nil {
+				a.handleError(w, r, disc.ErrUnauthorized)
+				return
+			}
 		}
 
 		// Recover previous entry. If key not found we insert with sequence 0
@@ -154,9 +156,11 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := oldEntry.ValidateIteration(entry); err != nil {
-			a.handleError(w, r, err)
-			return
+		if !enableLoadTesting {
+			if err := oldEntry.ValidateIteration(entry); err != nil {
+				a.handleError(w, r, err)
+				return
+			}
 		}
 
 		if err := a.db.SetEntry(r.Context(), entry, entryTimeout); err != nil {
