@@ -2,7 +2,6 @@ package dmsgget
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 
@@ -20,6 +20,8 @@ import (
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/dmsghttp"
 )
+
+var json = jsoniter.ConfigFastest
 
 // DmsgGet contains the logic for dmsgget (wget over dmsg).
 type DmsgGet struct {

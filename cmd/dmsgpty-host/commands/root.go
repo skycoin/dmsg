@@ -3,13 +3,13 @@ package commands
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	stdlog "log"
 	"net"
 	"os"
 	"sync"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/spf13/cast"
@@ -28,6 +28,8 @@ import (
 const defaultEnvPrefix = "DMSGPTY"
 
 var log = logging.MustGetLogger("dmsgpty-host:init")
+
+var json = jsoniter.ConfigFastest
 
 // variables
 var (

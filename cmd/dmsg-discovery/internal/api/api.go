@@ -1,13 +1,13 @@
 package api
 
 import (
-	"encoding/json"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 
@@ -18,6 +18,8 @@ import (
 )
 
 var log = logging.MustGetLogger("dmsg-discovery")
+
+var json = jsoniter.ConfigFastest
 
 const maxGetAvailableServersResult = 512
 
