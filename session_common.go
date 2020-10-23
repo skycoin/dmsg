@@ -110,6 +110,7 @@ func (sc *SessionCommon) writeObject(w io.Writer, obj SignedObject) error {
 	sc.wMx.Unlock()
 	p = append(make([]byte, 2), p...)
 	binary.BigEndian.PutUint16(p, uint16(len(p)-2))
+	sc.log.Infof("ENCRYPTED OBJECT: %v", p)
 	_, err := w.Write(p)
 	return err
 }

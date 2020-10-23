@@ -59,6 +59,7 @@ func (s *Stream) Logger() logrus.FieldLogger {
 }
 
 func (s *Stream) writeRequest(rAddr Addr) (req StreamRequest, err error) {
+	s.log.Infof("REMOTE DMSG ADDR: %v", rAddr)
 	// Reserve stream in porter.
 	var lPort uint16
 	if lPort, s.close, err = s.ses.porter.ReserveEphemeral(context.Background(), s); err != nil {
