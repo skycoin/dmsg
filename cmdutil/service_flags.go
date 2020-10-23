@@ -181,7 +181,7 @@ func (sf *ServiceFlags) ParseConfig(args []string, checkArgs bool, v interface{}
 		return fmt.Errorf("failed to decode config file: %w", err)
 	}
 
-	j, err := json.MarshalIndent(v, "", "\t")
+	j, err := json.MarshalIndent(v, "", "    ")
 	if err != nil {
 		panic(err) // should not happen
 	}
