@@ -162,10 +162,14 @@ func (sc *SessionCommon) readObject(r io.Reader) (SignedObject, error) {
 			lastIdx = 5
 		}
 
+		fmt.Printf("GOT LAST IDX: %v\n", lastIdx)
+
 		lb, err := strconv.ParseUint(string(lbBytes[:lastIdx]), 10, 64)
 		if err != nil {
 			return nil, err
 		}
+
+		fmt.Printf("PARSED LB: %v\n", lb)
 
 		pb := make([]byte, lb)
 		if _, err := io.ReadFull(r, pb); err != nil {
