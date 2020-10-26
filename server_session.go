@@ -1,6 +1,7 @@
 package dmsg
 
 import (
+	"fmt"
 	"io"
 	"net"
 
@@ -76,17 +77,21 @@ func (ss *ServerSession) serveStream(log logrus.FieldLogger, yStr *yamux.Stream)
 		if err != nil {
 			return StreamRequest{}, err
 		}
+		fmt.Println("READ OBJECT")
 		req, err := obj.ObtainStreamRequest(ss.ed, ss.encrypt)
 		if err != nil {
 			return StreamRequest{}, err
 		}
+		fmt.Println("OBTAINED STREAM REQUEST")
 		// TODO(evanlinjin): Implement timestamp tracker.
 		if err := req.Verify(0, ss.encrypt); err != nil {
 			return StreamRequest{}, err
 		}
+		fmt.Println("VERIFIED REQUEST")
 		if req.SrcAddr.PK != ss.rPK {
 			return StreamRequest{}, ErrReqInvalidSrcPK
 		}
+		fmt.Println("FINISHED readRequest")
 		return req, nil
 	}
 
@@ -145,18 +150,23 @@ func (ss *ServerSession) forwardRequest(req StreamRequest) (yStr *yamux.Stream, 
 	if yStr, err = ss.ys.OpenStream(); err != nil {
 		return nil, nil, err
 	}
+	fmt.Println("FWD: OPENED STREAM")
 	if err = ss.writeObject(yStr, req.raw); err != nil {
 		return nil, nil, err
 	}
+	fmt.Println("FWD: WROTE OBJECT")
 	if respObj, err = ss.readObject(yStr); err != nil {
 		return nil, nil, err
 	}
+	fmt.Println("FWD: READ OBJECT")
 	var resp StreamResponse
 	if resp, err = respObj.ObtainStreamResponse(ss.ed, ss.encrypt); err != nil {
 		return nil, nil, err
 	}
+	fmt.Println("FWD: OBTAINED STREAM RESPONSE")
 	if err = resp.Verify(req, ss.encrypt); err != nil {
 		return nil, nil, err
 	}
+	fmt.Println("FWD: VERIFIED RESPONSE")
 	return yStr, respObj, nil
 }
