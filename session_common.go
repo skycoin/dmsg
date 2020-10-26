@@ -171,7 +171,7 @@ func (sc *SessionCommon) readObject(r io.Reader) (SignedObject, error) {
 
 		fmt.Printf("PARSED LB: %v\n", lb)
 
-		pb := make([]byte, lb)
+		pb = make([]byte, lb)
 		if _, err := io.ReadFull(r, pb); err != nil {
 			return nil, err
 		}
