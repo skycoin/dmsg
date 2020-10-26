@@ -155,6 +155,7 @@ func (sc *SessionCommon) readObject(r io.Reader) (SignedObject, error) {
 		if _, err := io.ReadFull(r, lbBytes); err != nil {
 			return nil, err
 		}
+		fmt.Printf("READ LB: %s\n", string(lbBytes))
 		lastIdx := bytes.Index(lbBytes, []byte{0})
 		if lastIdx == -1 {
 			lastIdx = 5
