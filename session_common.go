@@ -3,10 +3,13 @@ package dmsg
 import (
 	"bufio"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/skycoin/dmsg/encodedecoder"
 
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/yamux"
@@ -29,6 +32,10 @@ type SessionCommon struct {
 	wMx     sync.Mutex
 
 	log logrus.FieldLogger
+
+	encrypt bool
+
+	ed encodedecoder.EncodeDecoder
 }
 
 // GetConn returns underlying TCP `net.Conn`.
@@ -105,12 +112,17 @@ func (sc *SessionCommon) initServer(entity *EntityCommon, conn net.Conn) error {
 
 // writeEncryptedGob encrypts with noise and prefixed with uint16 (2 additional bytes).
 func (sc *SessionCommon) writeObject(w io.Writer, obj SignedObject) error {
-	sc.wMx.Lock()
-	p := sc.ns.EncryptUnsafe(obj)
-	sc.wMx.Unlock()
+	p := []byte(obj)
+
+	if sc.encrypt {
+		sc.wMx.Lock()
+		p = sc.ns.EncryptUnsafe(obj)
+		sc.wMx.Unlock()
+	}
+
 	p = append(make([]byte, 2), p...)
 	binary.BigEndian.PutUint16(p, uint16(len(p)-2))
-	sc.log.Infof("ENCRYPTED OBJECT: %v", p)
+	fmt.Printf("ENCRYPTED OBJECT: %v\n", p)
 	_, err := w.Write(p)
 	return err
 }
@@ -126,14 +138,17 @@ func (sc *SessionCommon) readObject(r io.Reader) (SignedObject, error) {
 	}
 
 	sc.rMx.Lock()
+	defer sc.rMx.Unlock()
+
 	if sc.nMap == nil {
-		sc.rMx.Unlock()
 		return nil, ErrSessionClosed
 	}
-	obj, err := sc.ns.DecryptWithNonceMap(sc.nMap, pb)
-	sc.rMx.Unlock()
 
-	return obj, err
+	if !sc.encrypt {
+		return pb, nil
+	}
+
+	return sc.ns.DecryptWithNonceMap(sc.nMap, pb)
 }
 
 func (sc *SessionCommon) localSK() cipher.SecKey { return sc.entity.sk }

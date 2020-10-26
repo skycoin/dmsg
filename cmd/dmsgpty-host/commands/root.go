@@ -9,6 +9,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/skycoin/dmsg/encodedecoder"
+
 	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -49,6 +51,8 @@ var (
 	// root command flags (without viper references)
 	confStdin = false
 	confPath  = ""
+
+	edType string
 )
 
 // init prepares flags.
@@ -94,6 +98,8 @@ func init() {
 
 	rootCmd.Flags().StringVar(&confPath, "confpath", confPath,
 		"config path")
+
+	rootCmd.Flags().StringVar(&edType, "ed-type", string(encodedecoder.TypeGOB), "type of message encoder")
 }
 
 // prepareVariables sources variables in the following precedence order: flags, env, config, default.
@@ -197,6 +203,7 @@ var rootCmd = &cobra.Command{
 		// Prepare and serve dmsg client and wait until ready.
 		dmsgC := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc), &dmsg.Config{
 			MinSessions: dmsgSessions,
+			EDType:      encodedecoder.Type(edType),
 		})
 		go dmsgC.Serve(context.Background())
 		select {

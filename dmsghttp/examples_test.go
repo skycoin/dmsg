@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/skycoin/dmsg/encodedecoder"
+
 	"github.com/go-chi/chi"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/nettest"
@@ -50,7 +52,7 @@ func ExampleMakeHTTPTransport() {
 
 	// Create a dmsg client to host http server.
 	c1PK, c1SK := cipher.GenerateKeyPair()
-	dmsgC1 := dmsg.NewClient(c1PK, c1SK, dc, nil)
+	dmsgC1 := dmsg.NewClient(c1PK, c1SK, dc, &dmsg.Config{EDType: encodedecoder.TypeGOB})
 	defer func() {
 		if err := dmsgC1.Close(); err != nil {
 			panic(err)
@@ -78,7 +80,7 @@ func ExampleMakeHTTPTransport() {
 
 	// Create dmsg client to run http client.
 	c2PK, c2SK := cipher.GenerateKeyPair()
-	dmsgC2 := dmsg.NewClient(c2PK, c2SK, dc, nil)
+	dmsgC2 := dmsg.NewClient(c2PK, c2SK, dc, &dmsg.Config{EDType: encodedecoder.TypeGOB})
 	defer func() {
 		if err := dmsgC2.Close(); err != nil {
 			panic(err)

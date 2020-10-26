@@ -2,6 +2,7 @@ package dmsg
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
@@ -59,7 +60,7 @@ func (s *Stream) Logger() logrus.FieldLogger {
 }
 
 func (s *Stream) writeRequest(rAddr Addr) (req StreamRequest, err error) {
-	s.log.Infof("REMOTE DMSG ADDR: %v", rAddr)
+	fmt.Printf("REMOTE DMSG ADDR: %v\n", rAddr)
 	// Reserve stream in porter.
 	var lPort uint16
 	if lPort, s.close, err = s.ses.porter.ReserveEphemeral(context.Background(), s); err != nil {
@@ -69,18 +70,24 @@ func (s *Stream) writeRequest(rAddr Addr) (req StreamRequest, err error) {
 	// Prepare fields.
 	s.prepareFields(true, Addr{PK: s.ses.LocalPK(), Port: lPort}, rAddr)
 
-	// Prepare request.
-	var nsMsg []byte
-	if nsMsg, err = s.ns.MakeHandshakeMessage(); err != nil {
-		return
-	}
 	req = StreamRequest{
 		Timestamp: time.Now().UnixNano(),
 		SrcAddr:   s.lAddr,
 		DstAddr:   s.rAddr,
-		NoiseMsg:  nsMsg,
 	}
-	obj := MakeSignedStreamRequest(&req, s.ses.localSK())
+
+	var obj SignedObject
+	if s.ses.encrypt {
+		// Prepare request.
+		var nsMsg []byte
+		if nsMsg, err = s.ns.MakeHandshakeMessage(); err != nil {
+			return
+		}
+		req.NoiseMsg = nsMsg
+		obj = MakeSignedStreamRequest(s.ses.ed, &req, s.ses.localSK())
+	} else {
+		obj = s.ses.ed.Encode(&req)
+	}
 
 	// Write request.
 	err = s.ses.writeObject(s.yStr, obj)
@@ -92,10 +99,10 @@ func (s *Stream) readRequest() (req StreamRequest, err error) {
 	if obj, err = s.ses.readObject(s.yStr); err != nil {
 		return
 	}
-	if req, err = obj.ObtainStreamRequest(); err != nil {
+	if req, err = obj.ObtainStreamRequest(s.ses.ed, s.ses.encrypt); err != nil {
 		return
 	}
-	if err = req.Verify(0); err != nil {
+	if err = req.Verify(0, s.ses.encrypt); err != nil {
 		return
 	}
 	if req.DstAddr.PK != s.ses.LocalPK() {
@@ -103,12 +110,15 @@ func (s *Stream) readRequest() (req StreamRequest, err error) {
 		return
 	}
 
-	// Prepare fields.
-	s.prepareFields(false, req.DstAddr, req.SrcAddr)
+	if s.ses.encrypt {
+		// Prepare fields.
+		s.prepareFields(false, req.DstAddr, req.SrcAddr)
 
-	if err = s.ns.ProcessHandshakeMessage(req.NoiseMsg); err != nil {
-		return
+		if err = s.ns.ProcessHandshakeMessage(req.NoiseMsg); err != nil {
+			return
+		}
 	}
+
 	return
 }
 
@@ -123,17 +133,23 @@ func (s *Stream) writeResponse(reqHash cipher.SHA256) error {
 		return ErrReqNoListener
 	}
 
-	// Prepare and write response.
-	nsMsg, err := s.ns.MakeHandshakeMessage()
-	if err != nil {
-		return err
-	}
 	resp := StreamResponse{
 		ReqHash:  reqHash,
 		Accepted: true,
-		NoiseMsg: nsMsg,
 	}
-	obj := MakeSignedStreamResponse(&resp, s.ses.localSK())
+
+	var obj SignedObject
+	if s.ses.encrypt {
+		// Prepare and write response.
+		nsMsg, err := s.ns.MakeHandshakeMessage()
+		if err != nil {
+			return err
+		}
+		resp.NoiseMsg = nsMsg
+		obj = MakeSignedStreamResponse(s.ses.ed, &resp, s.ses.localSK())
+	} else {
+		obj = s.ses.ed.Encode(&resp)
+	}
 
 	if err := s.ses.writeObject(s.yStr, obj); err != nil {
 		return err
@@ -148,14 +164,19 @@ func (s *Stream) readResponse(req StreamRequest) error {
 	if err != nil {
 		return err
 	}
-	resp, err := obj.ObtainStreamResponse()
+	resp, err := obj.ObtainStreamResponse(s.ses.ed, s.ses.encrypt)
 	if err != nil {
 		return err
 	}
-	if err := resp.Verify(req); err != nil {
+	if err := resp.Verify(req, s.ses.encrypt); err != nil {
 		return err
 	}
-	return s.ns.ProcessHandshakeMessage(resp.NoiseMsg)
+
+	if s.ses.encrypt {
+		return s.ns.ProcessHandshakeMessage(resp.NoiseMsg)
+	}
+
+	return nil
 }
 
 func (s *Stream) prepareFields(init bool, lAddr, rAddr Addr) {

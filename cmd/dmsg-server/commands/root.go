@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/skycoin/dmsg/encodedecoder"
+
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/sirupsen/logrus"
@@ -64,6 +66,8 @@ var rootCmd = &cobra.Command{
 		srvConf := dmsg.ServerConfig{
 			MaxSessions:    conf.MaxSessions,
 			UpdateInterval: conf.UpdateInterval,
+			Encrypt:        conf.Encrypt,
+			EDType:         conf.EDType,
 		}
 		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery), &srvConf, m)
 		srv.SetLogger(log)
@@ -86,14 +90,16 @@ var rootCmd = &cobra.Command{
 
 // Config is a dmsg-server config
 type Config struct {
-	PubKey         cipher.PubKey `json:"public_key"`
-	SecKey         cipher.SecKey `json:"secret_key"`
-	Discovery      string        `json:"discovery"`
-	LocalAddress   string        `json:"local_address"`
-	PublicAddress  string        `json:"public_address"`
-	MaxSessions    int           `json:"max_sessions"`
-	UpdateInterval time.Duration `json:"update_interval"`
-	LogLevel       string        `json:"log_level"`
+	PubKey         cipher.PubKey      `json:"public_key"`
+	SecKey         cipher.SecKey      `json:"secret_key"`
+	Discovery      string             `json:"discovery"`
+	LocalAddress   string             `json:"local_address"`
+	PublicAddress  string             `json:"public_address"`
+	MaxSessions    int                `json:"max_sessions"`
+	UpdateInterval time.Duration      `json:"update_interval"`
+	LogLevel       string             `json:"log_level"`
+	Encrypt        bool               `json:"encrypt"`
+	EDType         encodedecoder.Type `json:"ed_type"`
 }
 
 func prepareMetrics(log logrus.FieldLogger, tag, addr string) servermetrics.Metrics {

@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/skycoin/dmsg/encodedecoder"
+
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 
@@ -19,6 +21,8 @@ import (
 type ServerConfig struct {
 	MaxSessions    int
 	UpdateInterval time.Duration
+	Encrypt        bool
+	EDType         encodedecoder.Type
 }
 
 // DefaultServerConfig returns the default server config.
@@ -26,6 +30,8 @@ func DefaultServerConfig() *ServerConfig {
 	return &ServerConfig{
 		MaxSessions:    DefaultMaxSessions,
 		UpdateInterval: DefaultUpdateInterval,
+		Encrypt:        true,
+		EDType:         encodedecoder.TypeGOB,
 	}
 }
 
@@ -48,6 +54,9 @@ type Server struct {
 	addrDone chan struct{}
 
 	maxSessions int
+
+	encrypt bool
+	ed      encodedecoder.EncodeDecoder
 }
 
 // NewServer creates a new dmsg server entity.
@@ -67,6 +76,8 @@ func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Serv
 	s.done = make(chan struct{})
 	s.addrDone = make(chan struct{})
 	s.maxSessions = conf.MaxSessions
+	s.encrypt = conf.Encrypt
+	s.ed = encodedecoder.New(conf.EDType)
 	s.setSessionCallback = func(ctx context.Context, sessionCount int) error {
 		return s.updateServerEntry(ctx, s.AdvertisedAddr(), s.maxSessions)
 	}
@@ -180,7 +191,7 @@ func (s *Server) Ready() <-chan struct{} {
 func (s *Server) handleSession(conn net.Conn) {
 	log := logrus.FieldLogger(s.log.WithField("remote_tcp", conn.RemoteAddr()))
 
-	dSes, err := makeServerSession(s.m, &s.EntityCommon, conn)
+	dSes, err := makeServerSession(s.m, &s.EntityCommon, conn, s.encrypt, s.ed)
 	if err != nil {
 		if err := conn.Close(); err != nil {
 			log.WithError(err).Debug("On handleSession() failure, close connection resulted in error.")

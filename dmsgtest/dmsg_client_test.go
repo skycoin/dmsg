@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skycoin/dmsg/encodedecoder"
+
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/stretchr/testify/assert"
@@ -71,7 +73,7 @@ func TestClient_RemoteClients(t *testing.T) {
 
 			// arrange: prepare env
 			env := NewEnv(t, DefaultTimeout)
-			conf := dmsg.Config{MinSessions: tc.minSes}
+			conf := dmsg.Config{MinSessions: tc.minSes, EDType: encodedecoder.TypeGOB}
 			require.NoError(t, env.Startup(DefaultTimeout, tc.initSrvs, rcN, &conf))
 			t.Cleanup(env.Shutdown)
 

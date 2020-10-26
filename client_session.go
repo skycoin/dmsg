@@ -4,6 +4,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/skycoin/dmsg/encodedecoder"
+
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/netutil"
 )
@@ -14,9 +16,11 @@ type ClientSession struct {
 	porter *netutil.Porter
 }
 
-func makeClientSession(entity *EntityCommon, porter *netutil.Porter, conn net.Conn, rPK cipher.PubKey) (ClientSession, error) {
+func makeClientSession(entity *EntityCommon, porter *netutil.Porter, conn net.Conn,
+	rPK cipher.PubKey, ed encodedecoder.EncodeDecoder) (ClientSession, error) {
 	var cSes ClientSession
 	cSes.SessionCommon = new(SessionCommon)
+	cSes.ed = ed
 	if err := cSes.SessionCommon.initClient(entity, conn, rPK); err != nil {
 		return cSes, err
 	}

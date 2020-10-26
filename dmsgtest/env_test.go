@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skycoin/dmsg/encodedecoder"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/skycoin/dmsg"
@@ -30,6 +32,7 @@ func TestEnv(t *testing.T) {
 			env := NewEnv(t, timeout)
 			err := env.Startup(0, c.ServerN, c.ClientN, &dmsg.Config{
 				MinSessions: c.MinSessions,
+				EDType:      encodedecoder.TypeGOB,
 			})
 			require.NoError(t, err, i)
 			env.Shutdown()
@@ -75,7 +78,7 @@ func TestEnv(t *testing.T) {
 		s, err := env.NewServer(updateInterval)
 		require.NoError(t, err)
 
-		c, err := env.NewClient(&dmsg.Config{UpdateInterval: updateInterval})
+		c, err := env.NewClient(&dmsg.Config{UpdateInterval: updateInterval, EDType: encodedecoder.TypeGOB})
 		require.NoError(t, err)
 
 		// Ensure existence of client/server entries in given time interval.

@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/skycoin/dmsg/encodedecoder"
+
 	"github.com/go-chi/chi"
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/stretchr/testify/assert"
@@ -134,7 +136,7 @@ func runHTTPSrv(t *testing.T, dc disc.APIClient, fName string) string {
 	pk, sk := cipher.GenerateKeyPair()
 	httpPath := filepath.Base(fName)
 
-	dmsgC := dmsg.NewClient(pk, sk, dc, nil)
+	dmsgC := dmsg.NewClient(pk, sk, dc, &dmsg.Config{EDType: encodedecoder.TypeGOB})
 	go dmsgC.Serve(context.Background())
 	t.Cleanup(func() { assert.NoError(t, dmsgC.Close()) })
 	<-dmsgC.Ready()
@@ -164,7 +166,7 @@ func runHTTPSrv(t *testing.T, dc disc.APIClient, fName string) string {
 func newHTTPClient(t *testing.T, dc disc.APIClient) *http.Client {
 	pk, sk := cipher.GenerateKeyPair()
 
-	dmsgC := dmsg.NewClient(pk, sk, dc, nil)
+	dmsgC := dmsg.NewClient(pk, sk, dc, &dmsg.Config{EDType: encodedecoder.TypeGOB})
 	go dmsgC.Serve(context.Background())
 	t.Cleanup(func() { assert.NoError(t, dmsgC.Close()) })
 	<-dmsgC.Ready()

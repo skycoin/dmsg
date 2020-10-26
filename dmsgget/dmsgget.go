@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/skycoin/dmsg/encodedecoder"
+
 	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -192,7 +194,7 @@ func parseOutputFile(name string, urlPath string) (*os.File, error) {
 }
 
 func (dg *DmsgGet) startDmsg(ctx context.Context, log logrus.FieldLogger, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
-	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dg.dmsgF.Disc), &dmsg.Config{MinSessions: dg.dmsgF.Sessions})
+	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dg.dmsgF.Disc), &dmsg.Config{MinSessions: dg.dmsgF.Sessions, EDType: encodedecoder.TypeGOB})
 	go dmsgC.Serve(context.Background())
 
 	stop = func() {

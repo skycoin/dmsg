@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/skycoin/dmsg/encodedecoder"
+
 	"github.com/skycoin/skycoin/src/util/logging"
 
 	"github.com/skycoin/dmsg/cipher"
@@ -45,6 +47,7 @@ type Config struct {
 	MinSessions    int
 	UpdateInterval time.Duration // Duration between discovery entry updates.
 	Callbacks      *ClientCallbacks
+	EDType         encodedecoder.Type
 }
 
 // Ensure ensures all config values are set.
@@ -66,6 +69,7 @@ func DefaultConfig() *Config {
 	conf := &Config{
 		MinSessions:    DefaultMinSessions,
 		UpdateInterval: DefaultUpdateInterval,
+		EDType:         encodedecoder.TypeGOB,
 	}
 	return conf
 }
@@ -83,6 +87,8 @@ type Client struct {
 	done  chan struct{}
 	once  sync.Once
 	sesMx sync.Mutex
+
+	ed encodedecoder.EncodeDecoder
 }
 
 // NewClient creates a dmsg client entity.
@@ -92,6 +98,8 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 	c.porter = netutil.NewPorter(netutil.PorterMinEphemeral)
 	c.errCh = make(chan error, 10)
 	c.done = make(chan struct{})
+
+	c.ed = encodedecoder.New(conf.EDType)
 
 	log := logging.MustGetLogger("dmsg_client")
 
@@ -374,7 +382,7 @@ func (ce *Client) dialSession(ctx context.Context, entry *disc.Entry) (cs Client
 		return ClientSession{}, err
 	}
 
-	dSes, err := makeClientSession(&ce.EntityCommon, ce.porter, conn, entry.Static)
+	dSes, err := makeClientSession(&ce.EntityCommon, ce.porter, conn, entry.Static, ce.ed)
 	if err != nil {
 		return ClientSession{}, err
 	}

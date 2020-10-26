@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/skycoin/dmsg/encodedecoder"
+
 	"github.com/skycoin/dmsg/cipher"
 )
 
@@ -100,8 +102,8 @@ const sigLen = len(cipher.Sig{})
 type SignedObject []byte
 
 // MakeSignedStreamRequest encodes and signs a StreamRequest into a SignedObject format.
-func MakeSignedStreamRequest(req *StreamRequest, sk cipher.SecKey) SignedObject {
-	obj := encodeGob(req)
+func MakeSignedStreamRequest(ed encodedecoder.EncodeDecoder, req *StreamRequest, sk cipher.SecKey) SignedObject {
+	obj := ed.Encode(req)
 	sig := SignBytes(obj, sk)
 	signedObj := append(sig[:], obj...)
 	req.raw = signedObj
@@ -109,8 +111,8 @@ func MakeSignedStreamRequest(req *StreamRequest, sk cipher.SecKey) SignedObject 
 }
 
 // MakeSignedStreamResponse encodes and signs a StreamResponse into a SignedObject format.
-func MakeSignedStreamResponse(resp *StreamResponse, sk cipher.SecKey) SignedObject {
-	obj := encodeGob(resp)
+func MakeSignedStreamResponse(ed encodedecoder.EncodeDecoder, resp *StreamResponse, sk cipher.SecKey) SignedObject {
+	obj := ed.Encode(resp)
 	sig := SignBytes(obj, sk)
 	signedObj := append(sig[:], obj...)
 	resp.raw = signedObj
@@ -140,24 +142,48 @@ func (so SignedObject) Object() []byte {
 }
 
 // ObtainStreamRequest obtains a StreamRequest from the encoded object bytes.
-func (so SignedObject) ObtainStreamRequest() (StreamRequest, error) {
-	if !so.Valid() {
-		return StreamRequest{}, ErrSignedObjectInvalid
+func (so SignedObject) ObtainStreamRequest(ed encodedecoder.EncodeDecoder, encrypted bool) (StreamRequest, error) {
+	if encrypted {
+		if !so.Valid() {
+			return StreamRequest{}, ErrSignedObjectInvalid
+		}
 	}
-	var req StreamRequest
-	err := decodeGob(&req, so[sigLen:])
+
+	var (
+		req StreamRequest
+		err error
+	)
+	if encrypted {
+		err = ed.Decode(&req, so[sigLen:])
+	} else {
+		err = ed.Decode(&req, so)
+	}
+
 	req.raw = so
+
 	return req, err
 }
 
 // ObtainStreamResponse obtains a StreamResponse from the encoded object bytes.
-func (so SignedObject) ObtainStreamResponse() (StreamResponse, error) {
-	if !so.Valid() {
-		return StreamResponse{}, ErrSignedObjectInvalid
+func (so SignedObject) ObtainStreamResponse(ed encodedecoder.EncodeDecoder, encrypted bool) (StreamResponse, error) {
+	if encrypted {
+		if !so.Valid() {
+			return StreamResponse{}, ErrSignedObjectInvalid
+		}
 	}
-	var resp StreamResponse
-	err := decodeGob(&resp, so[sigLen:])
+
+	var (
+		resp StreamResponse
+		err  error
+	)
+	if encrypted {
+		err = ed.Decode(&resp, so[sigLen:])
+	} else {
+		err = ed.Decode(&resp, so)
+	}
+
 	resp.raw = so
+
 	return resp, err
 }
 
@@ -172,7 +198,7 @@ type StreamRequest struct {
 }
 
 // Verify verifies the StreamRequest.
-func (req StreamRequest) Verify(lastTimestamp int64) error {
+func (req StreamRequest) Verify(lastTimestamp int64, encrypted bool) error {
 	// Check fields.
 	if req.SrcAddr.PK.Null() {
 		return ErrReqInvalidSrcPK
@@ -190,9 +216,11 @@ func (req StreamRequest) Verify(lastTimestamp int64) error {
 		return ErrReqInvalidTimestamp
 	}
 
-	// Check signature.
-	if err := cipher.VerifyPubKeySignedPayload(req.SrcAddr.PK, req.raw.Sig(), req.raw.Object()); err != nil {
-		return ErrReqInvalidSig.Wrap(err)
+	if encrypted {
+		// Check signature.
+		if err := cipher.VerifyPubKeySignedPayload(req.SrcAddr.PK, req.raw.Sig(), req.raw.Object()); err != nil {
+			return ErrReqInvalidSig.Wrap(err)
+		}
 	}
 
 	return nil
@@ -209,15 +237,17 @@ type StreamResponse struct {
 }
 
 // Verify verifies the StreamResponse.
-func (resp StreamResponse) Verify(req StreamRequest) error {
+func (resp StreamResponse) Verify(req StreamRequest, encrypted bool) error {
 	// Check fields.
 	if resp.ReqHash != req.raw.Hash() {
 		return ErrDialRespInvalidHash
 	}
 
-	// Check signature.
-	if err := cipher.VerifyPubKeySignedPayload(req.DstAddr.PK, resp.raw.Sig(), resp.raw.Object()); err != nil {
-		return ErrDialRespInvalidSig.Wrap(err)
+	if encrypted {
+		// Check signature.
+		if err := cipher.VerifyPubKeySignedPayload(req.DstAddr.PK, resp.raw.Sig(), resp.raw.Object()); err != nil {
+			return ErrDialRespInvalidSig.Wrap(err)
+		}
 	}
 
 	// Check whether response states that the request is accepted.

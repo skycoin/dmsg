@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skycoin/dmsg/encodedecoder"
+
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/stretchr/testify/assert"
@@ -138,6 +140,7 @@ func newDmsgClient(t *testing.T, dc disc.APIClient, minSessions int, name string
 	dmsgC := dmsg.NewClient(pk, sk, dc, &dmsg.Config{
 		MinSessions: minSessions,
 		Callbacks:   nil,
+		EDType:      encodedecoder.TypeGOB,
 	})
 	dmsgC.SetLogger(logging.MustGetLogger(name))
 	go dmsgC.Serve(context.Background())

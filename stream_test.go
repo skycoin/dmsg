@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skycoin/dmsg/encodedecoder"
+
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
@@ -28,6 +30,7 @@ func TestStream(t *testing.T) {
 	srvConf := &ServerConfig{
 		MaxSessions:    maxSessions,
 		UpdateInterval: 0,
+		EDType:         encodedecoder.TypeGOB,
 	}
 	srv := NewServer(pkSrv, skSrv, dc, srvConf, nil)
 	srv.SetLogger(logging.MustGetLogger("server"))

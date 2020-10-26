@@ -4,6 +4,8 @@ import (
 	"io"
 	"net"
 
+	"github.com/skycoin/dmsg/encodedecoder"
+
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/yamux"
 
@@ -18,15 +20,18 @@ type ServerSession struct {
 	m servermetrics.Metrics
 }
 
-func makeServerSession(m servermetrics.Metrics, entity *EntityCommon, conn net.Conn) (ServerSession, error) {
+func makeServerSession(m servermetrics.Metrics, entity *EntityCommon, conn net.Conn,
+	encrypt bool, ed encodedecoder.EncodeDecoder) (ServerSession, error) {
 	var sSes ServerSession
 	sSes.SessionCommon = new(SessionCommon)
+	sSes.ed = ed
 	sSes.nMap = make(noise.NonceMap)
 	if err := sSes.SessionCommon.initServer(entity, conn); err != nil {
 		m.RecordSession(servermetrics.DeltaFailed) // record failed connection
 		return sSes, err
 	}
 	sSes.m = m
+	sSes.encrypt = encrypt
 	return sSes, nil
 }
 
@@ -71,12 +76,12 @@ func (ss *ServerSession) serveStream(log logrus.FieldLogger, yStr *yamux.Stream)
 		if err != nil {
 			return StreamRequest{}, err
 		}
-		req, err := obj.ObtainStreamRequest()
+		req, err := obj.ObtainStreamRequest(ss.ed, ss.encrypt)
 		if err != nil {
 			return StreamRequest{}, err
 		}
 		// TODO(evanlinjin): Implement timestamp tracker.
-		if err := req.Verify(0); err != nil {
+		if err := req.Verify(0, ss.encrypt); err != nil {
 			return StreamRequest{}, err
 		}
 		if req.SrcAddr.PK != ss.rPK {
@@ -147,10 +152,10 @@ func (ss *ServerSession) forwardRequest(req StreamRequest) (yStr *yamux.Stream, 
 		return nil, nil, err
 	}
 	var resp StreamResponse
-	if resp, err = respObj.ObtainStreamResponse(); err != nil {
+	if resp, err = respObj.ObtainStreamResponse(ss.ed, ss.encrypt); err != nil {
 		return nil, nil, err
 	}
-	if err = resp.Verify(req); err != nil {
+	if err = resp.Verify(req, ss.encrypt); err != nil {
 		return nil, nil, err
 	}
 	return yStr, respObj, nil
