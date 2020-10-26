@@ -124,7 +124,7 @@ func (sc *SessionCommon) writeObject(w io.Writer, obj SignedObject) error {
 		p = append(make([]byte, 2), p...)
 		binary.BigEndian.PutUint16(p, uint16(len(p)-2))
 	} else {
-		pLen := strconv.FormatUint(uint64(uint16(len(p)-5)), 10)
+		pLen := strconv.FormatUint(uint64(uint16(len(p))), 10)
 		pLenBytes := []byte(pLen)
 		p = append(make([]byte, 5), p...)
 		for i := 0; i < 5; i++ {
