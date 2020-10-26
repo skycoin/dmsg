@@ -142,6 +142,7 @@ func (sc *SessionCommon) writeObject(w io.Writer, obj SignedObject) error {
 func (sc *SessionCommon) readObject(r io.Reader) (SignedObject, error) {
 	var pb []byte
 	if sc.encrypt {
+		fmt.Println("READING ENCRYPTED OBJECT")
 		lb := make([]byte, 2)
 		if _, err := io.ReadFull(r, lb); err != nil {
 			return nil, err
