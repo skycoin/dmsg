@@ -156,6 +156,7 @@ func (so SignedObject) ObtainStreamRequest(ed encodedecoder.EncodeDecoder, encry
 	if encrypted {
 		err = ed.Decode(&req, so[sigLen:])
 	} else {
+		fmt.Printf("DECODING: %s\n", string(so))
 		err = ed.Decode(&req, so)
 	}
 
@@ -192,7 +193,7 @@ type StreamRequest struct {
 	Timestamp int64  `json:"timestamp"`
 	SrcAddr   Addr   `json:"src_addr"`
 	DstAddr   Addr   `json:"dst_addr"`
-	NoiseMsg  []byte `json:"noise_msg"`
+	NoiseMsg  []byte `json:"-"`
 
 	raw SignedObject `enc:"-" json:"-"` // back reference.
 }
@@ -231,7 +232,7 @@ type StreamResponse struct {
 	ReqHash  cipher.SHA256 `json:"req_hash"` // Hash of associated dial request.
 	Accepted bool          `json:"accepted"` // Whether the request is accepted.
 	ErrCode  errorCode     `json:"err_coe"`  // Check if not accepted.
-	NoiseMsg []byte        `json:"noise_msg"`
+	NoiseMsg []byte        `json:"-"`
 
 	raw SignedObject `enc:"-" json:"-"` // back reference.
 }
