@@ -2,10 +2,12 @@ package dmsg
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -118,24 +120,58 @@ func (sc *SessionCommon) writeObject(w io.Writer, obj SignedObject) error {
 		sc.wMx.Lock()
 		p = sc.ns.EncryptUnsafe(obj)
 		sc.wMx.Unlock()
+
+		p = append(make([]byte, 2), p...)
+		binary.BigEndian.PutUint16(p, uint16(len(p)-2))
+	} else {
+		pLen := strconv.FormatUint(uint64(uint16(len(p)-2)), 10)
+		pLenBytes := []byte(pLen)
+		p = append(make([]byte, 5), p...)
+		for i := 0; i < 5; i++ {
+			if len(pLenBytes) > i {
+				p[i] = pLenBytes[i]
+			}
+		}
 	}
 
-	p = append(make([]byte, 2), p...)
-	binary.BigEndian.PutUint16(p, uint16(len(p)-2))
 	fmt.Printf("ENCRYPTED OBJECT: %v\n", p)
 	_, err := w.Write(p)
 	return err
 }
 
 func (sc *SessionCommon) readObject(r io.Reader) (SignedObject, error) {
-	lb := make([]byte, 2)
-	if _, err := io.ReadFull(r, lb); err != nil {
-		return nil, err
+	var pb []byte
+	if sc.encrypt {
+		lb := make([]byte, 2)
+		if _, err := io.ReadFull(r, lb); err != nil {
+			return nil, err
+		}
+		pb = make([]byte, binary.BigEndian.Uint16(lb))
+		if _, err := io.ReadFull(r, pb); err != nil {
+			return nil, err
+		}
+	} else {
+		lbBytes := make([]byte, 5)
+		if _, err := io.ReadFull(r, lbBytes); err != nil {
+			return nil, err
+		}
+		lastIdx := bytes.Index(lbBytes, []byte{0})
+		if lastIdx == -1 {
+			lastIdx = 5
+		}
+
+		lb, err := strconv.ParseUint(string(lbBytes[:lastIdx]), 10, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		pb := make([]byte, lb)
+		if _, err := io.ReadFull(r, pb); err != nil {
+			return nil, err
+		}
 	}
-	pb := make([]byte, binary.BigEndian.Uint16(lb))
-	if _, err := io.ReadFull(r, pb); err != nil {
-		return nil, err
-	}
+
+	fmt.Printf("GOT pb: %s\n", string(pb))
 
 	sc.rMx.Lock()
 	defer sc.rMx.Unlock()

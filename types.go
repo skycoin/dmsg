@@ -189,12 +189,12 @@ func (so SignedObject) ObtainStreamResponse(ed encodedecoder.EncodeDecoder, encr
 
 // StreamRequest represents a stream dial request object.
 type StreamRequest struct {
-	Timestamp int64
-	SrcAddr   Addr
-	DstAddr   Addr
-	NoiseMsg  []byte
+	Timestamp int64  `json:"timestamp"`
+	SrcAddr   Addr   `json:"src_addr"`
+	DstAddr   Addr   `json:"dst_addr"`
+	NoiseMsg  []byte `json:"noise_msg"`
 
-	raw SignedObject `enc:"-"` // back reference.
+	raw SignedObject `enc:"-" json:"-"` // back reference.
 }
 
 // Verify verifies the StreamRequest.
@@ -228,12 +228,12 @@ func (req StreamRequest) Verify(lastTimestamp int64, encrypted bool) error {
 
 // StreamResponse is the response of a StreamRequest.
 type StreamResponse struct {
-	ReqHash  cipher.SHA256 // Hash of associated dial request.
-	Accepted bool          // Whether the request is accepted.
-	ErrCode  errorCode     // Check if not accepted.
-	NoiseMsg []byte
+	ReqHash  cipher.SHA256 `json:"req_hash"` // Hash of associated dial request.
+	Accepted bool          `json:"accepted"` // Whether the request is accepted.
+	ErrCode  errorCode     `json:"err_coe"`  // Check if not accepted.
+	NoiseMsg []byte        `json:"noise_msg"`
 
-	raw SignedObject `enc:"-"` // back reference.
+	raw SignedObject `enc:"-" json:"-"` // back reference.
 }
 
 // Verify verifies the StreamResponse.
