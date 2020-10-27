@@ -264,6 +264,8 @@ func (ce *Client) Listen(port uint16) (*Listener, error) {
 		lis.close()
 		return nil, ErrPortOccupied
 	}
+	fmt.Printf("CLIENT: RESERVED PORT: %d\n", port)
+
 	lis.addCloseCallback(doneFn)
 	return lis, nil
 }
@@ -385,6 +387,16 @@ func (ce *Client) dialSession(ctx context.Context, entry *disc.Entry) (cs Client
 	dSes, err := makeClientSession(&ce.EntityCommon, ce.porter, conn, entry.Static, ce.ed)
 	if err != nil {
 		return ClientSession{}, err
+	}
+
+	pVal, ok := dSes.porter.PortValue(45)
+	if !ok {
+		fmt.Println("AFTER CREATING CLIENT SESSION, NO VALUE IN PORTER")
+	} else {
+		_, ok := pVal.(*Listener)
+		if !ok {
+			fmt.Println("AFTER CREATING CLIENT SESSION, PORTER VAL IS NOT LISTENER")
+		}
 	}
 
 	if !ce.setSession(ctx, dSes.SessionCommon) {
