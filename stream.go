@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"reflect"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -134,7 +135,7 @@ func (s *Stream) writeResponse(reqHash cipher.SHA256) error {
 	}
 	lis, ok := pVal.(*Listener)
 	if !ok {
-		fmt.Println("WRITE RESP: VAL IN PORTER IS NOT LISTENER")
+		fmt.Printf("WRITE RESP: VAL IN PORTER IS NOT LISTENER, OF TYPE: %v\n", reflect.TypeOf(pVal))
 		return ErrReqNoListener
 	}
 
