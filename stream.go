@@ -129,10 +129,12 @@ func (s *Stream) writeResponse(reqHash cipher.SHA256) error {
 	// Obtain associated local listener.
 	pVal, ok := s.ses.porter.PortValue(s.lAddr.Port)
 	if !ok {
+		fmt.Println("WRITE RESP: NO VAL IN PORTER")
 		return ErrReqNoListener
 	}
 	lis, ok := pVal.(*Listener)
 	if !ok {
+		fmt.Println("WRITE RESP: VAL IN PORTER IS NOT LISTENER")
 		return ErrReqNoListener
 	}
 
