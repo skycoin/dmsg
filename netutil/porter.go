@@ -2,7 +2,9 @@ package netutil
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"reflect"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -51,6 +53,7 @@ func (p *Porter) Reserve(port uint16, v interface{}) (bool, func()) {
 	p.ports[port] = PorterValue{
 		Value: v,
 	}
+	fmt.Printf("RESERVING PORT %d FOR TYPE %v\n", port, reflect.TypeOf(v))
 	return true, p.makePortFreer(port)
 }
 
