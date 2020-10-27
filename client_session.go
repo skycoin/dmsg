@@ -1,6 +1,7 @@
 package dmsg
 
 import (
+	"fmt"
 	"net"
 	"time"
 
@@ -117,9 +118,11 @@ func (cs *ClientSession) acceptStream() (dStr *Stream, err error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("ACCSTREAM: READ REQUEST: %v\n", req)
 	if err = dStr.writeResponse(req.raw.Hash()); err != nil {
 		return nil, err
 	}
+	fmt.Println("ACCSTREAM: WROTE RESPONSE")
 
 	// Clear deadline.
 	if err = dStr.SetDeadline(time.Time{}); err != nil {

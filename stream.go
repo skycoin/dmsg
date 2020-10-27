@@ -99,12 +99,15 @@ func (s *Stream) readRequest() (req StreamRequest, err error) {
 	if obj, err = s.ses.readObject(s.yStr); err != nil {
 		return
 	}
+	fmt.Println("READREQ: READ OBJECT")
 	if req, err = obj.ObtainStreamRequest(s.ses.ed, s.ses.encrypt); err != nil {
 		return
 	}
+	fmt.Println("READREQ: OBTAINED STREAM REQUEST")
 	if err = req.Verify(0, s.ses.encrypt); err != nil {
 		return
 	}
+	fmt.Println("READREQ: VERIFIED STREAM REQUEST")
 	if req.DstAddr.PK != s.ses.LocalPK() {
 		err = ErrReqInvalidDstPK
 		return
