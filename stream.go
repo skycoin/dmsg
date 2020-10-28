@@ -128,6 +128,7 @@ func (s *Stream) readRequest() (req StreamRequest, err error) {
 
 func (s *Stream) writeResponse(reqHash cipher.SHA256) error {
 	// Obtain associated local listener.
+	fmt.Printf("WRITE RESP: GETTING VALUE FROM PORTER FOR %d\n", s.lAddr.Port)
 	pVal, ok := s.ses.porter.PortValue(s.lAddr.Port)
 	if !ok {
 		fmt.Println("WRITE RESP: NO VAL IN PORTER")
