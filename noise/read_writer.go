@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -56,14 +57,17 @@ type ReadWriter struct {
 
 	wErr error
 	wMx  sync.Mutex
+
+	encrypt bool
 }
 
 // NewReadWriter constructs a new ReadWriter.
-func NewReadWriter(rw io.ReadWriter, ns *Noise) *ReadWriter {
+func NewReadWriter(rw io.ReadWriter, ns *Noise, encrypt bool) *ReadWriter {
 	return &ReadWriter{
 		origin:   rw,
 		ns:       ns,
 		rawInput: bufio.NewReaderSize(rw, maxFrameSize*2), // can fit 2 frames.
+		encrypt:  encrypt,
 	}
 }
 
@@ -80,14 +84,19 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 	}
 
 	for {
-		ciphertext, err := ReadRawFrame(rw.rawInput)
+		ciphertext, err := readRawFrame(rw.rawInput, rw.encrypt)
 		if err != nil {
 			return 0, rw.processReadError(err)
 		}
 
-		plaintext, err := rw.ns.DecryptUnsafe(ciphertext)
-		if err != nil {
-			return 0, rw.processReadError(err)
+		var plaintext []byte
+		if rw.encrypt {
+			plaintext, err = rw.ns.DecryptUnsafe(ciphertext)
+			if err != nil {
+				return 0, rw.processReadError(err)
+			}
+		} else {
+			plaintext = ciphertext
 		}
 
 		if len(plaintext) == 0 {
@@ -133,6 +142,13 @@ func (rw *ReadWriter) Write(p []byte) (n int, err error) {
 
 	p = p[:]
 
+	prefixSizeToRead := prefixSize
+	if rw.encrypt {
+		prefixSizeToRead = 5
+	}
+
+	maxPayloadSize := maxFrameSize - prefixSizeToRead - authSize
+
 	for len(p) > 0 {
 		// Enforce max frame size.
 		wn := len(p)
@@ -140,7 +156,14 @@ func (rw *ReadWriter) Write(p []byte) (n int, err error) {
 			wn = maxPayloadSize
 		}
 
-		wb, err := WriteRawFrame(rw.origin, rw.ns.EncryptUnsafe(p[:wn]))
+		var payloadToWrite []byte
+		if rw.encrypt {
+			payloadToWrite = rw.ns.EncryptUnsafe(p[:wn])
+		} else {
+			payloadToWrite = p[:wn]
+		}
+
+		wb, err := writeRawFrame(rw.origin, payloadToWrite, rw.encrypt)
 		if err != nil {
 			// when a short write occurs, it is hard to recover from so we
 			// consider it a permanent error
@@ -254,8 +277,25 @@ func ResponderHandshake(ns *Noise, r *bufio.Reader, w io.Writer) error {
 // WriteRawFrame writes a raw frame (data prefixed with a uint16 len).
 // It returns the bytes written.
 func WriteRawFrame(w io.Writer, p []byte) ([]byte, error) {
-	buf := make([]byte, prefixSize+len(p))
-	binary.BigEndian.PutUint16(buf, uint16(len(p)))
+	return writeRawFrame(w, p, true)
+}
+
+func writeRawFrame(w io.Writer, p []byte, encrypt bool) ([]byte, error) {
+	prefixSizeToWrite := prefixSize
+	if !encrypt {
+		prefixSizeToWrite = 5
+	}
+
+	buf := make([]byte, prefixSizeToWrite+len(p))
+	if encrypt {
+		binary.BigEndian.PutUint16(buf, uint16(len(p)))
+	} else {
+		pLenStr := strconv.FormatUint(uint64(uint16(len(p))), 10)
+		pLenBytes := []byte(pLenStr)
+		for i := 0; i < len(pLenBytes); i++ {
+			buf[i] = pLenBytes[i]
+		}
+	}
 	copy(buf[prefixSize:], p)
 
 	n, err := w.Write(buf)
@@ -264,13 +304,42 @@ func WriteRawFrame(w io.Writer, p []byte) ([]byte, error) {
 
 // ReadRawFrame attempts to read a raw frame from a buffered reader.
 func ReadRawFrame(r *bufio.Reader) (p []byte, err error) {
-	prefixB, err := r.Peek(prefixSize)
+	return readRawFrame(r, true)
+}
+
+func ReadRawFrameUnencrypted(r *bufio.Reader) (p []byte, err error) {
+	return readRawFrame(r, false)
+}
+
+func readRawFrame(r *bufio.Reader, encrypt bool) (p []byte, err error) {
+	prefixSizeToRead := prefixSize
+	if !encrypt {
+		prefixSizeToRead = 5
+	}
+
+	prefixB, err := r.Peek(prefixSizeToRead)
 	if err != nil {
 		return nil, err
 	}
 
 	// obtain payload size
-	prefix := int(binary.BigEndian.Uint16(prefixB))
+	var prefix int
+	if encrypt {
+		prefix = int(binary.BigEndian.Uint16(prefixB))
+	} else {
+		lastIdx := bytes.Index(prefixB, []byte{0})
+		var prefixStr string
+		if lastIdx == -1 {
+			prefixStr = string(prefixB)
+		} else {
+			prefixStr = string(prefixB[:lastIdx])
+		}
+		prefixUint, err := strconv.ParseUint(prefixStr, 64, 10)
+		if err != nil {
+			return nil, err
+		}
+		prefix = int(prefixUint)
+	}
 	if prefix > maxPrefixValue {
 		return nil, &netError{
 			err:     fmt.Errorf("noise prefix value %dB exceeds maximum %dB", prefix, maxPrefixValue),
@@ -280,15 +349,15 @@ func ReadRawFrame(r *bufio.Reader) (p []byte, err error) {
 	}
 
 	// obtain payload
-	b, err := r.Peek(prefixSize + prefix)
+	b, err := r.Peek(prefixSizeToRead + prefix)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := r.Discard(prefixSize + prefix); err != nil {
+	if _, err := r.Discard(prefixSizeToRead + prefix); err != nil {
 		panic(fmt.Errorf("unexpected error when discarding %d bytes: %v", prefixSize+prefix, err))
 	}
 
-	return b[prefixSize:], nil
+	return b[prefixSizeToRead:], nil
 }
 
 func isTemp(err error) bool {

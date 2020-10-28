@@ -204,7 +204,7 @@ func (s *Stream) prepareFields(init bool, lAddr, rAddr Addr) {
 	s.lAddr = lAddr
 	s.rAddr = rAddr
 	s.ns = ns
-	s.nsConn = noise.NewReadWriter(s.yStr, s.ns)
+	s.nsConn = noise.NewReadWriter(s.yStr, s.ns, s.ses.encrypt)
 	s.log = s.ses.log.WithField("stream", s.lAddr.ShortString()+"->"+s.rAddr.ShortString())
 }
 
