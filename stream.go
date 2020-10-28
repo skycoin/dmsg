@@ -240,12 +240,20 @@ func (s *Stream) StreamID() uint32 {
 
 // Read implements io.Reader
 func (s *Stream) Read(b []byte) (int, error) {
-	return s.nsConn.Read(b)
+	if s.ses.encrypt {
+		return s.nsConn.Read(b)
+	}
+
+	return s.yStr.Read(b)
 }
 
 // Write implements io.Writer
 func (s *Stream) Write(b []byte) (int, error) {
-	return s.nsConn.Write(b)
+	if s.ses.encrypt {
+		return s.nsConn.Write(b)
+	}
+
+	return s.yStr.Write(b)
 }
 
 // SetDeadline implements net.Conn
