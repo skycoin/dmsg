@@ -242,9 +242,11 @@ func (resp StreamResponse) Verify(req StreamRequest, encrypted bool) error {
 	fmt.Printf("VERIFY RESP: REQ HASH FROM RESP: %v\n", resp.ReqHash)
 	fmt.Printf("VERIFY RESP: REQ RAW HASH: %v\n", req.raw.Hash())
 
-	// Check fields.
-	if resp.ReqHash != req.raw.Hash() {
-		return ErrDialRespInvalidHash
+	if encrypted {
+		// Check fields.
+		if resp.ReqHash != req.raw.Hash() {
+			return ErrDialRespInvalidHash
+		}
 	}
 
 	if encrypted {
