@@ -114,10 +114,10 @@ func (s *Stream) readRequest() (req StreamRequest, err error) {
 		return
 	}
 
-	if s.ses.encrypt {
-		// Prepare fields.
-		s.prepareFields(false, req.DstAddr, req.SrcAddr)
+	// Prepare fields.
+	s.prepareFields(false, req.DstAddr, req.SrcAddr)
 
+	if s.ses.encrypt {
 		if err = s.ns.ProcessHandshakeMessage(req.NoiseMsg); err != nil {
 			return
 		}
