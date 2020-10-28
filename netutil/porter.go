@@ -140,6 +140,7 @@ func (p *Porter) makePortFreer(port uint16) func() {
 	once := new(sync.Once)
 
 	action := func() {
+		fmt.Printf("FREEING PORT %d\n", port)
 		p.Lock()
 		defer p.Unlock()
 
