@@ -197,6 +197,7 @@ func (s *Stream) prepareFields(init bool, lAddr, rAddr Addr) {
 		s.log.WithError(err).Panic("Failed to prepare stream noise object.")
 	}
 
+	fmt.Printf("PREP FIELDS: SETTING L ADDR TO %v\n", lAddr)
 	s.lAddr = lAddr
 	s.rAddr = rAddr
 	s.ns = ns
