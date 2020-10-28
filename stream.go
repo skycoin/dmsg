@@ -240,7 +240,7 @@ func (s *Stream) StreamID() uint32 {
 
 // Read implements io.Reader
 func (s *Stream) Read(b []byte) (int, error) {
-	fmt.Println("STREAM READ: READING")
+	fmt.Printf("STREAM READ: READING ON %v\n", s.lAddr)
 
 	if s.ses.encrypt {
 		return s.nsConn.Read(b)
