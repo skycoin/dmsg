@@ -72,6 +72,7 @@ func (l *Listener) Accept() (net.Conn, error) {
 func (l *Listener) AcceptStream() (*Stream, error) {
 	select {
 	case tp, ok := <-l.accept:
+		fmt.Printf("ACC STREAM: OK: %v\n", ok)
 		if !ok {
 			return nil, ErrEntityClosed
 		}
