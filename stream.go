@@ -171,13 +171,16 @@ func (s *Stream) readResponse(req StreamRequest) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("READRESP: READ OBJECT")
 	resp, err := obj.ObtainStreamResponse(s.ses.ed, s.ses.encrypt)
 	if err != nil {
 		return err
 	}
+	fmt.Println("READRESP: OBTAINED STREAM RESPONSE")
 	if err := resp.Verify(req, s.ses.encrypt); err != nil {
 		return err
 	}
+	fmt.Println("READRESP: VERIFIED RESPONSE")
 
 	if s.ses.encrypt {
 		return s.ns.ProcessHandshakeMessage(resp.NoiseMsg)

@@ -59,9 +59,13 @@ func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream, err error) {
 		return nil, err
 	}
 
+	fmt.Println("DIAL STREAM: WROTE REQUEST")
+
 	if err := dStr.readResponse(req); err != nil {
 		return nil, err
 	}
+
+	fmt.Println("DIAL STREAM: READ RESPONSE")
 
 	// Clear deadline.
 	if err = dStr.SetDeadline(time.Time{}); err != nil {
