@@ -322,12 +322,15 @@ func readRawFrame(r *bufio.Reader, encrypt bool) (p []byte, err error) {
 		return nil, err
 	}
 
+	fmt.Printf("READ RAW FRAME: READ PREFIXB: %v\n", prefixB)
+
 	// obtain payload size
 	var prefix int
 	if encrypt {
 		prefix = int(binary.BigEndian.Uint16(prefixB))
 	} else {
 		lastIdx := bytes.Index(prefixB, []byte{0})
+		fmt.Printf("READ RAW FRAME: LAST IDX: %v\n", lastIdx)
 		var prefixStr string
 		if lastIdx == -1 {
 			prefixStr = string(prefixB)
