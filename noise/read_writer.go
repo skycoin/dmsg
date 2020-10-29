@@ -337,7 +337,7 @@ func readRawFrame(r *bufio.Reader, encrypt bool) (p []byte, err error) {
 		} else {
 			prefixStr = string(prefixB[:lastIdx])
 		}
-		prefixUint, err := strconv.ParseUint(prefixStr, 64, 10)
+		prefixUint, err := strconv.ParseUint(prefixStr, 10, 64)
 		if err != nil {
 			return nil, err
 		}
