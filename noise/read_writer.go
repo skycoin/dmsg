@@ -296,7 +296,7 @@ func writeRawFrame(w io.Writer, p []byte, encrypt bool) ([]byte, error) {
 			buf[i] = pLenBytes[i]
 		}
 	}
-	copy(buf[prefixSize:], p)
+	copy(buf[prefixSizeToWrite:], p)
 
 	n, err := w.Write(buf)
 	return buf[:n], err
