@@ -126,10 +126,12 @@ func (sc *SessionCommon) writeObject(w io.Writer, obj SignedObject) error {
 	} else {
 		pLen := strconv.FormatUint(uint64(uint16(len(p))), 10)
 		pLenBytes := []byte(pLen)
-		p = append(make([]byte, 5), p...)
+		p = append(make([]byte, len(pLenBytes)+1), p...)
 		for i := 0; i < 5; i++ {
 			if len(pLenBytes) > i {
 				p[i] = pLenBytes[i]
+			} else {
+				p[i] = ';'
 			}
 		}
 	}
@@ -157,7 +159,7 @@ func (sc *SessionCommon) readObject(r io.Reader) (SignedObject, error) {
 			return nil, err
 		}
 		fmt.Printf("READ LB: %s\n", string(lbBytes))
-		lastIdx := bytes.Index(lbBytes, []byte{0})
+		lastIdx := bytes.Index(lbBytes, []byte{';'})
 		if lastIdx == -1 {
 			lastIdx = 5
 		}

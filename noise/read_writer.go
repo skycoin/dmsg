@@ -286,6 +286,8 @@ func writeRawFrame(w io.Writer, p []byte, encrypt bool) ([]byte, error) {
 		prefixSizeToWrite = 5
 	}
 
+	fmt.Printf("WRITE RAW RAME: PREFIX: %v\n", prefixSizeToWrite)
+
 	buf := make([]byte, prefixSizeToWrite+len(p))
 	if encrypt {
 		binary.BigEndian.PutUint16(buf, uint16(len(p)))
@@ -295,8 +297,13 @@ func writeRawFrame(w io.Writer, p []byte, encrypt bool) ([]byte, error) {
 		for i := 0; i < len(pLenBytes); i++ {
 			buf[i] = pLenBytes[i]
 		}
+		for i := len(pLenBytes); i < 5; i++ {
+			buf[i] = ';'
+		}
 	}
 	copy(buf[prefixSizeToWrite:], p)
+
+	fmt.Printf("WRITE RAW FRAME: WRITING BUF: %v\n", buf)
 
 	n, err := w.Write(buf)
 	return buf[:n], err
@@ -329,7 +336,7 @@ func readRawFrame(r *bufio.Reader, encrypt bool) (p []byte, err error) {
 	if encrypt {
 		prefix = int(binary.BigEndian.Uint16(prefixB))
 	} else {
-		lastIdx := bytes.Index(prefixB, []byte{0})
+		lastIdx := bytes.Index(prefixB, []byte{';'})
 		fmt.Printf("READ RAW FRAME: LAST IDX: %v\n", lastIdx)
 		var prefixStr string
 		if lastIdx == -1 {
@@ -342,6 +349,8 @@ func readRawFrame(r *bufio.Reader, encrypt bool) (p []byte, err error) {
 			return nil, err
 		}
 		prefix = int(prefixUint)
+
+		fmt.Printf("READ RAW FRAME: GOT PREFIX: %v\n", prefix)
 	}
 	if prefix > maxPrefixValue {
 		return nil, &netError{
@@ -360,7 +369,9 @@ func readRawFrame(r *bufio.Reader, encrypt bool) (p []byte, err error) {
 		panic(fmt.Errorf("unexpected error when discarding %d bytes: %v", prefixSize+prefix, err))
 	}
 
-	return b[prefixSizeToRead:], nil
+	payload := b[prefixSizeToRead:]
+	fmt.Printf("READ RAW FRAME: GOT PAYLOAD: %v\n", payload)
+	return payload, nil
 }
 
 func isTemp(err error) bool {
