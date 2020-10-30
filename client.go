@@ -48,6 +48,7 @@ type Config struct {
 	UpdateInterval time.Duration // Duration between discovery entry updates.
 	Callbacks      *ClientCallbacks
 	EDType         encodedecoder.Type
+	Encrypt        bool
 }
 
 // Ensure ensures all config values are set.
@@ -88,7 +89,8 @@ type Client struct {
 	once  sync.Once
 	sesMx sync.Mutex
 
-	ed encodedecoder.EncodeDecoder
+	ed      encodedecoder.EncodeDecoder
+	encrypt bool
 }
 
 // NewClient creates a dmsg client entity.
@@ -100,6 +102,7 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 	c.done = make(chan struct{})
 
 	c.ed = encodedecoder.New(conf.EDType)
+	c.encrypt = conf.Encrypt
 
 	log := logging.MustGetLogger("dmsg_client")
 
@@ -384,7 +387,7 @@ func (ce *Client) dialSession(ctx context.Context, entry *disc.Entry) (cs Client
 		return ClientSession{}, err
 	}
 
-	dSes, err := makeClientSession(&ce.EntityCommon, ce.porter, conn, entry.Static, ce.ed)
+	dSes, err := makeClientSession(&ce.EntityCommon, ce.porter, conn, entry.Static, ce.ed, ce.encrypt)
 	if err != nil {
 		return ClientSession{}, err
 	}

@@ -18,10 +18,11 @@ type ClientSession struct {
 }
 
 func makeClientSession(entity *EntityCommon, porter *netutil.Porter, conn net.Conn,
-	rPK cipher.PubKey, ed encodedecoder.EncodeDecoder) (ClientSession, error) {
+	rPK cipher.PubKey, ed encodedecoder.EncodeDecoder, encrypt bool) (ClientSession, error) {
 	var cSes ClientSession
 	cSes.SessionCommon = new(SessionCommon)
 	cSes.ed = ed
+	cSes.encrypt = encrypt
 	if err := cSes.SessionCommon.initClient(entity, conn, rPK); err != nil {
 		return cSes, err
 	}
