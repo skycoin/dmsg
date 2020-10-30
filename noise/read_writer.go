@@ -319,6 +319,7 @@ func ReadRawFrameUnencrypted(r *bufio.Reader) (p []byte, err error) {
 }
 
 func readRawFrame(r *bufio.Reader, encrypt bool) (p []byte, err error) {
+	fmt.Printf("READ RAW FRAME: ENCRYPT: %v\n", encrypt)
 	prefixSizeToRead := prefixSize
 	if !encrypt {
 		prefixSizeToRead = 5
