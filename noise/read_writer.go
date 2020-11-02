@@ -281,6 +281,8 @@ func WriteRawFrame(w io.Writer, p []byte) ([]byte, error) {
 }
 
 func writeRawFrame(w io.Writer, p []byte, encrypt bool) ([]byte, error) {
+	fmt.Printf("WRITE RAW FRAME: encrypt: %v\n", encrypt)
+
 	prefixSizeToWrite := prefixSize
 	if !encrypt {
 		prefixSizeToWrite = 5

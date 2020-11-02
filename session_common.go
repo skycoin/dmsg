@@ -46,22 +46,30 @@ func (sc *SessionCommon) GetConn() net.Conn {
 }
 
 func (sc *SessionCommon) initClient(entity *EntityCommon, conn net.Conn, rPK cipher.PubKey) error {
-	ns, err := noise.New(noise.HandshakeXK, noise.Config{
-		LocalPK:   entity.pk,
-		LocalSK:   entity.sk,
-		RemotePK:  rPK,
-		Initiator: true,
-	})
-	if err != nil {
-		return err
-	}
+	fmt.Printf("INIT CLIENT: REMOTE PK: %v\n", conn.RemoteAddr())
 
-	r := bufio.NewReader(conn)
-	if err := noise.InitiatorHandshake(ns, r, conn); err != nil {
-		return err
-	}
-	if r.Buffered() > 0 {
-		return ErrSessionHandshakeExtraBytes
+	if sc.encrypt {
+		ns, err := noise.New(noise.HandshakeXK, noise.Config{
+			LocalPK:   entity.pk,
+			LocalSK:   entity.sk,
+			RemotePK:  rPK,
+			Initiator: true,
+		})
+		if err != nil {
+			return err
+		}
+
+		r := bufio.NewReader(conn)
+		if err := noise.InitiatorHandshake(ns, r, conn); err != nil {
+			return err
+		}
+		if r.Buffered() > 0 {
+			return ErrSessionHandshakeExtraBytes
+		}
+		sc.ns = ns
+		sc.log = entity.log.WithField("session", ns.RemoteStatic())
+	} else {
+		sc.log = entity.log.WithField("session", conn.RemoteAddr())
 	}
 
 	ySes, err := yamux.Client(conn, yamux.DefaultConfig())
@@ -73,28 +81,35 @@ func (sc *SessionCommon) initClient(entity *EntityCommon, conn net.Conn, rPK cip
 	sc.rPK = rPK
 	sc.netConn = conn
 	sc.ys = ySes
-	sc.ns = ns
 	sc.nMap = make(noise.NonceMap)
-	sc.log = entity.log.WithField("session", ns.RemoteStatic())
 	return nil
 }
 
 func (sc *SessionCommon) initServer(entity *EntityCommon, conn net.Conn) error {
-	ns, err := noise.New(noise.HandshakeXK, noise.Config{
-		LocalPK:   entity.pk,
-		LocalSK:   entity.sk,
-		Initiator: false,
-	})
-	if err != nil {
-		return err
-	}
+	fmt.Printf("INIT SERVER: REMOTE PK: %v\n", conn.RemoteAddr())
+	if sc.encrypt {
+		ns, err := noise.New(noise.HandshakeXK, noise.Config{
+			LocalPK:   entity.pk,
+			LocalSK:   entity.sk,
+			Initiator: false,
+		})
+		if err != nil {
+			return err
+		}
 
-	r := bufio.NewReader(conn)
-	if err := noise.ResponderHandshake(ns, r, conn); err != nil {
-		return err
-	}
-	if r.Buffered() > 0 {
-		return ErrSessionHandshakeExtraBytes
+		r := bufio.NewReader(conn)
+		if err := noise.ResponderHandshake(ns, r, conn); err != nil {
+			return err
+		}
+		if r.Buffered() > 0 {
+			return ErrSessionHandshakeExtraBytes
+		}
+
+		sc.rPK = ns.RemoteStatic()
+		sc.ns = ns
+		sc.log = entity.log.WithField("session", ns.RemoteStatic())
+	} else {
+		sc.log = entity.log.WithField("session", conn.RemoteAddr())
 	}
 
 	ySes, err := yamux.Server(conn, yamux.DefaultConfig())
@@ -103,12 +118,10 @@ func (sc *SessionCommon) initServer(entity *EntityCommon, conn net.Conn) error {
 	}
 
 	sc.entity = entity
-	sc.rPK = ns.RemoteStatic()
 	sc.netConn = conn
 	sc.ys = ySes
-	sc.ns = ns
 	sc.nMap = make(noise.NonceMap)
-	sc.log = entity.log.WithField("session", ns.RemoteStatic())
+
 	return nil
 }
 
