@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net"
 	"net/http"
@@ -11,10 +12,12 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 
+	"github.com/skycoin/dmsg/buildinfo"
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/httputil"
+	"github.com/skycoin/dmsg/models"
 )
 
 var log = logging.MustGetLogger("dmsg-discovery")
@@ -24,8 +27,11 @@ const maxGetAvailableServersResult = 512
 // API represents the api of the dmsg-discovery service`
 type API struct {
 	http.Handler
-	db       store.Storer
-	testMode bool
+	db              store.Storer
+	testMode        bool
+	StartedAt       time.Time
+	NumberOfClients int64
+	NumberOfServers int64
 }
 
 // New returns a new API object, which can be started as a server
@@ -40,9 +46,10 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 
 	r := chi.NewRouter()
 	api := &API{
-		Handler:  r,
-		db:       db,
-		testMode: testMode,
+		Handler:   r,
+		db:        db,
+		testMode:  testMode,
+		StartedAt: time.Now(),
 	}
 
 	r.Use(middleware.RequestID)
@@ -56,6 +63,7 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/health", api.health())
+	r.Get("/health", api.serviceHealth)
 
 	return api
 }
@@ -200,6 +208,16 @@ func (a *API) health() http.HandlerFunc {
 	return httputil.MakeHealthHandler(expBase, nil)
 }
 
+func (a *API) serviceHealth(w http.ResponseWriter, r *http.Request) {
+	info := buildinfo.Get()
+	a.writeJSON(w, r, http.StatusOK, models.HealthcheckResponse{
+		BuildInfo:       info,
+		StartedAt:       a.StartedAt,
+		NumberOfClients: int64(a.NumberOfClients),
+		NumberOfServers: int64(a.NumberOfServers),
+	})
+}
+
 // isLoopbackAddr checks if string is loopback interface
 func isLoopbackAddr(addr string) (bool, error) {
 	host, _, err := net.SplitHostPort(addr)
@@ -228,4 +246,14 @@ func (a *API) writeJSON(w http.ResponseWriter, r *http.Request, code int, object
 	if err != nil {
 		a.log(r).Warnf("Failed to write response: %s", err)
 	}
+}
+
+// UpdateInteralState is background function which updates numbers of clients and servers.
+func (a *API) UpdateInteralState(ctx context.Context, logger logrus.FieldLogger) {
+	numberOfServers, numberOfClients, err := a.db.CountEntries(ctx)
+	if err != nil {
+		logger.WithError(err).Errorf("failed to get number of clients and servers")
+	}
+	a.NumberOfServers = numberOfServers
+	a.NumberOfClients = numberOfClients
 }
