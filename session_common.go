@@ -36,6 +36,11 @@ func (sc *SessionCommon) GetConn() net.Conn {
 	return sc.netConn
 }
 
+// GetNoise returns underlying `*noise.Noise`.
+func (sc *SessionCommon) GetNoise() *noise.Noise {
+	return sc.ns
+}
+
 func (sc *SessionCommon) initClient(entity *EntityCommon, conn net.Conn, rPK cipher.PubKey) error {
 	ns, err := noise.New(noise.HandshakeXK, noise.Config{
 		LocalPK:   entity.pk,

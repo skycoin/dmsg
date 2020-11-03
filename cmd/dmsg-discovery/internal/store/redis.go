@@ -126,8 +126,8 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 }
 
 func (r *redisStore) CountEntries(ctx context.Context) (int64, int64, error) {
-	var numberOfServers int64 = 0
-	var numberOfClients int64 = 0
+	var numberOfServers int64
+	var numberOfClients int64
 
 	numberOfServers, err := r.client.SCard("servers").Result()
 	if err != nil {

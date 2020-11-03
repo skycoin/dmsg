@@ -76,6 +76,11 @@ func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Serv
 	return s
 }
 
+// GetSessions returns underlying sessions map.
+func (s *Server) GetSessions() map[cipher.PubKey]*SessionCommon {
+	return s.sessions
+}
+
 // Close implements io.Closer
 func (s *Server) Close() error {
 	if s == nil {

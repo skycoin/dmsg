@@ -12,6 +12,6 @@ type HealthcheckResponse struct {
 	NumberOfClients      int64           `json:"clients,omitempty"`
 	NumberOfServers      int64           `json:"servers,omitempty"`
 	StartedAt            time.Time       `json:"started_at,omitempty"`
-	AvgPackagesPerMinute int64           `json:"average_packages_per_minute,omitempty"`
-	AvgPackagesPerSecond int64           `json:"average_packages_per_second,omitempty"`
+	AvgPackagesPerMinute uint64          `json:"average_packages_per_minute,omitempty"`
+	AvgPackagesPerSecond uint64          `json:"average_packages_per_second,omitempty"`
 }
