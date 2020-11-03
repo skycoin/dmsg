@@ -14,27 +14,27 @@ import (
 	"github.com/skycoin/dmsg/buildinfo"
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/httputil"
-	"github.com/skycoin/dmsg/models"
 	"github.com/skycoin/skycoin/src/util/logging"
 )
 
 // API main object of the server
 type API struct {
-	NumberOfClients      int64
-	StartedAt            time.Time
-	AvgPackagesPerMinute uint64
-	AvgPackagesPerSecond uint64
+	numberOfClients      int64
+	startedAt            time.Time
+	avgPackagesPerMinute uint64
+	avgPackagesPerSecond uint64
 	dmsgServer           *dmsg.Server
 	minuteDecValues      map[*dmsg.SessionCommon]uint64
 	minuteEncValues      map[*dmsg.SessionCommon]uint64
 	secondDecValues      map[*dmsg.SessionCommon]uint64
 	secondEncValues      map[*dmsg.SessionCommon]uint64
+	error                string
 }
 
 // New returns a new API object, which can be started as a server
 func New(r *chi.Mux, log *logging.Logger) *API {
 	api := &API{
-		StartedAt:       time.Now(),
+		startedAt:       time.Now(),
 		minuteDecValues: make(map[*dmsg.SessionCommon]uint64),
 		minuteEncValues: make(map[*dmsg.SessionCommon]uint64),
 		secondDecValues: make(map[*dmsg.SessionCommon]uint64),
@@ -42,6 +42,29 @@ func New(r *chi.Mux, log *logging.Logger) *API {
 	}
 	r.Use(httputil.SetLoggerMiddleware(log))
 	return api
+}
+
+// RunInBackground is function which starts gorutine with periodic tasks of dmsg-server.
+func (a *API) RunInBackground(ctx context.Context) {
+	ticker := time.NewTicker(time.Second * 10)
+	tickerEverySecond := time.NewTicker(time.Second * 1)
+	tickerEveryMinute := time.NewTicker(time.Second * 60)
+	defer ticker.Stop()
+	defer tickerEverySecond.Stop()
+	defer tickerEveryMinute.Stop()
+	a.updateInternalState()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			a.updateInternalState()
+		case <-tickerEveryMinute.C:
+			a.updateAverageNumberOfPacketsPerMinute()
+		case <-tickerEverySecond.C:
+			a.updateAverageNumberOfPacketsPerSecond()
+		}
+	}
 }
 
 // SetDmsgServer saves srv in the API
@@ -52,12 +75,13 @@ func (a *API) SetDmsgServer(srv *dmsg.Server) {
 // Health serves health page
 func (a *API) Health(w http.ResponseWriter, r *http.Request) {
 	info := buildinfo.Get()
-	a.writeJSON(w, r, http.StatusOK, models.HealthcheckResponse{
+	a.writeJSON(w, r, http.StatusOK, HealthCheckResponse{
 		BuildInfo:            info,
-		StartedAt:            a.StartedAt,
-		NumberOfClients:      a.NumberOfClients,
-		AvgPackagesPerSecond: a.AvgPackagesPerSecond,
-		AvgPackagesPerMinute: a.AvgPackagesPerMinute,
+		StartedAt:            a.startedAt,
+		NumberOfClients:      a.numberOfClients,
+		AvgPackagesPerSecond: a.avgPackagesPerSecond,
+		AvgPackagesPerMinute: a.avgPackagesPerMinute,
+		Error:                a.error,
 	})
 }
 
@@ -81,15 +105,15 @@ func (a *API) log(r *http.Request) logrus.FieldLogger {
 	return httputil.GetLogger(r)
 }
 
-// UpdateInteralState is background function which updates numbers of clients.
-func (a *API) UpdateInteralState(ctx context.Context, logger logrus.FieldLogger) {
+// UpdateInternalState is background function which updates numbers of clients.
+func (a *API) updateInternalState() {
 	if a.dmsgServer != nil {
-		a.NumberOfClients = int64(len(a.dmsgServer.GetSessions()))
+		a.numberOfClients = int64(len(a.dmsgServer.GetSessions()))
 	}
 }
 
 // UpdateAverageNumberOfPacketsPerMinute is function which needs to called every minute.
-func (a *API) UpdateAverageNumberOfPacketsPerMinute(ctx context.Context, logger logrus.FieldLogger) {
+func (a *API) updateAverageNumberOfPacketsPerMinute() {
 	if a.dmsgServer != nil {
 		newDecValues, newEncValues, average := calculateThroughput(
 			a.dmsgServer.GetSessions(),
@@ -98,12 +122,12 @@ func (a *API) UpdateAverageNumberOfPacketsPerMinute(ctx context.Context, logger 
 		)
 		a.minuteDecValues = newDecValues
 		a.minuteEncValues = newEncValues
-		a.AvgPackagesPerMinute = average
+		a.avgPackagesPerMinute = average
 	}
 }
 
 // UpdateAverageNumberOfPacketsPerSecond is function which needs to called every second.
-func (a *API) UpdateAverageNumberOfPacketsPerSecond(ctx context.Context, logger logrus.FieldLogger) {
+func (a *API) updateAverageNumberOfPacketsPerSecond() {
 	if a.dmsgServer != nil {
 		newDecValues, newEncValues, average := calculateThroughput(
 			a.dmsgServer.GetSessions(),
@@ -112,7 +136,7 @@ func (a *API) UpdateAverageNumberOfPacketsPerSecond(ctx context.Context, logger 
 		)
 		a.secondDecValues = newDecValues
 		a.secondEncValues = newEncValues
-		a.AvgPackagesPerSecond = average
+		a.avgPackagesPerSecond = average
 	}
 }
 func calculateThroughput(
@@ -140,7 +164,6 @@ func calculateThroughput(
 
 		previousDecValue := previousDecValues[session]
 		previousEncValue := previousEncValues[session]
-
 		if currentDecValue != previousDecValue {
 			if currentDecValue < previousDecValue {
 				// overflow happened

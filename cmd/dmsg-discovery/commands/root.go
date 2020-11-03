@@ -63,20 +63,7 @@ var rootCmd = &cobra.Command{
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
-
-		go func(api *api.API) {
-			ticker := time.NewTicker(time.Second * 10)
-			api.UpdateInteralState(ctx, log)
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-ticker.C:
-					api.UpdateInteralState(ctx, log)
-				}
-			}
-		}(a)
-
+		go a.RunInBackground(ctx, log)
 		log.WithField("addr", addr).Info("Serving discovery API...")
 		go func() {
 			if err := http.ListenAndServe(addr, m.Handle(a)); err != nil {
@@ -84,7 +71,6 @@ var rootCmd = &cobra.Command{
 				cancel()
 			}
 		}()
-
 		<-ctx.Done()
 	},
 }

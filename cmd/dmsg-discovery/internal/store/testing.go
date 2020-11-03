@@ -137,11 +137,10 @@ func (ms *MockStore) CountEntries(ctx context.Context) (int64, int64, error) {
 			numberOfServers++
 		}
 		if e.Client != nil {
-			numberOfServers++
+			numberOfClients++
 		}
 	}
 	return numberOfServers, numberOfClients, disc.ErrUnexpected
-
 }
 
 func arrayFromMap(m map[string][]byte) [][]byte {

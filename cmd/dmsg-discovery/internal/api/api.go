@@ -17,7 +17,6 @@ import (
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/httputil"
-	"github.com/skycoin/dmsg/models"
 )
 
 var log = logging.MustGetLogger("dmsg-discovery")
@@ -29,9 +28,10 @@ type API struct {
 	http.Handler
 	db              store.Storer
 	testMode        bool
-	StartedAt       time.Time
-	NumberOfClients int64
-	NumberOfServers int64
+	startedAt       time.Time
+	numberOfClients int64
+	numberOfServers int64
+	error           string
 }
 
 // New returns a new API object, which can be started as a server
@@ -49,7 +49,7 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 		Handler:   r,
 		db:        db,
 		testMode:  testMode,
-		StartedAt: time.Now(),
+		startedAt: time.Now(),
 	}
 
 	r.Use(middleware.RequestID)
@@ -63,13 +63,28 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/health", api.health())
-	r.Get("/health", api.serviceHealth)
+	r.Get("/dmsg-discovery/service-health", api.serviceHealth)
 
 	return api
 }
 
 func (a *API) log(r *http.Request) logrus.FieldLogger {
 	return httputil.GetLogger(r)
+}
+
+// RunInBackground is goroutine which runs in background peri tasks of dmsg-discovery.
+func (a *API) RunInBackground(ctx context.Context, log logrus.FieldLogger) {
+	ticker := time.NewTicker(time.Second * 10)
+	defer ticker.Stop()
+	a.updateInternalState(ctx, log)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			a.updateInternalState(ctx, log)
+		}
+	}
 }
 
 // getEntry returns the entry associated with the given public key
@@ -210,11 +225,12 @@ func (a *API) health() http.HandlerFunc {
 
 func (a *API) serviceHealth(w http.ResponseWriter, r *http.Request) {
 	info := buildinfo.Get()
-	a.writeJSON(w, r, http.StatusOK, models.HealthcheckResponse{
+	a.writeJSON(w, r, http.StatusOK, HealthCheckResponse{
 		BuildInfo:       info,
-		StartedAt:       a.StartedAt,
-		NumberOfClients: int64(a.NumberOfClients),
-		NumberOfServers: int64(a.NumberOfServers),
+		StartedAt:       a.startedAt,
+		NumberOfClients: a.numberOfClients,
+		NumberOfServers: a.numberOfServers,
+		Error:           a.error,
 	})
 }
 
@@ -248,12 +264,11 @@ func (a *API) writeJSON(w http.ResponseWriter, r *http.Request, code int, object
 	}
 }
 
-// UpdateInteralState is background function which updates numbers of clients and servers.
-func (a *API) UpdateInteralState(ctx context.Context, logger logrus.FieldLogger) {
+func (a *API) updateInternalState(ctx context.Context, logger logrus.FieldLogger) {
 	numberOfServers, numberOfClients, err := a.db.CountEntries(ctx)
 	if err != nil {
 		logger.WithError(err).Errorf("failed to get number of clients and servers")
 	}
-	a.NumberOfServers = numberOfServers
-	a.NumberOfClients = numberOfClients
+	a.numberOfServers = numberOfServers
+	a.numberOfClients = numberOfClients
 }

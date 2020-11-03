@@ -136,5 +136,4 @@ func TestRedisCountEntries(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, numberOfServers, int64(1))
 	assert.Equal(t, numberOfClients, int64(1))
-
 }
