@@ -63,7 +63,7 @@ var rootCmd = &cobra.Command{
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
-		go a.RunInBackground(ctx, log)
+		go a.RunBackgroundTasks(ctx, log)
 		log.WithField("addr", addr).Info("Serving discovery API...")
 		go func() {
 			if err := http.ListenAndServe(addr, m.Handle(a)); err != nil {

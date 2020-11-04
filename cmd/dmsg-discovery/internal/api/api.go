@@ -34,6 +34,17 @@ type API struct {
 	error           string
 }
 
+// HealthCheckResponse is struct of /health endpoint
+type HealthCheckResponse struct {
+	BuildInfo            *buildinfo.Info `json:"build_info"`
+	NumberOfClients      int64           `json:"clients"`
+	NumberOfServers      int64           `json:"servers"`
+	StartedAt            time.Time       `json:"started_at,omitempty"`
+	AvgPackagesPerMinute uint64          `json:"average_packages_per_minute"`
+	AvgPackagesPerSecond uint64          `json:"average_packages_per_second"`
+	Error                string          `json:"error,omitempty"`
+}
+
 // New returns a new API object, which can be started as a server
 func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 	if log != nil {
@@ -72,8 +83,8 @@ func (a *API) log(r *http.Request) logrus.FieldLogger {
 	return httputil.GetLogger(r)
 }
 
-// RunInBackground is goroutine which runs in background peri tasks of dmsg-discovery.
-func (a *API) RunInBackground(ctx context.Context, log logrus.FieldLogger) {
+// RunBackgroundTasks is goroutine which runs in background periodic tasks of dmsg-discovery.
+func (a *API) RunBackgroundTasks(ctx context.Context, log logrus.FieldLogger) {
 	ticker := time.NewTicker(time.Second * 10)
 	defer ticker.Stop()
 	a.updateInternalState(ctx, log)
@@ -268,6 +279,7 @@ func (a *API) updateInternalState(ctx context.Context, logger logrus.FieldLogger
 	numberOfServers, numberOfClients, err := a.db.CountEntries(ctx)
 	if err != nil {
 		logger.WithError(err).Errorf("failed to get number of clients and servers")
+		a.error = err.Error()
 	}
 	a.numberOfServers = numberOfServers
 	a.numberOfClients = numberOfClients

@@ -127,14 +127,12 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 	return entries, nil
 }
 func (r *redisStore) CountEntries(ctx context.Context) (int64, int64, error) {
-	var numberOfServers int64
-	var numberOfClients int64
 	numberOfServers, err := r.client.SCard("servers").Result()
 	if err != nil {
 		log.WithError(err).Errorf("Failed to get servers count (Scard) from redis")
-		return numberOfServers, numberOfClients, err
+		return numberOfServers, int64(0), err
 	}
-	numberOfClients, err = r.client.SCard("clients").Result()
+	numberOfClients, err := r.client.SCard("clients").Result()
 	if err != nil {
 		log.WithError(err).Errorf("Failed to get clients count (scard) from redis")
 		return numberOfServers, numberOfClients, err

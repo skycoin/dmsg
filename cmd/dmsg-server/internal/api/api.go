@@ -31,6 +31,17 @@ type API struct {
 	error                string
 }
 
+// HealthCheckResponse is struct of /health endpoint
+type HealthCheckResponse struct {
+	BuildInfo            *buildinfo.Info `json:"build_info"`
+	NumberOfClients      int64           `json:"clients"`
+	NumberOfServers      int64           `json:"servers"`
+	StartedAt            time.Time       `json:"started_at,omitempty"`
+	AvgPackagesPerMinute uint64          `json:"average_packages_per_minute"`
+	AvgPackagesPerSecond uint64          `json:"average_packages_per_second"`
+	Error                string          `json:"error,omitempty"`
+}
+
 // New returns a new API object, which can be started as a server
 func New(r *chi.Mux, log *logging.Logger) *API {
 	api := &API{
@@ -44,8 +55,8 @@ func New(r *chi.Mux, log *logging.Logger) *API {
 	return api
 }
 
-// RunInBackground is function which starts gorutine with periodic tasks of dmsg-server.
-func (a *API) RunInBackground(ctx context.Context) {
+// RunBackgroundTasks is function which runs periodic tasks of dmsg-server.
+func (a *API) RunBackgroundTasks(ctx context.Context) {
 	ticker := time.NewTicker(time.Second * 10)
 	tickerEverySecond := time.NewTicker(time.Second * 1)
 	tickerEveryMinute := time.NewTicker(time.Second * 60)

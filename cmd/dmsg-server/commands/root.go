@@ -77,7 +77,7 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
 
-		go a.RunInBackground(ctx)
+		go a.RunBackgroundTasks(ctx)
 		go func() {
 			if err := srv.Serve(lis, conf.PublicAddress); err != nil {
 				log.Errorf("Serve: %v", err)
