@@ -167,8 +167,8 @@ func calculateThroughput(
 	newDecValues := make(map[*dmsg.SessionCommon]uint64)
 	newEncValues := make(map[*dmsg.SessionCommon]uint64)
 	for _, session := range sessions {
-		currentDecValue := session.GetNoise().GetDecNonce()
-		currentEncValue := session.GetNoise().GetEncNonce()
+		currentDecValue := session.GetDecNonce()
+		currentEncValue := session.GetEncNonce()
 
 		newDecValues[session] = currentDecValue
 		newEncValues[session] = currentEncValue
