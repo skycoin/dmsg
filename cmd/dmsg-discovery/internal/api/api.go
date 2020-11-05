@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -29,6 +30,7 @@ type API struct {
 	db              store.Storer
 	testMode        bool
 	startedAt       time.Time
+	sMu             sync.Mutex
 	numberOfClients int64
 	numberOfServers int64
 	error           string
@@ -236,6 +238,8 @@ func (a *API) health() http.HandlerFunc {
 
 func (a *API) serviceHealth(w http.ResponseWriter, r *http.Request) {
 	info := buildinfo.Get()
+	a.sMu.Lock()
+	defer a.sMu.Unlock()
 	a.writeJSON(w, r, http.StatusOK, HealthCheckResponse{
 		BuildInfo:       info,
 		StartedAt:       a.startedAt,
@@ -277,6 +281,9 @@ func (a *API) writeJSON(w http.ResponseWriter, r *http.Request, code int, object
 
 func (a *API) updateInternalState(ctx context.Context, logger logrus.FieldLogger) {
 	numberOfServers, numberOfClients, err := a.db.CountEntries(ctx)
+	a.sMu.Lock()
+	defer a.sMu.Unlock()
+	a.error = ""
 	if err != nil {
 		logger.WithError(err).Errorf("failed to get number of clients and servers")
 		a.error = err.Error()

@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -21,9 +22,10 @@ import (
 type API struct {
 	numberOfClients      int64
 	startedAt            time.Time
+	dmsgServer           *dmsg.Server
+	sMu                  sync.Mutex
 	avgPackagesPerMinute uint64
 	avgPackagesPerSecond uint64
-	dmsgServer           *dmsg.Server
 	minuteDecValues      map[*dmsg.SessionCommon]uint64
 	minuteEncValues      map[*dmsg.SessionCommon]uint64
 	secondDecValues      map[*dmsg.SessionCommon]uint64
@@ -119,6 +121,8 @@ func (a *API) log(r *http.Request) logrus.FieldLogger {
 // UpdateInternalState is background function which updates numbers of clients.
 func (a *API) updateInternalState() {
 	if a.dmsgServer != nil {
+		a.sMu.Lock()
+		defer a.sMu.Unlock()
 		a.numberOfClients = int64(len(a.dmsgServer.GetSessions()))
 	}
 }
@@ -131,6 +135,8 @@ func (a *API) updateAverageNumberOfPacketsPerMinute() {
 			a.minuteDecValues,
 			a.minuteEncValues,
 		)
+		a.sMu.Lock()
+		defer a.sMu.Unlock()
 		a.minuteDecValues = newDecValues
 		a.minuteEncValues = newEncValues
 		a.avgPackagesPerMinute = average
@@ -145,6 +151,8 @@ func (a *API) updateAverageNumberOfPacketsPerSecond() {
 			a.secondDecValues,
 			a.secondEncValues,
 		)
+		a.sMu.Lock()
+		defer a.sMu.Unlock()
 		a.secondDecValues = newDecValues
 		a.secondEncValues = newEncValues
 		a.avgPackagesPerSecond = average

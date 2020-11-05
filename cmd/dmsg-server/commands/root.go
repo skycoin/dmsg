@@ -56,6 +56,11 @@ var rootCmd = &cobra.Command{
 		}
 
 		r := chi.NewRouter()
+		r.Use(middleware.RequestID)
+		r.Use(middleware.RealIP)
+		r.Use(middleware.Logger)
+		r.Use(middleware.Recoverer)
+
 		a := api.New(r, log)
 		m := prepareMetrics(r, log, sf.Tag, sf.MetricsAddr)
 		r.Get("/health", a.Health)
@@ -107,11 +112,6 @@ func prepareMetrics(r *chi.Mux, log logrus.FieldLogger, tag, addr string) server
 	}
 
 	m := servermetrics.New(tag)
-
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
 
 	promutil.AddMetricsHandle(r, m.Collectors()...)
 

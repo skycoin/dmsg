@@ -78,6 +78,8 @@ func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Serv
 
 // GetSessions returns underlying sessions map.
 func (s *Server) GetSessions() map[cipher.PubKey]*SessionCommon {
+	s.sessionsMx.Lock()
+	defer s.sessionsMx.Unlock()
 	return s.sessions
 }
 
