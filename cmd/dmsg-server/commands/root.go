@@ -50,9 +50,6 @@ var rootCmd = &cobra.Command{
 			defer log.Info(discord.StopLogMessage)
 		}
 
-		mon := resourcemonitor.New(log, resourcemonitor.DefaultOptions)
-		mon.StartInBackground(context.Background())
-
 		var conf Config
 		if err := sf.ParseConfig(os.Args, true, &conf); err != nil {
 			log.WithError(err).Fatal()
@@ -76,6 +73,9 @@ var rootCmd = &cobra.Command{
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
+
+		mon := resourcemonitor.New(log, resourcemonitor.DefaultOptions)
+		mon.StartInBackground(ctx)
 
 		go func() {
 			if err := srv.Serve(lis, conf.PublicAddress); err != nil {

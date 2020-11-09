@@ -56,9 +56,6 @@ var rootCmd = &cobra.Command{
 			defer log.Info(discord.StopLogMessage)
 		}
 
-		mon := resourcemonitor.New(log, resourcemonitor.DefaultOptions)
-		mon.StartInBackground(context.Background())
-
 		m := sf.HTTPMetrics()
 
 		db := prepareDB(log)
@@ -67,6 +64,9 @@ var rootCmd = &cobra.Command{
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
+
+		mon := resourcemonitor.New(log, resourcemonitor.DefaultOptions)
+		mon.StartInBackground(ctx)
 
 		log.WithField("addr", addr).Info("Serving discovery API...")
 		go func() {
