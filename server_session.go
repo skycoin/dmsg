@@ -88,8 +88,10 @@ func (ss *ServerSession) serveStream(log logrus.FieldLogger, yStr *yamux.Stream)
 			return StreamRequest{}, err
 		}
 		fmt.Println("VERIFIED REQUEST")
-		if req.SrcAddr.PK != ss.rPK {
-			return StreamRequest{}, ErrReqInvalidSrcPK
+		if ss.encrypt {
+			if req.SrcAddr.PK != ss.rPK {
+				return StreamRequest{}, ErrReqInvalidSrcPK
+			}
 		}
 		fmt.Println("FINISHED readRequest")
 		return req, nil
