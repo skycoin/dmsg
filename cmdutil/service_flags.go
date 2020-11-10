@@ -1,7 +1,6 @@
 package cmdutil
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
 	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -31,6 +31,8 @@ var (
 	ErrInvalidLogString           = errors.New("failed to convert string to log level")
 	ErrInvalidSyslogNet           = errors.New("network type is unsupported for syslog")
 )
+
+var json = jsoniter.ConfigFastest
 
 const (
 	stdinConfig = "stdin"
@@ -179,7 +181,7 @@ func (sf *ServiceFlags) ParseConfig(args []string, checkArgs bool, v interface{}
 		return fmt.Errorf("failed to decode config file: %w", err)
 	}
 
-	j, err := json.MarshalIndent(v, "", "\t")
+	j, err := json.MarshalIndent(v, "", "    ")
 	if err != nil {
 		panic(err) // should not happen
 	}

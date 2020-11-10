@@ -2,14 +2,16 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/go-redis/redis"
+	jsoniter "github.com/json-iterator/go"
 
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/disc"
 )
+
+var json = jsoniter.ConfigFastest
 
 type redisStore struct {
 	client  *redis.Client
