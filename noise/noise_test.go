@@ -146,13 +146,13 @@ func TestIncorrectPublicKey(t *testing.T) {
 	for i := 0; i < 33; i++ {
 		public = append(public, val)
 	}
-	pkI, err := cipher.NewPubKey(public)
+	pkI, _ := cipher.NewPubKey(public)
 	confI := Config{
 		LocalPK:   pkI,
 		LocalSK:   skI,
 		RemotePK:  pkR,
 		Initiator: true,
 	}
-	_, err = New(HandshakeXK, confI)
+	_, err := New(HandshakeXK, confI)
 	require.Error(t, err)
 }
