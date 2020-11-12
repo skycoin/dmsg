@@ -1,6 +1,7 @@
 package noise
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"testing"
@@ -137,4 +138,23 @@ func TestXKAndSecp256k1(t *testing.T) {
 	decrypted, err = nR.DecryptUnsafe(encrypted)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("baz"), decrypted)
+}
+func TestIncorrectPublicKey(t *testing.T) {
+	_, skI := cipher.GenerateKeyPair()
+	pkR, _ := cipher.GenerateKeyPair()
+	val := byte(255)
+	public := make([]byte, 0)
+	for i := 0; i < 33; i++ {
+		public = append(public, val)
+	}
+	pkI, err := cipher.NewPubKey(public)
+	fmt.Println(err)
+	confI := Config{
+		LocalPK:   pkI,
+		LocalSK:   skI,
+		RemotePK:  pkR,
+		Initiator: true,
+	}
+	_, err = New(HandshakeXK, confI)
+	require.Error(t, err)
 }
