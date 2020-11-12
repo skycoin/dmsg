@@ -1,7 +1,6 @@
 package noise
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"testing"
@@ -148,7 +147,6 @@ func TestIncorrectPublicKey(t *testing.T) {
 		public = append(public, val)
 	}
 	pkI, err := cipher.NewPubKey(public)
-	fmt.Println(err)
 	confI := Config{
 		LocalPK:   pkI,
 		LocalSK:   skI,
