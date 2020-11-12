@@ -62,6 +62,12 @@ func New(pattern noise.HandshakePattern, config Config) (*Noise, error) {
 		nc.PeerStatic = config.RemotePK[:]
 	}
 
+	// check if value is correct
+	_, err := cipher.NewPubKey(config.LocalPK[:])
+	if err != nil {
+		return nil, err
+	}
+
 	hs, err := noise.NewHandshakeState(nc)
 	if err != nil {
 		return nil, err
