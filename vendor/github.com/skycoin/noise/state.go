@@ -8,10 +8,6 @@ package noise
 
 import (
 	"crypto/rand"
-
-	"github.com/getsentry/sentry-go"
-	"github.com/skycoin/skycoin/src/cipher"
-
 	"errors"
 	"fmt"
 	"io"
@@ -411,6 +407,7 @@ func (s *HandshakeState) ReadMessage(out, message []byte) ([]byte, *CipherState,
 	}
 
 	s.ss.Checkpoint()
+
 	var err error
 	for _, msg := range s.messagePatterns[s.msgIdx] {
 		switch msg {
@@ -447,16 +444,6 @@ func (s *HandshakeState) ReadMessage(out, message []byte) ([]byte, *CipherState,
 		case MessagePatternDHEE:
 			s.ss.MixKey(s.ss.cs.DH(s.e.Private, s.re))
 		case MessagePatternDHES:
-			if _, err := cipher.NewPubKey(s.re); err != nil {
-				sentry.CaptureMessage(string(s.re))
-				sentry.CaptureMessage(string(message))
-				sentry.CaptureException(err)
-			}
-			if _, err := cipher.NewPubKey(s.rs); err != nil {
-				sentry.CaptureMessage(string(s.rs))
-				sentry.CaptureMessage(string(message))
-				sentry.CaptureException(err)
-			}
 			if s.initiator {
 				s.ss.MixKey(s.ss.cs.DH(s.e.Private, s.rs))
 			} else {
