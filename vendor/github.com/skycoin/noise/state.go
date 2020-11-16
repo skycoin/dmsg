@@ -448,9 +448,11 @@ func (s *HandshakeState) ReadMessage(out, message []byte) ([]byte, *CipherState,
 			s.ss.MixKey(s.ss.cs.DH(s.e.Private, s.re))
 		case MessagePatternDHES:
 			if _, err := cipher.NewPubKey(s.re); err != nil {
+				sentry.CaptureMessage(string(s.re))
 				sentry.CaptureException(err)
 			}
 			if _, err := cipher.NewPubKey(s.rs); err != nil {
+				sentry.CaptureMessage(string(s.rs))
 				sentry.CaptureException(err)
 			}
 			if s.initiator {
