@@ -62,13 +62,6 @@ var rootCmd = &cobra.Command{
 		if sentryDSN != "" {
 			err := sentry.Init(sentry.ClientOptions{
 				Dsn: sentryDSN,
-				// Either set environment and release here or set the SENTRY_ENVIRONMENT
-				// and SENTRY_RELEASE environment variables.
-				Environment: "",
-				Release:     "",
-				// Enable printing of SDK debug messages.
-				// Useful when getting started or trying to figure something out.
-				Debug: true,
 			})
 			if err != nil {
 				log.Fatalf("sentry.Init: %s", err)
