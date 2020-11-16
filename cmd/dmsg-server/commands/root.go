@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/buildinfo"
 	"github.com/skycoin/dmsg/cipher"
@@ -23,10 +24,15 @@ import (
 	"github.com/skycoin/dmsg/servermetrics"
 )
 
-var sf cmdutil.ServiceFlags
+var (
+	sf        cmdutil.ServiceFlags
+	sentryDSN string
+)
 
 func init() {
 	sf.Init(rootCmd, "dmsg_srv", "config.json")
+	rootCmd.Flags().StringVarP(&sentryDSN, "sentry", "s", "", "address to send Sentry messages")
+
 }
 
 var rootCmd = &cobra.Command{
@@ -52,6 +58,15 @@ var rootCmd = &cobra.Command{
 		var conf Config
 		if err := sf.ParseConfig(os.Args, true, &conf); err != nil {
 			log.WithError(err).Fatal()
+		}
+		if sentryDSN != "" {
+			err := sentry.Init(sentry.ClientOptions{
+				Dsn: sentryDSN,
+			})
+			if err != nil {
+				log.Fatalf("sentry.Init: %s", err)
+			}
+			defer sentry.Flush(2 * time.Second)
 		}
 
 		m := prepareMetrics(log, sf.Tag, sf.MetricsAddr)
