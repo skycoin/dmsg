@@ -38,13 +38,11 @@ type API struct {
 
 // HealthCheckResponse is struct of /health endpoint
 type HealthCheckResponse struct {
-	BuildInfo            *buildinfo.Info `json:"build_info"`
-	NumberOfClients      int64           `json:"clients"`
-	NumberOfServers      int64           `json:"servers"`
-	StartedAt            time.Time       `json:"started_at,omitempty"`
-	AvgPackagesPerMinute uint64          `json:"average_packages_per_minute"`
-	AvgPackagesPerSecond uint64          `json:"average_packages_per_second"`
-	Error                string          `json:"error,omitempty"`
+	BuildInfo       *buildinfo.Info `json:"build_info"`
+	NumberOfClients int64           `json:"clients"`
+	NumberOfServers int64           `json:"servers"`
+	StartedAt       time.Time       `json:"started_at,omitempty"`
+	Error           string          `json:"error,omitempty"`
 }
 
 // New returns a new API object, which can be started as a server
@@ -76,7 +74,7 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/health", api.health())
-	r.Get("/dmsg-discovery/service-health", api.serviceHealth)
+	r.Get("/health", api.serviceHealth)
 
 	return api
 }
