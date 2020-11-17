@@ -26,8 +26,9 @@ const maxGetAvailableServersResult = 512
 // API represents the api of the dmsg-discovery service`
 type API struct {
 	http.Handler
-	db       store.Storer
-	testMode bool
+	db                store.Storer
+	testMode          bool
+	enableLoadTesting bool
 }
 
 // New returns a new API object, which can be started as a server
@@ -42,9 +43,10 @@ func New(log logrus.FieldLogger, db store.Storer, testMode, enableLoadTesting bo
 
 	r := chi.NewRouter()
 	api := &API{
-		Handler:  r,
-		db:       db,
-		testMode: testMode,
+		Handler:           r,
+		db:                db,
+		testMode:          testMode,
+		enableLoadTesting: enableLoadTesting,
 	}
 
 	r.Use(middleware.RequestID)
@@ -54,8 +56,8 @@ func New(log logrus.FieldLogger, db store.Storer, testMode, enableLoadTesting bo
 	r.Use(httputil.SetLoggerMiddleware(log))
 
 	r.Get("/dmsg-discovery/entry/{pk}", api.getEntry())
-	r.Post("/dmsg-discovery/entry/", api.setEntry(enableLoadTesting))
-	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry(enableLoadTesting))
+	r.Post("/dmsg-discovery/entry/", api.setEntry())
+	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/health", api.health())
 
@@ -97,7 +99,7 @@ func (a *API) getEntry() func(w http.ResponseWriter, r *http.Request) {
 // Method: POST
 // Args:
 //	json serialized entry object
-func (a *API) setEntry(enableLoadTesting bool) func(w http.ResponseWriter, r *http.Request) {
+func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := r.Body.Close(); err != nil {
@@ -128,13 +130,13 @@ func (a *API) setEntry(enableLoadTesting bool) func(w http.ResponseWriter, r *ht
 			}
 		}
 
-		validateTimestamp := !enableLoadTesting
+		validateTimestamp := !a.enableLoadTesting
 		if err := entry.Validate(validateTimestamp); err != nil {
 			a.handleError(w, r, err)
 			return
 		}
 
-		if !enableLoadTesting {
+		if !a.enableLoadTesting {
 			if err := entry.VerifySignature(); err != nil {
 				a.handleError(w, r, disc.ErrUnauthorized)
 				return
@@ -159,7 +161,7 @@ func (a *API) setEntry(enableLoadTesting bool) func(w http.ResponseWriter, r *ht
 			return
 		}
 
-		if !enableLoadTesting {
+		if !a.enableLoadTesting {
 			if err := oldEntry.ValidateIteration(entry); err != nil {
 				a.handleError(w, r, err)
 				return
