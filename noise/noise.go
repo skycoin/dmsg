@@ -89,6 +89,16 @@ func XKAndSecp256k1(config Config) (*Noise, error) {
 	return New(noise.HandshakeXK, config)
 }
 
+// GetEncNonce returns underlying encNonce.
+func (ns *Noise) GetEncNonce() uint64 {
+	return ns.encNonce
+}
+
+// GetDecNonce returns underlying decNonce.
+func (ns *Noise) GetDecNonce() uint64 {
+	return ns.decNonce
+}
+
 // MakeHandshakeMessage generates handshake message for a current handshake state.
 func (ns *Noise) MakeHandshakeMessage() (res []byte, err error) {
 	if ns.hs.MessageIndex() < len(ns.pattern.Messages)-1 {
