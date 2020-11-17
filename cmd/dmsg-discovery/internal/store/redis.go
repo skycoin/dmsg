@@ -69,6 +69,14 @@ func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry, timeout ti
 	if entry.Server != nil {
 		err = r.client.SAdd("servers", entry.Static.Hex()).Err()
 		if err != nil {
+			log.WithError(err).Errorf("Failed to add to servers (SAdd) from redis")
+			return disc.ErrUnexpected
+		}
+	}
+	if entry.Client != nil {
+		err = r.client.SAdd("clients", entry.Static.Hex()).Err()
+		if err != nil {
+			log.WithError(err).Errorf("Failed to add to clients (SAdd) from redis")
 			return disc.ErrUnexpected
 		}
 	}
@@ -119,4 +127,18 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 	}
 
 	return entries, nil
+}
+func (r *redisStore) CountEntries(ctx context.Context) (int64, int64, error) {
+	numberOfServers, err := r.client.SCard("servers").Result()
+	if err != nil {
+		log.WithError(err).Errorf("Failed to get servers count (Scard) from redis")
+		return numberOfServers, int64(0), err
+	}
+	numberOfClients, err := r.client.SCard("clients").Result()
+	if err != nil {
+		log.WithError(err).Errorf("Failed to get clients count (scard) from redis")
+		return numberOfServers, numberOfClients, err
+	}
+
+	return numberOfServers, numberOfClients, nil
 }

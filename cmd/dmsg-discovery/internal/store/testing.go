@@ -115,6 +115,33 @@ func (ms *MockStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 	return entries, nil
 }
 
+// CountEntries implements Storer CountEntries method for MockStore
+func (ms *MockStore) CountEntries(ctx context.Context) (int64, int64, error) {
+	var numberOfServers int64 = 0
+	var numberOfClients int64 = 0
+	ms.serversLock.RLock()
+	defer ms.serversLock.RUnlock()
+
+	servers := arrayFromMap(ms.servers)
+	for _, entryString := range servers {
+		var e disc.Entry
+
+		err := json.Unmarshal(entryString, &e)
+		if err != nil {
+			return numberOfServers, numberOfClients, disc.ErrUnexpected
+
+		}
+
+		if e.Server != nil {
+			numberOfServers++
+		}
+		if e.Client != nil {
+			numberOfClients++
+		}
+	}
+	return numberOfServers, numberOfClients, disc.ErrUnexpected
+}
+
 func arrayFromMap(m map[string][]byte) [][]byte {
 	entries := make([][]byte, 0)
 
