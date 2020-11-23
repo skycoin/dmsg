@@ -29,13 +29,14 @@ const maxGetAvailableServersResult = 512
 // API represents the api of the dmsg-discovery service`
 type API struct {
 	http.Handler
-	db              store.Storer
-	testMode        bool
-	startedAt       time.Time
-	sMu             sync.Mutex
-	numberOfClients int64
-	numberOfServers int64
-	error           string
+	db                store.Storer
+	testMode          bool
+	startedAt         time.Time
+	sMu               sync.Mutex
+	numberOfClients   int64
+	numberOfServers   int64
+	error             string
+	enableLoadTesting bool
 }
 
 // HealthCheckResponse is struct of /health endpoint
@@ -48,7 +49,7 @@ type HealthCheckResponse struct {
 }
 
 // New returns a new API object, which can be started as a server
-func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
+func New(log logrus.FieldLogger, db store.Storer, testMode, enableLoadTesting bool) *API {
 	if log != nil {
 		log = logging.MustGetLogger("dmsg_disc")
 	}
@@ -59,10 +60,11 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 
 	r := chi.NewRouter()
 	api := &API{
-		Handler:   r,
-		db:        db,
-		testMode:  testMode,
-		startedAt: time.Now(),
+		Handler:           r,
+		db:                db,
+		testMode:          testMode,
+		startedAt:         time.Now(),
+		enableLoadTesting: enableLoadTesting,
 	}
 
 	r.Use(middleware.RequestID)
@@ -162,14 +164,17 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if err := entry.Validate(); err != nil {
+		validateTimestamp := !a.enableLoadTesting
+		if err := entry.Validate(validateTimestamp); err != nil {
 			a.handleError(w, r, err)
 			return
 		}
 
-		if err := entry.VerifySignature(); err != nil {
-			a.handleError(w, r, disc.ErrUnauthorized)
-			return
+		if !a.enableLoadTesting {
+			if err := entry.VerifySignature(); err != nil {
+				a.handleError(w, r, disc.ErrUnauthorized)
+				return
+			}
 		}
 
 		// Recover previous entry. If key not found we insert with sequence 0
@@ -190,9 +195,11 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := oldEntry.ValidateIteration(entry); err != nil {
-			a.handleError(w, r, err)
-			return
+		if !a.enableLoadTesting {
+			if err := oldEntry.ValidateIteration(entry); err != nil {
+				a.handleError(w, r, err)
+				return
+			}
 		}
 
 		if err := a.db.SetEntry(r.Context(), entry, entryTimeout); err != nil {
