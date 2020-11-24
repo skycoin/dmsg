@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/getsentry/sentry-go"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 
@@ -117,7 +116,6 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 
 	log.Info("Accepting sessions...")
 	s.readyOnce.Do(func() { close(s.ready) })
-	defer sentry.Recover()
 	for {
 		conn, err := lis.Accept()
 		if err != nil {
