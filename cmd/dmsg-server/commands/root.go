@@ -61,7 +61,8 @@ var rootCmd = &cobra.Command{
 		}
 		if sentryDSN != "" {
 			err := sentry.Init(sentry.ClientOptions{
-				Dsn: sentryDSN,
+				Dsn:              sentryDSN,
+				AttachStacktrace: true,
 			})
 			if err != nil {
 				log.Fatalf("sentry.Init: %s", err)
