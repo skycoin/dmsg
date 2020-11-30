@@ -8,6 +8,7 @@ require (
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-redis/redis v6.15.6+incompatible
+	github.com/json-iterator/go v1.1.10
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kz/discordrus v1.2.0

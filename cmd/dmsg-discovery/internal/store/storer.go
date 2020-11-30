@@ -30,6 +30,9 @@ type Storer interface {
 
 	// AvailableServers discovers available dmsg servers.
 	AvailableServers(ctx context.Context, maxCount int) ([]*disc.Entry, error)
+
+	// CountEntries returns numbers of servers and clients.
+	CountEntries(ctx context.Context) (int64, int64, error)
 }
 
 // Config configures the Store object.

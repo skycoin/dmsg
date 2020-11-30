@@ -1,6 +1,6 @@
 package dmsgpty
 
-// TODO: fix failing tests (https://github.com/skycoin/dmsg/issues/73)
+// TODO(evanlinjin): fix failing tests
 /*
 func TestHost(t *testing.T) {
 	const port = uint16(22)
@@ -8,7 +8,7 @@ func TestHost(t *testing.T) {
 
 	// Prepare dmsg env.
 	env := dmsgtest.NewEnv(t, dmsgtest.DefaultTimeout)
-	require.NoError(t, env.Startup(2, 2, &defaultConf))
+	require.NoError(t, env.Startup(2, 2, 1, &defaultConf))
 
 	dcA := env.AllClients()[0]
 	dcB := env.AllClients()[1]
@@ -190,7 +190,6 @@ func TestHost(t *testing.T) {
 	delWhitelist()
 	env.Shutdown()
 }
-
 
 func tempWhitelist(t *testing.T) (Whitelist, func()) {
 	f, err := ioutil.TempFile(os.TempDir(), "")

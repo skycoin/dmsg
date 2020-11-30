@@ -86,3 +86,54 @@ func TestRedisStoreServerEntry(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, entries, 1)
 }
+func TestRedisCountEntries(t *testing.T) {
+	redis, err := newRedis(redisURL, redisPassword, 0)
+	require.NoError(t, err)
+	require.NoError(t, redis.(*redisStore).client.FlushDB().Err())
+
+	pk, sk := cipher.GenerateKeyPair()
+	ctx := context.TODO()
+
+	serverEntry := &disc.Entry{
+		Static:    pk,
+		Timestamp: time.Now().Unix(),
+		Server: &disc.Server{
+			Address:           "localhost:8080",
+			AvailableSessions: 3,
+		},
+		Version:  "0",
+		Sequence: 1,
+	}
+
+	require.NoError(t, serverEntry.Sign(sk))
+
+	require.NoError(t, redis.SetEntry(ctx, serverEntry, time.Duration(0)))
+
+	res, err := redis.Entry(ctx, pk)
+	require.NoError(t, err)
+	assert.Equal(t, serverEntry, res)
+
+	pk, sk = cipher.GenerateKeyPair()
+	clientEntry := &disc.Entry{
+		Static:    pk,
+		Timestamp: time.Now().Unix(),
+		Client: &disc.Client{
+			DelegatedServers: []cipher.PubKey{pk},
+		},
+		Version:  "0",
+		Sequence: 1,
+	}
+
+	require.NoError(t, clientEntry.Sign(sk))
+
+	require.NoError(t, redis.SetEntry(ctx, clientEntry, time.Duration(0)))
+
+	res, err = redis.Entry(ctx, pk)
+	require.NoError(t, err)
+	assert.Equal(t, clientEntry, res)
+
+	numberOfServers, numberOfClients, err := redis.CountEntries(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, numberOfServers, int64(1))
+	assert.Equal(t, numberOfClients, int64(1))
+}

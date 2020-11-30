@@ -21,11 +21,12 @@ import (
 const redisPasswordEnvName = "REDIS_PASSWORD"
 
 var (
-	sf           cmdutil.ServiceFlags
-	addr         string
-	redisURL     string
-	entryTimeout time.Duration
-	testMode     bool
+	sf                cmdutil.ServiceFlags
+	addr              string
+	redisURL          string
+	entryTimeout      time.Duration
+	testMode          bool
+	enableLoadTesting bool
 )
 
 func init() {
@@ -35,6 +36,7 @@ func init() {
 	rootCmd.Flags().StringVar(&redisURL, "redis", store.DefaultURL, "connections string for a redis store")
 	rootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
 	rootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
+	rootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
 }
 
 var rootCmd = &cobra.Command{
@@ -60,13 +62,15 @@ var rootCmd = &cobra.Command{
 
 		db := prepareDB(log)
 
-		a := api.New(log, db, testMode)
+		a := api.New(log, db, testMode, enableLoadTesting)
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
 
 		mon := resourcemonitor.New(log, resourcemonitor.DefaultOptions)
 		mon.StartInBackground(ctx)
+
+		go a.RunBackgroundTasks(ctx, log)
 
 		log.WithField("addr", addr).Info("Serving discovery API...")
 		go func() {
@@ -75,7 +79,6 @@ var rootCmd = &cobra.Command{
 				cancel()
 			}
 		}()
-
 		<-ctx.Done()
 	},
 }

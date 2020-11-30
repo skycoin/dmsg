@@ -16,6 +16,7 @@ import (
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/buildinfo"
 	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/cmd/dmsg-server/internal/api"
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/discord"
@@ -55,8 +56,15 @@ var rootCmd = &cobra.Command{
 			log.WithError(err).Fatal()
 		}
 
-		m := prepareMetrics(log, sf.Tag, sf.MetricsAddr)
+		r := chi.NewRouter()
+		r.Use(middleware.RequestID)
+		r.Use(middleware.RealIP)
+		r.Use(middleware.Logger)
+		r.Use(middleware.Recoverer)
 
+		a := api.New(r, log)
+		m := prepareMetrics(r, log, sf.Tag, sf.MetricsAddr)
+		r.Get("/health", a.Health)
 		lis, err := net.Listen("tcp", conf.LocalAddress)
 		if err != nil {
 			log.Fatalf("Error listening on %s: %v", conf.LocalAddress, err)
@@ -69,6 +77,7 @@ var rootCmd = &cobra.Command{
 		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery), &srvConf, m)
 		srv.SetLogger(log)
 
+		a.SetDmsgServer(srv)
 		defer func() { log.WithError(srv.Close()).Info("Closed server.") }()
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
@@ -76,6 +85,8 @@ var rootCmd = &cobra.Command{
 
 		mon := resourcemonitor.New(log, resourcemonitor.DefaultOptions)
 		mon.StartInBackground(ctx)
+
+		go a.RunBackgroundTasks(ctx)
 
 		go func() {
 			if err := srv.Serve(lis, conf.PublicAddress); err != nil {
@@ -100,19 +111,12 @@ type Config struct {
 	LogLevel       string        `json:"log_level"`
 }
 
-func prepareMetrics(log logrus.FieldLogger, tag, addr string) servermetrics.Metrics {
+func prepareMetrics(r *chi.Mux, log logrus.FieldLogger, tag, addr string) servermetrics.Metrics {
 	if addr == "" {
 		return servermetrics.NewEmpty()
 	}
 
 	m := servermetrics.New(tag)
-
-	r := chi.NewRouter()
-
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
 
 	promutil.AddMetricsHandle(r, m.Collectors()...)
 

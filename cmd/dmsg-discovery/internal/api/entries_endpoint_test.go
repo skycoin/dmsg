@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -178,7 +177,7 @@ func TestEntriesEndpoint(t *testing.T) {
 				tc.storerPreHook(t, dbMock, &tc.entry)
 			}
 
-			api := New(nil, dbMock, true)
+			api := New(nil, dbMock, true, false)
 			req, err := http.NewRequest(tc.method, tc.endpoint, bytes.NewBufferString(tc.httpBody))
 			require.NoError(t, err)
 

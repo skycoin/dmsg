@@ -1,16 +1,19 @@
 package api
 
 import (
-	"encoding/json"
+	"context"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 
+	"github.com/skycoin/dmsg/buildinfo"
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/disc"
@@ -19,17 +22,34 @@ import (
 
 var log = logging.MustGetLogger("dmsg-discovery")
 
+var json = jsoniter.ConfigFastest
+
 const maxGetAvailableServersResult = 512
 
 // API represents the api of the dmsg-discovery service`
 type API struct {
 	http.Handler
-	db       store.Storer
-	testMode bool
+	db                store.Storer
+	testMode          bool
+	startedAt         time.Time
+	sMu               sync.Mutex
+	numberOfClients   int64
+	numberOfServers   int64
+	error             string
+	enableLoadTesting bool
+}
+
+// HealthCheckResponse is struct of /health endpoint
+type HealthCheckResponse struct {
+	BuildInfo       *buildinfo.Info `json:"build_info"`
+	NumberOfClients int64           `json:"clients"`
+	NumberOfServers int64           `json:"servers"`
+	StartedAt       time.Time       `json:"started_at,omitempty"`
+	Error           string          `json:"error,omitempty"`
 }
 
 // New returns a new API object, which can be started as a server
-func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
+func New(log logrus.FieldLogger, db store.Storer, testMode, enableLoadTesting bool) *API {
 	if log != nil {
 		log = logging.MustGetLogger("dmsg_disc")
 	}
@@ -40,9 +60,11 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 
 	r := chi.NewRouter()
 	api := &API{
-		Handler:  r,
-		db:       db,
-		testMode: testMode,
+		Handler:           r,
+		db:                db,
+		testMode:          testMode,
+		startedAt:         time.Now(),
+		enableLoadTesting: enableLoadTesting,
 	}
 
 	r.Use(middleware.RequestID)
@@ -56,12 +78,28 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/health", api.health())
+	r.Get("/health", api.serviceHealth)
 
 	return api
 }
 
 func (a *API) log(r *http.Request) logrus.FieldLogger {
 	return httputil.GetLogger(r)
+}
+
+// RunBackgroundTasks is goroutine which runs in background periodic tasks of dmsg-discovery.
+func (a *API) RunBackgroundTasks(ctx context.Context, log logrus.FieldLogger) {
+	ticker := time.NewTicker(time.Second * 10)
+	defer ticker.Stop()
+	a.updateInternalState(ctx, log)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			a.updateInternalState(ctx, log)
+		}
+	}
 }
 
 // getEntry returns the entry associated with the given public key
@@ -126,14 +164,17 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if err := entry.Validate(); err != nil {
+		validateTimestamp := !a.enableLoadTesting
+		if err := entry.Validate(validateTimestamp); err != nil {
 			a.handleError(w, r, err)
 			return
 		}
 
-		if err := entry.VerifySignature(); err != nil {
-			a.handleError(w, r, disc.ErrUnauthorized)
-			return
+		if !a.enableLoadTesting {
+			if err := entry.VerifySignature(); err != nil {
+				a.handleError(w, r, disc.ErrUnauthorized)
+				return
+			}
 		}
 
 		// Recover previous entry. If key not found we insert with sequence 0
@@ -154,9 +195,11 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := oldEntry.ValidateIteration(entry); err != nil {
-			a.handleError(w, r, err)
-			return
+		if !a.enableLoadTesting {
+			if err := oldEntry.ValidateIteration(entry); err != nil {
+				a.handleError(w, r, err)
+				return
+			}
 		}
 
 		if err := a.db.SetEntry(r.Context(), entry, entryTimeout); err != nil {
@@ -200,6 +243,19 @@ func (a *API) health() http.HandlerFunc {
 	return httputil.MakeHealthHandler(expBase, nil)
 }
 
+func (a *API) serviceHealth(w http.ResponseWriter, r *http.Request) {
+	info := buildinfo.Get()
+	a.sMu.Lock()
+	defer a.sMu.Unlock()
+	a.writeJSON(w, r, http.StatusOK, HealthCheckResponse{
+		BuildInfo:       info,
+		StartedAt:       a.startedAt,
+		NumberOfClients: a.numberOfClients,
+		NumberOfServers: a.numberOfServers,
+		Error:           a.error,
+	})
+}
+
 // isLoopbackAddr checks if string is loopback interface
 func isLoopbackAddr(addr string) (bool, error) {
 	host, _, err := net.SplitHostPort(addr)
@@ -228,4 +284,17 @@ func (a *API) writeJSON(w http.ResponseWriter, r *http.Request, code int, object
 	if err != nil {
 		a.log(r).Warnf("Failed to write response: %s", err)
 	}
+}
+
+func (a *API) updateInternalState(ctx context.Context, logger logrus.FieldLogger) {
+	numberOfServers, numberOfClients, err := a.db.CountEntries(ctx)
+	a.sMu.Lock()
+	defer a.sMu.Unlock()
+	a.error = ""
+	if err != nil {
+		logger.WithError(err).Errorf("failed to get number of clients and servers")
+		a.error = err.Error()
+	}
+	a.numberOfServers = numberOfServers
+	a.numberOfClients = numberOfClients
 }

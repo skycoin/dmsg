@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/sirupsen/logrus"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (

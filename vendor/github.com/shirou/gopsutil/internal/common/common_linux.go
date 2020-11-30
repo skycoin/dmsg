@@ -117,7 +117,7 @@ func VirtualizationWithContext(ctx context.Context) (string, string, error) {
 	if virtualizationCache != nil {
 		return virtualizationCache["system"], virtualizationCache["role"], nil
 	}
-	
+
 	var system string
 	var role string
 
@@ -238,13 +238,13 @@ func VirtualizationWithContext(ctx context.Context) (string, string, error) {
 			role = "host"
 		}
 	}
-	
+
 	// before returning for the first time, cache the system and role
 	virtualizationCache = map[string]string{
-		"system":	system,
-		"role": 	role,
+		"system": system,
+		"role":   role,
 	}
-	
+
 	return system, role, nil
 }
 

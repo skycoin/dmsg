@@ -58,7 +58,7 @@ func TestNewClientEntryIsValid(t *testing.T) {
 			err := entry.Sign(sk)
 			require.NoError(t, err)
 
-			err = entry.Validate()
+			err = entry.Validate(true)
 
 			assert.NoError(t, err)
 		})
@@ -100,7 +100,7 @@ func TestValidateRightEntry(t *testing.T) {
 	require.NoError(t, err)
 
 	// Action
-	err = validEntry.Validate()
+	err = validEntry.Validate(true)
 	assert.Nil(t, err)
 }
 
@@ -122,7 +122,7 @@ func TestValidateNonKeysEntry(t *testing.T) {
 	require.NoError(t, err)
 
 	// Action
-	err = nonKeysEntry.Validate()
+	err = nonKeysEntry.Validate(true)
 	assert.NotNil(t, err)
 }
 
@@ -139,7 +139,7 @@ func TestValidateNonClientNonServerEntry(t *testing.T) {
 	require.NoError(t, err)
 
 	// Action
-	err = nonClientNonServerEntry.Validate()
+	err = nonClientNonServerEntry.Validate(true)
 	assert.NotNil(t, err)
 }
 
@@ -153,7 +153,7 @@ func TestValidateNonSignedEntry(t *testing.T) {
 	}
 
 	// Action
-	err := nonClientNonServerEntry.Validate()
+	err := nonClientNonServerEntry.Validate(true)
 	assert.NotNil(t, err)
 }
 
@@ -189,7 +189,7 @@ func TestValidateIterationEmptyClient(t *testing.T) {
 	require.NoError(t, err)
 
 	// Action
-	errValidation := entryNext.Validate()
+	errValidation := entryNext.Validate(true)
 	errIteration := entryPrevious.ValidateIteration(&entryNext)
 
 	// Assert
