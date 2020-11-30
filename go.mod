@@ -4,7 +4,6 @@ go 1.14
 
 require (
 	github.com/creack/pty v1.1.9
-	github.com/getsentry/sentry-go v0.8.0
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-redis/redis v6.15.6+incompatible
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
@@ -27,6 +26,8 @@ require (
 	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553
 	golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527 // indirect
+	golang.org/x/text v0.3.2 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/ini.v1 v1.51.1 // indirect
 	nhooyr.io/websocket v1.8.2
 )
