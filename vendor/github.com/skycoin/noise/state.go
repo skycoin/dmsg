@@ -12,9 +12,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-
-	"github.com/getsentry/sentry-go"
-	"github.com/skycoin/skycoin/src/cipher"
 )
 
 // A CipherState provides symmetric encryption and decryption after a successful
@@ -447,28 +444,12 @@ func (s *HandshakeState) ReadMessage(out, message []byte) ([]byte, *CipherState,
 		case MessagePatternDHEE:
 			s.ss.MixKey(s.ss.cs.DH(s.e.Private, s.re))
 		case MessagePatternDHES:
-			if _, err := cipher.NewPubKey(s.re); err != nil {
-				sentry.CaptureException(err)
-			}
-			if _, err := cipher.NewPubKey(s.rs); err != nil {
-				sentry.CaptureException(err)
-			}
-			fmt.Println("s.rs", s.rs)
-			fmt.Println("s.re", s.re)
 			if s.initiator {
 				s.ss.MixKey(s.ss.cs.DH(s.e.Private, s.rs))
 			} else {
 				s.ss.MixKey(s.ss.cs.DH(s.s.Private, s.re))
 			}
 		case MessagePatternDHSE:
-			if _, err := cipher.NewPubKey(s.re); err != nil {
-				sentry.CaptureException(err)
-			}
-			if _, err := cipher.NewPubKey(s.rs); err != nil {
-				sentry.CaptureException(err)
-			}
-			fmt.Println("s.rs", s.rs)
-			fmt.Println("s.re", s.re)
 			if s.initiator {
 				s.ss.MixKey(s.ss.cs.DH(s.s.Private, s.re))
 			} else {

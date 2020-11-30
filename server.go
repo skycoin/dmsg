@@ -136,6 +136,12 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 
 		s.wg.Add(1)
 		go func(conn net.Conn) {
+			defer func() {
+				err := recover()
+				if err != nil {
+					log.Warnf("panic in handleSession: %+v", err)
+				}
+			}()
 			s.handleSession(conn)
 			s.wg.Done()
 		}(conn)
