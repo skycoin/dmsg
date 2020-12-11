@@ -19,7 +19,7 @@ func NewStatusResponseWriter(w http.ResponseWriter) *StatusResponseWriter {
 // WriteHeader implements `http.ResponseWriter` storing the written status code.
 func (w *StatusResponseWriter) WriteHeader(statusCode int) {
 	w.statusCode = statusCode
-	w.WriteHeader(statusCode)
+	w.ResponseWriter.WriteHeader(statusCode)
 }
 
 // StatusCode gets status code from the writer.

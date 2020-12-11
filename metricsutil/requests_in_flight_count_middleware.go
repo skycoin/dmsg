@@ -16,7 +16,7 @@ type RequestsInFlightCountMiddleware struct {
 // NewRequestsInFlightCountMiddleware constructs `RequestsInFlightCountMiddleware`.
 func NewRequestsInFlightCountMiddleware() *RequestsInFlightCountMiddleware {
 	m := &RequestsInFlightCountMiddleware{}
-	m.reqsInFlightGauge = metrics.NewGauge(`request_ongoing_count`, func() float64 {
+	m.reqsInFlightGauge = metrics.GetOrCreateGauge(`request_ongoing_count`, func() float64 {
 		return float64(m.Reqs())
 	})
 
