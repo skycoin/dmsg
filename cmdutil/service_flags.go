@@ -49,12 +49,10 @@ type ServiceFlags struct {
 	Stdin       bool
 
 	// state
-	checkDone   bool
-	loggerDone  bool
-	metricsDone bool
+	checkDone  bool
+	loggerDone bool
 
-	logger  *logging.Logger
-	metrics metricsutil.HTTPMetrics
+	logger *logging.Logger
 }
 
 // Init initiates the service flags.
@@ -222,21 +220,11 @@ func (sf *ServiceFlags) obtainConfigReader(args []string, checkArgs bool) (io.Re
 	return nil, errors.New("no config location specified")
 }
 
-// HTTPMetrics returns a HTTPMetrics implementation based on service flags.
-func (sf *ServiceFlags) HTTPMetrics() metricsutil.HTTPMetrics {
-	if alreadyDone(&sf.metricsDone) {
-		return sf.metrics
-	}
-
+// ServeHTTPMetrics starts serving metrics based on service flags.
+func (sf *ServiceFlags) ServeHTTPMetrics() {
 	if sf.MetricsAddr == "" {
-		m := metricsutil.NewEmptyHTTPMetrics()
-		sf.metrics = m
-
-		return m
+		return
 	}
-
-	m := metricsutil.NewHTTPMetrics(sf.Tag)
-	sf.metrics = m
 
 	r := chi.NewRouter()
 
@@ -245,13 +233,13 @@ func (sf *ServiceFlags) HTTPMetrics() metricsutil.HTTPMetrics {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	metricsutil.AddMetricsHandle(r, m.Collectors()...)
+	metricsutil.AddMetricsHandle(r)
 
 	addr := sf.MetricsAddr
 	sf.logger.WithField("addr", addr).Info("Serving metrics.")
-	go func() { sf.logger.Fatal(http.ListenAndServe(addr, r)) }()
-
-	return m
+	go func() {
+		sf.logger.Fatal(http.ListenAndServe(addr, r))
+	}()
 }
 
 // ValidTag returns an error if the tag is invalid.

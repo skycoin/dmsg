@@ -57,18 +57,20 @@ var rootCmd = &cobra.Command{
 			defer log.Info(discord.StopLogMessage)
 		}
 
-		m := sf.HTTPMetrics()
+		sf.ServeHTTPMetrics()
 
 		db := prepareDB(log)
 
-		a := api.New(log, db, testMode, enableLoadTesting)
+		// we enable metrics middleware if address is passed
+		enableMetrics := sf.MetricsAddr != ""
+		a := api.New(log, db, testMode, enableLoadTesting, enableMetrics)
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
 		go a.RunBackgroundTasks(ctx, log)
 		log.WithField("addr", addr).Info("Serving discovery API...")
 		go func() {
-			if err := http.ListenAndServe(addr, m.Handle(a)); err != nil {
+			if err := http.ListenAndServe(addr, a); err != nil {
 				log.Errorf("ListenAndServe: %v", err)
 				cancel()
 			}

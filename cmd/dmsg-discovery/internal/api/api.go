@@ -52,7 +52,7 @@ type HealthCheckResponse struct {
 }
 
 // New returns a new API object, which can be started as a server
-func New(log logrus.FieldLogger, db store.Storer, testMode, enableLoadTesting bool) *API {
+func New(log logrus.FieldLogger, db store.Storer, testMode, enableLoadTesting, enableMetrics bool) *API {
 	if log != nil {
 		log = logging.MustGetLogger("dmsg_disc")
 	}
@@ -75,8 +75,10 @@ func New(log logrus.FieldLogger, db store.Storer, testMode, enableLoadTesting bo
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Use(api.reqsInFlightCountMiddleware.Handle)
-	r.Use(metricsutil.RequestDurationMiddleware)
+	if enableMetrics {
+		r.Use(api.reqsInFlightCountMiddleware.Handle)
+		r.Use(metricsutil.RequestDurationMiddleware)
+	}
 	r.Use(httputil.SetLoggerMiddleware(log))
 
 	r.Get("/dmsg-discovery/entry/{pk}", api.getEntry())

@@ -15,6 +15,7 @@ type Metrics interface {
 
 // New returns the default implementation of Metrics.
 func New(namespace string) Metrics {
+
 	activeSessions := prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "active_sessions_count",
@@ -46,7 +47,7 @@ func New(namespace string) Metrics {
 		Help:      "Total number of failed stream dials.",
 	})
 
-	return &metrics{
+	return &metricss{
 		activeSessions:     activeSessions,
 		successfulSessions: successfulSessions,
 		failedSessions:     failedSessions,
@@ -56,7 +57,7 @@ func New(namespace string) Metrics {
 	}
 }
 
-type metrics struct {
+type metricss struct {
 	activeSessions     prometheus.Gauge
 	successfulSessions prometheus.Counter
 	failedSessions     prometheus.Counter
@@ -66,7 +67,7 @@ type metrics struct {
 	failedStreams     prometheus.Counter
 }
 
-func (m *metrics) Collectors() []prometheus.Collector {
+func (m *metricss) Collectors() []prometheus.Collector {
 	return []prometheus.Collector{
 		m.activeSessions,
 		m.successfulSessions,
@@ -77,7 +78,7 @@ func (m *metrics) Collectors() []prometheus.Collector {
 	}
 }
 
-func (m *metrics) RecordSession(delta DeltaType) {
+func (m *metricss) RecordSession(delta DeltaType) {
 	switch delta {
 	case 0:
 		m.failedSessions.Inc()
@@ -91,7 +92,7 @@ func (m *metrics) RecordSession(delta DeltaType) {
 	}
 }
 
-func (m *metrics) RecordStream(delta DeltaType) {
+func (m *metricss) RecordStream(delta DeltaType) {
 	switch delta {
 	case 0:
 		m.failedStreams.Inc()
