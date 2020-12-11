@@ -20,7 +20,7 @@ import (
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/discord"
-	"github.com/skycoin/dmsg/promutil"
+	"github.com/skycoin/dmsg/metricsutil"
 	"github.com/skycoin/dmsg/servermetrics"
 )
 
@@ -113,7 +113,7 @@ func prepareMetrics(r *chi.Mux, log logrus.FieldLogger, tag, addr string) server
 
 	m := servermetrics.New(tag)
 
-	promutil.AddMetricsHandle(r, m.Collectors()...)
+	metricsutil.AddMetricsHandle(r, m.Collectors()...)
 
 	log.WithField("addr", addr).Info("Serving metrics...")
 	go func() { log.Fatalln(http.ListenAndServe(addr, r)) }()

@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/discord"
-	"github.com/skycoin/dmsg/promutil"
+	"github.com/skycoin/dmsg/metricsutil"
 )
 
 // Associated errors.
@@ -54,7 +54,7 @@ type ServiceFlags struct {
 	metricsDone bool
 
 	logger  *logging.Logger
-	metrics promutil.HTTPMetrics
+	metrics metricsutil.HTTPMetrics
 }
 
 // Init initiates the service flags.
@@ -223,19 +223,19 @@ func (sf *ServiceFlags) obtainConfigReader(args []string, checkArgs bool) (io.Re
 }
 
 // HTTPMetrics returns a HTTPMetrics implementation based on service flags.
-func (sf *ServiceFlags) HTTPMetrics() promutil.HTTPMetrics {
+func (sf *ServiceFlags) HTTPMetrics() metricsutil.HTTPMetrics {
 	if alreadyDone(&sf.metricsDone) {
 		return sf.metrics
 	}
 
 	if sf.MetricsAddr == "" {
-		m := promutil.NewEmptyHTTPMetrics()
+		m := metricsutil.NewEmptyHTTPMetrics()
 		sf.metrics = m
 
 		return m
 	}
 
-	m := promutil.NewHTTPMetrics(sf.Tag)
+	m := metricsutil.NewHTTPMetrics(sf.Tag)
 	sf.metrics = m
 
 	r := chi.NewRouter()
@@ -245,7 +245,7 @@ func (sf *ServiceFlags) HTTPMetrics() promutil.HTTPMetrics {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	promutil.AddMetricsHandle(r, m.Collectors()...)
+	metricsutil.AddMetricsHandle(r, m.Collectors()...)
 
 	addr := sf.MetricsAddr
 	sf.logger.WithField("addr", addr).Info("Serving metrics.")

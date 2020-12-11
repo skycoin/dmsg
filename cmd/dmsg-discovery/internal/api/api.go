@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/skycoin/dmsg/metricsutil"
+
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	jsoniter "github.com/json-iterator/go"
@@ -29,14 +31,15 @@ const maxGetAvailableServersResult = 512
 // API represents the api of the dmsg-discovery service`
 type API struct {
 	http.Handler
-	db                store.Storer
-	testMode          bool
-	startedAt         time.Time
-	sMu               sync.Mutex
-	numberOfClients   int64
-	numberOfServers   int64
-	error             string
-	enableLoadTesting bool
+	db                          store.Storer
+	reqsInFlightCountMiddleware *metricsutil.RequestsInFlightCountMiddleware
+	testMode                    bool
+	startedAt                   time.Time
+	sMu                         sync.Mutex
+	numberOfClients             int64
+	numberOfServers             int64
+	error                       string
+	enableLoadTesting           bool
 }
 
 // HealthCheckResponse is struct of /health endpoint
@@ -60,17 +63,20 @@ func New(log logrus.FieldLogger, db store.Storer, testMode, enableLoadTesting bo
 
 	r := chi.NewRouter()
 	api := &API{
-		Handler:           r,
-		db:                db,
-		testMode:          testMode,
-		startedAt:         time.Now(),
-		enableLoadTesting: enableLoadTesting,
+		Handler:                     r,
+		db:                          db,
+		testMode:                    testMode,
+		startedAt:                   time.Now(),
+		enableLoadTesting:           enableLoadTesting,
+		reqsInFlightCountMiddleware: metricsutil.NewRequestsInFlightCountMiddleware(),
 	}
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(api.reqsInFlightCountMiddleware.Handle)
+	r.Use(metricsutil.RequestDurationMiddleware)
 	r.Use(httputil.SetLoggerMiddleware(log))
 
 	r.Get("/dmsg-discovery/entry/{pk}", api.getEntry())
