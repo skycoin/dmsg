@@ -7,8 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/skycoin/dmsg/metricsutil"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -17,6 +15,7 @@ import (
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/discord"
+	"github.com/skycoin/dmsg/metricsutil"
 )
 
 const redisPasswordEnvName = "REDIS_PASSWORD"

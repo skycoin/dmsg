@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/skycoin/dmsg/metricsutil"
-
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	jsoniter "github.com/json-iterator/go"
@@ -20,6 +18,7 @@ import (
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/httputil"
+	"github.com/skycoin/dmsg/metricsutil"
 )
 
 var log = logging.MustGetLogger("dmsg-discovery")

@@ -3,11 +3,10 @@ package metricsutil
 import (
 	"net/http"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/sirupsen/logrus"
 )
 
 // AddMetricsHandler adds a prometheus-format Handle at '/metrics' to the provided serve mux.
