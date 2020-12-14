@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/skycoin/dmsg/metricsutil"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -57,7 +59,7 @@ var rootCmd = &cobra.Command{
 			defer log.Info(discord.StopLogMessage)
 		}
 
-		sf.ServeHTTPMetrics()
+		metricsutil.ServeHTTPMetrics(log, sf.MetricsAddr)
 
 		db := prepareDB(log)
 

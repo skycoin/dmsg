@@ -2,80 +2,73 @@ package servermetrics
 
 import (
 	"fmt"
+	"sync/atomic"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/VictoriaMetrics/metrics"
 )
 
 // Metrics collects metrics for prometheus.
 type Metrics interface {
-	Collectors() []prometheus.Collector
 	RecordSession(delta DeltaType)
 	RecordStream(delta DeltaType)
 }
 
 // New returns the default implementation of Metrics.
-func New(namespace string) Metrics {
+func New() *metricss {
+	var m metricss
 
-	activeSessions := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: namespace,
-		Name:      "active_sessions_count",
-		Help:      "Current number of active sessions.",
-	})
-	successfulSessions := prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: namespace,
-		Name:      "session_success_total",
-		Help:      "Total number of successful session dials.",
-	})
-	failedSessions := prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: namespace,
-		Name:      "session_fail_total",
-		Help:      "Total number of failed session dials.",
-	})
-	activeStreams := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: namespace,
-		Name:      "active_streams_count",
-		Help:      "Current number of active streams.",
-	})
-	successfulStreams := prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: namespace,
-		Name:      "stream_success_total",
-		Help:      "Total number of successful stream dials.",
-	})
-	failedStreams := prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: namespace,
-		Name:      "stream_fail_total",
-		Help:      "Total number of failed stream dials.",
+	m.activeSessionsGauge = metrics.GetOrCreateGauge("active_sessions_count", func() float64 {
+		return float64(m.ActiveSessions())
 	})
 
-	return &metricss{
-		activeSessions:     activeSessions,
-		successfulSessions: successfulSessions,
-		failedSessions:     failedSessions,
-		activeStreams:      activeStreams,
-		successfulStreams:  successfulStreams,
-		failedStreams:      failedStreams,
-	}
+	m.successfulSessions = metrics.GetOrCreateCounter("session_success_total")
+	m.failedSessions = metrics.GetOrCreateCounter("session_fail_total")
+
+	m.activeStreamsGauge = metrics.GetOrCreateGauge("active_streams_count", func() float64 {
+		return float64(m.ActiveStreams())
+	})
+
+	m.successfulStreams = metrics.GetOrCreateCounter("stream_success_total")
+
+	m.failedStreams = metrics.GetOrCreateCounter("stream_fail_total")
+
+	return &m
 }
 
 type metricss struct {
-	activeSessions     prometheus.Gauge
-	successfulSessions prometheus.Counter
-	failedSessions     prometheus.Counter
+	activeSessions int64
+	activeStreams  int64
 
-	activeStreams     prometheus.Gauge
-	successfulStreams prometheus.Counter
-	failedStreams     prometheus.Counter
+	activeSessionsGauge *metrics.Gauge
+	successfulSessions  *metrics.Counter
+	failedSessions      *metrics.Counter
+	activeStreamsGauge  *metrics.Gauge
+	successfulStreams   *metrics.Counter
+	failedStreams       *metrics.Counter
 }
 
-func (m *metricss) Collectors() []prometheus.Collector {
-	return []prometheus.Collector{
-		m.activeSessions,
-		m.successfulSessions,
-		m.failedSessions,
-		m.activeStreams,
-		m.successfulStreams,
-		m.failedStreams,
-	}
+func (m *metricss) IncActiveSessions() {
+	atomic.AddInt64(&m.activeSessions, 1)
+}
+
+func (m *metricss) DecActiveSessions() {
+	atomic.AddInt64(&m.activeSessions, -1)
+}
+
+func (m *metricss) ActiveSessions() int64 {
+	return atomic.LoadInt64(&m.activeSessions)
+}
+
+func (m *metricss) IncActiveStreams() {
+	atomic.AddInt64(&m.activeStreams, 1)
+}
+
+func (m *metricss) DecActiveStreams() {
+	atomic.AddInt64(&m.activeStreams, -1)
+}
+
+func (m *metricss) ActiveStreams() int64 {
+	return atomic.LoadInt64(&m.activeStreams)
 }
 
 func (m *metricss) RecordSession(delta DeltaType) {
@@ -84,9 +77,9 @@ func (m *metricss) RecordSession(delta DeltaType) {
 		m.failedSessions.Inc()
 	case 1:
 		m.successfulSessions.Inc()
-		m.activeSessions.Inc()
+		m.IncActiveSessions()
 	case -1:
-		m.activeSessions.Dec()
+		m.DecActiveSessions()
 	default:
 		panic(fmt.Errorf("invalid delta: %d", delta))
 	}
@@ -98,9 +91,9 @@ func (m *metricss) RecordStream(delta DeltaType) {
 		m.failedStreams.Inc()
 	case 1:
 		m.successfulStreams.Inc()
-		m.activeStreams.Inc()
+		m.IncActiveStreams()
 	case -1:
-		m.activeStreams.Dec()
+		m.DecActiveStreams()
 	default:
 		panic(fmt.Errorf("invalid delta: %d", delta))
 	}

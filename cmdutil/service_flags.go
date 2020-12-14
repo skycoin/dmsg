@@ -6,13 +6,10 @@ import (
 	"io"
 	"io/ioutil"
 	"log/syslog"
-	"net/http"
 	"os"
 	"strings"
 	"unicode"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
 	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
@@ -20,7 +17,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/discord"
-	"github.com/skycoin/dmsg/metricsutil"
 )
 
 // Associated errors.
@@ -218,28 +214,6 @@ func (sf *ServiceFlags) obtainConfigReader(args []string, checkArgs bool) (io.Re
 	}
 
 	return nil, errors.New("no config location specified")
-}
-
-// ServeHTTPMetrics starts serving metrics based on service flags.
-func (sf *ServiceFlags) ServeHTTPMetrics() {
-	if sf.MetricsAddr == "" {
-		return
-	}
-
-	r := chi.NewRouter()
-
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-
-	metricsutil.AddMetricsHandle(r)
-
-	addr := sf.MetricsAddr
-	sf.logger.WithField("addr", addr).Info("Serving metrics.")
-	go func() {
-		sf.logger.Fatal(http.ListenAndServe(addr, r))
-	}()
 }
 
 // ValidTag returns an error if the tag is invalid.

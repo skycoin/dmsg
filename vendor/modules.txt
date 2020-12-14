@@ -1,10 +1,6 @@
 # github.com/VictoriaMetrics/metrics v1.12.3
 ## explicit
 github.com/VictoriaMetrics/metrics
-# github.com/beorn7/perks v1.0.1
-github.com/beorn7/perks/quantile
-# github.com/cespare/xxhash/v2 v2.1.1
-github.com/cespare/xxhash/v2
 # github.com/creack/pty v1.1.9
 ## explicit
 github.com/creack/pty
@@ -25,8 +21,6 @@ github.com/go-redis/redis/internal/hashtag
 github.com/go-redis/redis/internal/pool
 github.com/go-redis/redis/internal/proto
 github.com/go-redis/redis/internal/util
-# github.com/golang/protobuf v1.3.3
-github.com/golang/protobuf/proto
 # github.com/hashicorp/hcl v1.0.0
 github.com/hashicorp/hcl
 github.com/hashicorp/hcl/hcl/ast
@@ -60,16 +54,16 @@ github.com/magiconair/properties
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.12
 github.com/mattn/go-isatty
-# github.com/matttproud/golang_protobuf_extensions v1.0.1
-github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b
 ## explicit
 github.com/mgutz/ansi
 # github.com/mitchellh/mapstructure v1.1.2
 github.com/mitchellh/mapstructure
 # github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
+## explicit
 github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v1.0.1
+## explicit
 github.com/modern-go/reflect2
 # github.com/onsi/ginkgo v1.12.0
 ## explicit
@@ -79,20 +73,6 @@ github.com/modern-go/reflect2
 github.com/pelletier/go-toml
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
-# github.com/prometheus/client_golang v1.3.0
-## explicit
-github.com/prometheus/client_golang/prometheus
-github.com/prometheus/client_golang/prometheus/internal
-# github.com/prometheus/client_model v0.1.0
-github.com/prometheus/client_model/go
-# github.com/prometheus/common v0.7.0
-github.com/prometheus/common/expfmt
-github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
-github.com/prometheus/common/model
-# github.com/prometheus/procfs v0.0.8
-github.com/prometheus/procfs
-github.com/prometheus/procfs/internal/fs
-github.com/prometheus/procfs/internal/util
 # github.com/sirupsen/logrus v1.4.2
 ## explicit
 github.com/sirupsen/logrus
