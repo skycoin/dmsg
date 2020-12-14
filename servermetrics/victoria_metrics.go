@@ -13,6 +13,7 @@ type Metrics interface {
 	RecordStream(delta DeltaType)
 }
 
+// VictoriaMetrics implements `Metrics` using `VictoriaMetrics`.
 type VictoriaMetrics struct {
 	activeSessions int64
 	activeStreams  int64

@@ -16,6 +16,7 @@ func AddMetricsHandler(mux *chi.Mux) {
 	})
 }
 
+// ServeHTTPMetrics starts serving metrics on a given `addr`.
 func ServeHTTPMetrics(log logrus.FieldLogger, addr string) {
 	if addr == "" {
 		return
