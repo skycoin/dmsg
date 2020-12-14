@@ -13,7 +13,7 @@ type Metrics interface {
 	RecordStream(delta DeltaType)
 }
 
-type vm struct {
+type VictoriaMetrics struct {
 	activeSessions int64
 	activeStreams  int64
 
@@ -25,9 +25,9 @@ type vm struct {
 	failedStreams       *metrics.Counter
 }
 
-// New returns the Victoria Metrics implementation of Metrics.
-func New() *vm {
-	var m vm
+// NewVictoriaMetrics returns the Victoria Metrics implementation of Metrics.
+func NewVictoriaMetrics() *VictoriaMetrics {
+	var m VictoriaMetrics
 
 	m.activeSessionsGauge = metrics.GetOrCreateGauge("active_sessions_count", func() float64 {
 		return float64(m.ActiveSessions())
@@ -47,31 +47,38 @@ func New() *vm {
 	return &m
 }
 
-func (m *vm) IncActiveSessions() {
+// IncActiveSessions increments active sessions count.
+func (m *VictoriaMetrics) IncActiveSessions() {
 	atomic.AddInt64(&m.activeSessions, 1)
 }
 
-func (m *vm) DecActiveSessions() {
+// DecActiveSessions decrements active sessions count.
+func (m *VictoriaMetrics) DecActiveSessions() {
 	atomic.AddInt64(&m.activeSessions, -1)
 }
 
-func (m *vm) ActiveSessions() int64 {
+// ActiveSessions gets current active sessions count.
+func (m *VictoriaMetrics) ActiveSessions() int64 {
 	return atomic.LoadInt64(&m.activeSessions)
 }
 
-func (m *vm) IncActiveStreams() {
+// IncActiveStreams increments active streams count.
+func (m *VictoriaMetrics) IncActiveStreams() {
 	atomic.AddInt64(&m.activeStreams, 1)
 }
 
-func (m *vm) DecActiveStreams() {
+// DecActiveStreams decrements active streams count
+func (m *VictoriaMetrics) DecActiveStreams() {
 	atomic.AddInt64(&m.activeStreams, -1)
 }
 
-func (m *vm) ActiveStreams() int64 {
+// ActiveStreams gets current active streams count.
+func (m *VictoriaMetrics) ActiveStreams() int64 {
 	return atomic.LoadInt64(&m.activeStreams)
 }
 
-func (m *vm) RecordSession(delta DeltaType) {
+// RecordSession implements `Metrics`.
+func (m *VictoriaMetrics) RecordSession(delta DeltaType) {
 	switch delta {
 	case 0:
 		m.failedSessions.Inc()
@@ -85,7 +92,8 @@ func (m *vm) RecordSession(delta DeltaType) {
 	}
 }
 
-func (m *vm) RecordStream(delta DeltaType) {
+// RecordStream implements Metrics.
+func (m *VictoriaMetrics) RecordStream(delta DeltaType) {
 	switch delta {
 	case 0:
 		m.failedStreams.Inc()
