@@ -57,7 +57,7 @@ var rootCmd = &cobra.Command{
 		if sf.MetricsAddr == "" {
 			m = servermetrics.NewEmpty()
 		} else {
-			m = servermetrics.New()
+			m = servermetrics.NewVictoriaMetrics()
 		}
 
 		metricsutil.ServeHTTPMetrics(log, sf.MetricsAddr)
