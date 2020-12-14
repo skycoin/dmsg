@@ -13,7 +13,7 @@ type Metrics interface {
 	RecordStream(delta DeltaType)
 }
 
-type srvMetrics struct {
+type vm struct {
 	activeSessions int64
 	activeStreams  int64
 
@@ -25,9 +25,9 @@ type srvMetrics struct {
 	failedStreams       *metrics.Counter
 }
 
-// New returns the default implementation of Metrics.
-func New() *srvMetrics {
-	var m srvMetrics
+// New returns the Victoria Metrics implementation of Metrics.
+func New() *vm {
+	var m vm
 
 	m.activeSessionsGauge = metrics.GetOrCreateGauge("active_sessions_count", func() float64 {
 		return float64(m.ActiveSessions())
@@ -47,31 +47,31 @@ func New() *srvMetrics {
 	return &m
 }
 
-func (m *srvMetrics) IncActiveSessions() {
+func (m *vm) IncActiveSessions() {
 	atomic.AddInt64(&m.activeSessions, 1)
 }
 
-func (m *srvMetrics) DecActiveSessions() {
+func (m *vm) DecActiveSessions() {
 	atomic.AddInt64(&m.activeSessions, -1)
 }
 
-func (m *srvMetrics) ActiveSessions() int64 {
+func (m *vm) ActiveSessions() int64 {
 	return atomic.LoadInt64(&m.activeSessions)
 }
 
-func (m *srvMetrics) IncActiveStreams() {
+func (m *vm) IncActiveStreams() {
 	atomic.AddInt64(&m.activeStreams, 1)
 }
 
-func (m *srvMetrics) DecActiveStreams() {
+func (m *vm) DecActiveStreams() {
 	atomic.AddInt64(&m.activeStreams, -1)
 }
 
-func (m *srvMetrics) ActiveStreams() int64 {
+func (m *vm) ActiveStreams() int64 {
 	return atomic.LoadInt64(&m.activeStreams)
 }
 
-func (m *srvMetrics) RecordSession(delta DeltaType) {
+func (m *vm) RecordSession(delta DeltaType) {
 	switch delta {
 	case 0:
 		m.failedSessions.Inc()
@@ -85,7 +85,7 @@ func (m *srvMetrics) RecordSession(delta DeltaType) {
 	}
 }
 
-func (m *srvMetrics) RecordStream(delta DeltaType) {
+func (m *vm) RecordStream(delta DeltaType) {
 	switch delta {
 	case 0:
 		m.failedStreams.Inc()
