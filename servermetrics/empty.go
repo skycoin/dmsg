@@ -5,7 +5,7 @@ import (
 )
 
 // NewEmpty implements Metrics, but does nothing.
-func NewEmpty() Metrics {
+func NewEmpty() empty {
 	return empty{}
 }
 
