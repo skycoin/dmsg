@@ -13,10 +13,13 @@ type Metrics interface {
 	RecordSession(delta DeltaType)
 	RecordStream(delta DeltaType)
 	SetClientsCount(val int64)
+	SetPacketsPerSecond(val uint64)
+	SetPacketsPerMinute(val uint64)
 }
 
 // VictoriaMetrics implements `Metrics` using `VictoriaMetrics`.
 type VictoriaMetrics struct {
+	packetsPerMinute   *metricsutil.VictoriaMetricsUintGaugeWrapper
 	packetsPerSecond   *metricsutil.VictoriaMetricsUintGaugeWrapper
 	clientsCount       *metricsutil.VictoriaMetricsIntGaugeWrapper
 	activeSessions     *metricsutil.VictoriaMetricsIntGaugeWrapper
@@ -30,6 +33,7 @@ type VictoriaMetrics struct {
 // NewVictoriaMetrics returns the Victoria Metrics implementation of Metrics.
 func NewVictoriaMetrics() *VictoriaMetrics {
 	return &VictoriaMetrics{
+		packetsPerMinute:   metricsutil.NewVictoriaMetricsUintGauge("packets_per_minute"),
 		packetsPerSecond:   metricsutil.NewVictoriaMetricsUintGauge("packets_per_second"),
 		clientsCount:       metricsutil.NewVictoriaMetricsIntGauge("clients_count"),
 		activeSessions:     metricsutil.NewVictoriaMetricsIntGauge("active_sessions_count"),
@@ -39,6 +43,10 @@ func NewVictoriaMetrics() *VictoriaMetrics {
 		successfulStreams:  metrics.GetOrCreateCounter("stream_success_total"),
 		failedStreams:      metrics.GetOrCreateCounter("stream_fail_total"),
 	}
+}
+
+func (m *VictoriaMetrics) SetPacketsPerMinute(val uint64) {
+	m.packetsPerMinute.Set(val)
 }
 
 // SetPacketsPerSecond implements `Metrics`.

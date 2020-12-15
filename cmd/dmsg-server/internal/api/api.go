@@ -22,29 +22,20 @@ import (
 
 // API main object of the server
 type API struct {
-	metrics              servermetrics.Metrics
-	numberOfClients      int64
-	startedAt            time.Time
-	dmsgServer           *dmsg.Server
-	sMu                  sync.Mutex
-	avgPackagesPerMinute uint64
-	avgPackagesPerSecond uint64
-	minuteDecValues      map[*dmsg.SessionCommon]uint64
-	minuteEncValues      map[*dmsg.SessionCommon]uint64
-	secondDecValues      map[*dmsg.SessionCommon]uint64
-	secondEncValues      map[*dmsg.SessionCommon]uint64
-	error                string
+	metrics         servermetrics.Metrics
+	startedAt       time.Time
+	dmsgServer      *dmsg.Server
+	sMu             sync.Mutex
+	minuteDecValues map[*dmsg.SessionCommon]uint64
+	minuteEncValues map[*dmsg.SessionCommon]uint64
+	secondDecValues map[*dmsg.SessionCommon]uint64
+	secondEncValues map[*dmsg.SessionCommon]uint64
 }
 
 // HealthCheckResponse is struct of /health endpoint
 type HealthCheckResponse struct {
-	BuildInfo            *buildinfo.Info `json:"build_info"`
-	NumberOfClients      int64           `json:"clients"`
-	NumberOfServers      int64           `json:"servers"`
-	StartedAt            time.Time       `json:"started_at,omitempty"`
-	AvgPackagesPerMinute uint64          `json:"average_packages_per_minute"`
-	AvgPackagesPerSecond uint64          `json:"average_packages_per_second"`
-	Error                string          `json:"error,omitempty"`
+	BuildInfo *buildinfo.Info `json:"build_info"`
+	StartedAt time.Time       `json:"started_at,omitempty"`
 }
 
 // New returns a new API object, which can be started as a server
@@ -93,11 +84,8 @@ func (a *API) SetDmsgServer(srv *dmsg.Server) {
 func (a *API) Health(w http.ResponseWriter, r *http.Request) {
 	info := buildinfo.Get()
 	a.writeJSON(w, r, http.StatusOK, HealthCheckResponse{
-		BuildInfo:            info,
-		StartedAt:            a.startedAt,
-		AvgPackagesPerSecond: a.avgPackagesPerSecond,
-		AvgPackagesPerMinute: a.avgPackagesPerMinute,
-		Error:                a.error,
+		BuildInfo: info,
+		StartedAt: a.startedAt,
 	})
 }
 
@@ -136,11 +124,13 @@ func (a *API) updateAverageNumberOfPacketsPerMinute() {
 			a.minuteDecValues,
 			a.minuteEncValues,
 		)
+
+		a.metrics.SetPacketsPerMinute(average)
+
 		a.sMu.Lock()
 		defer a.sMu.Unlock()
 		a.minuteDecValues = newDecValues
 		a.minuteEncValues = newEncValues
-		a.avgPackagesPerMinute = average
 	}
 }
 
@@ -152,11 +142,13 @@ func (a *API) updateAverageNumberOfPacketsPerSecond() {
 			a.secondDecValues,
 			a.secondEncValues,
 		)
+
+		a.metrics.SetPacketsPerSecond(average)
+
 		a.sMu.Lock()
 		defer a.sMu.Unlock()
 		a.secondDecValues = newDecValues
 		a.secondEncValues = newEncValues
-		a.avgPackagesPerSecond = average
 	}
 }
 func calculateThroughput(
