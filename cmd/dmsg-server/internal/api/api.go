@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/skycoin/dmsg/servermetrics"
+
 	"github.com/go-chi/chi"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/dmsg"
@@ -20,6 +22,7 @@ import (
 
 // API main object of the server
 type API struct {
+	metrics              servermetrics.Metrics
 	numberOfClients      int64
 	startedAt            time.Time
 	dmsgServer           *dmsg.Server
@@ -45,8 +48,9 @@ type HealthCheckResponse struct {
 }
 
 // New returns a new API object, which can be started as a server
-func New(r *chi.Mux, log *logging.Logger) *API {
+func New(r *chi.Mux, log *logging.Logger, m servermetrics.Metrics) *API {
 	api := &API{
+		metrics:         m,
 		startedAt:       time.Now(),
 		minuteDecValues: make(map[*dmsg.SessionCommon]uint64),
 		minuteEncValues: make(map[*dmsg.SessionCommon]uint64),
@@ -91,7 +95,6 @@ func (a *API) Health(w http.ResponseWriter, r *http.Request) {
 	a.writeJSON(w, r, http.StatusOK, HealthCheckResponse{
 		BuildInfo:            info,
 		StartedAt:            a.startedAt,
-		NumberOfClients:      a.numberOfClients,
 		AvgPackagesPerSecond: a.avgPackagesPerSecond,
 		AvgPackagesPerMinute: a.avgPackagesPerMinute,
 		Error:                a.error,
@@ -121,9 +124,7 @@ func (a *API) log(r *http.Request) logrus.FieldLogger {
 // UpdateInternalState is background function which updates numbers of clients.
 func (a *API) updateInternalState() {
 	if a.dmsgServer != nil {
-		a.sMu.Lock()
-		defer a.sMu.Unlock()
-		a.numberOfClients = int64(len(a.dmsgServer.GetSessions()))
+		a.metrics.SetClientsCount(int64(len(a.dmsgServer.GetSessions())))
 	}
 }
 
