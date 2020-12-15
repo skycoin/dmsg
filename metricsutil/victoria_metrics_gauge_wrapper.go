@@ -6,17 +6,17 @@ import (
 	"github.com/VictoriaMetrics/metrics"
 )
 
-// VictoriaMetricsGaugeWrapper wraps Victoria Metrics gauge encapsulating all the
+// VictoriaMetricsIntGaugeWrapper wraps Victoria Metrics int gauge encapsulating all the
 // needed logic to control the value.
-type VictoriaMetricsGaugeWrapper struct {
+type VictoriaMetricsIntGaugeWrapper struct {
 	val   int64
 	gauge *metrics.Gauge
 }
 
-// NewVictoriaMetricsGauge constructs new wrapper for Victoria Metric gauge with
+// NewVictoriaMetricsIntGauge constructs new wrapper for Victoria Metric int gauge with
 // the name `name`.
-func NewVictoriaMetricsGauge(name string) *VictoriaMetricsGaugeWrapper {
-	var w VictoriaMetricsGaugeWrapper
+func NewVictoriaMetricsIntGauge(name string) *VictoriaMetricsIntGaugeWrapper {
+	var w VictoriaMetricsIntGaugeWrapper
 	w.gauge = metrics.GetOrCreateGauge(name, func() float64 {
 		return float64(w.Val())
 	})
@@ -25,16 +25,16 @@ func NewVictoriaMetricsGauge(name string) *VictoriaMetricsGaugeWrapper {
 }
 
 // Inc increments gauge value.
-func (w *VictoriaMetricsGaugeWrapper) Inc() {
+func (w *VictoriaMetricsIntGaugeWrapper) Inc() {
 	atomic.AddInt64(&w.val, 1)
 }
 
 // Dec decrements gauge value.
-func (w *VictoriaMetricsGaugeWrapper) Dec() {
+func (w *VictoriaMetricsIntGaugeWrapper) Dec() {
 	atomic.AddInt64(&w.val, -1)
 }
 
 // Val gets gauge value.
-func (w *VictoriaMetricsGaugeWrapper) Val() int64 {
+func (w *VictoriaMetricsIntGaugeWrapper) Val() int64 {
 	return atomic.LoadInt64(&w.val)
 }
