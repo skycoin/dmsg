@@ -17,12 +17,12 @@ type Metrics interface {
 
 // VictoriaMetrics implements `Metrics` using `VictoriaMetrics`.
 type VictoriaMetrics struct {
-	packetsPerSecond   *metricsutil.VictoriaMetricsGaugeWrapper
-	clientsCount       *metricsutil.VictoriaMetricsGaugeWrapper
-	activeSessions     *metricsutil.VictoriaMetricsGaugeWrapper
+	packetsPerSecond   *metricsutil.VictoriaMetricsUintGaugeWrapper
+	clientsCount       *metricsutil.VictoriaMetricsIntGaugeWrapper
+	activeSessions     *metricsutil.VictoriaMetricsIntGaugeWrapper
 	successfulSessions *metrics.Counter
 	failedSessions     *metrics.Counter
-	activeStreams      *metricsutil.VictoriaMetricsGaugeWrapper
+	activeStreams      *metricsutil.VictoriaMetricsIntGaugeWrapper
 	successfulStreams  *metrics.Counter
 	failedStreams      *metrics.Counter
 }
@@ -30,18 +30,21 @@ type VictoriaMetrics struct {
 // NewVictoriaMetrics returns the Victoria Metrics implementation of Metrics.
 func NewVictoriaMetrics() *VictoriaMetrics {
 	return &VictoriaMetrics{
-		packetsPerSecond:   metricsutil.NewVictoriaMetricsGauge("packets_per_second"),
-		clientsCount:       metricsutil.NewVictoriaMetricsGauge("clients_count"),
-		activeSessions:     metricsutil.NewVictoriaMetricsGauge("active_sessions_count"),
+		packetsPerSecond:   metricsutil.NewVictoriaMetricsUintGauge("packets_per_second"),
+		clientsCount:       metricsutil.NewVictoriaMetricsIntGauge("clients_count"),
+		activeSessions:     metricsutil.NewVictoriaMetricsIntGauge("active_sessions_count"),
 		successfulSessions: metrics.GetOrCreateCounter("session_success_total"),
 		failedSessions:     metrics.GetOrCreateCounter("session_fail_total"),
-		activeStreams:      metricsutil.NewVictoriaMetricsGauge("active_streams_count"),
+		activeStreams:      metricsutil.NewVictoriaMetricsIntGauge("active_streams_count"),
 		successfulStreams:  metrics.GetOrCreateCounter("stream_success_total"),
 		failedStreams:      metrics.GetOrCreateCounter("stream_fail_total"),
 	}
 }
 
-func (m *VictoriaMetrics) SetPacketsPerSecond(val int64)
+// SetPacketsPerSecond implements `Metrics`.
+func (m *VictoriaMetrics) SetPacketsPerSecond(val uint64) {
+	m.packetsPerSecond.Set(val)
+}
 
 // SetClientsCount implements `Metrics`.
 func (m *VictoriaMetrics) SetClientsCount(val int64) {
