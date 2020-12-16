@@ -18,6 +18,7 @@ import (
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/httputil"
+	"github.com/skycoin/dmsg/metricsutil"
 )
 
 var log = logging.MustGetLogger("dmsg-discovery")
@@ -29,14 +30,15 @@ const maxGetAvailableServersResult = 512
 // API represents the api of the dmsg-discovery service`
 type API struct {
 	http.Handler
-	db                store.Storer
-	testMode          bool
-	startedAt         time.Time
-	sMu               sync.Mutex
-	numberOfClients   int64
-	numberOfServers   int64
-	error             string
-	enableLoadTesting bool
+	db                          store.Storer
+	reqsInFlightCountMiddleware *metricsutil.RequestsInFlightCountMiddleware
+	testMode                    bool
+	startedAt                   time.Time
+	sMu                         sync.Mutex
+	numberOfClients             int64
+	numberOfServers             int64
+	error                       string
+	enableLoadTesting           bool
 }
 
 // HealthCheckResponse is struct of /health endpoint
@@ -49,7 +51,7 @@ type HealthCheckResponse struct {
 }
 
 // New returns a new API object, which can be started as a server
-func New(log logrus.FieldLogger, db store.Storer, testMode, enableLoadTesting bool) *API {
+func New(log logrus.FieldLogger, db store.Storer, testMode, enableLoadTesting, enableMetrics bool) *API {
 	if log != nil {
 		log = logging.MustGetLogger("dmsg_disc")
 	}
@@ -60,17 +62,22 @@ func New(log logrus.FieldLogger, db store.Storer, testMode, enableLoadTesting bo
 
 	r := chi.NewRouter()
 	api := &API{
-		Handler:           r,
-		db:                db,
-		testMode:          testMode,
-		startedAt:         time.Now(),
-		enableLoadTesting: enableLoadTesting,
+		Handler:                     r,
+		db:                          db,
+		testMode:                    testMode,
+		startedAt:                   time.Now(),
+		enableLoadTesting:           enableLoadTesting,
+		reqsInFlightCountMiddleware: metricsutil.NewRequestsInFlightCountMiddleware(),
 	}
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	if enableMetrics {
+		r.Use(api.reqsInFlightCountMiddleware.Handle)
+		r.Use(metricsutil.RequestDurationMiddleware)
+	}
 	r.Use(httputil.SetLoggerMiddleware(log))
 
 	r.Get("/dmsg-discovery/entry/{pk}", api.getEntry())

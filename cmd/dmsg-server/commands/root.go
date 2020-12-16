@@ -4,13 +4,11 @@ import (
 	"context"
 	"log"
 	"net"
-	"net/http"
 	"os"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg"
@@ -20,7 +18,7 @@ import (
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/discord"
-	"github.com/skycoin/dmsg/promutil"
+	"github.com/skycoin/dmsg/metricsutil"
 	"github.com/skycoin/dmsg/servermetrics"
 )
 
@@ -55,6 +53,15 @@ var rootCmd = &cobra.Command{
 			log.WithError(err).Fatal()
 		}
 
+		var m servermetrics.Metrics
+		if sf.MetricsAddr == "" {
+			m = servermetrics.NewEmpty()
+		} else {
+			m = servermetrics.NewVictoriaMetrics()
+		}
+
+		metricsutil.ServeHTTPMetrics(log, sf.MetricsAddr)
+
 		r := chi.NewRouter()
 		r.Use(middleware.RequestID)
 		r.Use(middleware.RealIP)
@@ -62,7 +69,6 @@ var rootCmd = &cobra.Command{
 		r.Use(middleware.Recoverer)
 
 		a := api.New(r, log)
-		m := prepareMetrics(r, log, sf.Tag, sf.MetricsAddr)
 		r.Get("/health", a.Health)
 		lis, err := net.Listen("tcp", conf.LocalAddress)
 		if err != nil {
@@ -104,21 +110,6 @@ type Config struct {
 	MaxSessions    int           `json:"max_sessions"`
 	UpdateInterval time.Duration `json:"update_interval"`
 	LogLevel       string        `json:"log_level"`
-}
-
-func prepareMetrics(r *chi.Mux, log logrus.FieldLogger, tag, addr string) servermetrics.Metrics {
-	if addr == "" {
-		return servermetrics.NewEmpty()
-	}
-
-	m := servermetrics.New(tag)
-
-	promutil.AddMetricsHandle(r, m.Collectors()...)
-
-	log.WithField("addr", addr).Info("Serving metrics...")
-	go func() { log.Fatalln(http.ListenAndServe(addr, r)) }()
-
-	return m
 }
 
 // Execute executes root CLI command.
