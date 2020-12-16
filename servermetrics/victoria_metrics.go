@@ -8,15 +8,6 @@ import (
 	"github.com/skycoin/dmsg/metricsutil"
 )
 
-// Metrics collects metrics for metrics tracking system.
-type Metrics interface {
-	RecordSession(delta DeltaType)
-	RecordStream(delta DeltaType)
-	SetClientsCount(val int64)
-	SetPacketsPerSecond(val uint64)
-	SetPacketsPerMinute(val uint64)
-}
-
 // VictoriaMetrics implements `Metrics` using `VictoriaMetrics`.
 type VictoriaMetrics struct {
 	packetsPerMinute   *metricsutil.VictoriaMetricsUintGaugeWrapper
