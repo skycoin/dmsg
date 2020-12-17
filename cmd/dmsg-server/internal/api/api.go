@@ -60,10 +60,10 @@ func New(r *chi.Mux, log *logging.Logger) *API {
 // RunBackgroundTasks is function which runs periodic tasks of dmsg-server.
 func (a *API) RunBackgroundTasks(ctx context.Context) {
 	ticker := time.NewTicker(time.Second * 10)
-	tickerEverySecond := time.NewTicker(time.Second * 1)
+	//tickerEverySecond := time.NewTicker(time.Second * 1)
 	tickerEveryMinute := time.NewTicker(time.Second * 60)
 	defer ticker.Stop()
-	defer tickerEverySecond.Stop()
+	//defer tickerEverySecond.Stop()
 	defer tickerEveryMinute.Stop()
 	a.updateInternalState()
 	for {
@@ -74,8 +74,8 @@ func (a *API) RunBackgroundTasks(ctx context.Context) {
 			a.updateInternalState()
 		case <-tickerEveryMinute.C:
 			a.updateAverageNumberOfPacketsPerMinute()
-		case <-tickerEverySecond.C:
-			a.updateAverageNumberOfPacketsPerSecond()
+			/*case <-tickerEverySecond.C:
+			a.updateAverageNumberOfPacketsPerSecond()*/
 		}
 	}
 }
@@ -140,6 +140,7 @@ func (a *API) updateAverageNumberOfPacketsPerMinute() {
 		a.minuteDecValues = newDecValues
 		a.minuteEncValues = newEncValues
 		a.avgPackagesPerMinute = average
+		a.avgPackagesPerSecond = average / 60
 	}
 }
 
