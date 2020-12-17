@@ -36,6 +36,7 @@ func NewVictoriaMetrics() *VictoriaMetrics {
 	}
 }
 
+// SetPacketsPerMinute implements `Metrics`.
 func (m *VictoriaMetrics) SetPacketsPerMinute(val uint64) {
 	m.packetsPerMinute.Set(val)
 }
