@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/skycoin/dmsg/discmetrics"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -62,9 +64,16 @@ var rootCmd = &cobra.Command{
 
 		db := prepareDB(log)
 
+		var m discmetrics.Metrics
+		if sf.MetricsAddr == "" {
+			m = discmetrics.NewEmpty()
+		} else {
+			m = discmetrics.NewVictoriaMetrics()
+		}
+
 		// we enable metrics middleware if address is passed
 		enableMetrics := sf.MetricsAddr != ""
-		a := api.New(log, db, testMode, enableLoadTesting, enableMetrics)
+		a := api.New(log, db, m, testMode, enableLoadTesting, enableMetrics)
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
