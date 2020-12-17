@@ -144,7 +144,8 @@ func (a *API) updateAverageNumberOfPacketsPerMinute() {
 	}
 }
 
-// UpdateAverageNumberOfPacketsPerSecond is function which needs to called every second.
+// TODO (darkrengarius): reimplement efficiently
+/*// UpdateAverageNumberOfPacketsPerSecond is function which needs to called every second.
 func (a *API) updateAverageNumberOfPacketsPerSecond() {
 	if a.dmsgServer != nil {
 		newDecValues, newEncValues, average := calculateThroughput(
@@ -158,7 +159,8 @@ func (a *API) updateAverageNumberOfPacketsPerSecond() {
 		a.secondEncValues = newEncValues
 		a.avgPackagesPerSecond = average
 	}
-}
+}*/
+
 func calculateThroughput(
 	sessions map[cipher.PubKey]*dmsg.SessionCommon,
 	previousDecValues map[*dmsg.SessionCommon]uint64,
