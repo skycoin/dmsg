@@ -9,15 +9,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/skycoin/dmsg/servermetrics"
-
 	"github.com/go-chi/chi"
 	"github.com/sirupsen/logrus"
+	"github.com/skycoin/skycoin/src/util/logging"
+
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/buildinfo"
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/httputil"
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/skycoin/dmsg/servermetrics"
 )
 
 // API main object of the server
