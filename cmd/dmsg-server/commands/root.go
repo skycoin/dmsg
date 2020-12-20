@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/pires/go-proxyproto"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg"
@@ -70,9 +71,16 @@ var rootCmd = &cobra.Command{
 
 		a := api.New(r, log)
 		r.Get("/health", a.Health)
-		lis, err := net.Listen("tcp", conf.LocalAddress)
+		ln, err := net.Listen("tcp", conf.LocalAddress)
 		if err != nil {
 			log.Fatalf("Error listening on %s: %v", conf.LocalAddress, err)
+		}
+
+		lis := &proxyproto.Listener{Listener: ln}
+		defer lis.Close()
+
+		if err != nil {
+			log.Fatalf("Error creating proxy on %s: %v", conf.LocalAddress, err)
 		}
 
 		srvConf := dmsg.ServerConfig{

@@ -3,10 +3,12 @@ package commands
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"time"
 
+	proxyproto "github.com/pires/go-proxyproto"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -71,7 +73,7 @@ var rootCmd = &cobra.Command{
 		go a.RunBackgroundTasks(ctx, log)
 		log.WithField("addr", addr).Info("Serving discovery API...")
 		go func() {
-			if err := http.ListenAndServe(addr, a); err != nil {
+			if err := ListenAndServe(addr, a); err != nil {
 				log.Errorf("ListenAndServe: %v", err)
 				cancel()
 			}
@@ -100,4 +102,18 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func ListenAndServe(addr string, handler http.Handler) error {
+	srv := &http.Server{Addr: addr, Handler: handler}
+	if addr == "" {
+		addr = ":http"
+	}
+	ln, err := net.Listen("tcp", addr)
+	proxyListener := &proxyproto.Listener{Listener: ln}
+	defer proxyListener.Close()
+	if err != nil {
+		return err
+	}
+	return srv.Serve(proxyListener)
 }

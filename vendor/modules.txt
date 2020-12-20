@@ -71,6 +71,9 @@ github.com/modern-go/reflect2
 ## explicit
 # github.com/pelletier/go-toml v1.2.0
 github.com/pelletier/go-toml
+# github.com/pires/go-proxyproto v0.3.3
+## explicit
+github.com/pires/go-proxyproto
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
 # github.com/sirupsen/logrus v1.4.2
