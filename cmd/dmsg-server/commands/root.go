@@ -77,7 +77,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		lis := &proxyproto.Listener{Listener: ln}
-		defer lis.Close()
+		defer lis.Close() // nolint:errcheck
 
 		if err != nil {
 			log.Fatalf("Error creating proxy on %s: %v", conf.LocalAddress, err)
