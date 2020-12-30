@@ -131,8 +131,6 @@ func (a *API) updateAverageNumberOfPacketsPerMinute() {
 		defer a.sMu.Unlock()
 		a.minuteDecValues = newDecValues
 		a.minuteEncValues = newEncValues
-		a.avgPackagesPerMinute = average
-		a.avgPackagesPerSecond = average / 60
 	}
 }
 
