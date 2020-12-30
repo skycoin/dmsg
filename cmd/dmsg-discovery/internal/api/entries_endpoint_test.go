@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skycoin/dmsg/discmetrics"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/skycoin/dmsg/cipher"
@@ -177,7 +179,7 @@ func TestEntriesEndpoint(t *testing.T) {
 				tc.storerPreHook(t, dbMock, &tc.entry)
 			}
 
-			api := New(nil, dbMock, true, false, true)
+			api := New(nil, dbMock, discmetrics.NewEmpty(), true, false, true)
 			req, err := http.NewRequest(tc.method, tc.endpoint, bytes.NewBufferString(tc.httpBody))
 			require.NoError(t, err)
 

@@ -68,7 +68,7 @@ var rootCmd = &cobra.Command{
 		r.Use(middleware.Logger)
 		r.Use(middleware.Recoverer)
 
-		a := api.New(r, log)
+		a := api.New(r, log, m)
 		r.Get("/health", a.Health)
 		lis, err := net.Listen("tcp", conf.LocalAddress)
 		if err != nil {

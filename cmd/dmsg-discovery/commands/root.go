@@ -14,6 +14,7 @@ import (
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/api"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/cmdutil"
+	"github.com/skycoin/dmsg/discmetrics"
 	"github.com/skycoin/dmsg/discord"
 	"github.com/skycoin/dmsg/metricsutil"
 )
@@ -62,9 +63,16 @@ var rootCmd = &cobra.Command{
 
 		db := prepareDB(log)
 
+		var m discmetrics.Metrics
+		if sf.MetricsAddr == "" {
+			m = discmetrics.NewEmpty()
+		} else {
+			m = discmetrics.NewVictoriaMetrics()
+		}
+
 		// we enable metrics middleware if address is passed
 		enableMetrics := sf.MetricsAddr != ""
-		a := api.New(log, db, testMode, enableLoadTesting, enableMetrics)
+		a := api.New(log, db, m, testMode, enableLoadTesting, enableMetrics)
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()

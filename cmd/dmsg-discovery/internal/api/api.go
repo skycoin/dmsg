@@ -4,7 +4,6 @@ import (
 	"context"
 	"net"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -17,6 +16,7 @@ import (
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/disc"
+	"github.com/skycoin/dmsg/discmetrics"
 	"github.com/skycoin/dmsg/httputil"
 	"github.com/skycoin/dmsg/metricsutil"
 )
@@ -30,28 +30,24 @@ const maxGetAvailableServersResult = 512
 // API represents the api of the dmsg-discovery service`
 type API struct {
 	http.Handler
+	metrics                     discmetrics.Metrics
 	db                          store.Storer
 	reqsInFlightCountMiddleware *metricsutil.RequestsInFlightCountMiddleware
 	testMode                    bool
 	startedAt                   time.Time
-	sMu                         sync.Mutex
-	numberOfClients             int64
-	numberOfServers             int64
-	error                       string
 	enableLoadTesting           bool
 }
 
 // HealthCheckResponse is struct of /health endpoint
 type HealthCheckResponse struct {
 	BuildInfo       *buildinfo.Info `json:"build_info"`
-	NumberOfClients int64           `json:"clients"`
 	NumberOfServers int64           `json:"servers"`
 	StartedAt       time.Time       `json:"started_at,omitempty"`
 	Error           string          `json:"error,omitempty"`
 }
 
 // New returns a new API object, which can be started as a server
-func New(log logrus.FieldLogger, db store.Storer, testMode, enableLoadTesting, enableMetrics bool) *API {
+func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMode, enableLoadTesting, enableMetrics bool) *API {
 	if log != nil {
 		log = logging.MustGetLogger("dmsg_disc")
 	}
@@ -63,6 +59,7 @@ func New(log logrus.FieldLogger, db store.Storer, testMode, enableLoadTesting, e
 	r := chi.NewRouter()
 	api := &API{
 		Handler:                     r,
+		metrics:                     m,
 		db:                          db,
 		testMode:                    testMode,
 		startedAt:                   time.Now(),
@@ -252,14 +249,9 @@ func (a *API) health() http.HandlerFunc {
 
 func (a *API) serviceHealth(w http.ResponseWriter, r *http.Request) {
 	info := buildinfo.Get()
-	a.sMu.Lock()
-	defer a.sMu.Unlock()
 	a.writeJSON(w, r, http.StatusOK, HealthCheckResponse{
-		BuildInfo:       info,
-		StartedAt:       a.startedAt,
-		NumberOfClients: a.numberOfClients,
-		NumberOfServers: a.numberOfServers,
-		Error:           a.error,
+		BuildInfo: info,
+		StartedAt: a.startedAt,
 	})
 }
 
@@ -294,14 +286,12 @@ func (a *API) writeJSON(w http.ResponseWriter, r *http.Request, code int, object
 }
 
 func (a *API) updateInternalState(ctx context.Context, logger logrus.FieldLogger) {
-	numberOfServers, numberOfClients, err := a.db.CountEntries(ctx)
-	a.sMu.Lock()
-	defer a.sMu.Unlock()
-	a.error = ""
+	serversCount, clientsCount, err := a.db.CountEntries(ctx)
 	if err != nil {
-		logger.WithError(err).Errorf("failed to get number of clients and servers")
-		a.error = err.Error()
+		logger.WithError(err).Errorf("failed to get clients and servers count")
+		return
 	}
-	a.numberOfServers = numberOfServers
-	a.numberOfClients = numberOfClients
+
+	a.metrics.SetClientsCount(clientsCount)
+	a.metrics.SetServersCount(serversCount)
 }
