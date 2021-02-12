@@ -13,7 +13,7 @@ type structuredLogger struct {
 	logger logrus.FieldLogger
 }
 
-// NewLogMiddleware creates a new instance of logging middleware. This will allow setting
+// NewLogMiddleware creates a new instance of logging middleware. This will allow
 // adding log fields in the handler and any further middleware. At the end of request, this
 // log entry will be printed at Info level via passed logger
 func NewLogMiddleware(logger logrus.FieldLogger) func(http.Handler) http.Handler {
