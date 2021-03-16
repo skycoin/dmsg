@@ -35,6 +35,8 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 		log = logging.MustGetLogger("dmsg_disc")
 	}
 
+	log.Infoln("STARTING WITH PPROF INJECTED")
+
 	if db == nil {
 		panic("cannot create new api without a store.Storer")
 	}
