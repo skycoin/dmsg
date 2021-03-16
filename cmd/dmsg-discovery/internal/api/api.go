@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -56,6 +57,7 @@ func New(log logrus.FieldLogger, db store.Storer, testMode bool) *API {
 	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/health", api.health())
+	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
 
 	return api
 }
