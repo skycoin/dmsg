@@ -90,7 +90,8 @@ func init() {
 	rootCmd.Flags().BoolVar(&confStdin, "confstdin", confStdin,
 		"config will be read from stdin if set")
 
-	rootCmd.Flags().StringVar(&confPath, "confpath", confPath,
+	// shortened confpath flag to -c
+	rootCmd.Flags().StringVarP(&confPath, "confpath", "c", confPath,
 		"config path")
 }
 
@@ -143,17 +144,19 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 
 	// Grab final values of variables.
 
-	// Grab secret key (from 'sk' and 'skgen' flags).
+	// report usage of deprecated or invalid flags
 	if skGen {
-		if !sk.Null() {
-			log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
-		}
-		var pk cipher.PubKey
-		pk, sk = cipher.GenerateKeyPair()
-		log.WithField("pubkey", pk).
-			WithField("seckey", sk).
-			Info("Generating key pair as 'skgen' is set.")
-		viper.Set("sk", sk)
+		log.Info("--skgen is deprecated. sk is automatically created when a new conf is generated.")
+	} else if !sk.Null() {
+		log.Info("--sk is deprecated. sk should just be set via config file (default \"./config.json\")")
+	} else if skGen && !sk.Null() {
+		log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
+	}
+
+	// Grab secret key (from 'sk' and 'skgen' flags).
+	if !skGen {
+		// function to generate secret key
+		prepareSk()
 	}
 	skStr := viper.GetString("sk")
 	cmdutil.CatchWithMsg("value 'seckey' is invalid", sk.Set(skStr))
