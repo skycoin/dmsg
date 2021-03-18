@@ -23,7 +23,9 @@ import (
 	"github.com/skycoin/dmsg/servermetrics"
 )
 
-var sf cmdutil.ServiceFlags
+var (
+	sf cmdutil.ServiceFlags
+)
 
 func init() {
 	sf.Init(rootCmd, "dmsg_srv", "config.json")
