@@ -32,6 +32,8 @@ var log = logging.MustGetLogger("dmsgpty-host:init")
 // variables
 var (
 	// persistent flags (with viper references)
+	skDeprecated cipher.SecKey
+
 	sk           cipher.SecKey
 	wlPath       = ""
 	dmsgDisc     = dmsg.DefaultDiscAddr
@@ -56,7 +58,7 @@ func init() {
 	// Prepare flags with env/config references.
 	// We will bind flags to associated viper values so that they can be set with envs and config file.
 
-	rootCmd.PersistentFlags().Var(&sk, "sk",
+	rootCmd.PersistentFlags().Var(&skDeprecated, "sk",
 		"secret key of the dmsgpty-host")
 
 	rootCmd.PersistentFlags().StringVar(&wlPath, "wl", wlPath,
@@ -126,8 +128,7 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 
 	// Prepare how config file is sourced (if root command).
 	if cmd.Name() == cmdutil.RootCmdName() {
-		viper.SetConfigName("config")
-		viper.SetConfigType("json")
+
 		if confStdin {
 			v := make(map[string]interface{})
 			buf := new(bytes.Buffer)
@@ -139,6 +140,26 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 			viper.SetConfigFile(confPath)
 			cmdutil.CatchWithMsg("flag 'confpath' is set, but we failed to read config from specified path",
 				viper.ReadInConfig())
+		} else {
+
+			// if no commands or flags are provided :
+			// check if config file exists (default "config.json")
+			viper.SetConfigFile("./config.json")
+			err := viper.ReadInConfig()
+
+			// if config file does not exists
+			if err != nil {
+				log.Info("No config files found. Run 'dmsgpty-host --help' for usage.")
+			} else {
+
+				log.Info("Reading from (default \"config.json\")")
+				viper.SetConfigFile("./config.json")
+
+				cmdutil.CatchWithMsg("Unable to read from (default \"config.json\")", viper.ReadInConfig())
+
+				sk.Set(viper.GetString("sk"))
+
+			}
 		}
 	}
 
@@ -147,6 +168,16 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 	// report usage of deprecated or invalid flags
 	if skGen {
 		log.Info("--skgen is deprecated. sk is automatically created when a new conf is generated.")
+<<<<<<< HEAD
+	} else if !confStdin && confPath != "" && !sk.Null() {
+
+		log.Info("--sk is deprecated. sk should be set via config file (default \"./config.json\")")
+		log.Info("reading sk from existing config")
+		skStr := viper.GetString("sk")
+		cmdutil.CatchWithMsg("value 'seckey' is invalid", sk.Set(skStr))
+	} else if skGen && !sk.Null() {
+		log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
+=======
 	} else if !sk.Null() {
 		log.Info("--sk is deprecated. sk should just be set via config file (default \"./config.json\")")
 	} else if skGen && !sk.Null() {
@@ -157,9 +188,17 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 	if !skGen {
 		// function to generate secret key
 		prepareSk()
+>>>>>>> 791525cca58af96c46a6bf00117d5a1b8d200d3c
 	}
-	skStr := viper.GetString("sk")
-	cmdutil.CatchWithMsg("value 'seckey' is invalid", sk.Set(skStr))
+
+	// Grab secret key (from 'sk' and 'skgen' flags).
+
+	// // if sk exists in config.json
+	// if viper.InConfig("sk") && !skGen {
+	// 	log.Info("reading sk from existing config")
+	// 	skStr := viper.GetString("sk")
+	// 	cmdutil.CatchWithMsg("value 'seckey' is invalid", sk.Set(skStr))
+	// }
 
 	wlPath = viper.GetString("wl")
 	dmsgDisc = viper.GetString("dmsgdisc")
@@ -172,7 +211,10 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 	pLog := logrus.FieldLogger(log)
 	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
 		if v := viper.Get(flag.Name); v != nil {
-			pLog = pLog.WithField(flag.Name, v)
+			if v != "sk" {
+				pLog = pLog.WithField(flag.Name, v)
+			}
+
 		}
 	})
 	pLog.Info("Init complete.")
