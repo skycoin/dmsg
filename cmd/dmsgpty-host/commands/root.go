@@ -135,7 +135,7 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 				json.NewDecoder(os.Stdin).Decode(&v),
 				json.NewEncoder(buf).Encode(v),
 				viper.ReadConfig(buf))
-		} else if confPath != "config.json" {
+		} else if confPath != "./config.json" {
 			viper.SetConfigFile(confPath)
 			cmdutil.CatchWithMsg("flag 'confpath' is set, but we failed to read config from specified path",
 				viper.ReadInConfig())
