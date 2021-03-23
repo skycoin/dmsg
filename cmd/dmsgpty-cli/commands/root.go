@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -18,15 +19,14 @@ import (
 
 // struct to read / write from config
 type config struct {
-	SK           cipher.SecKey `json:"-"`
-	SKStr        string        `json:"sk"`
-	Wl           cipher.PubKey `json:"-"`
-	WlStr        string        `json:"wl"`
-	DmsgDisc     string        `json:"dmsgdisc"`
-	DmsgSessions int           `json:"dmsgsessions"`
-	DmsgPort     uint16        `json:"dmsgport"`
-	CLINet       string        `json:"clinet"`
-	CLIAddr      string        `json:"cliaddr"`
+	SK           cipher.SecKey  `json:"-"`
+	SKStr        string         `json:"sk"`
+	Wl           cipher.PubKeys `json:"wl"`
+	DmsgDisc     string         `json:"dmsgdisc"`
+	DmsgSessions int            `json:"dmsgsessions"`
+	DmsgPort     uint16         `json:"dmsgport"`
+	CLINet       string         `json:"clinet"`
+	CLIAddr      string         `json:"cliaddr"`
 }
 
 func defaultConfig() config {
@@ -95,8 +95,10 @@ var rootCmd = &cobra.Command{
 		// store config.json into conf
 		json.Unmarshal(file, &conf)
 
+		fmt.Println(conf)
+
 		// check if config file is newly created
-		if conf.WlStr == "" {
+		if conf.Wl == nil {
 
 			log.Println("adding the wl slice field")
 
