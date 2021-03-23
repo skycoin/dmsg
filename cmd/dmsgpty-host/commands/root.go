@@ -48,7 +48,7 @@ var (
 
 	// root command flags (without viper references)
 	confStdin = false
-	confPath  = ""
+	confPath  = "./config.json"
 )
 
 // init prepares flags.
@@ -127,8 +127,7 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 
 	// Prepare how config file is sourced (if root command).
 	if cmd.Name() == cmdutil.RootCmdName() {
-		viper.SetConfigName("config")
-		viper.SetConfigType("json")
+
 		if confStdin {
 			v := make(map[string]interface{})
 			buf := new(bytes.Buffer)
@@ -136,10 +135,24 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 				json.NewDecoder(os.Stdin).Decode(&v),
 				json.NewEncoder(buf).Encode(v),
 				viper.ReadConfig(buf))
-		} else if confPath != "" {
+		} else if confPath != "config.json" {
 			viper.SetConfigFile(confPath)
 			cmdutil.CatchWithMsg("flag 'confpath' is set, but we failed to read config from specified path",
 				viper.ReadInConfig())
+		} else {
+
+			// by default look for "config.json"
+
+			if _, err := os.Stat(confPath); err == nil {
+
+				log.Info("Reading from (default \"config.json\")")
+
+				viper.SetConfigFile(confPath)
+				cmdutil.CatchWithMsg("Unable to read from (default \"config.json\")", viper.ReadInConfig())
+
+			} else {
+				log.Info("No config files found. Run 'dmsgpty-host --help' for usage.")
+			}
 		}
 	}
 
