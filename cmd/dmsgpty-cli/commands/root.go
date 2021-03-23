@@ -18,14 +18,25 @@ import (
 
 // struct to read / write from config
 type config struct {
-	SK           cipher.SecKey  `json:"-"`
-	SKStr        string         `json:"sk"`
-	Whitelist    cipher.PubKeys `json:"wl"`
-	DmsgDisc     string         `json:"dmsgdisc"`
-	DmsgSessions int            `json:"dmsgsessions"`
-	DmsgPort     uint16         `json:"dmsgport"`
-	CLINet       string         `json:"clinet"`
-	CLIAddr      string         `json:"cliaddr"`
+	SK           cipher.SecKey `json:"-"`
+	SKStr        string        `json:"sk"`
+	Wl           cipher.PubKey `json:"-"`
+	WlStr        string        `json:"wl"`
+	DmsgDisc     string        `json:"dmsgdisc"`
+	DmsgSessions int           `json:"dmsgsessions"`
+	DmsgPort     uint16        `json:"dmsgport"`
+	CLINet       string        `json:"clinet"`
+	CLIAddr      string        `json:"cliaddr"`
+}
+
+func defaultConfig() config {
+	return config{
+		DmsgDisc:     dmsg.DefaultDiscAddr,
+		DmsgSessions: dmsg.DefaultMinSessions,
+		DmsgPort:     dmsgpty.DefaultPort,
+		CLINet:       dmsgpty.DefaultCLINet,
+		CLIAddr:      dmsgpty.DefaultCLIAddr,
+	}
 }
 
 var cli = dmsgpty.DefaultCLI()
@@ -38,7 +49,8 @@ func init() {
 		"address to use for dialing to dmsgpty-host")
 }
 
-var conf config
+// conf to update whitelists
+var conf config = defaultConfig()
 var remoteAddr dmsg.Addr
 var cmdName = dmsgpty.DefaultCmd
 var cmdArgs []string
@@ -83,8 +95,27 @@ var rootCmd = &cobra.Command{
 		// store config.json into conf
 		json.Unmarshal(file, &conf)
 
-		// update config with "wl" slice field
-		//updateFile()
+		// check if config file is newly created
+		if conf.WlStr == "" {
+
+			log.Println("adding the wl slice field")
+
+			// if so, add a whitelist slice field "wl"
+			// marshal content
+			b, err := json.MarshalIndent(conf, "", "  ")
+			if err != nil {
+				return err
+			}
+
+			// show changed config
+			os.Stdout.Write(b)
+
+			// write to config.json
+			err = ioutil.WriteFile("config.json", b, 0644)
+			if err != nil {
+				return err
+			}
+		}
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), nil)
 		defer cancel()
