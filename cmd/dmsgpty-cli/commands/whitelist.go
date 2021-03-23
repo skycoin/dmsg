@@ -49,9 +49,28 @@ var whitelistAddCmd = &cobra.Command{
 			return err
 		}
 
+		// duplicate flag
+		var dFlag bool
+
 		// append new pks to the whitelist slice within the config file
 		for _, k := range pks {
-			conf.Wl = append(conf.Wl, k)
+
+			dFlag = false
+
+			for _, p := range conf.Wl {
+				// already exists
+				if p == k {
+					dFlag = true
+					fmt.Printf("skipping append for %v. Already exists", k)
+					break
+				}
+
+			}
+
+			if !dFlag {
+				conf.Wl = append(conf.Wl, k)
+			}
+
 		}
 
 		// write the changes back to the config file
@@ -74,11 +93,30 @@ var whitelistRemoveCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
+		// for each pubkey to be removed
+		for _, k := range pks {
+
+			// find occurence of pubkey
+			for i := 0; i < len(conf.Wl); i++ {
+
+				// if an occurence is found
+				if k == conf.Wl[i] {
+					// remove element
+					conf.Wl = append(conf.Wl[:i], conf.Wl[i+1:]...)
+				}
+			}
+		}
+
+		// write the changes back to the config file
+		updateFile()
+
 		wlC, err := cli.WhitelistClient()
 		if err != nil {
 			return err
 		}
 		return wlC.WhitelistRemove(pks...)
+
 	},
 }
 
