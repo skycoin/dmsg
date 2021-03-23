@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -39,10 +42,45 @@ var whitelistAddCmd = &cobra.Command{
 	Short: "adds public key(s) to the whitelist",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(_ *cobra.Command, args []string) error {
+
 		pks, err := pksFromArgs(args)
 		if err != nil {
 			return err
 		}
+
+		// duplicate flag
+		var dFlag bool
+
+		// append new pks to the whitelist slice within the config file
+
+		// for each pk to be added
+		for _, k := range pks {
+
+			dFlag = false
+
+			// check if the pk already exists
+			for _, p := range conf.Wl {
+
+				// if it does
+				if p == k {
+					// flag it
+					dFlag = true
+					fmt.Printf("skipping append for %v. Already exists", k)
+					break
+				}
+			}
+
+			// if pk does already not exist
+			if !dFlag {
+				// append it
+				conf.Wl = append(conf.Wl, k)
+			}
+
+		}
+
+		// write the changes back to the config file
+		updateFile()
+
 		wlC, err := cli.WhitelistClient()
 		if err != nil {
 			return err
@@ -56,10 +94,30 @@ var whitelistRemoveCmd = &cobra.Command{
 	Short: "removes public key(s) from the whitelist",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(_ *cobra.Command, args []string) error {
+
 		pks, err := pksFromArgs(args)
 		if err != nil {
 			return err
 		}
+
+		// for each pubkey to be removed
+		for _, k := range pks {
+
+			// find occurence of pubkey in config whitelist
+			for i := 0; i < len(conf.Wl); i++ {
+
+				// if an occurence is found
+				if k == conf.Wl[i] {
+					// remove element
+					conf.Wl = append(conf.Wl[:i], conf.Wl[i+1:]...)
+					break
+				}
+			}
+		}
+
+		// write changes back to the config file
+		updateFile()
+
 		wlC, err := cli.WhitelistClient()
 		if err != nil {
 			return err
@@ -76,4 +134,25 @@ func pksFromArgs(args []string) ([]cipher.PubKey, error) {
 		}
 	}
 	return pks, nil
+}
+
+// updateFile writes changes to config file
+func updateFile() error {
+
+	// marshal content
+	b, err := json.MarshalIndent(conf, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	// (optionally) display changed config
+	os.Stdout.Write(b)
+
+	// write to config file
+	err = ioutil.WriteFile("config.json", b, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
