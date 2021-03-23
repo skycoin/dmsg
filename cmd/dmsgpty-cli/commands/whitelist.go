@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -46,6 +49,14 @@ var whitelistAddCmd = &cobra.Command{
 			return err
 		}
 
+		// append new pks to the whitelist slice within the config file
+		for _, k := range pks {
+			conf.Wl = append(conf.Wl, k)
+		}
+
+		// write the changes back to the config file
+		updateFile()
+
 		wlC, err := cli.WhitelistClient()
 		if err != nil {
 			return err
@@ -79,4 +90,25 @@ func pksFromArgs(args []string) ([]cipher.PubKey, error) {
 		}
 	}
 	return pks, nil
+}
+
+// func update config file
+func updateFile() error {
+
+	// marshal content
+	b, err := json.MarshalIndent(conf, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	// show changed config
+	os.Stdout.Write(b)
+
+	// write to config.json
+	err = ioutil.WriteFile("config.json", b, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

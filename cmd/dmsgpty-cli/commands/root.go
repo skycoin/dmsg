@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -64,6 +63,45 @@ func init() {
 
 	rootCmd.Flags().StringSliceVarP(&cmdArgs, "args", "a", cmdArgs,
 		"command arguments")
+
+	// load config in memory to add whitelists
+	// check if "config.json" exists
+	filename := "config.json"
+	err := checkFile(filename)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// read file using ioutil
+	file, err := ioutil.ReadFile(filename)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// store config.json into conf
+	json.Unmarshal(file, &conf)
+
+	// check if config file is newly created
+	if conf.Wl == nil {
+
+		log.Println("adding the wl slice field")
+
+		// if so, add a whitelist slice field "wl"
+		// marshal content
+		b, err := json.MarshalIndent(conf, "", "  ")
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		// show changed config
+		os.Stdout.Write(b)
+
+		// write to config.json
+		err = ioutil.WriteFile("config.json", b, 0644)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
 }
 
 var rootCmd = &cobra.Command{
@@ -77,46 +115,6 @@ var rootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if _, err := buildinfo.Get().WriteTo(log.Writer()); err != nil {
 			log.Printf("Failed to output build info: %v", err)
-		}
-
-		// check if "config.json" exists
-		filename := "config.json"
-		err := checkFile(filename)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		// read file using ioutil
-		file, err := ioutil.ReadFile(filename)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		// store config.json into conf
-		json.Unmarshal(file, &conf)
-
-		fmt.Println(conf)
-
-		// check if config file is newly created
-		if conf.Wl == nil {
-
-			log.Println("adding the wl slice field")
-
-			// if so, add a whitelist slice field "wl"
-			// marshal content
-			b, err := json.MarshalIndent(conf, "", "  ")
-			if err != nil {
-				return err
-			}
-
-			// show changed config
-			os.Stdout.Write(b)
-
-			// write to config.json
-			err = ioutil.WriteFile("config.json", b, 0644)
-			if err != nil {
-				return err
-			}
 		}
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), nil)
@@ -147,26 +145,5 @@ func checkFile(filename string) error {
 			return err
 		}
 	}
-	return nil
-}
-
-// func update config file
-func updateFile() error {
-
-	// marshal content
-	b, err := json.MarshalIndent(conf, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	// show changed config
-	os.Stdout.Write(b)
-
-	// write to config.json
-	err = ioutil.WriteFile("config.json", b, 0644)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
