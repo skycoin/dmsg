@@ -92,7 +92,7 @@ func init() {
 	rootCmd.Flags().BoolVar(&confStdin, "confstdin", confStdin,
 		"config will be read from stdin if set")
 
-	rootCmd.Flags().StringVar(&confPath, "confpath", confPath,
+	rootCmd.Flags().StringVarP(&confPath, "confpath", "c", confPath,
 		"config path")
 }
 
