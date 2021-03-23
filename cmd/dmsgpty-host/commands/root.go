@@ -168,7 +168,6 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 	// report usage of deprecated or invalid flags
 	if skGen {
 		log.Info("--skgen is deprecated. sk is automatically created when a new conf is generated.")
-<<<<<<< HEAD
 	} else if !confStdin && confPath != "" && !sk.Null() {
 
 		log.Info("--sk is deprecated. sk should be set via config file (default \"./config.json\")")
@@ -177,18 +176,6 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 		cmdutil.CatchWithMsg("value 'seckey' is invalid", sk.Set(skStr))
 	} else if skGen && !sk.Null() {
 		log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
-=======
-	} else if !sk.Null() {
-		log.Info("--sk is deprecated. sk should just be set via config file (default \"./config.json\")")
-	} else if skGen && !sk.Null() {
-		log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
-	}
-
-	// Grab secret key (from 'sk' and 'skgen' flags).
-	if !skGen {
-		// function to generate secret key
-		prepareSk()
->>>>>>> 791525cca58af96c46a6bf00117d5a1b8d200d3c
 	}
 
 	// Grab secret key (from 'sk' and 'skgen' flags).
