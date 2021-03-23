@@ -19,6 +19,12 @@ var whitelistCmd = &cobra.Command{
 	Use:   "whitelist",
 	Short: "lists all whitelisted public keys",
 	RunE: func(cmd *cobra.Command, args []string) error {
+
+		// display whitelist slice from config
+		for i := range conf.Whitelist {
+			println(i)
+		}
+
 		wlC, err := cli.WhitelistClient()
 		if err != nil {
 			return err
@@ -39,10 +45,23 @@ var whitelistAddCmd = &cobra.Command{
 	Short: "adds public key(s) to the whitelist",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(_ *cobra.Command, args []string) error {
+
 		pks, err := pksFromArgs(args)
 		if err != nil {
 			return err
 		}
+
+		// append passed in public key(s) into config file
+
+		for _, k := range pks {
+			conf.Whitelist = append(conf.Whitelist, k)
+		}
+
+		println(fmt.Sprint(pks))
+
+		// update conf
+		updateFile()
+
 		wlC, err := cli.WhitelistClient()
 		if err != nil {
 			return err

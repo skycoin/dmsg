@@ -2,15 +2,31 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/buildinfo"
+	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/dmsgpty"
 )
+
+// struct to read / write from config
+type config struct {
+	SK           cipher.SecKey  `json:"-"`
+	SKStr        string         `json:"sk"`
+	Whitelist    cipher.PubKeys `json:"wl"`
+	DmsgDisc     string         `json:"dmsgdisc"`
+	DmsgSessions int            `json:"dmsgsessions"`
+	DmsgPort     uint16         `json:"dmsgport"`
+	CLINet       string         `json:"clinet"`
+	CLIAddr      string         `json:"cliaddr"`
+}
 
 var cli = dmsgpty.DefaultCLI()
 
@@ -22,6 +38,7 @@ func init() {
 		"address to use for dialing to dmsgpty-host")
 }
 
+var conf config
 var remoteAddr dmsg.Addr
 var cmdName = dmsgpty.DefaultCmd
 var cmdArgs []string
@@ -50,6 +67,25 @@ var rootCmd = &cobra.Command{
 			log.Printf("Failed to output build info: %v", err)
 		}
 
+		// check if "config.json" exists
+		filename := "config.json"
+		err := checkFile(filename)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		// read file using ioutil
+		file, err := ioutil.ReadFile(filename)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		// store config.json into conf
+		json.Unmarshal(file, &conf)
+
+		// update config with "wl" slice field
+		//updateFile()
+
 		ctx, cancel := cmdutil.SignalContext(context.Background(), nil)
 		defer cancel()
 
@@ -67,4 +103,37 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// func read config file
+func checkFile(filename string) error {
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		_, err := os.Create(filename)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// func update config file
+func updateFile() error {
+
+	// marshal content
+	b, err := json.MarshalIndent(conf, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	// show changed config
+	os.Stdout.Write(b)
+
+	// write to config.json
+	err = ioutil.WriteFile("config.json", b, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
