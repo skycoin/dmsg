@@ -159,20 +159,20 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 	// Grab final values of variables.
 	sk.Set(viper.GetString("sk"))
 
-	// Grab secret key (from 'sk' and 'skgen' flags).
-	// if skGen {
-	// 	if !sk.Null() {
-	// 		log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
-	// 	}
-	// 	var pk cipher.PubKey
-	// 	pk, sk = cipher.GenerateKeyPair()
-	// 	log.WithField("pubkey", pk).
-	// 		WithField("seckey", sk).
-	// 		Info("Generating key pair as 'skgen' is set.")
-	// 	viper.Set("sk", sk)
-	// }
-	// skStr := viper.GetString("sk")
-	// cmdutil.CatchWithMsg("value 'seckey' is invalid", sk.Set(skStr))
+	// Report usage of deprecated or invalid flags
+
+	if skGen {
+
+		log.Info("--skgen is deprecated. sk is automatically created when a new conf is generated.")
+
+	} else if !confStdin && confPath != "" && !sk.Null() {
+
+		log.Info("--sk is deprecated. sk is set via config file (default \"./config.json\")")
+
+	} else if skGen && !sk.Null() {
+
+		log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
+	}
 
 	wlPath = viper.GetString("wl")
 	dmsgDisc = viper.GetString("dmsgdisc")
