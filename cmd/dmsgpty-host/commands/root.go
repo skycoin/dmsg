@@ -157,21 +157,22 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 	}
 
 	// Grab final values of variables.
+	sk.Set(viper.GetString("sk"))
 
 	// Grab secret key (from 'sk' and 'skgen' flags).
-	if skGen {
-		if !sk.Null() {
-			log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
-		}
-		var pk cipher.PubKey
-		pk, sk = cipher.GenerateKeyPair()
-		log.WithField("pubkey", pk).
-			WithField("seckey", sk).
-			Info("Generating key pair as 'skgen' is set.")
-		viper.Set("sk", sk)
-	}
-	skStr := viper.GetString("sk")
-	cmdutil.CatchWithMsg("value 'seckey' is invalid", sk.Set(skStr))
+	// if skGen {
+	// 	if !sk.Null() {
+	// 		log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
+	// 	}
+	// 	var pk cipher.PubKey
+	// 	pk, sk = cipher.GenerateKeyPair()
+	// 	log.WithField("pubkey", pk).
+	// 		WithField("seckey", sk).
+	// 		Info("Generating key pair as 'skgen' is set.")
+	// 	viper.Set("sk", sk)
+	// }
+	// skStr := viper.GetString("sk")
+	// cmdutil.CatchWithMsg("value 'seckey' is invalid", sk.Set(skStr))
 
 	wlPath = viper.GetString("wl")
 	dmsgDisc = viper.GetString("dmsgdisc")
