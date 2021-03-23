@@ -2,15 +2,40 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/buildinfo"
+	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/dmsgpty"
 )
+
+type config struct {
+	CLIAddr      string         `json:"cliaddr"`
+	CLINet       string         `json:"clinet"`
+	DmsgDisc     string         `json:"dmsgdisc"`
+	DmsgPort     uint16         `json:"dmsgport"`
+	DmsgSessions int            `json:"dmsgsessions"`
+	SK           cipher.SecKey  `json:"-"`
+	SKStr        string         `json:"sk"`
+	Wl           cipher.PubKeys `json:"wl"`
+}
+
+func defaultConfig() config {
+	return config{
+		DmsgDisc:     dmsg.DefaultDiscAddr,
+		DmsgSessions: dmsg.DefaultMinSessions,
+		DmsgPort:     dmsgpty.DefaultPort,
+		CLINet:       dmsgpty.DefaultCLINet,
+		CLIAddr:      dmsgpty.DefaultCLIAddr,
+	}
+}
 
 var cli = dmsgpty.DefaultCLI()
 
@@ -21,6 +46,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cli.Addr, "cliaddr", cli.Addr,
 		"address to use for dialing to dmsgpty-host")
 }
+
+// conf to update whitelists
+var conf config = defaultConfig()
 
 var remoteAddr dmsg.Addr
 var cmdName = dmsgpty.DefaultCmd
@@ -35,6 +63,42 @@ func init() {
 
 	rootCmd.Flags().StringSliceVarP(&cmdArgs, "args", "a", cmdArgs,
 		"command arguments")
+
+	// check if "config.json" exists
+	filename := "config.json"
+	err := checkFile(filename)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// read file using ioutil
+	file, err := ioutil.ReadFile(filename)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// store config.json into conf
+	json.Unmarshal(file, &conf)
+
+	// check if config file is newly created
+	if conf.Wl == nil {
+
+		// if so, add a whitelist slice field "wl"
+		// marshal content
+		b, err := json.MarshalIndent(conf, "", "  ")
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		// show changed config
+		os.Stdout.Write(b)
+
+		// write to config.json
+		err = ioutil.WriteFile("config.json", b, 0644)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
 }
 
 var rootCmd = &cobra.Command{
@@ -67,4 +131,16 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// func read config file
+func checkFile(filename string) error {
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		_, err := os.Create(filename)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

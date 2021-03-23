@@ -35,7 +35,6 @@ var json = jsoniter.ConfigFastest
 var (
 	// persistent flags (with viper references)
 	sk           cipher.SecKey
-	wlPath       = ""
 	dmsgDisc     = dmsg.DefaultDiscAddr
 	dmsgSessions = dmsg.DefaultMinSessions
 	dmsgPort     = dmsgpty.DefaultPort
@@ -60,9 +59,6 @@ func init() {
 
 	rootCmd.PersistentFlags().Var(&sk, "sk",
 		"secret key of the dmsgpty-host")
-
-	rootCmd.PersistentFlags().StringVar(&wlPath, "wl", wlPath,
-		"path of json whitelist file (if unspecified, a memory whitelist will be used)")
 
 	rootCmd.PersistentFlags().StringVar(&dmsgDisc, "dmsgdisc", dmsgDisc,
 		"dmsg discovery address")
@@ -158,6 +154,11 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 
 	// Grab final values of variables.
 	sk.Set(viper.GetString("sk"))
+	dmsgDisc = viper.GetString("dmsgdisc")
+	dmsgSessions = viper.GetInt("dmsgsessions")
+	dmsgPort = cast.ToUint16(viper.Get("dmsgport"))
+	cliNet = viper.GetString("clinet")
+	cliAddr = viper.GetString("cliaddr")
 
 	// Report usage of deprecated or invalid flags
 
@@ -173,13 +174,6 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 
 		log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
 	}
-
-	wlPath = viper.GetString("wl")
-	dmsgDisc = viper.GetString("dmsgdisc")
-	dmsgSessions = viper.GetInt("dmsgsessions")
-	dmsgPort = cast.ToUint16(viper.Get("dmsgport"))
-	cliNet = viper.GetString("clinet")
-	cliAddr = viper.GetString("cliaddr")
 
 	// Print values.
 	pLog := logrus.FieldLogger(log)
@@ -221,13 +215,13 @@ var rootCmd = &cobra.Command{
 
 		// Prepare whitelist.
 		var wl dmsgpty.Whitelist
-		if wlPath == "" {
-			wl = dmsgpty.NewMemoryWhitelist()
-		} else {
-			var err error
-			wl, err = dmsgpty.NewJSONFileWhiteList(wlPath)
-			cmdutil.CatchWithLog(log, "failed to init whitelist", err)
-		}
+		// if wlPath == "" {
+		// 	wl = dmsgpty.NewMemoryWhitelist()
+		// } else {
+		// 	var err error
+		// 	wl, err = dmsgpty.NewJSONFileWhiteList(wlPath)
+		// 	cmdutil.CatchWithLog(log, "failed to init whitelist", err)
+		// }
 
 		// Prepare dmsgpty host.
 		host := dmsgpty.NewHost(dmsgC, wl)
