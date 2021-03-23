@@ -34,8 +34,8 @@ var (
 	// persistent flags (with viper references)
 	skDeprecated cipher.SecKey
 
-	sk           cipher.SecKey
-	wlPath       = ""
+	sk cipher.SecKey
+	//wlPath       = ""
 	dmsgDisc     = dmsg.DefaultDiscAddr
 	dmsgSessions = dmsg.DefaultMinSessions
 	dmsgPort     = dmsgpty.DefaultPort
@@ -61,8 +61,8 @@ func init() {
 	rootCmd.PersistentFlags().Var(&skDeprecated, "sk",
 		"secret key of the dmsgpty-host")
 
-	rootCmd.PersistentFlags().StringVar(&wlPath, "wl", wlPath,
-		"path of json whitelist file (if unspecified, a memory whitelist will be used)")
+	// rootCmd.PersistentFlags().StringVar(&wlPath, "wl", wlPath,
+	// 	"path of json whitelist file (if unspecified, a memory whitelist will be used)")
 
 	rootCmd.PersistentFlags().StringVar(&dmsgDisc, "dmsgdisc", dmsgDisc,
 		"dmsg discovery address")
@@ -187,7 +187,7 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 	// 	cmdutil.CatchWithMsg("value 'seckey' is invalid", sk.Set(skStr))
 	// }
 
-	wlPath = viper.GetString("wl")
+	//wlPath = viper.GetString("wl")
 	dmsgDisc = viper.GetString("dmsgdisc")
 	dmsgSessions = viper.GetInt("dmsgsessions")
 	dmsgPort = cast.ToUint16(viper.Get("dmsgport"))
@@ -237,13 +237,13 @@ var rootCmd = &cobra.Command{
 
 		// Prepare whitelist.
 		var wl dmsgpty.Whitelist
-		if wlPath == "" {
-			wl = dmsgpty.NewMemoryWhitelist()
-		} else {
-			var err error
-			wl, err = dmsgpty.NewJSONFileWhiteList(wlPath)
-			cmdutil.CatchWithLog(log, "failed to init whitelist", err)
-		}
+		// if wlPath == "" {
+		// 	wl = dmsgpty.NewMemoryWhitelist()
+		// } else {
+		// 	var err error
+		// 	wl, err = dmsgpty.NewJSONFileWhiteList(wlPath)
+		// 	cmdutil.CatchWithLog(log, "failed to init whitelist", err)
+		// }
 
 		// Prepare dmsgpty host.
 		host := dmsgpty.NewHost(dmsgC, wl)
