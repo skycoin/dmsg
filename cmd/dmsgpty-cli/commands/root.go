@@ -74,12 +74,20 @@ func init() {
 
 }
 
+// initConfig sources whitelist from config file
+// by default : it will look for (default "config.json")
+//
+// case 1 : config file is new (does not contain a "wl" key)
+// - create a "wl" key within the config file
+//
+// case 2 : config file is old (already contains "wl" key)
+// - load config file into memory to manipulate whitelists
+// - writes changes back to config file
 func initConfig() {
 
-	// check if "config.json" exists
-	// confPath := "./config.json"
-	err := checkFile(confPath)
-	if err != nil {
+	println(confPath)
+
+	if _, err := os.Stat(confPath); err != nil {
 		cli.Log.Fatalln("Default config file \"config.json\" not found.")
 	}
 
@@ -89,18 +97,19 @@ func initConfig() {
 		cli.Log.Fatalln("Unable to read ", confPath, err)
 	}
 
-	// store config.json into conf
+	// store config.json into conf to manipulate whitelists
 	err = json.Unmarshal(file, &conf)
 	if err != nil {
 		cli.Log.Errorln(err)
 		// ignoring this error
 	}
 
-	// check if config file is newly created
+	// if config file is new (does not contain a "wl" key)
 	if conf.Wl == nil {
 
-		// if so, add a whitelist slice field "wl"
-		// marshal content
+		cli.Log.Info("Adding whitelist field to ", confPath)
+
+		// add "wl" key within the config file
 		b, err := json.MarshalIndent(conf, "", "  ")
 		if err != nil {
 			cli.Log.Fatalln("Unable to marshal conf")
@@ -114,7 +123,7 @@ func initConfig() {
 		// }
 
 		// write to config.json
-		err = ioutil.WriteFile("config.json", b, 0600)
+		err = ioutil.WriteFile(confPath, b, 0600)
 		if err != nil {
 			cli.Log.Fatalln("Unable to write", confPath, err)
 		}
@@ -151,16 +160,4 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
-}
-
-// func read config file
-func checkFile(confPath string) error {
-	_, err := os.Stat(confPath)
-	if os.IsNotExist(err) {
-		_, err := os.Create(confPath)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
