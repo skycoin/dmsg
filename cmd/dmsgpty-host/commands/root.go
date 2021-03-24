@@ -146,6 +146,8 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 				viper.SetConfigFile(confPath)
 				cmdutil.CatchWithMsg("Unable to read from (default \"config.json\")", viper.ReadInConfig())
 
+				cmdutil.CatchWithMsg("Unable to set sk", sk.Set(viper.GetString("sk")))
+
 			} else {
 				log.Info("No config files found. Run 'dmsgpty-host --help' for usage.")
 			}
@@ -153,7 +155,7 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 	}
 
 	// Grab final values of variables.
-	sk.Set(viper.GetString("sk"))
+
 	dmsgDisc = viper.GetString("dmsgdisc")
 	dmsgSessions = viper.GetInt("dmsgsessions")
 	dmsgPort = cast.ToUint16(viper.Get("dmsgport"))
@@ -172,7 +174,7 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 
 	} else if skGen && !sk.Null() {
 
-		log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
+		log.Info("Values 'skgen' and 'sk' cannot be both set.")
 	}
 
 	// Print values.

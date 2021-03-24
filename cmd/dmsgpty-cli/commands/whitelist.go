@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
+	"log"
 
 	"github.com/spf13/cobra"
 
@@ -79,7 +79,11 @@ var whitelistAddCmd = &cobra.Command{
 		}
 
 		// write the changes back to the config file
-		updateFile()
+		err = updateFile()
+		if err != nil {
+			log.Println("unable to update config file")
+			return err
+		}
 
 		wlC, err := cli.WhitelistClient()
 		if err != nil {
@@ -103,10 +107,10 @@ var whitelistRemoveCmd = &cobra.Command{
 		// for each pubkey to be removed
 		for _, k := range pks {
 
-			// find occurence of pubkey in config whitelist
+			// find occurrence of pubkey in config whitelist
 			for i := 0; i < len(conf.Wl); i++ {
 
-				// if an occurence is found
+				// if an occurrence is found
 				if k == conf.Wl[i] {
 					// remove element
 					conf.Wl = append(conf.Wl[:i], conf.Wl[i+1:]...)
@@ -116,7 +120,11 @@ var whitelistRemoveCmd = &cobra.Command{
 		}
 
 		// write changes back to the config file
-		updateFile()
+		err = updateFile()
+		if err != nil {
+			log.Println("unable to update config file")
+			return err
+		}
 
 		wlC, err := cli.WhitelistClient()
 		if err != nil {
@@ -146,10 +154,14 @@ func updateFile() error {
 	}
 
 	// (optionally) display changed config
-	os.Stdout.Write(b)
+	// _, err = os.Stdout.Write(b)
+	// if err != nil {
+	//	log.Println("unable to write to stdout")
+	//	return err
+	// }
 
 	// write to config file
-	err = ioutil.WriteFile("config.json", b, 0644)
+	err = ioutil.WriteFile("config.json", b, 0600)
 	if err != nil {
 		return err
 	}

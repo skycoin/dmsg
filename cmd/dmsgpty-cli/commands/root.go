@@ -65,20 +65,26 @@ func init() {
 		"command arguments")
 
 	// check if "config.json" exists
-	filename := "config.json"
+	filename := "./config.json"
 	err := checkFile(filename)
 	if err != nil {
-		log.Fatalln(err)
+		return
 	}
 
 	// read file using ioutil
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println("unable to read config file :", filename)
+		return
 	}
 
 	// store config.json into conf
-	json.Unmarshal(file, &conf)
+	err = json.Unmarshal(file, &conf)
+	if err != nil {
+		log.Println("unable to unmarshal config file properly:", filename)
+		log.Println(err)
+		// ignoring this error
+	}
 
 	// check if config file is newly created
 	if conf.Wl == nil {
@@ -87,16 +93,22 @@ func init() {
 		// marshal content
 		b, err := json.MarshalIndent(conf, "", "  ")
 		if err != nil {
-			log.Fatalln(err)
+			log.Println("unable to marshal conf")
+			return
 		}
 
 		// show changed config
-		os.Stdout.Write(b)
+		_, err = os.Stdout.Write(b)
+		if err != nil {
+			log.Println("unable to write to stdout")
+			return
+		}
 
 		// write to config.json
-		err = ioutil.WriteFile("config.json", b, 0644)
+		err = ioutil.WriteFile("config.json", b, 0600)
 		if err != nil {
-			log.Fatalln(err)
+			log.Println("unable to write to config file")
+			return
 		}
 	}
 }
