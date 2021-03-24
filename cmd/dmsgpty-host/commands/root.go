@@ -146,12 +146,12 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 				viper.SetConfigFile(confPath)
 				cmdutil.CatchWithMsg("Unable to read from (default \"config.json\")", viper.ReadInConfig())
 
-				cmdutil.CatchWithMsg("Unable to set sk", sk.Set(viper.GetString("sk")))
-
 			} else {
 				log.Info("No config files found. Run 'dmsgpty-host --help' for usage.")
 			}
 		}
+
+		cmdutil.CatchWithMsg("Unable to set sk", sk.Set(viper.GetString("sk")))
 	}
 
 	// Grab final values of variables.
