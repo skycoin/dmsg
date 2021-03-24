@@ -161,7 +161,7 @@ func updateFile() error {
 	// }
 
 	// write to config file
-	err = ioutil.WriteFile("config.json", b, 0600)
+	err = ioutil.WriteFile(confPath, b, 0600)
 	if err != nil {
 		return err
 	}

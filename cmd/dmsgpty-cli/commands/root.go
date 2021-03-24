@@ -45,16 +45,24 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cli.Addr, "cliaddr", cli.Addr,
 		"address to use for dialing to dmsgpty-host")
+
+	rootCmd.PersistentFlags().StringVar(&confPath, "confpath", confPath,
+		"config path")
 }
 
 // conf to update whitelists
 var conf config = defaultConfig()
+
+// path for config file ( required for whitelists )
+var confPath = "config.json"
 
 var remoteAddr dmsg.Addr
 var cmdName = dmsgpty.DefaultCmd
 var cmdArgs []string
 
 func init() {
+
+	cobra.OnInitialize(initConfig)
 	rootCmd.Flags().Var(&remoteAddr, "addr",
 		"remote dmsg address of format 'pk:port'. If unspecified, the pty will start locally")
 
@@ -64,24 +72,28 @@ func init() {
 	rootCmd.Flags().StringSliceVarP(&cmdArgs, "args", "a", cmdArgs,
 		"command arguments")
 
+}
+
+func initConfig() {
+
 	// check if "config.json" exists
-	filename := "./config.json"
-	err := checkFile(filename)
+	// confPath := "./config.json"
+	err := checkFile(confPath)
 	if err != nil {
 		return
 	}
 
 	// read file using ioutil
-	file, err := ioutil.ReadFile(filename)
+	file, err := ioutil.ReadFile(confPath)
 	if err != nil {
-		log.Println("unable to read config file :", filename)
+		log.Println("unable to read config file :", confPath)
 		return
 	}
 
 	// store config.json into conf
 	err = json.Unmarshal(file, &conf)
 	if err != nil {
-		log.Println("unable to unmarshal config file properly:", filename)
+		log.Println("unable to unmarshal config file properly:", confPath)
 		log.Println(err)
 		// ignoring this error
 	}
@@ -146,10 +158,10 @@ func Execute() {
 }
 
 // func read config file
-func checkFile(filename string) error {
-	_, err := os.Stat(filename)
+func checkFile(confPath string) error {
+	_, err := os.Stat(confPath)
 	if os.IsNotExist(err) {
-		_, err := os.Create(filename)
+		_, err := os.Create(confPath)
 		if err != nil {
 			return err
 		}
