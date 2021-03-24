@@ -32,7 +32,7 @@ var confgenCmd = &cobra.Command{
 
 		if _, err := os.Stat(confPath); err == nil {
 
-			log.Info(confPath, "Already exists. Run 'dmsgpty-host --help' for usage.")
+			log.Fatalln(confPath, "Already exists. Run 'dmsgpty-host --help' for usage.")
 
 		} else {
 

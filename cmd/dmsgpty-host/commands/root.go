@@ -10,11 +10,9 @@ import (
 	"sync"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/spf13/cast"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
 	"github.com/skycoin/dmsg"
@@ -174,17 +172,17 @@ func prepareVariables(cmd *cobra.Command, _ []string) {
 
 	} else if skGen && !sk.Null() {
 
-		log.Info("Values 'skgen' and 'sk' cannot be both set.")
+		log.Fatalln("Values 'skgen' and 'sk' cannot be both set.")
 	}
 
 	// Print values.
-	pLog := logrus.FieldLogger(log)
-	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
-		if v := viper.Get(flag.Name); v != nil {
-			pLog = pLog.WithField(flag.Name, v)
-		}
-	})
-	pLog.Info("Init complete.")
+	// pLog := logrus.FieldLogger(log)
+	// cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+	// 	if v := viper.Get(flag.Name); v != nil {
+	// 		pLog = pLog.WithField(flag.Name, v)
+	// 	}
+	// })
+	// pLog.Info("Init complete.")
 }
 
 var rootCmd = &cobra.Command{

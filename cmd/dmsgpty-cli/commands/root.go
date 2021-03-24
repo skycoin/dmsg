@@ -80,21 +80,19 @@ func initConfig() {
 	// confPath := "./config.json"
 	err := checkFile(confPath)
 	if err != nil {
-		return
+		cli.Log.Fatalln("Default config file \"config.json\" not found.")
 	}
 
 	// read file using ioutil
 	file, err := ioutil.ReadFile(confPath)
 	if err != nil {
-		log.Println("unable to read config file :", confPath)
-		return
+		cli.Log.Fatalln("Unable to read ", confPath, err)
 	}
 
 	// store config.json into conf
 	err = json.Unmarshal(file, &conf)
 	if err != nil {
-		log.Println("unable to unmarshal config file properly:", confPath)
-		log.Println(err)
+		cli.Log.Errorln(err)
 		// ignoring this error
 	}
 
@@ -105,22 +103,20 @@ func initConfig() {
 		// marshal content
 		b, err := json.MarshalIndent(conf, "", "  ")
 		if err != nil {
-			log.Println("unable to marshal conf")
-			return
+			cli.Log.Fatalln("Unable to marshal conf")
 		}
 
 		// show changed config
-		_, err = os.Stdout.Write(b)
-		if err != nil {
-			log.Println("unable to write to stdout")
-			return
-		}
+		// _, err = os.Stdout.Write(b)
+		// if err != nil {
+		// 	cli.Log.Info("unable to write to stdout")
+
+		// }
 
 		// write to config.json
 		err = ioutil.WriteFile("config.json", b, 0600)
 		if err != nil {
-			log.Println("unable to write to config file")
-			return
+			cli.Log.Fatalln("Unable to write", confPath, err)
 		}
 	}
 }
