@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -14,6 +13,7 @@ import (
 	"github.com/skycoin/dmsg/cipher"
 	store2 "github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/disc"
+	"github.com/skycoin/dmsg/discmetrics"
 )
 
 func TestGetAvailableServers(t *testing.T) {
@@ -110,7 +110,7 @@ func TestGetAvailableServers(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			db, entries := tc.databaseAndEntries(t)
 
-			api := New(nil, db, true)
+			api := New(nil, db, discmetrics.NewEmpty(), true, false, true)
 			req, err := http.NewRequest(tc.method, tc.endpoint, nil)
 			require.NoError(t, err)
 

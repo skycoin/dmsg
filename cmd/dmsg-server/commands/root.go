@@ -4,22 +4,22 @@ import (
 	"context"
 	"log"
 	"net"
-	"net/http"
 	"os"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/sirupsen/logrus"
+	"github.com/pires/go-proxyproto"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/buildinfo"
 	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/cmd/dmsg-server/internal/api"
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/discord"
-	"github.com/skycoin/dmsg/promutil"
+	"github.com/skycoin/dmsg/metricsutil"
 	"github.com/skycoin/dmsg/servermetrics"
 )
 
@@ -56,11 +56,33 @@ var rootCmd = &cobra.Command{
 			log.WithError(err).Fatal()
 		}
 
-		m := prepareMetrics(log, sf.Tag, sf.MetricsAddr)
+		var m servermetrics.Metrics
+		if sf.MetricsAddr == "" {
+			m = servermetrics.NewEmpty()
+		} else {
+			m = servermetrics.NewVictoriaMetrics()
+		}
 
-		lis, err := net.Listen("tcp", conf.LocalAddress)
+		metricsutil.ServeHTTPMetrics(log, sf.MetricsAddr)
+
+		r := chi.NewRouter()
+		r.Use(middleware.RequestID)
+		r.Use(middleware.RealIP)
+		r.Use(middleware.Logger)
+		r.Use(middleware.Recoverer)
+
+		a := api.New(r, log, m)
+		r.Get("/health", a.Health)
+		ln, err := net.Listen("tcp", conf.LocalAddress)
 		if err != nil {
 			log.Fatalf("Error listening on %s: %v", conf.LocalAddress, err)
+		}
+
+		lis := &proxyproto.Listener{Listener: ln}
+		defer lis.Close() // nolint:errcheck
+
+		if err != nil {
+			log.Fatalf("Error creating proxy on %s: %v", conf.LocalAddress, err)
 		}
 
 		srvConf := dmsg.ServerConfig{
@@ -70,11 +92,13 @@ var rootCmd = &cobra.Command{
 		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery), &srvConf, m)
 		srv.SetLogger(log)
 
+		a.SetDmsgServer(srv)
 		defer func() { log.WithError(srv.Close()).Info("Closed server.") }()
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
 
+		go a.RunBackgroundTasks(ctx)
 		go func() {
 			if err := srv.Serve(lis, conf.PublicAddress); err != nil {
 				log.Errorf("Serve: %v", err)
@@ -96,28 +120,6 @@ type Config struct {
 	MaxSessions    int           `json:"max_sessions"`
 	UpdateInterval time.Duration `json:"update_interval"`
 	LogLevel       string        `json:"log_level"`
-}
-
-func prepareMetrics(log logrus.FieldLogger, tag, addr string) servermetrics.Metrics {
-	if addr == "" {
-		return servermetrics.NewEmpty()
-	}
-
-	m := servermetrics.New(tag)
-
-	r := chi.NewRouter()
-
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-
-	promutil.AddMetricsHandle(r, m.Collectors()...)
-
-	log.WithField("addr", addr).Info("Serving metrics...")
-	go func() { log.Fatalln(http.ListenAndServe(addr, r)) }()
-
-	return m
 }
 
 // Execute executes root CLI command.

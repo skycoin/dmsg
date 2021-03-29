@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/disc"
+	"github.com/skycoin/dmsg/discmetrics"
 )
 
 var errHandlerTestCases = []struct {
@@ -34,7 +34,7 @@ func TestErrorHandler(t *testing.T) {
 		tc := tc
 		t.Run(tc.err.Error(), func(t *testing.T) {
 			w := httptest.NewRecorder()
-			api := New(nil, store.NewMock(), true)
+			api := New(nil, store.NewMock(), discmetrics.NewEmpty(), true, false, true)
 			api.handleError(w, &http.Request{}, tc.err)
 
 			msg := new(disc.HTTPMessage)

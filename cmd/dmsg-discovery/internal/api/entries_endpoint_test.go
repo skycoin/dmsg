@@ -3,12 +3,13 @@ package api
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/skycoin/dmsg/discmetrics"
 
 	"github.com/stretchr/testify/require"
 
@@ -178,7 +179,7 @@ func TestEntriesEndpoint(t *testing.T) {
 				tc.storerPreHook(t, dbMock, &tc.entry)
 			}
 
-			api := New(nil, dbMock, true)
+			api := New(nil, dbMock, discmetrics.NewEmpty(), true, false, true)
 			req, err := http.NewRequest(tc.method, tc.endpoint, bytes.NewBufferString(tc.httpBody))
 			require.NoError(t, err)
 

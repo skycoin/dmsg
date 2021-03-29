@@ -2,16 +2,18 @@ package httputil
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/middleware"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 )
+
+var json = jsoniter.ConfigFastest
 
 var log = logging.MustGetLogger("httputil")
 
@@ -81,6 +83,9 @@ func GetLogger(r *http.Request) logrus.FieldLogger {
 
 	return logging.NewMasterLogger()
 }
+
+// todo: investigate if it's used throughout the services (didn't work properly for UT)
+// remove and use structured logging
 
 // SetLoggerMiddleware sets logger to context of HTTP requests.
 func SetLoggerMiddleware(log logrus.FieldLogger) func(next http.Handler) http.Handler {
