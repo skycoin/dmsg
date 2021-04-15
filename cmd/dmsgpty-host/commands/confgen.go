@@ -42,6 +42,8 @@ var confgenCmd = &cobra.Command{
 				Info("Generating key pair")
 
 			viper.Set("sk", sk)
+			wl := make([]string, 0)
+			viper.Set("wl", wl)
 		}
 
 		if unsafe {
