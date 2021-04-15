@@ -102,25 +102,10 @@ func initConfig() {
 	if err != nil {
 		cli.Log.Errorln(err)
 		// ignoring this error
-	}
-
-	// if config file is new (does not contain a "wl" key)
-	if conf.Wl == nil {
-
-		cli.Log.Info("Adding whitelist field to ", confPath)
-
-		// add "wl" key within the config file
 		b, err := json.MarshalIndent(conf, "", "  ")
 		if err != nil {
 			cli.Log.Fatalln("Unable to marshal conf")
 		}
-
-		// show changed config
-		// _, err = os.Stdout.Write(b)
-		// if err != nil {
-		// 	cli.Log.Info("unable to write to stdout")
-
-		// }
 
 		// write to config.json
 		err = ioutil.WriteFile(confPath, b, 0600)

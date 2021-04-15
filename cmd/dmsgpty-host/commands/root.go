@@ -214,14 +214,9 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Prepare whitelist.
-		var wl dmsgpty.Whitelist
-		// if wlPath == "" {
-		// 	wl = dmsgpty.NewMemoryWhitelist()
-		// } else {
-		// 	var err error
-		// 	wl, err = dmsgpty.NewJSONFileWhiteList(wlPath)
-		// 	cmdutil.CatchWithLog(log, "failed to init whitelist", err)
-		// }
+		// var wl dmsgpty.Whitelist
+		wl, err := dmsgpty.NewConfigWhitelist(confPath)
+		cmdutil.CatchWithLog(log, "failed to init whitelist", err)
 
 		// Prepare dmsgpty host.
 		host := dmsgpty.NewHost(dmsgC, wl)

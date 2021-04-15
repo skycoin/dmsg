@@ -1,9 +1,13 @@
 package dmsgpty
 
 import (
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	jsoniter "github.com/json-iterator/go"
@@ -231,4 +235,165 @@ func (w *combinedWhitelist) Remove(pks ...cipher.PubKey) error {
 	}
 	// Otherwise, remove from the specified internal whitelist at index.
 	return w.lists[w.modI].Remove(pks...)
+}
+
+type config struct {
+	CLIAddr      string         `json:"cliaddr"`
+	CLINet       string         `json:"clinet"`
+	DmsgDisc     string         `json:"dmsgdisc"`
+	DmsgPort     uint16         `json:"dmsgport"`
+	DmsgSessions int            `json:"dmsgsessions"`
+	SK           cipher.SecKey  `json:"-"`
+	SKStr        string         `json:"sk"`
+	Wl           cipher.PubKeys `json:"wl"`
+}
+
+// // conf to update whitelists
+var conf config = config{}
+
+// NewConfigWhitelist creates a config file implementation of a whitelist.
+func NewConfigWhitelist(confPath string) (Whitelist, error) {
+	confPath, err := filepath.Abs(confPath)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(confPath), 0750); err != nil {
+		return nil, err
+	}
+
+	return &configWhitelist{confPath: confPath}, nil
+}
+
+type configWhitelist struct {
+	confPath string
+}
+
+func (w *configWhitelist) Get(pk cipher.PubKey) (bool, error) {
+	var ok bool
+
+	return ok, nil
+}
+
+func (w *configWhitelist) All() (map[cipher.PubKey]bool, error) {
+	err := w.open()
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[cipher.PubKey]bool)
+	for _, k := range conf.Wl {
+		out[k] = true
+	}
+	return out, nil
+}
+
+func (w *configWhitelist) Add(pks ...cipher.PubKey) error {
+	err := w.open()
+	if err != nil {
+		return err
+	}
+	// duplicate flag
+	var dFlag bool
+
+	// append new pks to the whitelist slice within the config file
+	// for each pk to be added
+	var pke []string
+	for _, k := range pks {
+
+		dFlag = false
+		// check if the pk already exists
+		for _, p := range conf.Wl {
+
+			// if it does
+			if p == k {
+				// flag it
+				dFlag = true
+				pke = append(pke, p.String())
+				fmt.Printf("skipping append for %v. Already exists", k)
+				break
+			}
+		}
+
+		// if pk does already not exist
+		if !dFlag {
+			// append it
+			conf.Wl = append(conf.Wl, k)
+		}
+
+	}
+
+	// write the changes back to the config file
+	err = updateFile(w.confPath)
+	if err != nil {
+		log.Println("unable to update config file")
+		return err
+	}
+	if len(pke) != 0 {
+		return errors.New("skipping append for " + strings.Join(pke, ",") + ". Already exists")
+	}
+	return nil
+}
+
+func (w *configWhitelist) Remove(pks ...cipher.PubKey) error {
+	err := w.open()
+	if err != nil {
+		return err
+	}
+
+	// for each pubkey to be removed
+	for _, k := range pks {
+
+		// find occurrence of pubkey in config whitelist
+		for i := 0; i < len(conf.Wl); i++ {
+
+			// if an occurrence is found
+			if k == conf.Wl[i] {
+				// remove element
+				conf.Wl = append(conf.Wl[:i], conf.Wl[i+1:]...)
+				break
+			}
+		}
+	}
+
+	// write changes back to the config file
+	err = updateFile(w.confPath)
+	if err != nil {
+		log.Println("unable to update config file")
+		return err
+	}
+	return nil
+}
+
+func (w *configWhitelist) open() error {
+	if _, err := os.Stat(w.confPath); err != nil {
+		return err
+	}
+	// read file using ioutil
+	file, err := ioutil.ReadFile(w.confPath)
+	if err != nil {
+		return err
+	}
+	// store config.json into conf to manipulate whitelists
+	err = json.Unmarshal(file, &conf)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// updateFile writes changes to config file
+func updateFile(confPath string) error {
+
+	// marshal content
+	b, err := json.MarshalIndent(conf, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	// write to config file
+	err = ioutil.WriteFile(confPath, b, 0600)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
