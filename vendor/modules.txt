@@ -98,7 +98,7 @@ golang.org/x/crypto/curve25519
 golang.org/x/crypto/internal/subtle
 golang.org/x/crypto/poly1305
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a
+# golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553
 ## explicit
 golang.org/x/net/nettest
 # golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527
@@ -106,7 +106,11 @@ golang.org/x/net/nettest
 golang.org/x/sys/cpu
 golang.org/x/sys/unix
 golang.org/x/sys/windows
+# golang.org/x/text v0.3.2
+## explicit
 # gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
+## explicit
+# gopkg.in/ini.v1 v1.51.1
 ## explicit
 # gopkg.in/yaml.v2 v2.2.4
 gopkg.in/yaml.v2
