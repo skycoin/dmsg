@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 .DEFAULT_GOAL := help
 .PHONY : check lint install-linters dep test build
 
