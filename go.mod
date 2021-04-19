@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/VictoriaMetrics/metrics v1.12.3
-	github.com/creack/pty v1.1.9
+	github.com/creack/pty v1.1.10
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-redis/redis v6.15.6+incompatible
 	github.com/json-iterator/go v1.1.10
@@ -29,6 +29,5 @@ require (
 	golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527 // indirect
 	golang.org/x/text v0.3.2 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	gopkg.in/ini.v1 v1.51.1 // indirect
 	nhooyr.io/websocket v1.8.2
 )

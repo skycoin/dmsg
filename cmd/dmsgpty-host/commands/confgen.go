@@ -35,6 +35,14 @@ var confgenCmd = &cobra.Command{
 	PreRun: func(cmd *cobra.Command, args []string) {},
 	RunE: func(cmd *cobra.Command, args []string) error {
 
+		exists, err := fsutil.Exists(confPath)
+		if err != nil {
+			return fmt.Errorf("failed to check if config file exists: %w", err)
+		}
+		if exists {
+			return fmt.Errorf("config file %s already exists", confPath)
+		}
+
 		if len(args) == 0 {
 			confPath = "./config.json"
 		} else {
@@ -47,14 +55,6 @@ var confgenCmd = &cobra.Command{
 
 		if unsafe {
 			return writeConfig(conf, confPath)
-		}
-
-		exists, err := fsutil.Exists(confPath)
-		if err != nil {
-			return fmt.Errorf("failed to check if config file exists: %w", err)
-		}
-		if exists {
-			return fmt.Errorf("config file %s already exists", confPath)
 		}
 
 		return writeConfig(conf, confPath)
