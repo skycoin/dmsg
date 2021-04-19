@@ -1,19 +1,18 @@
 package commands
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	stdlog "log"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
-	"github.com/spf13/cast"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/buildinfo"
@@ -31,32 +30,34 @@ var json = jsoniter.ConfigFastest
 
 // variables
 var (
-	// persistent flags (with viper references)
-	sk           cipher.SecKey
+	// persistent flags
 	dmsgDisc     = dmsg.DefaultDiscAddr
 	dmsgSessions = dmsg.DefaultMinSessions
 	dmsgPort     = dmsgpty.DefaultPort
 	cliNet       = dmsgpty.DefaultCLINet
 	cliAddr      = dmsgpty.DefaultCLIAddr
+	sk           cipher.SecKey
+	wl           cipher.PubKeys
 
-	// persistent flags (without viper references)
-	skGen     = false
+	// persistent flags
+	skGen     = true
 	envPrefix = defaultEnvPrefix
 
-	// root command flags (without viper references)
+	// root command flags
 	confStdin = false
 	confPath  = "./config.json"
 )
 
 // init prepares flags.
-// Some flags are persistent, and some need to be bound with env/config references (via viper).
 func init() {
 
 	// Prepare flags with env/config references.
-	// We will bind flags to associated viper values so that they can be set with envs and config file.
 
 	rootCmd.PersistentFlags().Var(&sk, "sk",
 		"secret key of the dmsgpty-host")
+
+	rootCmd.PersistentFlags().Var(&wl, "wl",
+		"whitelist of the dmsgpty-host")
 
 	rootCmd.PersistentFlags().StringVar(&dmsgDisc, "dmsgdisc", dmsgDisc,
 		"dmsg discovery address")
@@ -73,12 +74,10 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cliAddr, "cliaddr", cliAddr,
 		"address used for listening for cli connections")
 
-	cmdutil.Catch(viper.BindPFlags(rootCmd.PersistentFlags())) // Bind above flags with env/config references.
-
 	// Prepare flags without associated env/config references.
 
-	rootCmd.PersistentFlags().BoolVar(&skGen, "skgen", skGen,
-		"if set, a random secret key will be generated")
+	// rootCmd.PersistentFlags().BoolVar(&skGen, "skgen", skGen,
+	// 	"if set, a random secret key will be generated")
 
 	rootCmd.PersistentFlags().StringVar(&envPrefix, "envprefix", envPrefix,
 		"env prefix")
@@ -90,133 +89,242 @@ func init() {
 		"config path")
 }
 
-// prepareVariables sources variables in the following precedence order: flags, env, config, default.
-//
-// The following actions are performed:
-// - Prepare how envs are sourced.
-// - Prepare how config is to be sourced.
-// - Grab final values of variables.
-//		Viper uses the following precedence order: flags, env, config, default.
-//		Source: https://github.com/spf13/viper#why-viper
-//
-// Panics are called via `cmdutil.Catch` or `cmdutil.CatchWithMsg`.
-// These are recovered in a defer statement where the help message is printed.
-func prepareVariables(cmd *cobra.Command, _ []string) {
+type config struct {
+	DmsgDisc     string         `json:"dmsgdisc"`
+	DmsgSessions int            `json:"dmsgsessions"`
+	DmsgPort     uint16         `json:"dmsgport"`
+	CLINet       string         `json:"clinet"`
+	CLIAddr      string         `json:"cliaddr"`
+	SK           cipher.SecKey  `json:"-"`
+	SKStr        string         `json:"sk"`
+	WL           cipher.PubKeys `json:"-"`
+	WLStr        []string       `json:"wl"`
+}
 
-	// Recover and print help on panic.
-	defer func() {
-		if r := recover(); r != nil {
-			cmd.PrintErrln("Error:", r)
-			fmt.Print("Help:\n  ")
-			if err := cmd.Help(); err != nil {
-				panic(err)
-			}
-			os.Exit(1)
+func defaultConfig() config {
+	return config{
+		DmsgDisc:     dmsg.DefaultDiscAddr,
+		DmsgSessions: dmsg.DefaultMinSessions,
+		DmsgPort:     dmsgpty.DefaultPort,
+		CLINet:       dmsgpty.DefaultCLINet,
+		CLIAddr:      dmsgpty.DefaultCLIAddr,
+	}
+}
+
+func configFromJSON(conf config) (config, error) {
+	var jsonConf config
+
+	if confStdin {
+		if err := json.NewDecoder(os.Stdin).Decode(&jsonConf); err != nil {
+			return config{}, fmt.Errorf("flag 'confstdin' is set, but config read from stdin is invalid: %w", err)
 		}
-	}()
-
-	// Prepare how ENVs are sourced.
-	viper.SetEnvPrefix(envPrefix)
-	viper.AutomaticEnv()
-
-	// Prepare how config file is sourced (if root command).
-	if cmd.Name() == cmdutil.RootCmdName() {
-
-		if confStdin {
-			v := make(map[string]interface{})
-			buf := new(bytes.Buffer)
-			cmdutil.CatchWithMsg("flag 'confstdin' is set, but config read from stdin is invalid",
-				json.NewDecoder(os.Stdin).Decode(&v),
-				json.NewEncoder(buf).Encode(v),
-				viper.ReadConfig(buf))
-		} else if confPath != "./config.json" {
-			viper.SetConfigFile(confPath)
-			cmdutil.CatchWithMsg("flag 'confpath' is set, but we failed to read config from specified path",
-				viper.ReadInConfig())
-		} else {
-
-			// by default look for "config.json"
-
-			if _, err := os.Stat(confPath); err == nil {
-
-				log.Info("Reading from (default \"config.json\")")
-
-				viper.SetConfigFile(confPath)
-				cmdutil.CatchWithMsg("Unable to read from (default \"config.json\")", viper.ReadInConfig())
-
-			} else {
-				log.Info("No config files found. Run 'dmsgpty-host --help' for usage.")
-			}
-		}
-
-		cmdutil.CatchWithMsg("Unable to set sk", sk.Set(viper.GetString("sk")))
 	}
 
-	// Grab final values of variables.
+	if confPath != "" {
+		f, err := os.Open(confPath)
+		if err != nil {
+			return config{}, fmt.Errorf("failed to open config file: %w", err)
+		}
+		if err := json.NewDecoder(f).Decode(&jsonConf); err != nil {
+			return config{}, fmt.Errorf("flag 'confpath' is set, but we failed to read config from specified path: %w", err)
+		}
+	}
 
-	dmsgDisc = viper.GetString("dmsgdisc")
-	dmsgSessions = viper.GetInt("dmsgsessions")
-	dmsgPort = cast.ToUint16(viper.Get("dmsgport"))
-	cliNet = viper.GetString("clinet")
-	cliAddr = viper.GetString("cliaddr")
+	if jsonConf.SKStr != "" {
+		if err := jsonConf.SK.Set(jsonConf.SKStr); err != nil {
+			return config{}, fmt.Errorf("provided SK is invalid: %w", err)
+		}
+	}
 
-	// Report usage of deprecated or invalid flags
+	if !jsonConf.SK.Null() {
+		conf.SKStr = jsonConf.SKStr
+		conf.SK = jsonConf.SK
+	}
 
+	if jsonConf.DmsgDisc != "" {
+		conf.DmsgDisc = jsonConf.DmsgDisc
+	}
+
+	if conf.DmsgSessions != 0 {
+		conf.DmsgSessions = jsonConf.DmsgSessions
+	}
+
+	if conf.DmsgPort != 0 {
+		conf.DmsgPort = jsonConf.DmsgPort
+	}
+
+	if conf.CLINet != "" {
+		conf.CLINet = jsonConf.CLINet
+	}
+
+	if conf.CLIAddr != "" {
+		conf.CLIAddr = jsonConf.CLIAddr
+	}
+
+	return conf, nil
+}
+func fillConfigFromENV(conf config) (config, error) {
+	if val, ok := os.LookupEnv(envPrefix + "_SK"); ok {
+		if err := conf.SK.Set(val); err != nil {
+			return conf, fmt.Errorf("provided SK is invalid: %w", err)
+		}
+
+		conf.SKStr = val
+	}
+
+	if val, ok := os.LookupEnv(envPrefix + "_DMSGDISC"); ok {
+		conf.DmsgDisc = val
+	}
+
+	if val, ok := os.LookupEnv(envPrefix + "_DMSGSESSIONS"); ok {
+		dmsgSessions, err := strconv.Atoi(val)
+		if err != nil {
+			return conf, fmt.Errorf("failed to parse dmsg sessions: %w", err)
+		}
+
+		conf.DmsgSessions = dmsgSessions
+	}
+
+	if val, ok := os.LookupEnv(envPrefix + "_DMSGPORT"); ok {
+		dmsgPort, err := strconv.ParseUint(val, 10, 16)
+		if err != nil {
+			return conf, fmt.Errorf("failed to parse dmsg port: %w", err)
+		}
+
+		conf.DmsgPort = uint16(dmsgPort)
+	}
+
+	if val, ok := os.LookupEnv(envPrefix + "_CLINET"); ok {
+		conf.CLINet = val
+	}
+
+	if val, ok := os.LookupEnv(envPrefix + "_CLIADDR"); ok {
+		conf.CLIAddr = val
+	}
+
+	return conf, nil
+}
+
+func fillConfigFromFlags(conf config) config {
+	if !sk.Null() {
+		conf.SKStr = sk.Hex()
+		conf.SK = sk
+	}
+
+	if dmsgDisc != dmsg.DefaultDiscAddr {
+		conf.DmsgDisc = dmsgDisc
+	}
+
+	if dmsgSessions != dmsg.DefaultMinSessions {
+		conf.DmsgSessions = dmsgSessions
+	}
+
+	if dmsgPort != dmsgpty.DefaultPort {
+		conf.DmsgPort = dmsgPort
+	}
+
+	if cliNet != dmsgpty.DefaultCLINet {
+		conf.CLINet = cliNet
+	}
+
+	if cliAddr != dmsgpty.DefaultCLIAddr {
+		conf.CLIAddr = cliAddr
+	}
+
+	return conf
+}
+
+// getConfig sources variables in the following precedence order: flags, env, config, default.
+func getConfig(cmd *cobra.Command) (config, error) {
+	conf := defaultConfig()
+
+	var err error
+	// Prepare how config file is sourced (if root command).
+	if cmd.Name() == cmdutil.RootCmdName() {
+		conf, err = configFromJSON(conf)
+		if err != nil {
+			return config{}, fmt.Errorf("failed to read config from JSON: %w", err)
+		}
+	}
+	conf, err = fillConfigFromENV(conf)
+	if err != nil {
+		return conf, fmt.Errorf("failed to fill config from ENV: %w", err)
+	}
+
+	// Grab secret key (from 'sk' and 'skgen' flags).
 	if skGen {
+		if !sk.Null() {
+			log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
+		}
+		var pk cipher.PubKey
+		pk, sk = cipher.GenerateKeyPair()
+		log.WithField("pubkey", pk).
+			WithField("seckey", sk).
+			Info("Generating key pair as 'skgen' is set.")
+		conf.SKStr = sk.Hex()
+		if err := conf.SK.Set(conf.SKStr); err != nil {
+			return conf, err
+		}
+	}
+	conf = fillConfigFromFlags(conf)
 
-		log.Info("--skgen is deprecated. sk is automatically created when a new conf is generated.")
-
-	} else if !confStdin && confPath != "" && !sk.Null() {
-
-		log.Info("--sk is deprecated. sk is set via config file (default \"./config.json\")")
-
-	} else if skGen && !sk.Null() {
-
-		log.Fatalln("Values 'skgen' and 'sk' cannot be both set.")
+	if conf.SK.Null() {
+		return conf, fmt.Errorf("value 'seckey' is invalid")
 	}
 
 	// Print values.
-	// pLog := logrus.FieldLogger(log)
-	// cmd.Flags().VisitAll(func(flag *pflag.Flag) {
-	// 	if v := viper.Get(flag.Name); v != nil {
-	// 		pLog = pLog.WithField(flag.Name, v)
-	// 	}
-	// })
-	// pLog.Info("Init complete.")
+	pLog := logrus.FieldLogger(log)
+	pLog = pLog.WithField("dmsgdisc", conf.DmsgDisc)
+	pLog = pLog.WithField("dmsgsessions", conf.DmsgSessions)
+	pLog = pLog.WithField("dmsgport", conf.DmsgPort)
+	pLog = pLog.WithField("clinet", conf.CLINet)
+	pLog = pLog.WithField("cliaddr", conf.CLIAddr)
+	pLog = pLog.WithField("sk", conf.SK)
+	pLog = pLog.WithField("wl", conf.WL)
+	pLog.Info("Init complete.")
+
+	return conf, nil
 }
 
 var rootCmd = &cobra.Command{
 	Use:    cmdutil.RootCmdName(),
 	Short:  "runs a standalone dmsgpty-host instance",
-	PreRun: prepareVariables,
-	Run: func(cmd *cobra.Command, args []string) {
+	PreRun: func(cmd *cobra.Command, args []string) {},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		conf, err := getConfig(cmd)
+		if err != nil {
+			return fmt.Errorf("failed to get config: %w", err)
+		}
+
 		if _, err := buildinfo.Get().WriteTo(stdlog.Writer()); err != nil {
 			log.Printf("Failed to output build info: %v", err)
 		}
-
 		log := logging.MustGetLogger("dmsgpty-host")
-
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
 
-		pk, err := sk.PubKey()
-		cmdutil.CatchWithLog(log, "failed to derive public key from secret key", err)
+		pk, err := conf.SK.PubKey()
+		if err != nil {
+			return fmt.Errorf("failed to derive public key from secret key: %w", err)
+		}
 
 		// Prepare and serve dmsg client and wait until ready.
-		dmsgC := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc), &dmsg.Config{
-			MinSessions: dmsgSessions,
+		dmsgC := dmsg.NewClient(pk, conf.SK, disc.NewHTTP(conf.DmsgDisc), &dmsg.Config{
+			MinSessions: conf.DmsgSessions,
 		})
 		go dmsgC.Serve(context.Background())
 		select {
 		case <-ctx.Done():
-			cmdutil.CatchWithLog(log, "failed to wait unti dmsg client to be ready", ctx.Err())
+			return fmt.Errorf("failed to wait dmsg client to be ready: %w", ctx.Err())
 		case <-dmsgC.Ready():
 		}
 
 		// Prepare whitelist.
 		// var wl dmsgpty.Whitelist
 		wl, err := dmsgpty.NewConfigWhitelist(confPath)
-		cmdutil.CatchWithLog(log, "failed to init whitelist", err)
+		if err != nil {
+			return fmt.Errorf("failed to init whitelist: %w", err)
+		}
 
 		// Prepare dmsgpty host.
 		host := dmsgpty.NewHost(dmsgC, wl)
@@ -224,11 +332,13 @@ var rootCmd = &cobra.Command{
 		wg.Add(2)
 
 		// Prepare CLI.
-		if cliNet == "unix" {
-			_ = os.Remove(cliAddr) //nolint:errcheck
+		if conf.CLINet == "unix" {
+			_ = os.Remove(conf.CLIAddr) //nolint:errcheck
 		}
-		cliL, err := net.Listen(cliNet, cliAddr)
-		cmdutil.CatchWithLog(log, "failed to serve CLI", err)
+		cliL, err := net.Listen(conf.CLINet, conf.CLIAddr)
+		if err != nil {
+			return fmt.Errorf("failed to serve CLI: %w", err)
+		}
 		log.WithField("addr", cliL.Addr()).Info("Listening for CLI connections.")
 		go func() {
 			log.WithError(host.ServeCLI(ctx, cliL)).
@@ -237,15 +347,16 @@ var rootCmd = &cobra.Command{
 		}()
 
 		// Serve dmsgpty.
-		log.WithField("port", dmsgPort).
+		log.WithField("port", conf.DmsgPort).
 			Info("Listening for dmsg streams.")
 		go func() {
-			log.WithError(host.ListenAndServe(ctx, dmsgPort)).
+			log.WithError(host.ListenAndServe(ctx, conf.DmsgPort)).
 				Info("Stopped serving dmsgpty-host.")
 			wg.Done()
 		}()
 
 		wg.Wait()
+		return nil
 	},
 }
 
