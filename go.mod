@@ -1,7 +1,6 @@
 module github.com/skycoin/dmsg
 
 go 1.14
-
 require (
 	github.com/VictoriaMetrics/metrics v1.12.3
 	github.com/creack/pty v1.1.9
@@ -35,3 +34,4 @@ require (
 	gopkg.in/ini.v1 v1.51.1 // indirect
 	nhooyr.io/websocket v1.8.2
 )
+
