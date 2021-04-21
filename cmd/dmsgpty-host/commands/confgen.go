@@ -41,7 +41,7 @@ var confgenCmd = &cobra.Command{
 			confPath = args[0]
 		}
 
-		conf, err := getConfig(cmd)
+		conf, err := getConfig(cmd, true)
 		if err != nil {
 			return fmt.Errorf("failed to get config: %w", err)
 		}

@@ -37,10 +37,11 @@ var (
 	cliNet       = dmsgpty.DefaultCLINet
 	cliAddr      = dmsgpty.DefaultCLIAddr
 	sk           cipher.SecKey
+	pk           cipher.PubKey
 	wl           cipher.PubKeys
 
 	// persistent flags
-	skGen     = true
+	// skGen     = true
 	envPrefix = defaultEnvPrefix
 
 	// root command flags
@@ -55,6 +56,9 @@ func init() {
 
 	rootCmd.PersistentFlags().Var(&sk, "sk",
 		"secret key of the dmsgpty-host")
+
+	rootCmd.PersistentFlags().Var(&pk, "pk",
+		"public key of the dmsgpty-host")
 
 	rootCmd.PersistentFlags().Var(&wl, "wl",
 		"whitelist of the dmsgpty-host")
@@ -75,9 +79,6 @@ func init() {
 		"address used for listening for cli connections")
 
 	// Prepare flags without associated env/config references.
-
-	// rootCmd.PersistentFlags().BoolVar(&skGen, "skgen", skGen,
-	// 	"if set, a random secret key will be generated")
 
 	rootCmd.PersistentFlags().StringVar(&envPrefix, "envprefix", envPrefix,
 		"env prefix")
@@ -143,6 +144,16 @@ func configFromJSON(conf config) (config, error) {
 		conf.SK = jsonConf.SK
 	}
 
+	if jsonConf.PKStr != "" {
+		if err := jsonConf.PK.Set(jsonConf.PKStr); err != nil {
+			return config{}, fmt.Errorf("provided PK is invalid: %w", err)
+		}
+	}
+	if !jsonConf.PK.Null() {
+		conf.PKStr = jsonConf.PKStr
+		conf.PK = jsonConf.PK
+	}
+
 	if jsonConf.DmsgDisc != "" {
 		conf.DmsgDisc = jsonConf.DmsgDisc
 	}
@@ -165,14 +176,8 @@ func configFromJSON(conf config) (config, error) {
 
 	return conf, nil
 }
-func fillConfigFromENV(conf config) (config, error) {
-	if val, ok := os.LookupEnv(envPrefix + "_SK"); ok {
-		if err := conf.SK.Set(val); err != nil {
-			return conf, fmt.Errorf("provided SK is invalid: %w", err)
-		}
 
-		conf.SKStr = val
-	}
+func fillConfigFromENV(conf config) (config, error) {
 
 	if val, ok := os.LookupEnv(envPrefix + "_DMSGDISC"); ok {
 		conf.DmsgDisc = val
@@ -208,11 +213,6 @@ func fillConfigFromENV(conf config) (config, error) {
 }
 
 func fillConfigFromFlags(conf config) config {
-	if !sk.Null() {
-		conf.SKStr = sk.Hex()
-		conf.SK = sk
-	}
-
 	if dmsgDisc != dmsg.DefaultDiscAddr {
 		conf.DmsgDisc = dmsgDisc
 	}
@@ -237,7 +237,7 @@ func fillConfigFromFlags(conf config) config {
 }
 
 // getConfig sources variables in the following precedence order: flags, env, config, default.
-func getConfig(cmd *cobra.Command) (config, error) {
+func getConfig(cmd *cobra.Command, skGen bool) (config, error) {
 	conf := defaultConfig()
 
 	var err error
@@ -253,7 +253,6 @@ func getConfig(cmd *cobra.Command) (config, error) {
 		return conf, fmt.Errorf("failed to fill config from ENV: %w", err)
 	}
 
-	// Grab secret key (from 'sk' and 'skgen' flags).
 	if skGen {
 		if !sk.Null() {
 			log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
@@ -286,6 +285,7 @@ func getConfig(cmd *cobra.Command) (config, error) {
 	pLog = pLog.WithField("clinet", conf.CLINet)
 	pLog = pLog.WithField("cliaddr", conf.CLIAddr)
 	pLog = pLog.WithField("sk", conf.SK)
+	pLog = pLog.WithField("pk", conf.PK)
 	pLog = pLog.WithField("wl", conf.WL)
 	pLog.Info("Init complete.")
 
@@ -297,7 +297,7 @@ var rootCmd = &cobra.Command{
 	Short:  "runs a standalone dmsgpty-host instance",
 	PreRun: func(cmd *cobra.Command, args []string) {},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		conf, err := getConfig(cmd)
+		conf, err := getConfig(cmd, false)
 		if err != nil {
 			return fmt.Errorf("failed to get config: %w", err)
 		}
