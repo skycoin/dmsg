@@ -1,6 +1,6 @@
 module github.com/skycoin/dmsg
 
-go 1.14
+go 1.16
 
 require (
 	github.com/VictoriaMetrics/metrics v1.12.3
