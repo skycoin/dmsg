@@ -35,26 +35,26 @@ var confgenCmd = &cobra.Command{
 	PreRun: func(cmd *cobra.Command, args []string) {},
 	RunE: func(cmd *cobra.Command, args []string) error {
 
+		if len(args) == 0 {
+			confPath = "./config.json"
+		} else {
+			confPath = args[0]
+		}
+
+		conf, err := getConfig(cmd)
+		if err != nil {
+			return fmt.Errorf("failed to get config: %w", err)
+		}
+		if unsafe {
+			return writeConfig(conf, confPath)
+		}
+
 		exists, err := fsutil.Exists(confPath)
 		if err != nil {
 			return fmt.Errorf("failed to check if config file exists: %w", err)
 		}
 		if exists {
 			return fmt.Errorf("config file %s already exists", confPath)
-		}
-
-		if len(args) == 0 {
-			confPath = "./config.json"
-		} else {
-			confPath = args[0]
-		}
-		conf, err := getConfig(cmd)
-		if err != nil {
-			return fmt.Errorf("failed to get config: %w", err)
-		}
-
-		if unsafe {
-			return writeConfig(conf, confPath)
 		}
 
 		return writeConfig(conf, confPath)

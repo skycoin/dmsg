@@ -97,6 +97,8 @@ type config struct {
 	CLIAddr      string         `json:"cliaddr"`
 	SK           cipher.SecKey  `json:"-"`
 	SKStr        string         `json:"sk"`
+	PK           cipher.PubKey  `json:"-"`
+	PKStr        string         `json:"pk"`
 	WL           cipher.PubKeys `json:"-"`
 	WLStr        []string       `json:"wl"`
 }
@@ -262,7 +264,11 @@ func getConfig(cmd *cobra.Command) (config, error) {
 			WithField("seckey", sk).
 			Info("Generating key pair as 'skgen' is set.")
 		conf.SKStr = sk.Hex()
+		conf.PKStr = pk.Hex()
 		if err := conf.SK.Set(conf.SKStr); err != nil {
+			return conf, err
+		}
+		if err := conf.PK.Set(conf.PKStr); err != nil {
 			return conf, err
 		}
 	}
