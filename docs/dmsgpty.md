@@ -1,5 +1,5 @@
 # Dmsgpty
-`dmsgpty` is a utility exec which uses SSH tp connect to servers hosted over the `dmsg` network (similar to a simplified `SSH` over `dmsg`).
+`dmsgpty` is an remote shell utility over dmsg which uses SSH to connect to servers hosted over the `dmsg` network.
 
 ```
 $ ./bin/dmsgpty-host --help
