@@ -41,7 +41,6 @@ var (
 	wl           cipher.PubKeys
 
 	// persistent flags
-	// skGen     = true
 	envPrefix = defaultEnvPrefix
 
 	// root command flags
@@ -248,10 +247,6 @@ func getConfig(cmd *cobra.Command, skGen bool) (config, error) {
 	}
 
 	if skGen {
-		if !sk.Null() {
-			log.Fatal("Values 'skgen' and 'sk' cannot be both set.")
-		}
-		var pk cipher.PubKey
 		pk, sk = cipher.GenerateKeyPair()
 		log.WithField("pubkey", pk).
 			WithField("seckey", sk).
