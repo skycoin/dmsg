@@ -54,7 +54,7 @@ install-linters: ## Install linters
 	# However, they suggest `curl ... | bash` which we should not do
 	${OPTS} go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
 	${OPTS} go get -u golang.org/x/tools/cmd/goimports
-	${OPTS} go get -u github.com/incu6us/goimports-reviser
+	${OPTS} go get -u github.com/incu6us/goimports-reviser/v2
 
 format: ## Formats the code. Must have goimports and goimports-reviser installed (use make install-linters).
 	${OPTS} goimports -w -local ${DMSG_REPO} .
