@@ -54,12 +54,6 @@ func init() {
 
 	// Prepare flags with env/config references.
 
-	rootCmd.PersistentFlags().Var(&sk, "sk",
-		"secret key of the dmsgpty-host")
-
-	rootCmd.PersistentFlags().Var(&pk, "pk",
-		"public key of the dmsgpty-host")
-
 	rootCmd.PersistentFlags().Var(&wl, "wl",
 		"whitelist of the dmsgpty-host")
 
