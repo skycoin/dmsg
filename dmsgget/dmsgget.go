@@ -225,16 +225,16 @@ func Download(ctx context.Context, log logrus.FieldLogger, httpC *http.Client, w
 	if err != nil {
 		return fmt.Errorf("failed to connect to HTTP server: %w", err)
 	}
+	n, err := CancellableCopy(ctx, w, resp.Body, resp.ContentLength)
+	if err != nil {
+		return fmt.Errorf("download failed at %d/%dB: %w", n, resp.ContentLength, err)
+	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
 			log.WithError(err).Warn("HTTP Response body closed with non-nil error.")
 		}
 	}()
 
-	n, err := CancellableCopy(ctx, w, resp.Body, resp.ContentLength)
-	if err != nil {
-		return fmt.Errorf("download failed at %d/%dB: %w", n, resp.ContentLength, err)
-	}
 	return nil
 }
 
