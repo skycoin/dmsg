@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 
 	jsoniter "github.com/json-iterator/go"
@@ -118,9 +119,22 @@ func configFromJSON(conf dmsgpty.Config) (dmsgpty.Config, error) {
 			return dmsgpty.Config{}, fmt.Errorf("provided PK is invalid: %w", err)
 		}
 	}
+
 	if !jsonConf.PK.Null() {
 		conf.PKStr = jsonConf.PKStr
 		conf.PK = jsonConf.PK
+	}
+
+	if len(jsonConf.WLStr) > 0 {
+		ustString := strings.Join(jsonConf.WLStr, ",")
+		if err := jsonConf.WL.Set(ustString); err != nil {
+			return dmsgpty.Config{}, fmt.Errorf("provided WL's are invalid: %w", err)
+		}
+	}
+
+	if len(jsonConf.WL) > 0 {
+		conf.WLStr = jsonConf.WLStr
+		conf.WL = jsonConf.WL
 	}
 
 	if jsonConf.DmsgDisc != "" {
