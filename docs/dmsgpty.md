@@ -1,5 +1,5 @@
 # Dmsgpty
-`dmsgpty` is an remote shell utility over `dmsg` (similar concept to SSH), to connect to the servers hosted over the `dmsg` network.
+`dmsgpty` is a remote shell utility over `dmsg` (similar concept to SSH) to connect to the servers hosted over the `dmsg` network.
 
 ```
 $ ./bin/dmsgpty-host --help
@@ -62,14 +62,14 @@ In this example, we will use the `dmsg` network where the `dmsg.Discovery` addre
 
 ### Share Files
 
-First, lets generate a config file for the dmsgpty-host.
+First, let's generate a config file for the dmsgpty-host.
 
 ```shell script
 // Generate config file 
 $ ./bin/dmsgpty-host confgen
 ```
 Config file will be generated.
-```json
+```JSON
 {
     "dmsgdisc": "http://dmsg.discovery.skywire.skycoin.com",
     "dmsgsessions": 1,
@@ -111,15 +111,17 @@ $ ./bin/dmsgpty-ui
 
 And open the browser at http://127.0.0.1:8080/
 
-### Connect Two Local DMSG Hosts with DMSGPTY
+### Connect two remote machines with each other via DMSGPTY
 
-First, lets generate a config file for the `dmsgpty-host 1`.
+#### Step 1: Config Generation
+First, lets generate a config file for the `dmsgpty-host` both machines if its not already generated.
 ```shell script
 // Generate config file 
-$ ./bin/dmsgpty-host confgen
+host-1&2$ ./bin/dmsgpty-host confgen
 ```
-Config file will be generated for the `dmsgpty-host 1`..
-```json
+Config file will be generated for the `dmsgpty-host`.
+`dmsgpty-host 1`
+```JSON
 {
     "dmsgdisc": "http://dmsg.discovery.skywire.skycoin.com",
     "dmsgsessions": 1,
@@ -131,15 +133,57 @@ Config file will be generated for the `dmsgpty-host 1`..
     "wl": null
 }
 ```
+`dmsgpty-host 2`
+```JSON
+{
+  "dmsgdisc": "http://dmsg.discovery.skywire.skycoin.com",
+  "dmsgsessions": 1,
+  "dmsgport": 22,
+  "clinet": "unix",
+  "cliaddr": "/tmp/dmsgpty.sock",
+  "sk": "76cc80ea9dcc8cbbb54d5463cea8797dd4ed27693daf176878a8d0929a4466d3",
+  "pk": "024e804f8e8fc3c4fc8562a5e58c4897323e527dace63ec36badfb66b65d4606d7",
+  "wl": null
+}
+```
 
-Now, lets generate a config file for the `dmsgpty-host 2`.<br>
-We are changing the cliaddress since both the hosts are on the same machine and same cliaddr will clash.
+#### Step 2: Start `dmsgpty-host`
+
+To start the `dmsgpty-host` on both machines simply run 
+```shell script
+host-1&2$ ./bin/dmsgpty-host
+```
+
+#### Step 3: Start whitelist with `dmsgpty-cli`
+To interact with the hosts, use `dmsgpty-cli` in a new terminal.<br>
+`dmsgpty-cli` can be used to view, add or remove whitelist.
+
+Now whitelist the Public key of `dmsgpty-host 1` ON `dmsgpty-host 2`.<br>
+So that `dmsgpty-host 2` will accept connection request from `dmsgpty-host 1`
+```shell script
+host-2$ ./bin/dmsgpty-cli whitelist-add 03d3d3744f7d6a943b3d467fce8477ccc580b7568160346b8d8bbd95e343ad6be4
+```
+
+#### Step 4: Connect to dmsgpty-host 2 from dmsgpty-host 1
+Now connect to the shell of `dmsgpty-host 2` FROM `dmsgpty-host 1` run
+```shell script
+host-1$ ./bin/dmsgpty-cli --addr 024e804f8e8fc3c4fc8562a5e58c4897323e527dace63ec36badfb66b65d4606d7
+```
+
+To exit from the shell of `dmsgpty-host 2` simply run
+```shell script
+$ exit
+```
+
+`If you are using the same machine for both hosts, there are some changes for the second host.`
+#### Step 1: Config Generation
+We are changing the cliaddress of `dmsgpty-host 2` since both the hosts are on the same machine, and the same cliaddr will clash.
 ```shell script
 // Generate config file 
-$ ./bin/dmsgpty-host confgen config2.json --cliaddr /tmp/dmsgpty2.sock
+host-2$ ./bin/dmsgpty-host confgen config2.json --cliaddr /tmp/dmsgpty2.sock
 ```
-Config file will be generated for the `dmsgpty-host 2`..
-```json
+Config file will be generated for the `dmsgpty-host 2`.
+```JSON
 {
   "dmsgdisc": "http://dmsg.discovery.skywire.skycoin.com",
   "dmsgsessions": 1,
@@ -152,31 +196,21 @@ Config file will be generated for the `dmsgpty-host 2`..
 }
 ```
 
-To start the `dmsgpty-host 1` simply run
+#### Step 2: Start `dmsgpty-host`
+To start the `dmsgpty-host 2`, simply run the following in a new terminal.
 ```shell script
-$ ./bin/dmsgpty-host
+host-2$ ./bin/dmsgpty-host -c ./config2.json
 ```
 
-To start the `dmsgpty-host 2` simply run the following in a new terminal 
-```shell script
-$ ./bin/dmsgpty-host -c ./config2.json
-```
-
-To interact with the hosts use `dmsgpty-cli`.<br>
+#### Step 3: Start whitelist with `dmsgpty-cli`
+To interact with the hosts, use `dmsgpty-cli` in a new terminal.<br>
 `dmsgpty-cli` can be used to view, add or remove whitelist.
 
 Now whitelist the Public key of `dmsgpty-host 1` in `dmsgpty-host 2`.<br>
 So that `dmsgpty-host 2` will accept connection request from `dmsgpty-host 1`
 ```shell script
-$ ./bin/dmsgpty-cli whitelist-add 03d3d3744f7d6a943b3d467fce8477ccc580b7568160346b8d8bbd95e343ad6be4 --cliaddr /tmp/dmsgpty2.sock
-
-```
-Now connect to the shell of `dmsgpty-host 2` from `dmsgpty-host 1` run
-```shell script
-$ ./bin/dmsgpty-cli --addr 024e804f8e8fc3c4fc8562a5e58c4897323e527dace63ec36badfb66b65d4606d7
+host-2$ ./bin/dmsgpty-cli whitelist-add 03d3d3744f7d6a943b3d467fce8477ccc580b7568160346b8d8bbd95e343ad6be4 --cliaddr /tmp/dmsgpty2.sock
 ```
 
-To exit from the shell of `dmsgpty-host 2` run
-```shell script
-$ exit
-```
+#### Step 4:
+same as above 
