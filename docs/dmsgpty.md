@@ -61,6 +61,7 @@ $ ./bin/dmsgpty-cli --help
 In this example, we will use the `dmsg` network where the `dmsg.Discovery` address is `http://dmsg.discovery.skywire.skycoin.com`. However, any `dmsg.Discovery` would work.
 
 ### Example 1
+Setting up remote command execution over dmsg.
 
 First, let's generate a config file for the dmsgpty-host.
 
