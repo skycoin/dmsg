@@ -237,19 +237,8 @@ func (w *combinedWhitelist) Remove(pks ...cipher.PubKey) error {
 	return w.lists[w.modI].Remove(pks...)
 }
 
-type config struct {
-	CLIAddr      string         `json:"cliaddr"`
-	CLINet       string         `json:"clinet"`
-	DmsgDisc     string         `json:"dmsgdisc"`
-	DmsgPort     uint16         `json:"dmsgport"`
-	DmsgSessions int            `json:"dmsgsessions"`
-	SK           cipher.SecKey  `json:"-"`
-	SKStr        string         `json:"sk"`
-	Wl           cipher.PubKeys `json:"wl"`
-}
-
 // // conf to update whitelists
-var conf config = config{}
+var conf Config = Config{}
 
 // NewConfigWhitelist creates a config file implementation of a whitelist.
 func NewConfigWhitelist(confPath string) (Whitelist, error) {
@@ -280,7 +269,7 @@ func (w *configWhitelist) All() (map[cipher.PubKey]bool, error) {
 		return nil, err
 	}
 	out := make(map[cipher.PubKey]bool)
-	for _, k := range conf.Wl {
+	for _, k := range conf.WL {
 		out[k] = true
 	}
 	return out, nil
@@ -301,7 +290,7 @@ func (w *configWhitelist) Add(pks ...cipher.PubKey) error {
 
 		dFlag = false
 		// check if the pk already exists
-		for _, p := range conf.Wl {
+		for _, p := range conf.WL {
 
 			// if it does
 			if p == k {
@@ -316,7 +305,8 @@ func (w *configWhitelist) Add(pks ...cipher.PubKey) error {
 		// if pk does already not exist
 		if !dFlag {
 			// append it
-			conf.Wl = append(conf.Wl, k)
+			conf.WL = append(conf.WL, k)
+			conf.WLStr = append(conf.WLStr, k.Hex())
 		}
 
 	}
@@ -343,17 +333,18 @@ func (w *configWhitelist) Remove(pks ...cipher.PubKey) error {
 	for _, k := range pks {
 
 		// find occurrence of pubkey in config whitelist
-		for i := 0; i < len(conf.Wl); i++ {
+		for i := 0; i < len(conf.WL); i++ {
 
 			// if an occurrence is found
-			if k == conf.Wl[i] {
+			if k == conf.WL[i] {
 				// remove element
-				conf.Wl = append(conf.Wl[:i], conf.Wl[i+1:]...)
+				conf.WL = append(conf.WL[:i], conf.WL[i+1:]...)
+				conf.WLStr = append(conf.WLStr[:i], conf.WLStr[i+1:]...)
 				break
 			}
 		}
 	}
-
+	fmt.Print(conf.WL)
 	// write changes back to the config file
 	err = updateFile(w.confPath)
 	if err != nil {
@@ -377,6 +368,12 @@ func (w *configWhitelist) open() error {
 	if err != nil {
 		return err
 	}
+	if len(conf.WLStr) > 0 {
+		ustString := strings.Join(conf.WLStr, ",")
+		if err := conf.WL.Set(ustString); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -388,7 +385,6 @@ func updateFile(confPath string) error {
 	if err != nil {
 		return err
 	}
-
 	// write to config file
 	err = ioutil.WriteFile(confPath, b, 0600)
 	if err != nil {

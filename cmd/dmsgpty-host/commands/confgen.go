@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/skycoin/dmsg/dmsgpty"
 	"github.com/skycoin/dmsg/fsutil"
 )
 
@@ -18,7 +19,7 @@ func init() {
 	rootCmd.AddCommand(confgenCmd)
 }
 
-func writeConfig(conf config, path string) error {
+func writeConfig(conf dmsgpty.Config, path string) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644) //nolint:gosec
 	if err != nil {
 		return fmt.Errorf("failed to open config file: %w", err)

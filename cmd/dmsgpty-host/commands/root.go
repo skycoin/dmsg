@@ -83,52 +83,28 @@ func init() {
 		"config path")
 }
 
-type config struct {
-	DmsgDisc     string         `json:"dmsgdisc"`
-	DmsgSessions int            `json:"dmsgsessions"`
-	DmsgPort     uint16         `json:"dmsgport"`
-	CLINet       string         `json:"clinet"`
-	CLIAddr      string         `json:"cliaddr"`
-	SK           cipher.SecKey  `json:"-"`
-	SKStr        string         `json:"sk"`
-	PK           cipher.PubKey  `json:"-"`
-	PKStr        string         `json:"pk"`
-	WL           cipher.PubKeys `json:"-"`
-	WLStr        []string       `json:"wl"`
-}
-
-func defaultConfig() config {
-	return config{
-		DmsgDisc:     dmsg.DefaultDiscAddr,
-		DmsgSessions: dmsg.DefaultMinSessions,
-		DmsgPort:     dmsgpty.DefaultPort,
-		CLINet:       dmsgpty.DefaultCLINet,
-		CLIAddr:      dmsgpty.DefaultCLIAddr,
-	}
-}
-
-func configFromJSON(conf config) (config, error) {
-	var jsonConf config
+func configFromJSON(conf dmsgpty.Config) (dmsgpty.Config, error) {
+	var jsonConf dmsgpty.Config
 
 	if confStdin {
 		if err := json.NewDecoder(os.Stdin).Decode(&jsonConf); err != nil {
-			return config{}, fmt.Errorf("flag 'confstdin' is set, but config read from stdin is invalid: %w", err)
+			return dmsgpty.Config{}, fmt.Errorf("flag 'confstdin' is set, but config read from stdin is invalid: %w", err)
 		}
 	}
 
 	if confPath != "" {
 		f, err := os.Open(confPath)
 		if err != nil {
-			return config{}, fmt.Errorf("failed to open config file: %w", err)
+			return dmsgpty.Config{}, fmt.Errorf("failed to open config file: %w", err)
 		}
 		if err := json.NewDecoder(f).Decode(&jsonConf); err != nil {
-			return config{}, fmt.Errorf("flag 'confpath' is set, but we failed to read config from specified path: %w", err)
+			return dmsgpty.Config{}, fmt.Errorf("flag 'confpath' is set, but we failed to read config from specified path: %w", err)
 		}
 	}
 
 	if jsonConf.SKStr != "" {
 		if err := jsonConf.SK.Set(jsonConf.SKStr); err != nil {
-			return config{}, fmt.Errorf("provided SK is invalid: %w", err)
+			return dmsgpty.Config{}, fmt.Errorf("provided SK is invalid: %w", err)
 		}
 	}
 
@@ -139,7 +115,7 @@ func configFromJSON(conf config) (config, error) {
 
 	if jsonConf.PKStr != "" {
 		if err := jsonConf.PK.Set(jsonConf.PKStr); err != nil {
-			return config{}, fmt.Errorf("provided PK is invalid: %w", err)
+			return dmsgpty.Config{}, fmt.Errorf("provided PK is invalid: %w", err)
 		}
 	}
 	if !jsonConf.PK.Null() {
@@ -170,7 +146,7 @@ func configFromJSON(conf config) (config, error) {
 	return conf, nil
 }
 
-func fillConfigFromENV(conf config) (config, error) {
+func fillConfigFromENV(conf dmsgpty.Config) (dmsgpty.Config, error) {
 
 	if val, ok := os.LookupEnv(envPrefix + "_DMSGDISC"); ok {
 		conf.DmsgDisc = val
@@ -205,7 +181,7 @@ func fillConfigFromENV(conf config) (config, error) {
 	return conf, nil
 }
 
-func fillConfigFromFlags(conf config) config {
+func fillConfigFromFlags(conf dmsgpty.Config) dmsgpty.Config {
 	if dmsgDisc != dmsg.DefaultDiscAddr {
 		conf.DmsgDisc = dmsgDisc
 	}
@@ -230,15 +206,15 @@ func fillConfigFromFlags(conf config) config {
 }
 
 // getConfig sources variables in the following precedence order: flags, env, config, default.
-func getConfig(cmd *cobra.Command, skGen bool) (config, error) {
-	conf := defaultConfig()
+func getConfig(cmd *cobra.Command, skGen bool) (dmsgpty.Config, error) {
+	conf := dmsgpty.DefaultConfig()
 
 	var err error
 	// Prepare how config file is sourced (if root command).
 	if cmd.Name() == cmdutil.RootCmdName() {
 		conf, err = configFromJSON(conf)
 		if err != nil {
-			return config{}, fmt.Errorf("failed to read config from JSON: %w", err)
+			return dmsgpty.Config{}, fmt.Errorf("failed to read config from JSON: %w", err)
 		}
 	}
 	conf, err = fillConfigFromENV(conf)

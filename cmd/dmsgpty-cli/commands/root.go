@@ -11,31 +11,9 @@ import (
 
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/buildinfo"
-	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/dmsgpty"
 )
-
-type config struct {
-	CLIAddr      string         `json:"cliaddr"`
-	CLINet       string         `json:"clinet"`
-	DmsgDisc     string         `json:"dmsgdisc"`
-	DmsgPort     uint16         `json:"dmsgport"`
-	DmsgSessions int            `json:"dmsgsessions"`
-	SK           cipher.SecKey  `json:"-"`
-	SKStr        string         `json:"sk"`
-	Wl           cipher.PubKeys `json:"wl"`
-}
-
-func defaultConfig() config {
-	return config{
-		DmsgDisc:     dmsg.DefaultDiscAddr,
-		DmsgSessions: dmsg.DefaultMinSessions,
-		DmsgPort:     dmsgpty.DefaultPort,
-		CLINet:       dmsgpty.DefaultCLINet,
-		CLIAddr:      dmsgpty.DefaultCLIAddr,
-	}
-}
 
 var cli = dmsgpty.DefaultCLI()
 
@@ -51,7 +29,7 @@ func init() {
 }
 
 // conf to update whitelists
-var conf config = defaultConfig()
+var conf dmsgpty.Config = dmsgpty.DefaultConfig()
 
 // path for config file ( required for whitelists )
 var confPath = "config.json"
