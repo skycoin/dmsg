@@ -259,7 +259,15 @@ type configWhitelist struct {
 
 func (w *configWhitelist) Get(pk cipher.PubKey) (bool, error) {
 	var ok bool
-
+	err := w.open()
+	if err != nil {
+		return ok, err
+	}
+	for _, k := range conf.WL {
+		if k == pk {
+			ok = true
+		}
+	}
 	return ok, nil
 }
 
