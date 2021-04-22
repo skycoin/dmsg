@@ -60,7 +60,7 @@ $ ./bin/dmsgpty-cli --help
 ## Example usage
 In this example, we will use the `dmsg` network where the `dmsg.Discovery` address is `http://dmsg.discovery.skywire.skycoin.com`. However, any `dmsg.Discovery` would work.
 
-### Share Files
+### Example 1
 
 First, let's generate a config file for the dmsgpty-host.
 
@@ -111,8 +111,8 @@ $ ./bin/dmsgpty-ui
 
 And open the browser at http://127.0.0.1:8080/
 
-### Connect two remote machines with each other via DMSGPTY
-
+### Example 2
+Connect two remote machines with each other via DMSGPTY
 #### Step 1: Config Generation
 First, lets generate a config file for the `dmsgpty-host` both machines if its not already generated.
 ```shell script
@@ -213,4 +213,4 @@ host-2$ ./bin/dmsgpty-cli whitelist-add 03d3d3744f7d6a943b3d467fce8477ccc580b756
 ```
 
 #### Step 4:
-same as above 
+Same as above 
