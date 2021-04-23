@@ -5,7 +5,7 @@ import (
 	"github.com/skycoin/dmsg/cipher"
 )
 
-// Config as
+// Config struct is used to read the values from the config.json file
 type Config struct {
 	DmsgDisc     string         `json:"dmsgdisc"`
 	DmsgSessions int            `json:"dmsgsessions"`
