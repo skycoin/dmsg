@@ -103,37 +103,34 @@ func configFromJSON(conf dmsgpty.Config) (dmsgpty.Config, error) {
 		}
 	}
 
-	if jsonConf.SKStr != "" {
-		if err := jsonConf.SK.Set(jsonConf.SKStr); err != nil {
+	if jsonConf.SK != "" {
+		if err := sk.Set(jsonConf.SK); err != nil {
 			return dmsgpty.Config{}, fmt.Errorf("provided SK is invalid: %w", err)
 		}
 	}
 
-	if !jsonConf.SK.Null() {
-		conf.SKStr = jsonConf.SKStr
+	if !sk.Null() {
 		conf.SK = jsonConf.SK
 	}
 
-	if jsonConf.PKStr != "" {
-		if err := jsonConf.PK.Set(jsonConf.PKStr); err != nil {
+	if jsonConf.PK != "" {
+		if err := pk.Set(jsonConf.PK); err != nil {
 			return dmsgpty.Config{}, fmt.Errorf("provided PK is invalid: %w", err)
 		}
 	}
 
-	if !jsonConf.PK.Null() {
-		conf.PKStr = jsonConf.PKStr
+	if !pk.Null() {
 		conf.PK = jsonConf.PK
 	}
 
-	if len(jsonConf.WLStr) > 0 {
-		ustString := strings.Join(jsonConf.WLStr, ",")
-		if err := jsonConf.WL.Set(ustString); err != nil {
+	if len(jsonConf.WL) > 0 {
+		ustString := strings.Join(jsonConf.WL, ",")
+		if err := wl.Set(ustString); err != nil {
 			return dmsgpty.Config{}, fmt.Errorf("provided WL's are invalid: %w", err)
 		}
 	}
 
-	if len(jsonConf.WL) > 0 {
-		conf.WLStr = jsonConf.WLStr
+	if len(wl) > 0 {
 		conf.WL = jsonConf.WL
 	}
 
@@ -241,18 +238,12 @@ func getConfig(cmd *cobra.Command, skGen bool) (dmsgpty.Config, error) {
 		log.WithField("pubkey", pk).
 			WithField("seckey", sk).
 			Info("Generating key pair as 'skgen' is set.")
-		conf.SKStr = sk.Hex()
-		conf.PKStr = pk.Hex()
-		if err := conf.SK.Set(conf.SKStr); err != nil {
-			return conf, err
-		}
-		if err := conf.PK.Set(conf.PKStr); err != nil {
-			return conf, err
-		}
+		conf.SK = sk.Hex()
+		conf.PK = pk.Hex()
 	}
 	conf = fillConfigFromFlags(conf)
 
-	if conf.SK.Null() {
+	if sk.Null() {
 		return conf, fmt.Errorf("value 'seckey' is invalid")
 	}
 
@@ -288,13 +279,13 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
 
-		pk, err := conf.SK.PubKey()
+		pk, err := sk.PubKey()
 		if err != nil {
 			return fmt.Errorf("failed to derive public key from secret key: %w", err)
 		}
 
 		// Prepare and serve dmsg client and wait until ready.
-		dmsgC := dmsg.NewClient(pk, conf.SK, disc.NewHTTP(conf.DmsgDisc), &dmsg.Config{
+		dmsgC := dmsg.NewClient(pk, sk, disc.NewHTTP(conf.DmsgDisc), &dmsg.Config{
 			MinSessions: conf.DmsgSessions,
 		})
 		go dmsgC.Serve(context.Background())

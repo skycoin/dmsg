@@ -14,7 +14,10 @@ import (
 	"github.com/skycoin/dmsg/cipher"
 )
 
-var json = jsoniter.ConfigFastest
+var (
+	json = jsoniter.ConfigFastest
+	wl   cipher.PubKeys
+)
 
 // Whitelist represents a whitelist of public keys.
 type Whitelist interface {
@@ -50,7 +53,7 @@ func (w *configWhitelist) Get(pk cipher.PubKey) (bool, error) {
 	if err != nil {
 		return ok, err
 	}
-	for _, k := range conf.WL {
+	for _, k := range wl {
 		if k == pk {
 			ok = true
 		}
@@ -64,7 +67,7 @@ func (w *configWhitelist) All() (map[cipher.PubKey]bool, error) {
 		return nil, err
 	}
 	out := make(map[cipher.PubKey]bool)
-	for _, k := range conf.WL {
+	for _, k := range wl {
 		out[k] = true
 	}
 	return out, nil
@@ -85,7 +88,7 @@ func (w *configWhitelist) Add(pks ...cipher.PubKey) error {
 
 		dFlag = false
 		// check if the pk already exists
-		for _, p := range conf.WL {
+		for _, p := range wl {
 
 			// if it does
 			if p == k {
@@ -100,8 +103,8 @@ func (w *configWhitelist) Add(pks ...cipher.PubKey) error {
 		// if pk does already not exist
 		if !dFlag {
 			// append it
-			conf.WL = append(conf.WL, k)
-			conf.WLStr = append(conf.WLStr, k.Hex())
+			wl = append(wl, k)
+			conf.WL = append(conf.WL, k.Hex())
 		}
 
 	}
@@ -128,18 +131,17 @@ func (w *configWhitelist) Remove(pks ...cipher.PubKey) error {
 	for _, k := range pks {
 
 		// find occurrence of pubkey in config whitelist
-		for i := 0; i < len(conf.WL); i++ {
+		for i := 0; i < len(wl); i++ {
 
 			// if an occurrence is found
-			if k == conf.WL[i] {
+			if k == wl[i] {
 				// remove element
+				wl = append(wl[:i], wl[i+1:]...)
 				conf.WL = append(conf.WL[:i], conf.WL[i+1:]...)
-				conf.WLStr = append(conf.WLStr[:i], conf.WLStr[i+1:]...)
 				break
 			}
 		}
 	}
-	fmt.Print(conf.WL)
 	// write changes back to the config file
 	err = updateFile(w.confPath)
 	if err != nil {
@@ -163,9 +165,10 @@ func (w *configWhitelist) open() error {
 	if err != nil {
 		return err
 	}
-	if len(conf.WLStr) > 0 {
-		ustString := strings.Join(conf.WLStr, ",")
-		if err := conf.WL.Set(ustString); err != nil {
+	// convert []string to cipher.PubKeys
+	if len(conf.WL) > 0 {
+		ustString := strings.Join(conf.WL, ",")
+		if err := wl.Set(ustString); err != nil {
 			return err
 		}
 	}
