@@ -63,6 +63,9 @@ dep: ## Sorts dependencies
 	${OPTS} go mod download
 	${OPTS} go mod tidy -v
 
+install: ## Install `dmsg-discovery`, `dmsg-server`, `dmsgget`,`dmsgpty-cli`, `dmsgpty-host`, `dmsgpty-ui`
+	${OPTS} go install ${BUILD_OPTS} ./cmd/*
+
 build: ## Build binaries into ./bin
 	mkdir -p ${BIN}; go build ${BUILD_OPTS} -o ${BIN} ./cmd/*
 
