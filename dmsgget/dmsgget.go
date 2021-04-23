@@ -119,7 +119,7 @@ func (dg *DmsgGet) Run(ctx context.Context, log logrus.FieldLogger, skStr string
 			return fmt.Errorf("failed to reset file: %w", err)
 		}
 
-		if err := Download(log, &httpC, file, u.URL.String()); err != nil {
+		if err := Download(ctx, log, &httpC, file, u.URL.String()); err != nil {
 			log.WithError(err).Error()
 			select {
 			case <-ctx.Done():
@@ -215,7 +215,7 @@ func (dg *DmsgGet) startDmsg(ctx context.Context, log logrus.FieldLogger, pk cip
 }
 
 // Download downloads a file from the given URL into 'w'.
-func Download(log logrus.FieldLogger, httpC *http.Client, w io.Writer, urlStr string) error {
+func Download(ctx context.Context, log logrus.FieldLogger, httpC *http.Client, w io.Writer, urlStr string) error {
 	req, err := http.NewRequest(http.MethodGet, urlStr, nil)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to formulate HTTP request.")
@@ -225,15 +225,40 @@ func Download(log logrus.FieldLogger, httpC *http.Client, w io.Writer, urlStr st
 	if err != nil {
 		return fmt.Errorf("failed to connect to HTTP server: %w", err)
 	}
+	n, err := CancellableCopy(ctx, w, resp.Body, resp.ContentLength)
+	if err != nil {
+		return fmt.Errorf("download failed at %d/%dB: %w", n, resp.ContentLength, err)
+	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
 			log.WithError(err).Warn("HTTP Response body closed with non-nil error.")
 		}
 	}()
 
-	n, err := io.Copy(io.MultiWriter(w, &ProgressWriter{Total: resp.ContentLength}), resp.Body)
-	if err != nil {
-		return fmt.Errorf("download failed at %d/%dB: %w", n, resp.ContentLength, err)
-	}
 	return nil
+}
+
+type readerFunc func(p []byte) (n int, err error)
+
+func (rf readerFunc) Read(p []byte) (n int, err error) { return rf(p) }
+
+// CancellableCopy will call the Reader and Writer interface multiple time, in order
+// to copy by chunk (avoiding loading the whole file in memory).
+func CancellableCopy(ctx context.Context, w io.Writer, body io.ReadCloser, length int64) (int64, error) {
+
+	n, err := io.Copy(io.MultiWriter(w, &ProgressWriter{Total: length}), readerFunc(func(p []byte) (int, error) {
+
+		// golang non-blocking channel: https://gobyexample.com/non-blocking-channel-operations
+		select {
+
+		// if context has been canceled
+		case <-ctx.Done():
+			// stop process and propagate "Download Canceled" error
+			return 0, errors.New("Download Canceled")
+		default:
+			// otherwise just run default io.Reader implementation
+			return body.Read(p)
+		}
+	}))
+	return n, err
 }

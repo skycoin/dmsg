@@ -17,6 +17,7 @@ import (
 
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/dmsghttp"
 )
@@ -63,7 +64,9 @@ func TestDownload(t *testing.T) {
 	for i := 0; i < dlClients; i++ {
 		func(i int) {
 			log := logging.MustGetLogger(fmt.Sprintf("dl_client_%d", i))
-			err := Download(log, newHTTPClient(t, dc), dsts[i], hsAddr)
+			ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+			defer cancel()
+			err := Download(ctx, log, newHTTPClient(t, dc), dsts[i], hsAddr)
 
 			errs[i] <- err
 			close(errs[i])
