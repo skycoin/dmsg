@@ -254,7 +254,6 @@ func getConfig(cmd *cobra.Command, skGen bool) (dmsgpty.Config, error) {
 	pLog = pLog.WithField("dmsgport", conf.DmsgPort)
 	pLog = pLog.WithField("clinet", conf.CLINet)
 	pLog = pLog.WithField("cliaddr", conf.CLIAddr)
-	pLog = pLog.WithField("sk", conf.SK)
 	pLog = pLog.WithField("pk", conf.PK)
 	pLog = pLog.WithField("wl", conf.WL)
 	pLog.Info("Init complete.")
