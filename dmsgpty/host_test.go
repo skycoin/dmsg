@@ -1,36 +1,53 @@
 package dmsgpty
 
+import (
+	"context"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"net"
+	"os"
+	"testing"
+
+	"github.com/skycoin/dmsg"
+	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/dmsgtest"
+	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/net/nettest"
+)
+
 // TODO(evanlinjin): fix failing tests
-/*
+
 func TestHost(t *testing.T) {
 	const port = uint16(22)
-	defaultConf := dmsg.Config{MinSessions: 2}
 
 	// Prepare dmsg env.
 	env := dmsgtest.NewEnv(t, dmsgtest.DefaultTimeout)
-	require.NoError(t, env.Startup(2, 2, 1, &defaultConf))
+	defaultConf := dmsg.Config{MinSessions: 2}
+	require.NoError(t, env.Startup(dmsgtest.DefaultTimeout, 2, 2, &defaultConf))
+	t.Cleanup(env.Shutdown)
 
 	dcA := env.AllClients()[0]
 	dcB := env.AllClients()[1]
 
-	// Prepare whitelist.
-	wl, delWhitelist := tempWhitelist(t)
-	require.NoError(t, wl.Add(dcA.LocalPK()))
-	require.NoError(t, wl.Add(dcB.LocalPK()))
-
+	// Prepare whitelists.
+	wlA, delWhitelistA := tempWhitelist(t, dcA)
+	wlB, delWhitelistB := tempWhitelist(t, dcB)
+	require.NoError(t, wlB.Add(dcA.LocalPK()))
+	require.NoError(t, wlA.Add(dcB.LocalPK()))
 	t.Run("serveConn_whitelist", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.TODO())
 
 		connH, connC := net.Pipe()
-
-		host := NewHost(dcA, wl)
+		host := NewHost(dcA, wlA)
 		hMux := cliEndpoints(host)
 		go host.serveConn(ctx, logging.MustGetLogger("host_conn"), &hMux, connH)
 
-		wlC, err := NewWhitelistClient(connC)
+		wlCli, err := NewWhitelistClient(connC)
 		require.NoError(t, err)
 
-		checkWhitelist(t, wlC, 2, 10)
+		checkWhitelist(t, wlCli, 1, 10)
 
 		// Closing logic.
 		cancel()
@@ -43,7 +60,7 @@ func TestHost(t *testing.T) {
 
 		connH, connC := net.Pipe()
 
-		host := NewHost(dcA, wl)
+		host := NewHost(dcA, wlA)
 		hMux := cliEndpoints(host)
 		go host.serveConn(ctx, logging.MustGetLogger("host_conn"), &hMux, connH)
 
@@ -63,14 +80,14 @@ func TestHost(t *testing.T) {
 
 		connB, connCLI := net.Pipe()
 
-		hostA := NewHost(dcA, wl)
+		hostA := NewHost(dcA, wlA)
 		errA := make(chan error, 1)
 		go func() {
 			errA <- hostA.ListenAndServe(ctx, port)
 			close(errA)
 		}()
 
-		hostB := NewHost(dcB, wl)
+		hostB := NewHost(dcB, wlB)
 		hBMux := cliEndpoints(hostB)
 		go hostB.serveConn(ctx, logging.MustGetLogger("hostB_conn"), &hBMux, connB)
 
@@ -92,14 +109,14 @@ func TestHost(t *testing.T) {
 		cliL, err := nettest.NewLocalListener("tcp")
 		require.NoError(t, err)
 
-		hostA := NewHost(dcA, wl)
+		hostA := NewHost(dcA, wlA)
 		errA := make(chan error, 1)
 		go func() {
 			errA <- hostA.ListenAndServe(ctx, port)
 			close(errA)
 		}()
 
-		hostB := NewHost(dcB, wl)
+		hostB := NewHost(dcB, wlB)
 		errB := make(chan error, 1)
 		go func() {
 			errB <- hostB.ServeCLI(ctx, cliL)
@@ -113,10 +130,10 @@ func TestHost(t *testing.T) {
 		}
 
 		t.Run("endpoint_whitelist", func(t *testing.T) {
-			wlC, err := cliB.WhitelistClient()
+			wlCli, err := cliB.WhitelistClient()
 			require.NoError(t, err)
 
-			checkWhitelist(t, wlC, 2, 10)
+			checkWhitelist(t, wlCli, 1, 10)
 		})
 
 		t.Run("endpoint_pty", func(t *testing.T) {
@@ -152,11 +169,12 @@ func TestHost(t *testing.T) {
 			dcC, err := env.NewClient(&defaultConf)
 			require.NoError(t, err)
 
+			wlC, delWhitelistC := tempWhitelist(t, dcC)
 			lisC, err := nettest.NewLocalListener("tcp")
 			require.NoError(t, err)
 
 			ctx, cancel := context.WithCancel(ctx)
-			hostC := NewHost(dcC, wl)
+			hostC := NewHost(dcC, wlC)
 			cErr := make(chan error, 1)
 			go func() {
 				cErr <- hostC.ServeCLI(ctx, lisC)
@@ -177,6 +195,7 @@ func TestHost(t *testing.T) {
 
 			// Closing logic.
 			cancel()
+			delWhitelistC()
 			require.NoError(t, <-cErr)
 		})
 
@@ -187,18 +206,24 @@ func TestHost(t *testing.T) {
 	})
 
 	// Closing logic.
-	delWhitelist()
+	delWhitelistA()
+	delWhitelistB()
 	env.Shutdown()
 }
 
-func tempWhitelist(t *testing.T) (Whitelist, func()) {
+func tempWhitelist(t *testing.T, c *dmsg.Client) (Whitelist, func()) {
 	f, err := ioutil.TempFile(os.TempDir(), "")
 	require.NoError(t, err)
 
 	fName := f.Name()
 	require.NoError(t, f.Close())
 
-	wl, err := NewJSONFileWhiteList(fName)
+	conf := getConfig(c)
+	err = WriteConfig(conf, fName)
+	require.NoError(t, err)
+
+	t.Log(fName)
+	wl, err := NewConfigWhitelist(fName)
 	require.NoError(t, err)
 
 	return wl, func() {
@@ -218,27 +243,41 @@ func checkPty(t *testing.T, ptyC *PtyClient, msg string) {
 	require.NoError(t, ptyC.Stop())
 }
 
-func checkWhitelist(t *testing.T, wlC *WhitelistClient, initN, rounds int) {
-	pks, err := wlC.ViewWhitelist()
+func checkWhitelist(t *testing.T, wlCli *WhitelistClient, initN, rounds int) {
+	pks, err := wlCli.ViewWhitelist()
 	require.NoError(t, err)
 	require.Len(t, pks, initN)
 
 	newPKS := make([]cipher.PubKey, rounds)
 	for i := 0; i < rounds; i++ {
 		pk, _ := cipher.GenerateKeyPair()
-		require.NoError(t, wlC.WhitelistAdd(pk), i)
+		require.NoError(t, wlCli.WhitelistAdd(pk), i)
 		newPKS[i] = pk
 
-		pks, err := wlC.ViewWhitelist()
+		pks, err := wlCli.ViewWhitelist()
 		require.NoError(t, err)
 		require.Len(t, pks, initN+i+1)
 	}
 	for i, newPK := range newPKS {
-		require.NoError(t, wlC.WhitelistRemove(newPK))
+		require.NoError(t, wlCli.WhitelistRemove(newPK))
 
-		pks, err := wlC.ViewWhitelist()
+		pks, err := wlCli.ViewWhitelist()
 		require.NoError(t, err)
 		require.Len(t, pks, initN+len(newPKS)-i-1)
 	}
 }
-*/
+
+func getConfig(c *dmsg.Client) Config {
+	conf := DefaultConfig()
+	conf.SK = c.LocalSK().Hex()
+	conf.PK = c.LocalPK().Hex()
+	return conf
+}
+
+// NewHost creates a new dmsgpty.Host with a given dmsg.Client and whitelist.
+// func ewHost(dmsgC *dmsg.Client, wl Whitelist) *Host {
+// 	host := new(Host)
+// 	host.dmsgC = dmsgC
+// 	host.wl = wl
+// 	return host
+// }

@@ -1,6 +1,9 @@
 package dmsgpty
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/skycoin/dmsg"
 )
 
@@ -25,4 +28,15 @@ func DefaultConfig() Config {
 		CLINet:       DefaultCLINet,
 		CLIAddr:      DefaultCLIAddr,
 	}
+}
+
+// WriteConfig write the config struct to the provided path
+func WriteConfig(conf Config, path string) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644) //nolint:gosec
+	if err != nil {
+		return fmt.Errorf("failed to open config file: %w", err)
+	}
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "    ")
+	return enc.Encode(&conf)
 }
