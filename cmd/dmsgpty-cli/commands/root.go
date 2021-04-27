@@ -2,7 +2,10 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -20,13 +23,24 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cli.Addr, "cliaddr", cli.Addr,
 		"address to use for dialing to dmsgpty-host")
+
+	rootCmd.PersistentFlags().StringVar(&confPath, "confpath", confPath,
+		"config path")
 }
+
+// conf to update whitelists
+var conf dmsgpty.Config = dmsgpty.DefaultConfig()
+
+// path for config file ( required for whitelists )
+var confPath = "config.json"
 
 var remoteAddr dmsg.Addr
 var cmdName = dmsgpty.DefaultCmd
 var cmdArgs []string
 
 func init() {
+
+	cobra.OnInitialize(initConfig)
 	rootCmd.Flags().Var(&remoteAddr, "addr",
 		"remote dmsg address of format 'pk:port'. If unspecified, the pty will start locally")
 
@@ -35,6 +49,48 @@ func init() {
 
 	rootCmd.Flags().StringSliceVarP(&cmdArgs, "args", "a", cmdArgs,
 		"command arguments")
+
+}
+
+// initConfig sources whitelist from config file
+// by default : it will look for (default "config.json")
+//
+// case 1 : config file is new (does not contain a "wl" key)
+// - create a "wl" key within the config file
+//
+// case 2 : config file is old (already contains "wl" key)
+// - load config file into memory to manipulate whitelists
+// - writes changes back to config file
+func initConfig() {
+
+	println(confPath)
+
+	if _, err := os.Stat(confPath); err != nil {
+		cli.Log.Fatalln("Default config file \"config.json\" not found.")
+	}
+
+	// read file using ioutil
+	file, err := ioutil.ReadFile(confPath)
+	if err != nil {
+		cli.Log.Fatalln("Unable to read ", confPath, err)
+	}
+
+	// store config.json into conf to manipulate whitelists
+	err = json.Unmarshal(file, &conf)
+	if err != nil {
+		cli.Log.Errorln(err)
+		// ignoring this error
+		b, err := json.MarshalIndent(conf, "", "  ")
+		if err != nil {
+			cli.Log.Fatalln("Unable to marshal conf")
+		}
+
+		// write to config.json
+		err = ioutil.WriteFile(confPath, b, 0600)
+		if err != nil {
+			cli.Log.Fatalln("Unable to write", confPath, err)
+		}
+	}
 }
 
 var rootCmd = &cobra.Command{
