@@ -18,7 +18,6 @@ import (
 	"github.com/skycoin/dmsg/cmd/dmsg-server/internal/api"
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
-	"github.com/skycoin/dmsg/discord"
 	"github.com/skycoin/dmsg/metricsutil"
 	"github.com/skycoin/dmsg/servermetrics"
 )
@@ -41,15 +40,6 @@ var rootCmd = &cobra.Command{
 		}
 
 		log := sf.Logger()
-
-		if discordWebhookURL := discord.GetWebhookURLFromEnv(); discordWebhookURL != "" {
-			// Workaround for Discord logger hook. Actually, it's Info.
-			log.Error(discord.StartLogMessage)
-			defer log.Error(discord.StopLogMessage)
-		} else {
-			log.Info(discord.StartLogMessage)
-			defer log.Info(discord.StopLogMessage)
-		}
 
 		var conf Config
 		if err := sf.ParseConfig(os.Args, true, &conf); err != nil {

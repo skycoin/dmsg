@@ -12,7 +12,6 @@ require (
 	github.com/klauspost/compress v1.11.0 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/kz/discordrus v1.2.0
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
