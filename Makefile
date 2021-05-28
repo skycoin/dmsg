@@ -73,6 +73,9 @@ build-deploy: ## Build for deployment Docker images
 	go build -tags netgo ${BUILD_OPTS_DEPLOY} -o /release/dmsg-discovery ./cmd/dmsg-discovery
 	go build -tags netgo ${BUILD_OPTS_DEPLOY} -o /release/dmsg-server ./cmd/dmsg-server
 
+build-docker:
+	./docker/scripts/docker-push.sh -t "develop" -b
+
 start-db: ## Init local database env.
 	source ./integration/env.sh && init_redis
 
