@@ -5,14 +5,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log/syslog"
 	"os"
 	"strings"
 	"unicode"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/sirupsen/logrus"
-	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/spf13/cobra"
 )
@@ -132,14 +129,7 @@ func (sf *ServiceFlags) Logger() *logging.Logger {
 	logging.SetLevel(logLvl)
 
 	if sf.Syslog != "" {
-		hook, err := logrussyslog.NewSyslogHook(sf.SyslogNet, sf.Syslog, sysLvl, sf.Tag)
-		if err != nil {
-			log.WithError(err).
-				WithField("net", sf.SyslogNet).
-				WithField("addr", sf.Syslog).
-				Fatal("Failed to connect to syslog daemon.")
-		}
-		logging.AddHook(hook)
+		sf.sysLogHook(log, sysLvl)
 	}
 
 	return log
@@ -237,26 +227,6 @@ func ValidTag(tag string) error {
 	}
 
 	return nil
-}
-
-// LevelFromString returns a logrus.Level and syslog.Priority from a string identifier.
-func LevelFromString(s string) (logrus.Level, syslog.Priority, error) {
-	switch strings.ToLower(s) {
-	case "debug":
-		return logrus.DebugLevel, syslog.LOG_DEBUG, nil
-	case "info", "notice":
-		return logrus.InfoLevel, syslog.LOG_INFO, nil
-	case "warn", "warning":
-		return logrus.WarnLevel, syslog.LOG_WARNING, nil
-	case "error":
-		return logrus.ErrorLevel, syslog.LOG_ERR, nil
-	case "fatal", "critical":
-		return logrus.FatalLevel, syslog.LOG_CRIT, nil
-	case "panic":
-		return logrus.PanicLevel, syslog.LOG_EMERG, nil
-	default:
-		return logrus.DebugLevel, syslog.LOG_DEBUG, ErrInvalidLogString
-	}
 }
 
 func alreadyDone(done *bool) bool {
