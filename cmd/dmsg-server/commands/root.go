@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/json-iterator/go"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/pires/go-proxyproto"
 	"github.com/spf13/cobra"
 
@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	defaultDiscoveryUrl = "http://dmsg-discovery:9090"
+	defaultDiscoveryURL = "http://dmsg-discovery:9090"
 	defaultPort         = ":8081"
 	defaultConfigPath   = "config.json"
 )
@@ -133,7 +133,7 @@ func genDefaultConfig() (io.ReadCloser, error) {
 	cfg := Config{
 		PubKey:        pk,
 		SecKey:        sk,
-		Discovery:     defaultDiscoveryUrl,
+		Discovery:     defaultDiscoveryURL,
 		LocalAddress:  fmt.Sprintf("localhost%s", defaultPort),
 		PublicAddress: defaultPort,
 		MaxSessions:   10,
@@ -145,7 +145,7 @@ func genDefaultConfig() (io.ReadCloser, error) {
 		return nil, fmt.Errorf("failed to marshal default json config: %v", err)
 	}
 
-	if err = ioutil.WriteFile(defaultConfigPath, configData, 0644); err != nil {
+	if err = ioutil.WriteFile(defaultConfigPath, configData, 0600); err != nil {
 		return nil, err
 	}
 
