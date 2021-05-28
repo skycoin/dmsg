@@ -117,8 +117,8 @@ func (ms *MockStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 
 // CountEntries implements Storer CountEntries method for MockStore
 func (ms *MockStore) CountEntries(ctx context.Context) (int64, int64, error) {
-	var numberOfServers int64 = 0
-	var numberOfClients int64 = 0
+	var numberOfServers int64
+	var numberOfClients int64
 	ms.serversLock.RLock()
 	defer ms.serversLock.RUnlock()
 
