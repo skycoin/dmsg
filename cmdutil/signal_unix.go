@@ -8,6 +8,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func ignoreSignals() []os.Signal {
+func listenSignals() []os.Signal {
 	return []os.Signal{unix.SIGINT, unix.SIGTERM, unix.SIGQUIT}
 }

@@ -8,6 +8,6 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func ignoreSignals() []os.Signal {
+func listenSignals() []os.Signal {
 	return []os.Signal{windows.SIGINT, windows.SIGTERM, windows.SIGQUIT}
 }

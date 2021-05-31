@@ -17,8 +17,8 @@ func SignalContext(ctx context.Context, log logrus.FieldLogger) (context.Context
 	ctx, cancel := context.WithCancel(ctx)
 
 	ch := make(chan os.Signal)
-	ignoredSigs := ignoreSignals()
-	signal.Notify(ch, ignoredSigs...)
+	listenSigs := listenSignals()
+	signal.Notify(ch, listenSigs...)
 
 	go func() {
 		select {
