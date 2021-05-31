@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/json-iterator/go"
 	"github.com/pires/go-proxyproto"
 	"github.com/spf13/cobra"
 
@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	defaultDiscoveryURL = "http://dmsg-discovery:9090"
+	defaultDiscoveryURL = "https://dmsg.discovery.skywire.skycoin.com"
 	defaultPort         = ":8081"
 	defaultConfigPath   = "config.json"
 )
@@ -136,7 +136,7 @@ func genDefaultConfig() (io.ReadCloser, error) {
 		Discovery:     defaultDiscoveryURL,
 		LocalAddress:  fmt.Sprintf("localhost%s", defaultPort),
 		PublicAddress: defaultPort,
-		MaxSessions:   10,
+		MaxSessions:   2048,
 		LogLevel:      "info",
 	}
 
