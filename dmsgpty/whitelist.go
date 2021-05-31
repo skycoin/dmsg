@@ -153,7 +153,8 @@ func (w *configWhitelist) Remove(pks ...cipher.PubKey) error {
 }
 
 func (w *configWhitelist) open() error {
-	if _, err := os.Stat(w.confPath); err != nil {
+	info, err := os.Stat(w.confPath)
+	if err != nil {
 		if os.IsNotExist(err) {
 			_, err := os.Create(w.confPath)
 			if err != nil {
@@ -162,6 +163,11 @@ func (w *configWhitelist) open() error {
 		}
 		return err
 	}
+
+	if info.Size() == 0 {
+		updateFile(w.confPath)
+	}
+
 	// read file using ioutil
 	file, err := ioutil.ReadFile(w.confPath)
 	if err != nil {
