@@ -3,6 +3,7 @@ package dmsgpty
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"os"
@@ -37,7 +38,7 @@ func NewConfigWhitelist(confPath string) (Whitelist, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(filepath.Dir(confPath), 0750); err != nil {
+	if err = os.MkdirAll(filepath.Dir(confPath), 0750); err != nil {
 		return nil, err
 	}
 
@@ -155,8 +156,8 @@ func (w *configWhitelist) Remove(pks ...cipher.PubKey) error {
 func (w *configWhitelist) open() error {
 	info, err := os.Stat(w.confPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			_, err := os.Create(w.confPath)
+		if errors.Is(err, fs.ErrNotExist) {
+			_, err = os.Create(w.confPath)
 			if err != nil {
 				return err
 			}
@@ -165,7 +166,9 @@ func (w *configWhitelist) open() error {
 	}
 
 	if info.Size() == 0 {
-		updateFile(w.confPath)
+		if err = updateFile(w.confPath); err != nil {
+			return err
+		}
 	}
 
 	// read file using ioutil
