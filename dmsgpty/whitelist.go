@@ -3,11 +3,13 @@ package dmsgpty
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	jsoniter "github.com/json-iterator/go"
 
@@ -28,7 +30,7 @@ type Whitelist interface {
 }
 
 // conf to update whitelists
-var conf Config = Config{}
+var conf = Config{}
 
 // NewConfigWhitelist creates a config file implementation of a whitelist.
 func NewConfigWhitelist(confPath string) (Whitelist, error) {
@@ -36,7 +38,7 @@ func NewConfigWhitelist(confPath string) (Whitelist, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(filepath.Dir(confPath), 0750); err != nil {
+	if err = os.MkdirAll(filepath.Dir(confPath), 0750); err != nil {
 		return nil, err
 	}
 
@@ -152,9 +154,23 @@ func (w *configWhitelist) Remove(pks ...cipher.PubKey) error {
 }
 
 func (w *configWhitelist) open() error {
-	if _, err := os.Stat(w.confPath); err != nil {
+	info, err := os.Stat(w.confPath)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			_, err = os.Create(w.confPath)
+			if err != nil {
+				return err
+			}
+		}
 		return err
 	}
+
+	if info.Size() == 0 {
+		if err = updateFile(w.confPath); err != nil {
+			return err
+		}
+	}
+
 	// read file using ioutil
 	file, err := ioutil.ReadFile(w.confPath)
 	if err != nil {
@@ -189,5 +205,52 @@ func updateFile(confPath string) error {
 		return err
 	}
 
+	return nil
+}
+
+// NewMemoryWhitelist creates a memory implementation of a whitelist.
+func NewMemoryWhitelist() Whitelist {
+	return &memoryWhitelist{
+		m: make(map[cipher.PubKey]struct{}),
+	}
+}
+
+type memoryWhitelist struct {
+	m   map[cipher.PubKey]struct{}
+	mux sync.RWMutex
+}
+
+func (w *memoryWhitelist) Get(pk cipher.PubKey) (bool, error) {
+	w.mux.RLock()
+	_, ok := w.m[pk]
+	w.mux.RUnlock()
+	return ok, nil
+}
+
+func (w *memoryWhitelist) All() (map[cipher.PubKey]bool, error) {
+	out := make(map[cipher.PubKey]bool)
+	w.mux.RLock()
+	for k := range w.m {
+		out[k] = true
+	}
+	w.mux.RUnlock()
+	return out, nil
+}
+
+func (w *memoryWhitelist) Add(pks ...cipher.PubKey) error {
+	w.mux.Lock()
+	for _, pk := range pks {
+		w.m[pk] = struct{}{}
+	}
+	w.mux.Unlock()
+	return nil
+}
+
+func (w *memoryWhitelist) Remove(pks ...cipher.PubKey) error {
+	w.mux.Lock()
+	for _, pk := range pks {
+		delete(w.m, pk)
+	}
+	w.mux.Unlock()
 	return nil
 }
