@@ -17,8 +17,7 @@ RUN apk add --no-cache bash make git && \
 FROM alpine:latest
 
 COPY --from=builder /release/dmsg-server /usr/local/bin/dmsg-server
-COPY --from=builder /dmsg/docker/images/dmsg-server/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 STOPSIGNAL SIGINT
 
-ENTRYPOINT [ "sh", "-c", "entrypoint.sh" ]
+ENTRYPOINT [ "dmsg-server" ]
