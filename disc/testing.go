@@ -59,7 +59,7 @@ func (m *mockClient) setEntry(entry Entry) {
 }
 
 // Entry returns the mock client static public key associated entry
-func (m *mockClient) Entry(_ context.Context, pk cipher.PubKey, _ bool) (*Entry, error) {
+func (m *mockClient) Entry(_ context.Context, pk cipher.PubKey) (*Entry, error) {
 	entry, ok := m.entry(pk)
 	if !ok {
 		return nil, errors.New(HTTPMessage{ErrKeyNotFound.Error(), http.StatusNotFound}.String())
@@ -70,7 +70,7 @@ func (m *mockClient) Entry(_ context.Context, pk cipher.PubKey, _ bool) (*Entry,
 }
 
 // PostEntry sets an entry on the APIClient mock
-func (m *mockClient) PostEntry(_ context.Context, entry *Entry, _ bool) error {
+func (m *mockClient) PostEntry(_ context.Context, entry *Entry) error {
 	previousEntry, ok := m.entry(entry.Static)
 	if ok {
 		err := previousEntry.ValidateIteration(entry)
@@ -88,7 +88,7 @@ func (m *mockClient) PostEntry(_ context.Context, entry *Entry, _ bool) error {
 }
 
 // PutEntry updates a previously set entry
-func (m *mockClient) PutEntry(ctx context.Context, sk cipher.SecKey, e *Entry, _ bool) error {
+func (m *mockClient) PutEntry(ctx context.Context, sk cipher.SecKey, e *Entry) error {
 	e.Sequence++
 	e.Timestamp = time.Now().UnixNano()
 
@@ -97,7 +97,7 @@ func (m *mockClient) PutEntry(ctx context.Context, sk cipher.SecKey, e *Entry, _
 		if err != nil {
 			return err
 		}
-		err = m.PostEntry(ctx, e, true)
+		err = m.PostEntry(ctx, e)
 		if err == nil {
 			return nil
 		}
@@ -105,7 +105,7 @@ func (m *mockClient) PutEntry(ctx context.Context, sk cipher.SecKey, e *Entry, _
 			e.Sequence--
 			return err
 		}
-		rE, entryErr := m.Entry(ctx, e.Static, true)
+		rE, entryErr := m.Entry(ctx, e.Static)
 		if entryErr != nil {
 			return err
 		}
