@@ -82,11 +82,11 @@ func TestEnv(t *testing.T) {
 		done := time.After(entryTimeout * 3)
 	Loop:
 		for {
-			se, err := d.Entry(context.TODO(), s.LocalPK())
+			se, err := d.Entry(context.TODO(), s.LocalPK(), true)
 			require.NoError(t, err)
 			require.NotNil(t, se.Server)
 
-			ce, err := d.Entry(context.TODO(), c.LocalPK())
+			ce, err := d.Entry(context.TODO(), c.LocalPK(), false)
 			require.NoError(t, err)
 			require.NotNil(t, ce.Client)
 

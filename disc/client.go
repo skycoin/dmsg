@@ -22,9 +22,9 @@ var json = jsoniter.ConfigFastest
 
 // APIClient implements dmsg discovery API client.
 type APIClient interface {
-	Entry(context.Context, cipher.PubKey) (*Entry, error)
-	PostEntry(context.Context, *Entry) error
-	PutEntry(context.Context, cipher.SecKey, *Entry) error
+	Entry(context.Context, cipher.PubKey, bool) (*Entry, error)
+	PostEntry(context.Context, *Entry, bool) error
+	PutEntry(context.Context, cipher.SecKey, *Entry, bool) error
 	AvailableServers(context.Context) ([]*Entry, error)
 }
 
@@ -48,7 +48,7 @@ func NewHTTP(address string) APIClient {
 }
 
 // Entry retrieves an entry associated with the given public key.
-func (c *httpClient) Entry(ctx context.Context, publicKey cipher.PubKey) (*Entry, error) {
+func (c *httpClient) Entry(ctx context.Context, publicKey cipher.PubKey, isServer bool) (*Entry, error) {
 	endpoint := fmt.Sprintf("%s/dmsg-discovery/entry/%s", c.address, publicKey)
 	log := log.WithField("endpoint", endpoint)
 
@@ -57,7 +57,9 @@ func (c *httpClient) Entry(ctx context.Context, publicKey cipher.PubKey) (*Entry
 		return nil, err
 	}
 
-	addKeepAlive(req)
+	if isServer {
+		addKeepAlive(req)
+	}
 
 	req = req.WithContext(ctx)
 
@@ -92,7 +94,7 @@ func (c *httpClient) Entry(ctx context.Context, publicKey cipher.PubKey) (*Entry
 }
 
 // PostEntry creates a new Entry.
-func (c *httpClient) PostEntry(ctx context.Context, e *Entry) error {
+func (c *httpClient) PostEntry(ctx context.Context, e *Entry, isServer bool) error {
 	endpoint := c.address + "/dmsg-discovery/entry/"
 	log := log.WithField("endpoint", endpoint)
 
@@ -106,7 +108,9 @@ func (c *httpClient) PostEntry(ctx context.Context, e *Entry) error {
 		return err
 	}
 
-	addKeepAlive(req)
+	if isServer {
+		addKeepAlive(req)
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	// Since v0.3.0 visors send ?timeout=true, before v0.3.0 do not.
@@ -149,7 +153,7 @@ func (c *httpClient) PostEntry(ctx context.Context, e *Entry) error {
 }
 
 // PutEntry updates Entry in dmsg discovery.
-func (c *httpClient) PutEntry(ctx context.Context, sk cipher.SecKey, entry *Entry) error {
+func (c *httpClient) PutEntry(ctx context.Context, sk cipher.SecKey, entry *Entry, isServer bool) error {
 	c.updateMux.Lock()
 	defer c.updateMux.Unlock()
 
@@ -161,7 +165,7 @@ func (c *httpClient) PutEntry(ctx context.Context, sk cipher.SecKey, entry *Entr
 		if err != nil {
 			return err
 		}
-		err = c.PostEntry(ctx, entry)
+		err = c.PostEntry(ctx, entry, isServer)
 		if err == nil {
 			return nil
 		}
@@ -169,7 +173,7 @@ func (c *httpClient) PutEntry(ctx context.Context, sk cipher.SecKey, entry *Entr
 			entry.Sequence--
 			return err
 		}
-		rE, entryErr := c.Entry(ctx, entry.Static)
+		rE, entryErr := c.Entry(ctx, entry.Static, isServer)
 		if entryErr != nil {
 			return err
 		}
@@ -190,7 +194,7 @@ func (c *httpClient) AvailableServers(ctx context.Context) ([]*Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	addKeepAlive(req)
+
 	req = req.WithContext(ctx)
 
 	resp, err := c.client.Do(req)

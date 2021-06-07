@@ -147,13 +147,13 @@ func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, maxSe
 
 	availableSessions := maxSessions - len(c.sessions)
 
-	entry, err := c.dc.Entry(ctx, c.pk)
+	entry, err := c.dc.Entry(ctx, c.pk, true)
 	if err != nil {
 		entry = disc.NewServerEntry(c.pk, 0, addr, availableSessions)
 		if err := entry.Sign(c.sk); err != nil {
 			return err
 		}
-		return c.dc.PostEntry(ctx, entry)
+		return c.dc.PostEntry(ctx, entry, true)
 	}
 
 	if entry.Server == nil {
@@ -179,7 +179,7 @@ func (c *EntityCommon) updateServerEntry(ctx context.Context, addr string, maxSe
 	}
 	log.Debug("Updating entry.")
 
-	return c.dc.PutEntry(ctx, c.sk, entry)
+	return c.dc.PutEntry(ctx, c.sk, entry, true)
 }
 
 func (c *EntityCommon) updateServerEntryLoop(ctx context.Context, addr string, maxSessions int) {
@@ -228,13 +228,13 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}
 		srvPKs = append(srvPKs, pk)
 	}
 
-	entry, err := c.dc.Entry(ctx, c.pk)
+	entry, err := c.dc.Entry(ctx, c.pk, false)
 	if err != nil {
 		entry = disc.NewClientEntry(c.pk, 0, srvPKs)
 		if err := entry.Sign(c.sk); err != nil {
 			return err
 		}
-		return c.dc.PostEntry(ctx, entry)
+		return c.dc.PostEntry(ctx, entry, false)
 	}
 
 	// Whether the client's CURRENT delegated servers is the same as what would be advertised.
@@ -247,7 +247,7 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}
 
 	entry.Client.DelegatedServers = srvPKs
 	c.log.WithField("entry", entry).Debug("Updating entry.")
-	return c.dc.PutEntry(ctx, c.sk, entry)
+	return c.dc.PutEntry(ctx, c.sk, entry, false)
 }
 
 func (c *EntityCommon) updateClientEntryLoop(ctx context.Context, done chan struct{}) {
@@ -280,7 +280,7 @@ func (c *EntityCommon) updateClientEntryLoop(ctx context.Context, done chan stru
 }
 
 func getServerEntry(ctx context.Context, dc disc.APIClient, srvPK cipher.PubKey) (*disc.Entry, error) {
-	entry, err := dc.Entry(ctx, srvPK)
+	entry, err := dc.Entry(ctx, srvPK, true)
 	if err != nil {
 		return nil, ErrDiscEntryNotFound
 	}
@@ -291,7 +291,7 @@ func getServerEntry(ctx context.Context, dc disc.APIClient, srvPK cipher.PubKey)
 }
 
 func getClientEntry(ctx context.Context, dc disc.APIClient, clientPK cipher.PubKey) (*disc.Entry, error) {
-	entry, err := dc.Entry(ctx, clientPK)
+	entry, err := dc.Entry(ctx, clientPK, false)
 	if err != nil {
 		return nil, ErrDiscEntryNotFound
 	}
