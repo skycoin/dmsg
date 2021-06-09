@@ -11,7 +11,7 @@ WORKDIR /dmsg
 
 # Build dmsg server
 RUN apk add --no-cache bash make git && \
-    make build-deploy
+	make build-deploy
 
 # Build image
 FROM alpine:latest
@@ -20,4 +20,4 @@ COPY --from=builder /release/dmsg-server /usr/local/bin/dmsg-server
 
 STOPSIGNAL SIGINT
 
-ENTRYPOINT [ "dmsg-server" ]
+ENTRYPOINT [ "sh", "-c", "dmsg-server" ]
