@@ -11,14 +11,13 @@ WORKDIR /dmsg
 
 # Build dmsg discovery
 RUN apk add --no-cache make bash git && \
-    make build-deploy
+	make build-deploy
 
 # Build image
 FROM alpine:latest
 
 COPY --from=builder /release/dmsg-discovery /usr/local/bin/dmsg-discovery
-COPY --from=builder /dmsg/docker/images/dmsg-discovery/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 EXPOSE 9090
 STOPSIGNAL SIGINT
-ENTRYPOINT [ "sh", "-c", "entrypoint.sh" ]
+ENTRYPOINT [ "dmsg-discovery" ]
