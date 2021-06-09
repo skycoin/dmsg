@@ -147,13 +147,13 @@ func (sf *ServiceFlags) Logger() *logging.Logger {
 
 // ParseConfig parses config from service tags.
 // If checkArgs is set, we additionally parse os.Args to find a config path.
-func (sf *ServiceFlags) ParseConfig(args []string, checkArgs bool, v interface{}) error {
-	r, err := sf.obtainConfigReader(args, checkArgs)
+func (sf *ServiceFlags) ParseConfig(args []string, checkArgs bool, v interface{}, genDefaultFunc func() (io.ReadCloser, error)) error {
+	r, err := sf.obtainConfigReader(args, checkArgs, genDefaultFunc)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		if err := r.Close(); err != nil {
+		if err = r.Close(); err != nil {
 			sf.logger.WithError(err).Warn("Failed to close config source.")
 		}
 	}()
@@ -163,7 +163,7 @@ func (sf *ServiceFlags) ParseConfig(args []string, checkArgs bool, v interface{}
 		return fmt.Errorf("failed to read from config source: %w", err)
 	}
 
-	if err := json.Unmarshal(b, v); err != nil {
+	if err = json.Unmarshal(b, v); err != nil {
 		return fmt.Errorf("failed to decode config file: %w", err)
 	}
 
@@ -176,7 +176,7 @@ func (sf *ServiceFlags) ParseConfig(args []string, checkArgs bool, v interface{}
 	return nil
 }
 
-func (sf *ServiceFlags) obtainConfigReader(args []string, checkArgs bool) (io.ReadCloser, error) {
+func (sf *ServiceFlags) obtainConfigReader(args []string, checkArgs bool, genDefaultFunc func() (io.ReadCloser, error)) (io.ReadCloser, error) {
 	switch {
 	case sf.Stdin || strings.ToLower(sf.Config) == stdinConfig:
 		stdin := ioutil.NopCloser(os.Stdin) // ensure stdin is not closed
@@ -184,12 +184,14 @@ func (sf *ServiceFlags) obtainConfigReader(args []string, checkArgs bool) (io.Re
 
 	case checkArgs:
 		if len(args) == 1 {
-			break
+			return genDefaultFunc()
 		}
 
 		for i, arg := range args {
 			if strings.HasSuffix(arg, ".json") && i > 0 && !strings.HasPrefix(args[i-1], "-") {
-				f, err := os.Open(arg) //nolint:gosec
+				var f io.ReadCloser
+				var err error
+				f, err = os.Open(arg) //nolint:gosec
 				if err != nil {
 					return nil, fmt.Errorf("failed to open config file: %w", err)
 				}
@@ -203,6 +205,7 @@ func (sf *ServiceFlags) obtainConfigReader(args []string, checkArgs bool) (io.Re
 			return nil, fmt.Errorf("failed to open config file: %w", err)
 		}
 		return f, nil
+
 	}
 
 	return nil, errors.New("no config location specified")
