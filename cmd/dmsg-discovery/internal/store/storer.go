@@ -45,7 +45,7 @@ type Config struct {
 // Config defaults.
 const (
 	DefaultURL     = "redis://localhost:6379"
-	DefaultTimeout = time.Minute
+	DefaultTimeout = time.Minute * 3
 )
 
 // DefaultConfig returns a config with default values.

@@ -2,6 +2,9 @@ package commands
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -9,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/pires/go-proxyproto"
 	"github.com/spf13/cobra"
 
@@ -22,12 +26,18 @@ import (
 	"github.com/skycoin/dmsg/servermetrics"
 )
 
+const (
+	defaultDiscoveryURL = "https://dmsg.discovery.skywire.skycoin.com"
+	defaultPort         = ":8081"
+	defaultConfigPath   = "config.json"
+)
+
 var (
 	sf cmdutil.ServiceFlags
 )
 
 func init() {
-	sf.Init(rootCmd, "dmsg_srv", "config.json")
+	sf.Init(rootCmd, "dmsg_srv", defaultConfigPath)
 }
 
 var rootCmd = &cobra.Command{
@@ -42,8 +52,8 @@ var rootCmd = &cobra.Command{
 		log := sf.Logger()
 
 		var conf Config
-		if err := sf.ParseConfig(os.Args, true, &conf); err != nil {
-			log.WithError(err).Fatal()
+		if err := sf.ParseConfig(os.Args, true, &conf, genDefaultConfig); err != nil {
+			log.WithError(err).Fatal("parsing config failed, generating default one...")
 		}
 
 		var m servermetrics.Metrics
@@ -69,7 +79,12 @@ var rootCmd = &cobra.Command{
 		}
 
 		lis := &proxyproto.Listener{Listener: ln}
-		defer lis.Close() // nolint:errcheck
+		defer func(lis *proxyproto.Listener) {
+			err = lis.Close()
+			if err != nil {
+				log.Warnf("Error closing listener: %v", err)
+			}
+		}(lis)
 
 		if err != nil {
 			log.Fatalf("Error creating proxy on %s: %v", conf.LocalAddress, err)
@@ -110,6 +125,31 @@ type Config struct {
 	MaxSessions    int           `json:"max_sessions"`
 	UpdateInterval time.Duration `json:"update_interval"`
 	LogLevel       string        `json:"log_level"`
+}
+
+func genDefaultConfig() (io.ReadCloser, error) {
+	pk, sk := cipher.GenerateKeyPair()
+
+	cfg := Config{
+		PubKey:        pk,
+		SecKey:        sk,
+		Discovery:     defaultDiscoveryURL,
+		LocalAddress:  fmt.Sprintf("localhost%s", defaultPort),
+		PublicAddress: defaultPort,
+		MaxSessions:   2048,
+		LogLevel:      "info",
+	}
+
+	configData, err := jsoniter.MarshalIndent(&cfg, "", " ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal default json config: %v", err)
+	}
+
+	if err = ioutil.WriteFile(defaultConfigPath, configData, 0600); err != nil {
+		return nil, err
+	}
+
+	return os.Open(defaultConfigPath)
 }
 
 // Execute executes root CLI command.

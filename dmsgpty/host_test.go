@@ -12,10 +12,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 
+	"github.com/skycoin/skycoin/src/util/logging"
+
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/dmsgtest"
-	"github.com/skycoin/skycoin/src/util/logging"
 )
 
 // TODO(evanlinjin): fix failing tests
