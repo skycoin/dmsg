@@ -3,6 +3,7 @@
 package dmsgpty
 
 import (
+	"errors"
 	"golang.org/x/sys/windows"
 )
 
@@ -14,6 +15,12 @@ func getSize() (*windows.Coord, error) {
 		return nil, err
 	}
 	if err = windows.GetConsoleScreenBufferInfo(c, &bufInfo); err != nil {
+		if errors.Is(err, windows.ERROR_INVALID_HANDLE) {
+			return &windows.Coord{
+				X: 80,
+				Y: 30,
+			}, nil
+		}
 		return nil, err
 	}
 	return &windows.Coord{
@@ -27,6 +34,7 @@ func (sc *PtyClient) Start(name string, arg ...string) error {
 	sz, err := getSize()
 	if err != nil {
 		sc.log.WithError(err).Warn("failed to obtain terminal size")
+		return err
 	}
 	return sc.StartWithSize(name, arg, sz)
 }

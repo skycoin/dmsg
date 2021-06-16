@@ -5,8 +5,8 @@ package dmsgpty
 import (
 	"errors"
 	"os"
-	"os/exec"
 	"sync"
+	"syscall"
 
 	"github.com/ActiveState/termtest/conpty"
 	"golang.org/x/sys/windows"
@@ -77,8 +77,6 @@ func (s *Pty) Start(name string, args []string, size *windows.Coord) error {
 		return ErrPtyAlreadyRunning
 	}
 
-	cmd := exec.Command(name, args...) //nolint:gosec
-	cmd.Env = os.Environ()
 	var err error
 
 	if size == nil {
@@ -91,6 +89,18 @@ func (s *Pty) Start(name string, args []string, size *windows.Coord) error {
 	pty, err := conpty.New(
 		size.X, size.Y,
 	)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = pty.Spawn(
+		DefaultCmd,
+		[]string{},
+		&syscall.ProcAttr{
+			Env: os.Environ(),
+		},
+	)
+
 	if err != nil {
 		return err
 	}
