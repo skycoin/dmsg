@@ -1,6 +1,6 @@
 {
   "dmsgdisc": "http://127.0.0.1:9090",
-  "dmsgsessions": 1,
+  "dmsgsessions": 2,
   "dmsgport": 22,
   "clinet": "tcp",
   "cliaddr": "127.0.0.1:8083",

@@ -2,7 +2,7 @@
   "public_key": "0297347088626e5d6468bc0ed258f2a5e7a279fae48b3636275220611c2eb01321",
   "secret_key": "87f7656616806d9c6467403a29ab1a4fd3fa67874ad947edfa26e3237a781968",
   "discovery": "http://localhost:9090",
-  "public_address": "127.0.0.1:8082",
+  "public_address": "52.77.233.201:8082",
   "local_address": ":8082",
   "log_level": "info",
   "max_sessions": 10
