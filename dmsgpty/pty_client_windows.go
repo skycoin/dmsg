@@ -4,6 +4,7 @@ package dmsgpty
 
 import (
 	"errors"
+
 	"golang.org/x/sys/windows"
 )
 
