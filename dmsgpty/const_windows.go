@@ -11,6 +11,5 @@ const (
 // Constants related to dmsg.
 const (
 	DefaultPort = uint16(22)
-	DefaultCmd  = "powershell"
-
+	DefaultCmd  = `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`
 )
