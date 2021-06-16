@@ -79,6 +79,14 @@ func (s *Pty) Start(name string, args []string, size *windows.Coord) error {
 
 	cmd := exec.Command(name, args...) //nolint:gosec
 	cmd.Env = os.Environ()
+	var err error
+
+	if size == nil {
+		size, err = getSize()
+		if err != nil {
+			return err
+		}
+	}
 
 	pty, err := conpty.New(
 		size.X, size.Y,
