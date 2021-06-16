@@ -2,7 +2,7 @@ language: go
 go:
   # - "1.11.x" At minimum the code should run make check on the latest two go versions in the default linux environment provided by Travis.
   - "1.16.x"
-  
+
 dist: xenial
 
 matrix:
@@ -20,3 +20,16 @@ install:
 
 script:
   - make check
+
+deploy:
+  - provider: script
+    script: bash ./docker/scripts/docker-push.sh -t "$TRAVIS_BRANCH" -p
+    on:
+      branch: master
+      condition: $TRAVIS_PULL_REQUEST = false
+  - provider: script
+    script: bash ./docker/scripts/docker-push.sh -t "$TRAVIS_BRANCH" -p
+    on:
+      branch: develop
+      condition: $TRAVIS_PULL_REQUEST = false
+
