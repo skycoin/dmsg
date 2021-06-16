@@ -31,7 +31,7 @@ type UIConfig struct {
 // DefaultUIConfig returns the default UI config.
 func DefaultUIConfig() UIConfig {
 	return UIConfig{
-		CmdName: "/bin/bash",
+		CmdName: DefaultCmd,
 		CmdArgs: nil,
 	}
 }

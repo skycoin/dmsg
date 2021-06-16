@@ -3,6 +3,7 @@ module github.com/skycoin/dmsg
 go 1.16
 
 require (
+	github.com/ActiveState/termtest/conpty v0.5.0
 	github.com/VictoriaMetrics/metrics v1.12.3
 	github.com/containerd/console v1.0.2
 	github.com/creack/pty v1.1.10
