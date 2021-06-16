@@ -76,3 +76,23 @@ func (cli *CLI) servePty(ctx context.Context, ptyC *PtyClient, cmd string, args 
 
 	return nil
 }
+
+// prepareStdin sets stdin to raw mode and provides a function to restore the original state.
+func (cli *CLI) prepareStdin() (restore func(), err error) {
+	var oldState *terminal.State
+	if oldState, err = terminal.MakeRaw(int(os.Stdin.Fd())); err != nil {
+		cli.Log.
+			WithError(err).
+			Warn("Failed to set stdin to raw mode.")
+		return
+	}
+	restore = func() {
+		// Attempt to restore state.
+		if err := terminal.Restore(int(os.Stdin.Fd()), oldState); err != nil {
+			cli.Log.
+				WithError(err).
+				Error("Failed to restore original stdin state.")
+		}
+	}
+	return
+}

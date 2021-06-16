@@ -31,12 +31,11 @@ func getSize() (*windows.Coord, error) {
 
 // Start starts the pty.
 func (sc *PtyClient) Start(name string, arg ...string) error {
-	sz, err := getSize()
-	if err != nil {
-		sc.log.WithError(err).Warn("failed to obtain terminal size")
-		return err
-	}
-	return sc.StartWithSize(name, arg, sz)
+	return sc.call("Start", &CommandReq{
+		Name: name,
+		Arg:  arg,
+		Size: nil,
+	}, &empty)
 }
 
 // StartWithSize starts the pty with a specified size.

@@ -4,6 +4,7 @@ package dmsgpty
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"sync"
 	"syscall"
@@ -93,9 +94,9 @@ func (s *Pty) Start(name string, args []string, size *windows.Coord) error {
 		return err
 	}
 
-	_, _, err = pty.Spawn(
-		DefaultCmd,
-		[]string{},
+	pid, _, err := pty.Spawn(
+		name,
+		args,
 		&syscall.ProcAttr{
 			Env: os.Environ(),
 		},
@@ -104,6 +105,8 @@ func (s *Pty) Start(name string, args []string, size *windows.Coord) error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("starting process with pid %d \n", pid)
 
 	s.pty = pty
 	return nil

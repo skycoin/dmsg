@@ -3,15 +3,10 @@ package dmsgpty
 import (
 	"context"
 	"fmt"
-	"net"
-	"os"
-	"runtime"
-
 	"github.com/sirupsen/logrus"
-	"github.com/skycoin/skycoin/src/util/logging"
-	terminal "golang.org/x/term"
-
 	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/skycoin/src/util/logging"
+	"net"
 )
 
 // CLI connects with and has ownership over a dmsgpty.Host.
@@ -51,13 +46,11 @@ func (cli *CLI) StartLocalPty(ctx context.Context, cmd string, args ...string) e
 		return err
 	}
 
-	if runtime.GOOS != "Windows" {
-		restore, err := cli.prepareStdin()
-		if err != nil {
-			return err
-		}
-		defer restore()
+	restore, err := cli.prepareStdin()
+	if err != nil {
+		return err
 	}
+	defer restore()
 
 	return cli.servePty(ctx, ptyC, cmd, args)
 }
@@ -74,13 +67,11 @@ func (cli *CLI) StartRemotePty(ctx context.Context, rPK cipher.PubKey, rPort uin
 		return err
 	}
 
-	if runtime.GOOS != "Windows" {
-		restore, err := cli.prepareStdin()
-		if err != nil {
-			return err
-		}
-		defer restore()
+	restore, err := cli.prepareStdin()
+	if err != nil {
+		return err
 	}
+	defer restore()
 
 	return cli.servePty(ctx, ptyC, cmd, args)
 }
@@ -109,24 +100,3 @@ func (cli *CLI) prepareConn() (net.Conn, error) {
 	}
 	return conn, nil
 }
-
-// prepareStdin sets stdin to raw mode and provides a function to restore the original state.
-func (cli *CLI) prepareStdin() (restore func(), err error) {
-	var oldState *terminal.State
-	if oldState, err = terminal.MakeRaw(int(os.Stdin.Fd())); err != nil {
-		cli.Log.
-			WithError(err).
-			Warn("Failed to set stdin to raw mode.")
-		return
-	}
-	restore = func() {
-		// Attempt to restore state.
-		if err := terminal.Restore(int(os.Stdin.Fd()), oldState); err != nil {
-			cli.Log.
-				WithError(err).
-				Error("Failed to restore original stdin state.")
-		}
-	}
-	return
-}
-
