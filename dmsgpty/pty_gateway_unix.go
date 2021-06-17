@@ -6,34 +6,30 @@ import (
 	"github.com/creack/pty"
 )
 
-// winSize implements WinSizer for unices (alias for *pty.Winsize)
-type winSize pty.Winsize
-
-// NumColumns returns the number of columns
-func (w *winSize) NumColumns() uint16 {
-	return w.Cols
+// PtyGateway represents a pty gateway, hosted by the pty.SessionServer
+type PtyGateway interface {
+	Start(req *CommandReq, _ *struct{}) error
+	Stop(_, _ *struct{}) error
+	Read(reqN *int, respB *[]byte) error
+	Write(reqB *[]byte, respN *int) error
+	SetPtySize(size *pty.Winsize, _ *struct{}) error
 }
 
-// NumRows returns the number of rows
-func (w *winSize) NumRows() uint16 {
-	return w.Rows
+// LocalPtyGateway is the gateway to a local pty.
+
+// CommandReq represents a pty command.
+type CommandReq struct {
+	Name string
+	Arg  []string
+	Size *pty.Winsize
 }
 
-// Width returns the width
-func (w *winSize) Width() uint16 {
-	return w.X
+// SetPtySize sets the local pty's window size.
+func (g *LocalPtyGateway) SetPtySize(size *pty.Winsize, _ *struct{}) error {
+	return g.ses.SetPtySize(size)
 }
 
-// Height returns the height
-func (w *winSize) Height() uint16 {
-	return w.Y
-}
-
-// PtySize casts the WinSize to *pty.Winsize
-func (w *winSize) PtySize() *pty.Winsize {
-	return (*pty.Winsize)(w)
-}
-
-func newWinSize(size *pty.Winsize) *winSize {
-	return (*winSize)(size)
+// SetPtySize sets the remote pty's window size.
+func (g *ProxiedPtyGateway) SetPtySize(size *pty.Winsize, _ *struct{}) error {
+	return g.ptyC.SetPtySize(size)
 }

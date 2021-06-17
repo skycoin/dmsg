@@ -2,30 +2,32 @@
 
 package dmsgpty
 
-import "golang.org/x/sys/windows"
+import (
+	"golang.org/x/sys/windows"
+)
 
-type winSize windows.Coord
-
-// Width returns the width
-func (w *winSize) Width() uint16 {
-	return uint16(w.X)
+// PtyGateway represents a pty gateway, hosted by the pty.SessionServer
+type PtyGateway interface {
+	Start(req *CommandReq, _ *struct{}) error
+	Stop(_, _ *struct{}) error
+	Read(reqN *int, respB *[]byte) error
+	Write(reqB *[]byte, respN *int) error
+	SetPtySize(size *windows.Coord, _ *struct{}) error
 }
 
-// Height returns the height
-func (w *winSize) Height() uint16 {
-	return uint16(w.Y)
+// CommandReq represents a pty command.
+type CommandReq struct {
+	Name string
+	Arg  []string
+	Size *windows.Coord
 }
 
-// NumColumns is not being used for windows (stub only)
-func (w *winSize) NumColumns() uint16 {
-	return 0
+// SetPtySize sets the local pty's window size.
+func (g *LocalPtyGateway) SetPtySize(size *windows.Coord, _ *struct{}) error {
+	return g.ses.SetPtySize(size)
 }
 
-// NumRows is not being used for windows (stub only)
-func (w *winSize) NumRows() uint16 {
-	return 0
-}
-
-func newWinSize(size *windows.Coord) *winSize {
-	return (*winSize)(size)
+// SetPtySize sets the remote pty's window size.
+func (g *ProxiedPtyGateway) SetPtySize(size *windows.Coord, _ *struct{}) error {
+	return g.ptyC.SetPtySize(size)
 }

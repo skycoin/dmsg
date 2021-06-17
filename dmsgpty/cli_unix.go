@@ -22,11 +22,11 @@ func ptyResizeLoop(ctx context.Context, ptyC *PtyClient) error {
 		case <-ctx.Done():
 			return nil
 		case <-ch:
-			wsz, err := getPtySize(os.Stdin)
+			winSize, err := getPtySize(os.Stdin)
 			if err != nil {
 				return fmt.Errorf("failed to obtain window size: %v", err)
 			}
-			if err := ptyC.SetPtySize(newWinSize(wsz)); err != nil {
+			if err := ptyC.SetPtySize(winSize); err != nil {
 				return fmt.Errorf("failed to set remote window size: %v", err)
 			}
 		}

@@ -70,11 +70,9 @@ func (s *Pty) Write(b []byte) (int, error) {
 }
 
 // Start runs a command with the given command name, args and optional window size.
-func (s *Pty) Start(name string, args []string, size WinSizer) error {
+func (s *Pty) Start(name string, args []string, size *windows.Coord) error {
 	s.mx.Lock()
 	defer s.mx.Unlock()
-
-	var sz *windows.Coord
 
 	if s.pty != nil {
 		return ErrPtyAlreadyRunning
@@ -83,19 +81,14 @@ func (s *Pty) Start(name string, args []string, size WinSizer) error {
 	var err error
 
 	if size == nil {
-		sz, err = getSize()
+		size, err = getSize()
 		if err != nil {
 			return err
-		}
-	} else {
-		sz = &windows.Coord{
-			X: int16(size.Width()),
-			Y: int16(size.Height()),
 		}
 	}
 
 	pty, err := conpty.New(
-		sz.X, sz.Y,
+		size.X, size.Y,
 	)
 	if err != nil {
 		return err
@@ -120,7 +113,7 @@ func (s *Pty) Start(name string, args []string, size WinSizer) error {
 }
 
 // SetPtySize sets the pty size.
-func (s *Pty) SetPtySize(size WinSizer) error {
+func (s *Pty) SetPtySize(size *windows.Coord) error {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
 
@@ -128,5 +121,5 @@ func (s *Pty) SetPtySize(size WinSizer) error {
 		return ErrPtyNotRunning
 	}
 
-	return s.pty.Resize(size.Width(), size.Height())
+	return s.SetPtySize(size)
 }
