@@ -1,5 +1,30 @@
 package dmsgpty
 
+// WinSizer interface contains the width and height of the terminal / tty.
+// two implementor for this interface is the WinSize for unices and Winsize for windows
+type WinSizer interface {
+	Width() uint16
+	Height() uint16
+	NumColumns() uint16
+	NumRows() uint16
+}
+
+// PtyGateway represents a pty gateway, hosted by the pty.SessionServer
+type PtyGateway interface {
+	Start(req *CommandReq, _ *struct{}) error
+	Stop(_, _ *struct{}) error
+	Read(reqN *int, respB *[]byte) error
+	Write(reqB *[]byte, respN *int) error
+	SetPtySize(size WinSizer, _ *struct{}) error
+}
+
+// CommandReq represents a pty command.
+type CommandReq struct {
+	Name string
+	Arg  []string
+	Size WinSizer
+}
+
 // LocalPtyGateway is the gateway to a local pty.
 type LocalPtyGateway struct {
 	ses *Pty
@@ -68,4 +93,14 @@ func (g *ProxiedPtyGateway) Write(reqB *[]byte, respN *int) error {
 	var err error
 	*respN, err = g.ptyC.Write(*reqB)
 	return err
+}
+
+// SetPtySize sets the local pty's window size.
+func (g *LocalPtyGateway) SetPtySize(size WinSizer, _ *struct{}) error {
+	return g.ses.SetPtySize(size)
+}
+
+// SetPtySize sets the remote pty's window size.
+func (g *ProxiedPtyGateway) SetPtySize(size WinSizer, _ *struct{}) error {
+	return g.ptyC.SetPtySize(size)
 }
