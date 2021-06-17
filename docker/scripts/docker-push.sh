@@ -19,8 +19,9 @@ function docker_build() {
 function docker_push() {
   docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
   docker tag skycoinpro/dmsg-server:"$tag" skycoinpro/dmsg-server:"$tag"
-  docker tag skycoinpro/dmsg-discovery"$tag" skycoinpro/dmsg-discovery:"$tag"
+  docker tag skycoinpro/dmsg-discovery:"$tag" skycoinpro/dmsg-discovery:"$tag"
   docker image push skycoinpro/dmsg-server:"$tag"
+  docker image push skycoinpro/dmsg-discovery:"$tag"
 }
 
 while getopts ":t:pb" o; do
