@@ -31,8 +31,8 @@ BUILDINFO_COMMIT := -X $(BUILDINFO_PATH).commit=$(COMMIT)
 
 BUILDINFO?=$(BUILDINFO_VERSION) $(BUILDINFO_DATE) $(BUILDINFO_COMMIT)
 
-BUILD_OPTS?="-ldflags=$(BUILDINFO)"
-BUILD_OPTS_DEPLOY?="-ldflags=$(BUILDINFO) -w -s"
+BUILD_OPTS?=-mod=vendor "-ldflags=$(BUILDINFO)"
+BUILD_OPTS_DEPLOY?=-mod=vendor "-ldflags=$(BUILDINFO) -w -s"
 
 check: lint test ## Run linters and tests
 
