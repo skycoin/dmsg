@@ -7,8 +7,12 @@ $global:PtyHost2Id = $null
 
 # CSV-NotEmpty checks if the integration-pids are empty
 function CSV-NotEmpty {
-    $processList = @(Import-Csv ".\integration\integration-pids.csv")
-    return $processList.Length -gt 0
+    try {
+        $processList = @(Import-Csv ".\integration\integration-pids.csv")
+        return $processList.Length -gt 0
+    } catch {
+        return 0
+    }
 }
 
 function Start-All {
