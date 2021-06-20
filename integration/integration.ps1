@@ -90,11 +90,15 @@ switch ($args[0]) {
         if (!$exists) {
             Start-All
             Export-Pid-Csv
+        } else {
+            Write-Error -Message "Integration Env already started" -Category InvalidOperation
         }
     }
     stop {
         if ($exists) {
             Stop-All
+        } else {
+            Write-Error -Message "Integration Env isn't started" -Category InvalidOperation
         }
     }
     default {
