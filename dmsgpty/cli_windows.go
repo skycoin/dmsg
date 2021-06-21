@@ -4,7 +4,6 @@ package dmsgpty
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -28,9 +27,9 @@ func ptyResizeLoop(ctx context.Context, ptyC *PtyClient) error {
 			if err == nil {
 				if initialSize == nil {
 					initialSize = size
-				} else if initialSize != size {
+				} else if initialSize.X != size.X || initialSize.Y != size.Y {
 					initialSize = size
-					if err = ptyC.SetPtySize(size); err != nil {
+					if err = ptyC.SetPtySize(initialSize); err != nil {
 						mu.Unlock()
 						return err
 					}
