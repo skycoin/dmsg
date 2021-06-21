@@ -80,7 +80,7 @@ function Print-Usage {
 function Kill-Tree {
     Param([int]$ppid)
     Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $ppid } | ForEach-Object { Kill-Tree $_.ProcessId }
-    Stop-Process -Id $ppid
+    Stop-Process -Id $ppid -ErrorAction Ignore
 }
 
 
