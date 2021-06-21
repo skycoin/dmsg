@@ -121,5 +121,5 @@ func (s *Pty) SetPtySize(size *windows.Coord) error {
 		return ErrPtyNotRunning
 	}
 
-	return s.SetPtySize(size)
+	return s.pty.Resize(uint16(size.X), uint16(size.Y))
 }

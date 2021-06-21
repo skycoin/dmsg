@@ -4,20 +4,19 @@ package dmsgpty
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/ActiveState/termtest/conpty"
+	"golang.org/x/sys/windows"
 )
 
 // ptyResizeLoop informs the remote of changes to the local CLI terminal window size.
 func ptyResizeLoop(ctx context.Context, ptyC *PtyClient) error {
-	t := time.NewTicker(2 * time.Second)
+	t := time.NewTicker(1 * time.Second)
 	mu := sync.RWMutex{}
-	initialSize, err := getSize()
-	if err != nil {
-		return err
-	}
+	var initialSize *windows.Coord
 	for {
 		select {
 		case <-ctx.Done():
@@ -27,9 +26,11 @@ func ptyResizeLoop(ctx context.Context, ptyC *PtyClient) error {
 			mu.Lock()
 			size, err := getSize()
 			if err == nil {
-				if initialSize != size {
+				if initialSize == nil {
 					initialSize = size
-					if err = ptyC.SetPtySize(initialSize); err != nil {
+				} else if initialSize != size {
+					initialSize = size
+					if err = ptyC.SetPtySize(size); err != nil {
 						mu.Unlock()
 						return err
 					}
