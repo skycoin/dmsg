@@ -27,9 +27,9 @@ function Start-All {
     $srv2 = Start-Process -PassThru powershell "`$host.UI.RawUI.WindowTitle = 'dmsg-server-2'; .\bin\dmsg-server.exe .\integration\configs\dmsgserver2.json | Out-Host; Read-Host"
     $global:DmsgServer2Id = $srv2.Id
     Start-Sleep -Seconds 5
-    $pty1 = Start-Process -PassThru powershell "`$host.UI.RawUI.WindowTitle = 'dmsgpty-host-1'; .\bin\dmsgpty-host.exe -c .\integration\configs\dmsgptyhost1.json | Out-Host; Read-Host"
+    $pty1 = Start-Process -PassThru powershell "`$host.UI.RawUI.WindowTitle = 'dmsgpty-host-1'; .\bin\dmsgpty-host.exe -c .\integration\configs\dmsgptyhost1_windows.json | Out-Host; Read-Host"
     $global:PtyHost1Id = $pty1.Id
-    $pty2 = Start-Process -PassThru powershell "`$host.UI.RawUI.WindowTitle = 'dmsgpty-host-2'; .\bin\dmsgpty-host.exe -c .\integration\configs\dmsgptyhost2.json | Out-Host; Read-Host"
+    $pty2 = Start-Process -PassThru powershell "`$host.UI.RawUI.WindowTitle = 'dmsgpty-host-2'; .\bin\dmsgpty-host.exe -c .\integration\configs\dmsgptyhost2_windows.json | Out-Host; Read-Host"
     $global:PtyHost2Id = $pty2.Id
 }
 
