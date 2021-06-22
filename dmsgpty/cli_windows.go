@@ -29,7 +29,11 @@ func ptyResizeLoop(ctx context.Context, ptyC *PtyClient) error {
 					initialSize = size
 				} else if initialSize.X != size.X || initialSize.Y != size.Y {
 					initialSize = size
-					if err = ptyC.SetPtySize(initialSize); err != nil {
+					ws, err := NewWinSize(size)
+					if err != nil {
+						return err
+					}
+					if err = ptyC.SetPtySize(ws); err != nil {
 						mu.Unlock()
 						return err
 					}

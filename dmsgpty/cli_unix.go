@@ -26,7 +26,11 @@ func ptyResizeLoop(ctx context.Context, ptyC *PtyClient) error {
 			if err != nil {
 				return fmt.Errorf("failed to obtain window size: %v", err)
 			}
-			if err := ptyC.SetPtySize(winSize); err != nil {
+			ws, err := NewWinSize(winSize)
+			if err != nil {
+				return fmt.Errorf("failed to convert pty size to WinSize: %v", err)
+			}
+			if err := ptyC.SetPtySize(ws); err != nil {
 				return fmt.Errorf("failed to set remote window size: %v", err)
 			}
 		}

@@ -29,22 +29,3 @@ func getSize() (*windows.Coord, error) {
 		Y: bufInfo.Window.Bottom - bufInfo.Window.Top + 1,
 	}, nil
 }
-
-// Start starts the pty.
-func (sc *PtyClient) Start(name string, arg ...string) error {
-	return sc.call("Start", &CommandReq{
-		Name: name,
-		Arg:  arg,
-		Size: nil,
-	}, &empty)
-}
-
-// StartWithSize starts the pty with a specified size.
-func (sc *PtyClient) StartWithSize(name string, arg []string, c *windows.Coord) error {
-	return sc.call("Start", &CommandReq{Name: name, Arg: arg, Size: c}, &empty)
-}
-
-// SetPtySize sets the pty size.
-func (sc *PtyClient) SetPtySize(size *windows.Coord) error {
-	return sc.call("SetPtySize", size, &empty)
-}
