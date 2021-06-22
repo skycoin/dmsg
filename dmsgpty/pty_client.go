@@ -109,7 +109,7 @@ func (sc *PtyClient) Start(name string, arg ...string) error {
 	return sc.call("Start", &CommandReq{
 		Name: name,
 		Arg:  arg,
-		Size: nil,
+		Size: &WinSize{},
 	}, &empty)
 }
 

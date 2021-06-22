@@ -53,7 +53,7 @@ func (cli *CLI) prepareStdin() (restore func(), err error) {
 	}
 	restore = func() {
 		// Attempt to restore state.
-		if err := terminal.Restore(int(os.Stdin.Fd()), oldState); err != nil {
+		if err = terminal.Restore(int(os.Stdin.Fd()), oldState); err != nil {
 			cli.Log.
 				WithError(err).
 				Error("Failed to restore original stdin state.")

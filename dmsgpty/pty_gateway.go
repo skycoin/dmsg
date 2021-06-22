@@ -2,8 +2,8 @@ package dmsgpty
 
 // WinSize wraps around pty.Winsize and *windows.Coord
 type WinSize struct {
-	X    int16
-	Y    int16
+	X    uint16
+	Y    uint16
 	Rows uint16
 	Cols uint16
 }

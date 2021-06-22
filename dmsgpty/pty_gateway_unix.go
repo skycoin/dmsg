@@ -14,8 +14,8 @@ func NewWinSize(w *pty.Winsize) (*WinSize, error) {
 		return nil, errors.New("pty size cannot be nil")
 	}
 	return &WinSize{
-		X:    int16(w.X),
-		Y:    int16(w.Y),
+		X:    w.X,
+		Y:    w.Y,
 		Rows: w.Rows,
 		Cols: w.Cols,
 	}, nil
@@ -26,7 +26,7 @@ func (w *WinSize) PtySize() *pty.Winsize {
 	return &pty.Winsize{
 		Rows: w.Rows,
 		Cols: w.Cols,
-		X:    uint16(w.X),
-		Y:    uint16(w.Y),
+		X:    w.X,
+		Y:    w.Y,
 	}
 }

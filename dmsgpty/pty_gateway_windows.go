@@ -22,7 +22,7 @@ func NewWinSize(w *windows.Coord) (*WinSize, error) {
 // PtySize returns *windows.Coord object
 func (w *WinSize) PtySize() *windows.Coord {
 	return &windows.Coord{
-		X: w.X,
-		Y: w.Y,
+		X: uint16(w.X),
+		Y: uint16(w.Y),
 	}
 }
