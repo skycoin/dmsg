@@ -14,15 +14,15 @@ func NewWinSize(w *windows.Coord) (*WinSize, error) {
 		return nil, errors.New("pty size is nil")
 	}
 	return &WinSize{
-		X: uint16(w.X),
-		Y: uint16(w.Y),
+		X: w.X,
+		Y: w.Y,
 	}, nil
 }
 
 // PtySize returns *windows.Coord object
 func (w *WinSize) PtySize() *windows.Coord {
 	return &windows.Coord{
-		X: int16(w.X),
-		Y: int16(w.Y),
+		X: uint16(w.X),
+		Y: uint16(w.Y),
 	}
 }

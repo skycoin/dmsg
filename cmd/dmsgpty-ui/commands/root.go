@@ -15,7 +15,7 @@ import (
 
 var (
 	hostNet  = dmsgpty.DefaultCLINet
-	hostAddr = dmsgpty.DefaultCLIAddr()
+	hostAddr = dmsgpty.DefaultCLIAddr
 	addr     = ":8080"
 	conf     = dmsgpty.DefaultUIConfig()
 )

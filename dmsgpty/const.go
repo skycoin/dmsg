@@ -1,10 +1,5 @@
 package dmsgpty
 
-import (
-	"os"
-	"path/filepath"
-)
-
 // Constants related to pty.
 const (
 	PtyRPCName  = "pty"
@@ -17,7 +12,3 @@ const (
 	WhitelistRPCName = "whitelist"
 	WhitelistURI     = "dmsgpty/whitelist"
 )
-
-func DefaultCLIAddr() string {
-	return filepath.Join(os.TempDir(), "dmsgpty.sock")
-}

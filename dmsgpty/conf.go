@@ -26,7 +26,7 @@ func DefaultConfig() Config {
 		DmsgSessions: dmsg.DefaultMinSessions,
 		DmsgPort:     DefaultPort,
 		CLINet:       DefaultCLINet,
-		CLIAddr:      DefaultCLIAddr(),
+		CLIAddr:      DefaultCLIAddr,
 	}
 }
 

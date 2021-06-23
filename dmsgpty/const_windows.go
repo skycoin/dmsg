@@ -4,7 +4,8 @@ package dmsgpty
 
 // Constants related to CLI.
 const (
-	DefaultCLINet = "unix"
+	DefaultCLINet  = "tcp"
+	DefaultCLIAddr = "localhost:8083"
 )
 
 // Constants related to dmsg.

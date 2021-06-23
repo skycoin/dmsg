@@ -36,7 +36,7 @@ var (
 	dmsgSessions = dmsg.DefaultMinSessions
 	dmsgPort     = dmsgpty.DefaultPort
 	cliNet       = dmsgpty.DefaultCLINet
-	cliAddr      = dmsgpty.DefaultCLIAddr()
+	cliAddr      = dmsgpty.DefaultCLIAddr
 	sk           cipher.SecKey
 	pk           cipher.PubKey
 	wl           cipher.PubKeys
@@ -209,7 +209,7 @@ func fillConfigFromFlags(conf dmsgpty.Config) dmsgpty.Config {
 		conf.CLINet = cliNet
 	}
 
-	if cliAddr != dmsgpty.DefaultCLIAddr() {
+	if cliAddr != dmsgpty.DefaultCLIAddr {
 		conf.CLIAddr = cliAddr
 	}
 
