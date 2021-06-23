@@ -89,7 +89,6 @@ func (s *Pty) Start(name string, args []string, size *WinSize) error {
 		sz = size.PtySize()
 	}
 
-
 	f, err := pty.StartWithSize(cmd, sz) //nolint:gosec
 	if err != nil {
 		return err

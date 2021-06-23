@@ -4,7 +4,7 @@ package dmsgpty
 
 // Constants related to CLI.
 const (
-	DefaultCLINet  = "unix"
+	DefaultCLINet = "unix"
 )
 
 // Constants related to dmsg.
