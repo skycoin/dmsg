@@ -10,7 +10,6 @@ import (
 	"syscall"
 
 	"github.com/ActiveState/termtest/conpty"
-	"golang.org/x/sys/windows"
 )
 
 // Pty errors.
@@ -79,22 +78,16 @@ func (s *Pty) Start(name string, args []string, size *WinSize) error {
 	}
 
 	var err error
-	var sz *windows.Coord
 
 	if size == nil {
-		sz, err := getSize()
+		size, err = getSize()
 		if err != nil {
 			return err
 		}
-		size, err = NewWinSize(sz)
-		if err != nil {
-			return err
-		}
-	}
-	sz = size.PtySize()
 
+	}
 	pty, err := conpty.New(
-		sz.X, sz.Y,
+		int16(size.X), int16(size.Y),
 	)
 	if err != nil {
 		return err
