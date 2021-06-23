@@ -77,8 +77,18 @@ func (s *Pty) Start(name string, args []string, size *WinSize) error {
 
 	cmd := exec.Command(name, args...) //nolint:gosec
 	cmd.Env = os.Environ()
+	var sz *pty.Winsize
+	var err error
 
-	sz := size.PtySize()
+	if size == nil {
+		sz, err = pty.GetsizeFull(os.Stdin)
+		if err != nil {
+			return err
+		}
+	} else {
+		sz = size.PtySize()
+	}
+
 
 	f, err := pty.StartWithSize(cmd, sz) //nolint:gosec
 	if err != nil {

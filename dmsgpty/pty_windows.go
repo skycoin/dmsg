@@ -86,6 +86,7 @@ func (s *Pty) Start(name string, args []string, size *WinSize) error {
 		}
 
 	}
+	fmt.Printf("Size of term: X=>%d, Y=>%d\n", size.X, size.Y)
 	pty, err := conpty.New(
 		int16(size.X), int16(size.Y),
 	)
