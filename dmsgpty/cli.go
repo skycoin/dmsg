@@ -25,7 +25,7 @@ func DefaultCLI() CLI {
 	return CLI{
 		Log:  logging.MustGetLogger("dmsgpty-cli"),
 		Net:  DefaultCLINet,
-		Addr: DefaultCLIAddr,
+		Addr: DefaultCLIAddr(),
 	}
 }
 
@@ -91,7 +91,7 @@ func (cli *CLI) prepareConn() (net.Conn, error) {
 		cli.Net = DefaultCLINet
 	}
 	if cli.Addr == "" {
-		cli.Addr = DefaultCLIAddr
+		cli.Addr = DefaultCLIAddr()
 	}
 
 	cli.Log.
