@@ -2,8 +2,8 @@
   "dmsgdisc": "http://127.0.0.1:9090",
   "dmsgsessions": 2,
   "dmsgport": 22,
-  "clinet": "tcp",
-  "cliaddr": "127.0.0.1:8084",
+  "clinet": "unix",
+  "cliaddr": "%temp%\\dmsgpty2.sock",
   "sk": "eb92978d07e8d97d4de730d283823c50a79fbbc1c96c546f8390b4b297c08e4f",
   "pk": "0392d691a628563fe48fd708a2c7fcafe0c6ef5057e7b4a4d82bf800da19d42e3f",
   "wl": [
