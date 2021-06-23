@@ -18,6 +18,7 @@ const (
 	WhitelistURI     = "dmsgpty/whitelist"
 )
 
+// DefaultCLIAddr gets the default cli address (temp address)
 func DefaultCLIAddr() string {
 	return filepath.Join(os.TempDir(), "dmsgpty.sock")
 }
