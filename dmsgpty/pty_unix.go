@@ -81,10 +81,7 @@ func (s *Pty) Start(name string, args []string, size *WinSize) error {
 	var err error
 
 	if size == nil {
-		sz, err = pty.GetsizeFull(os.Stdin)
-		if err != nil {
-			return err
-		}
+		sz = nil
 	} else {
 		sz = size.PtySize()
 	}
