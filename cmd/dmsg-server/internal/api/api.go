@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math"
 	"math/big"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -30,6 +31,7 @@ type API struct {
 	minuteEncValues map[*dmsg.SessionCommon]uint64
 	secondDecValues map[*dmsg.SessionCommon]uint64
 	secondEncValues map[*dmsg.SessionCommon]uint64
+	router          *chi.Mux
 }
 
 // HealthCheckResponse is struct of /health endpoint
@@ -47,8 +49,10 @@ func New(r *chi.Mux, log *logging.Logger, m servermetrics.Metrics) *API {
 		minuteEncValues: make(map[*dmsg.SessionCommon]uint64),
 		secondDecValues: make(map[*dmsg.SessionCommon]uint64),
 		secondEncValues: make(map[*dmsg.SessionCommon]uint64),
+		router:          r,
 	}
 	r.Use(httputil.SetLoggerMiddleware(log))
+	r.Get("/health", api.health)
 	return api
 }
 
@@ -80,8 +84,28 @@ func (a *API) SetDmsgServer(srv *dmsg.Server) {
 	a.dmsgServer = srv
 }
 
+// Serve runs dmsg Serve function alongside health endpoint in the same port
+func (a *API) Serve(lis net.Listener, addr string) error {
+	errCh := make(chan error)
+
+	go func(l net.Listener, address string) {
+		if err := a.dmsgServer.Serve(l, address); err != nil {
+			errCh <- err
+		}
+	}(lis, addr)
+	if err := http.Serve(lis, a.router); err != nil {
+		errCh <- err
+	}
+	return <-errCh
+}
+
+// Close closes connection to both http server and dmsg server
+func (a *API) Close() error {
+	return a.dmsgServer.Close()
+}
+
 // Health serves health page
-func (a *API) Health(w http.ResponseWriter, r *http.Request) {
+func (a *API) health(w http.ResponseWriter, r *http.Request) {
 	info := buildinfo.Get()
 	a.writeJSON(w, r, http.StatusOK, HealthCheckResponse{
 		BuildInfo: info,
