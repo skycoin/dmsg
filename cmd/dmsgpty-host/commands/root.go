@@ -54,33 +54,33 @@ func init() {
 
 	// Prepare flags with env/config references.
 
-	rootCmd.PersistentFlags().Var(&wl, "wl",
+	RootCmd.PersistentFlags().Var(&wl, "wl",
 		"whitelist of the dmsgpty-host")
 
-	rootCmd.PersistentFlags().StringVar(&dmsgDisc, "dmsgdisc", dmsgDisc,
+	RootCmd.PersistentFlags().StringVar(&dmsgDisc, "dmsgdisc", dmsgDisc,
 		"dmsg discovery address")
 
-	rootCmd.PersistentFlags().IntVar(&dmsgSessions, "dmsgsessions", dmsgSessions,
+	RootCmd.PersistentFlags().IntVar(&dmsgSessions, "dmsgsessions", dmsgSessions,
 		"minimum number of dmsg sessions to ensure")
 
-	rootCmd.PersistentFlags().Uint16Var(&dmsgPort, "dmsgport", dmsgPort,
+	RootCmd.PersistentFlags().Uint16Var(&dmsgPort, "dmsgport", dmsgPort,
 		"dmsg port for listening for remote hosts")
 
-	rootCmd.PersistentFlags().StringVar(&cliNet, "clinet", cliNet,
+	RootCmd.PersistentFlags().StringVar(&cliNet, "clinet", cliNet,
 		"network used for listening for cli connections")
 
-	rootCmd.PersistentFlags().StringVar(&cliAddr, "cliaddr", cliAddr,
+	RootCmd.PersistentFlags().StringVar(&cliAddr, "cliaddr", cliAddr,
 		"address used for listening for cli connections")
 
 	// Prepare flags without associated env/config references.
 
-	rootCmd.PersistentFlags().StringVar(&envPrefix, "envprefix", envPrefix,
+	RootCmd.PersistentFlags().StringVar(&envPrefix, "envprefix", envPrefix,
 		"env prefix")
 
-	rootCmd.Flags().BoolVar(&confStdin, "confstdin", confStdin,
+	RootCmd.Flags().BoolVar(&confStdin, "confstdin", confStdin,
 		"config will be read from stdin if set")
 
-	rootCmd.Flags().StringVarP(&confPath, "confpath", "c", confPath,
+	RootCmd.Flags().StringVarP(&confPath, "confpath", "c", confPath,
 		"config path")
 }
 
@@ -261,7 +261,7 @@ func getConfig(cmd *cobra.Command, skGen bool) (dmsgpty.Config, error) {
 	return conf, nil
 }
 
-var rootCmd = &cobra.Command{
+var RootCmd = &cobra.Command{
 	Use:    cmdutil.RootCmdName(),
 	Short:  "runs a standalone dmsgpty-host instance",
 	PreRun: func(cmd *cobra.Command, args []string) {},
@@ -337,7 +337,7 @@ var rootCmd = &cobra.Command{
 
 // Execute executes the root command.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }

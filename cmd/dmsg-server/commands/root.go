@@ -37,10 +37,10 @@ var (
 )
 
 func init() {
-	sf.Init(rootCmd, "dmsg_srv", defaultConfigPath)
+	sf.Init(RootCmd, "dmsg_srv", defaultConfigPath)
 }
 
-var rootCmd = &cobra.Command{
+var RootCmd = &cobra.Command{
 	Use:     "dmsg-server",
 	Short:   "Dmsg Server for Skywire.",
 	PreRunE: func(cmd *cobra.Command, args []string) error { return sf.Check() },
@@ -153,7 +153,7 @@ func genDefaultConfig() (io.ReadCloser, error) {
 
 // Execute executes root CLI command.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
 }
