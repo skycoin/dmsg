@@ -93,6 +93,7 @@ func initConfig() {
 	}
 }
 
+// RootCmd contains commands for dmsgpty-cli; which interacts with the dmsgpty-host instance (i.e. skywire-visor)
 var RootCmd = &cobra.Command{
 	Use:   "dmsgpty-cli",
 	Short: "Run commands over dmsg",

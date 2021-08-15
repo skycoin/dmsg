@@ -41,6 +41,7 @@ func init() {
 	RootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
 }
 
+// RootCmd contains commands for dmsg-discovery
 var RootCmd = &cobra.Command{
 	Use:   "dmsg-discovery",
 	Short: "Dmsg Discovery Server for skywire",

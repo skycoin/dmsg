@@ -40,6 +40,7 @@ func init() {
 	sf.Init(RootCmd, "dmsg_srv", defaultConfigPath)
 }
 
+// RootCmd contains commands for dmsg-server
 var RootCmd = &cobra.Command{
 	Use:     "dmsg-server",
 	Short:   "Dmsg Server for Skywire.",
