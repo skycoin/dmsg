@@ -37,6 +37,7 @@ func init() {
 		"command arguments to include when initiating pty")
 }
 
+// RootCmd contains commands to start a dmsgpty-ui server for a dmsgpty-host
 var RootCmd = &cobra.Command{
 	Use:   cmdutil.RootCmdName(),
 	Short: "hosts a UI server for a dmsgpty-host",

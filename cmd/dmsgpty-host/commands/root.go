@@ -261,6 +261,7 @@ func getConfig(cmd *cobra.Command, skGen bool) (dmsgpty.Config, error) {
 	return conf, nil
 }
 
+// RootCmd contains commands for dmsgpty-host
 var RootCmd = &cobra.Command{
 	Use:    cmdutil.RootCmdName(),
 	Short:  "runs a standalone dmsgpty-host instance",
