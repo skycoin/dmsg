@@ -18,7 +18,7 @@ $ ./bin/dmsgpty-host --help
         --clinet string       network used for listening for cli connections (default "unix")
     -c, --confpath string     config path (default "./config.json")
         --confstdin           config will be read from stdin if set
-        --dmsgdisc string     dmsg discovery address (default "http://dmsg.discovery.skywire.skycoin.com")
+        --dmsgdisc string     dmsg discovery address (default "http://dmsgd.skywire.skycoin.com")
         --dmsgport uint16     dmsg port for listening for remote hosts (default 22)
         --dmsgsessions int    minimum number of dmsg sessions to ensure (default 1)
         --envprefix string    env prefix (default "DMSGPTY")
@@ -58,7 +58,7 @@ $ ./bin/dmsgpty-cli --help
 ```
 
 ## Example usage
-In this example, we will use the `dmsg` network where the `dmsg.Discovery` address is `http://dmsg.discovery.skywire.skycoin.com`. However, any `dmsg.Discovery` would work.
+In this example, we will use the `dmsg` network where the `dmsg.Discovery` address is `http://dmsgd.skywire.skycoin.com`. However, any `dmsg.Discovery` would work.
 
 ### Example 1
 Setting up remote command execution over dmsg.
@@ -72,7 +72,7 @@ $ ./bin/dmsgpty-host confgen
 Config file will be generated.
 ```JSON
 {
-    "dmsgdisc": "http://dmsg.discovery.skywire.skycoin.com",
+    "dmsgdisc": "http://dmsgd.skywire.skycoin.com",
     "dmsgsessions": 1,
     "dmsgport": 22,
     "clinet": "unix",
@@ -124,7 +124,7 @@ Config file will be generated for the `dmsgpty-host`.
 `dmsgpty-host 1`
 ```JSON
 {
-    "dmsgdisc": "http://dmsg.discovery.skywire.skycoin.com",
+    "dmsgdisc": "http://dmsgd.skywire.skycoin.com",
     "dmsgsessions": 1,
     "dmsgport": 22,
     "clinet": "unix",
@@ -137,7 +137,7 @@ Config file will be generated for the `dmsgpty-host`.
 `dmsgpty-host 2`
 ```JSON
 {
-  "dmsgdisc": "http://dmsg.discovery.skywire.skycoin.com",
+  "dmsgdisc": "http://dmsgd.skywire.skycoin.com",
   "dmsgsessions": 1,
   "dmsgport": 22,
   "clinet": "unix",
@@ -186,7 +186,7 @@ host-2$ ./bin/dmsgpty-host confgen config2.json --cliaddr /tmp/dmsgpty2.sock
 Config file will be generated for the `dmsgpty-host 2`.
 ```JSON
 {
-  "dmsgdisc": "http://dmsg.discovery.skywire.skycoin.com",
+  "dmsgdisc": "http://dmsgd.skywire.skycoin.com",
   "dmsgsessions": 1,
   "dmsgport": 22,
   "clinet": "unix",
