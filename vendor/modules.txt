@@ -100,6 +100,7 @@ golang.org/x/crypto/ssh/terminal
 ## explicit
 golang.org/x/net/nettest
 # golang.org/x/sys v0.0.0-20210112080510-489259a85091
+## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/plan9
