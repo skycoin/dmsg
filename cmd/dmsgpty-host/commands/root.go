@@ -154,6 +154,10 @@ func configFromJSON(conf dmsgpty.Config) (dmsgpty.Config, error) {
 		conf.CLIAddr = jsonConf.CLIAddr
 	}
 
+	if conf.CLIAddr == "" {
+		conf.CLIAddr = dmsgpty.DefaultCLIAddr()
+	}
+
 	return conf, nil
 }
 
