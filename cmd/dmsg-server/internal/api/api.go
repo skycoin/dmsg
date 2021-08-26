@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/pires/go-proxyproto"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 
@@ -84,18 +85,32 @@ func (a *API) SetDmsgServer(srv *dmsg.Server) {
 	a.dmsgServer = srv
 }
 
-// Serve runs dmsg Serve function alongside health endpoint in the same port
-func (a *API) Serve(lis net.Listener, addr string) error {
+// ListenAndServe runs dmsg Serve function alongside health endpoint
+func (a *API) ListenAndServe(lAddr, pAddr, httpAddr string) error {
 	errCh := make(chan error)
 
+	dmsgLn, err := net.Listen("tcp", lAddr)
+	dmsgLis := &proxyproto.Listener{Listener: dmsgLn}
+	defer dmsgLis.Close() // nolint:errcheck
+	if err != nil {
+		return err
+	}
 	go func(l net.Listener, address string) {
 		if err := a.dmsgServer.Serve(l, address); err != nil {
 			errCh <- err
 		}
-	}(lis, addr)
+	}(dmsgLis, pAddr)
+
+	ln, err := net.Listen("tcp", httpAddr)
+	lis := &proxyproto.Listener{Listener: ln}
+	defer lis.Close() // nolint:errcheck
+	if err != nil {
+		return err
+	}
 	if err := http.Serve(lis, a.router); err != nil {
 		errCh <- err
 	}
+
 	return <-errCh
 }
 
