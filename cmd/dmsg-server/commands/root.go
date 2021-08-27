@@ -71,8 +71,7 @@ var rootCmd = &cobra.Command{
 		r.Use(middleware.Logger)
 		r.Use(middleware.Recoverer)
 
-		a := api.New(r, log, m)
-		r.Get("/health", a.Health)
+		api := api.New(r, log, m)
 		ln, err := net.Listen("tcp", conf.LocalAddress)
 		if err != nil {
 			log.Fatalf("Error listening on %s: %v", conf.LocalAddress, err)
@@ -97,15 +96,15 @@ var rootCmd = &cobra.Command{
 		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery), &srvConf, m)
 		srv.SetLogger(log)
 
-		a.SetDmsgServer(srv)
-		defer func() { log.WithError(srv.Close()).Info("Closed server.") }()
+		api.SetDmsgServer(srv)
+		defer func() { log.WithError(api.Close()).Info("Closed server.") }()
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
 
-		go a.RunBackgroundTasks(ctx)
+		go api.RunBackgroundTasks(ctx)
 		go func() {
-			if err := srv.Serve(lis, conf.PublicAddress); err != nil {
+			if err := api.Serve(lis, conf.PublicAddress); err != nil {
 				log.Errorf("Serve: %v", err)
 				cancel()
 			}
