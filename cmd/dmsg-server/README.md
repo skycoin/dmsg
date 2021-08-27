@@ -2,7 +2,7 @@
 
 ## Endpoints
 
-There is only one endpoint on port `:8082`. `:8082` is the deafalut port for the heetpserver and can be changed with the flag `-p`.
+There is only one endpoint on port `:8082`. `:8082` is the default port for the httpserver and can be changed with the flag `-p`.
 
 ### GET Entry
 

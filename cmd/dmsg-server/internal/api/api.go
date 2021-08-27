@@ -90,11 +90,11 @@ func (a *API) ListenAndServe(lAddr, pAddr, httpAddr string) error {
 	errCh := make(chan error)
 
 	dmsgLn, err := net.Listen("tcp", lAddr)
-	dmsgLis := &proxyproto.Listener{Listener: dmsgLn}
-	defer dmsgLis.Close() // nolint:errcheck
 	if err != nil {
 		return err
 	}
+	dmsgLis := &proxyproto.Listener{Listener: dmsgLn}
+	defer dmsgLis.Close() // nolint:errcheck
 	go func(l net.Listener, address string) {
 		if err := a.dmsgServer.Serve(l, address); err != nil {
 			errCh <- err
@@ -102,11 +102,11 @@ func (a *API) ListenAndServe(lAddr, pAddr, httpAddr string) error {
 	}(dmsgLis, pAddr)
 
 	ln, err := net.Listen("tcp", httpAddr)
-	lis := &proxyproto.Listener{Listener: ln}
-	defer lis.Close() // nolint:errcheck
 	if err != nil {
 		return err
 	}
+	lis := &proxyproto.Listener{Listener: ln}
+	defer lis.Close() // nolint:errcheck
 	if err := http.Serve(lis, a.router); err != nil {
 		errCh <- err
 	}
