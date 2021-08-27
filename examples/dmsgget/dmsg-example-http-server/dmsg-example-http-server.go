@@ -15,7 +15,7 @@ import (
 
 var (
 	dir      = "." // local dir to serve via http
-	dmsgDisc = "http://dmsg.discovery.skywire.skycoin.com"
+	dmsgDisc = "http://dmsgd.skywire.skycoin.com"
 	dmsgPort = uint(80)
 	pk, sk   = cipher.GenerateKeyPair()
 )
