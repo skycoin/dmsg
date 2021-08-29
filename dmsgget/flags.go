@@ -37,7 +37,7 @@ type dmsgFlags struct {
 func (f *dmsgFlags) Name() string { return "Dmsg" }
 
 func (f *dmsgFlags) Init(fs *flag.FlagSet) {
-	fs.StringVar(&f.Disc, "dmsg-disc", "http://dmsg.discovery.skywire.skycoin.com", "dmsg discovery `URL`")
+	fs.StringVar(&f.Disc, "dmsg-disc", "http://dmsgd.skywire.skycoin.com", "dmsg discovery `URL`")
 	fs.IntVar(&f.Sessions, "dmsg-sessions", 1, "connect to `NUMBER` of dmsg servers")
 }
 

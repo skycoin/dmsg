@@ -6,14 +6,12 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"os"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/pires/go-proxyproto"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg"
@@ -72,22 +70,6 @@ var rootCmd = &cobra.Command{
 		r.Use(middleware.Recoverer)
 
 		api := api.New(r, log, m)
-		ln, err := net.Listen("tcp", conf.LocalAddress)
-		if err != nil {
-			log.Fatalf("Error listening on %s: %v", conf.LocalAddress, err)
-		}
-
-		lis := &proxyproto.Listener{Listener: ln}
-		defer func(lis *proxyproto.Listener) {
-			err = lis.Close()
-			if err != nil {
-				log.Warnf("Error closing listener: %v", err)
-			}
-		}(lis)
-
-		if err != nil {
-			log.Fatalf("Error creating proxy on %s: %v", conf.LocalAddress, err)
-		}
 
 		srvConf := dmsg.ServerConfig{
 			MaxSessions:    conf.MaxSessions,
@@ -103,8 +85,9 @@ var rootCmd = &cobra.Command{
 		defer cancel()
 
 		go api.RunBackgroundTasks(ctx)
+		log.WithField("addr", sf.HTTPAddr).Info("Serving server API...")
 		go func() {
-			if err := api.Serve(lis, conf.PublicAddress); err != nil {
+			if err := api.ListenAndServe(conf.LocalAddress, conf.PublicAddress, sf.HTTPAddr); err != nil {
 				log.Errorf("Serve: %v", err)
 				cancel()
 			}

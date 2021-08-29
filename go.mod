@@ -5,7 +5,6 @@ go 1.16
 require (
 	github.com/ActiveState/termtest/conpty v0.5.0
 	github.com/VictoriaMetrics/metrics v1.12.3
-	github.com/containerd/console v1.0.2
 	github.com/creack/pty v1.1.10
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-redis/redis v6.15.8+incompatible
@@ -26,9 +25,9 @@ require (
 	github.com/skycoin/yamux v0.0.0-20200803175205-571ceb89da9f
 	github.com/spf13/cobra v0.0.5
 	github.com/stretchr/testify v1.4.0
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb
 	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c
-	golang.org/x/term v0.0.0-20210406210042-72f3dc4e9b72
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	nhooyr.io/websocket v1.8.2
 )
