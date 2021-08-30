@@ -61,6 +61,7 @@ func findStringsEnclosedBy(str string, sep string, result []string, lastIndex in
 	return findStringsEnclosedBy(str, sep, result, lastIndex)
 }
 
+// ParseWindowsEnv finds '%'-enclosed windows env in json string
 func ParseWindowsEnv(cliAddr string) string {
 	if runtime.GOOS == "windows" {
 		var res []string

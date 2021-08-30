@@ -1,9 +1,11 @@
 package dmsgpty_test
 
 import (
-	"github.com/skycoin/dmsg/dmsgpty"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/skycoin/dmsg/dmsgpty"
 )
 
 func TestParseWindowsConf(t *testing.T) {
