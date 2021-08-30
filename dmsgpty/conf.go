@@ -3,6 +3,9 @@ package dmsgpty
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 
 	"github.com/skycoin/dmsg"
 )
@@ -39,4 +42,39 @@ func WriteConfig(conf Config, path string) error {
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "    ")
 	return enc.Encode(&conf)
+}
+
+func findStringsEnclosedBy(str string, sep string, result []string, lastIndex int) ([]string, int) {
+	s := strings.Index(str, sep)
+	if s == -1 {
+		return result, lastIndex
+	}
+	newS := str[s+len(sep):]
+	e := strings.Index(newS, sep)
+	if e == -1 {
+		return result, lastIndex
+	}
+	res := newS[:e]
+	result = append(result, res)
+	lastIndex = s + len(sep) + e
+	str = str[lastIndex:]
+	return findStringsEnclosedBy(str, sep, result, lastIndex)
+}
+
+func ParseWindowsEnv(cliAddr string) string {
+	if runtime.GOOS == "windows" {
+		var res []string
+		var paths []string
+		results, lastIndex := findStringsEnclosedBy(cliAddr, "%", res, -1)
+		for _, s := range results {
+			pth := os.Getenv(strings.ToUpper(s))
+			if pth != "" {
+				paths = append(paths, pth)
+			}
+		}
+		paths = append(paths, cliAddr[lastIndex:])
+		cliAddr = filepath.Join(paths...)
+		return cliAddr
+	}
+	return cliAddr
 }

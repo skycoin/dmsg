@@ -151,7 +151,7 @@ func configFromJSON(conf dmsgpty.Config) (dmsgpty.Config, error) {
 	}
 
 	if conf.CLIAddr != "" {
-		conf.CLIAddr = jsonConf.CLIAddr
+		conf.CLIAddr = dmsgpty.ParseWindowsEnv(jsonConf.CLIAddr)
 	}
 
 	if conf.CLIAddr == "" {
