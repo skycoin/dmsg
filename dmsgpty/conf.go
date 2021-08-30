@@ -65,8 +65,8 @@ func findStringsEnclosedBy(str string, sep string, result []string, lastIndex in
 func ParseWindowsEnv(cliAddr string) string {
 	if runtime.GOOS == "windows" {
 		var res []string
-		var paths []string
 		results, lastIndex := findStringsEnclosedBy(cliAddr, "%", res, -1)
+		paths := make([]string, len(results)+1)
 		for _, s := range results {
 			pth := os.Getenv(strings.ToUpper(s))
 			if pth != "" {
