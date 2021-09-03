@@ -17,6 +17,20 @@ import (
 
 var cli = dmsgpty.DefaultCLI()
 
+// path for config file ( required for whitelists )
+var (
+	defaultConfPath = "config.json"
+	confPath string
+)
+
+// conf to update whitelists
+var conf dmsgpty.Config
+
+
+var remoteAddr dmsg.Addr
+var cmdName = dmsgpty.DefaultCmd
+var cmdArgs []string
+
 func init() {
 	rootCmd.PersistentFlags().StringVar(&cli.Net, "clinet", cli.Net,
 		"network to use for dialing to dmsgpty-host")
@@ -24,21 +38,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cli.Addr, "cliaddr", cli.Addr,
 		"address to use for dialing to dmsgpty-host")
 
-	rootCmd.PersistentFlags().StringVar(&confPath, "confpath", confPath,
-		"config path")
-}
-
-// conf to update whitelists
-var conf dmsgpty.Config = dmsgpty.DefaultConfig()
-
-// path for config file ( required for whitelists )
-var confPath = "config.json"
-
-var remoteAddr dmsg.Addr
-var cmdName = dmsgpty.DefaultCmd
-var cmdArgs []string
-
-func init() {
+	rootCmd.PersistentFlags().StringVarP(&confPath, "confpath", confPath,
+		defaultConfPath, "config path")
 
 	cobra.OnInitialize(initConfig)
 	rootCmd.Flags().Var(&remoteAddr, "addr",
@@ -53,7 +54,7 @@ func init() {
 }
 
 // initConfig sources whitelist from config file
-// by default : it will look for (default "config.json")
+// by default : it will look for config
 //
 // case 1 : config file is new (does not contain a "wl" key)
 // - create a "wl" key within the config file
@@ -66,7 +67,7 @@ func initConfig() {
 	println(confPath)
 
 	if _, err := os.Stat(confPath); err != nil {
-		cli.Log.Fatalln("Default config file \"config.json\" not found.")
+		cli.Log.Fatalf("Config file %s not found.", confPath)
 	}
 
 	// read file using ioutil
@@ -90,6 +91,13 @@ func initConfig() {
 		if err != nil {
 			cli.Log.Fatalln("Unable to write", confPath, err)
 		}
+	}
+	conf.CLIAddr = dmsgpty.ParseWindowsEnv(conf.CLIAddr)
+	if conf.CLIAddr != "" {
+		cli.Addr = conf.CLIAddr
+	}
+	if conf.CLINet != "" {
+		cli.Net = conf.CLINet
 	}
 }
 

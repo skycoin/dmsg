@@ -12,5 +12,4 @@ func TestParseWindowsConf(t *testing.T) {
 	homedrive := "%homedrive%%homepath%\\dmsgpty.sock"
 	result := dmsgpty.ParseWindowsEnv(homedrive)
 	require.NotEqual(t, "", result)
-	t.Log(result)
 }

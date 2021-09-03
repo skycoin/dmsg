@@ -52,12 +52,20 @@ func findStringsEnclosedBy(str string, sep string, result []string, lastIndex in
 	newS := str[s+len(sep):]
 	e := strings.Index(newS, sep)
 	if e == -1 {
+		lastIndex += len(sep)
 		return result, lastIndex
 	}
 	res := newS[:e]
-	result = append(result, res)
-	lastIndex = s + len(sep) + e
-	str = str[lastIndex:]
+	if res != "" {
+		result = append(result, res)
+	}
+	last := s + len(res) + len(sep)
+	if lastIndex == -1 {
+		lastIndex = last
+	} else {
+		lastIndex += last
+	}
+	str = str[last:]
 	return findStringsEnclosedBy(str, sep, result, lastIndex)
 }
 
@@ -66,16 +74,19 @@ func ParseWindowsEnv(cliAddr string) string {
 	if runtime.GOOS == "windows" {
 		var res []string
 		results, lastIndex := findStringsEnclosedBy(cliAddr, "%", res, -1)
-		paths := make([]string, len(results)+1)
-		for _, s := range results {
-			pth := os.Getenv(strings.ToUpper(s))
-			if pth != "" {
-				paths = append(paths, pth)
+		if len(results) > 0 {
+			paths := make([]string, len(results)+1)
+			for i, s := range results {
+				pth := os.Getenv(strings.ToUpper(s))
+				if pth != "" {
+					paths[i] = pth
+				}
 			}
+			paths[len(paths) - 1] = strings.Replace(cliAddr[lastIndex:], string(filepath.Separator), "", 1)
+			cliAddr = filepath.Join(paths...)
+			strings.ReplaceAll(cliAddr, `\`, `\\`)
+			return cliAddr
 		}
-		paths = append(paths, cliAddr[lastIndex:])
-		cliAddr = filepath.Join(paths...)
-		return cliAddr
 	}
 	return cliAddr
 }
