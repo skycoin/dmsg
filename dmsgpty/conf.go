@@ -82,9 +82,9 @@ func ParseWindowsEnv(cliAddr string) string {
 					paths[i] = pth
 				}
 			}
-			paths[len(paths) - 1] = strings.Replace(cliAddr[lastIndex:], string(filepath.Separator), "", 1)
+			paths[len(paths)-1] = strings.Replace(cliAddr[lastIndex:], string(filepath.Separator), "", 1)
 			cliAddr = filepath.Join(paths...)
-			strings.ReplaceAll(cliAddr, `\`, `\\`)
+			_ = strings.ReplaceAll(cliAddr, `\`, `\\`)
 			return cliAddr
 		}
 	}

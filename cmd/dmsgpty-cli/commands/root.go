@@ -20,12 +20,11 @@ var cli = dmsgpty.DefaultCLI()
 // path for config file ( required for whitelists )
 var (
 	defaultConfPath = "config.json"
-	confPath string
+	confPath        string
 )
 
 // conf to update whitelists
 var conf dmsgpty.Config
-
 
 var remoteAddr dmsg.Addr
 var cmdName = dmsgpty.DefaultCmd
@@ -71,7 +70,7 @@ func initConfig() {
 	}
 
 	// read file using ioutil
-	file, err := ioutil.ReadFile(confPath)
+	file, err := ioutil.ReadFile(confPath) //nolint:gosec
 	if err != nil {
 		cli.Log.Fatalln("Unable to read ", confPath, err)
 	}
