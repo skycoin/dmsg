@@ -57,7 +57,7 @@ var rootCmd = &cobra.Command{
 			log.WithError(err).Fatal("parsing config failed, generating default one...")
 		}
 
-		if conf.HttpAddress == "" {
+		if conf.HTTPAddress == "" {
 			u, err := url.Parse(conf.LocalAddress)
 			if err != nil {
 				log.Fatal("unable to parse local address url: ", err)
@@ -67,7 +67,7 @@ var rootCmd = &cobra.Command{
 				log.Fatal("unable to parse local address url: ", err)
 			}
 			httpPort := strconv.Itoa(hp + 1)
-			conf.HttpAddress = ":" + httpPort
+			conf.HTTPAddress = ":" + httpPort
 		}
 
 		var m servermetrics.Metrics
@@ -101,9 +101,9 @@ var rootCmd = &cobra.Command{
 		defer cancel()
 
 		go api.RunBackgroundTasks(ctx)
-		log.WithField("addr", conf.HttpAddress).Info("Serving server API...")
+		log.WithField("addr", conf.HTTPAddress).Info("Serving server API...")
 		go func() {
-			if err := api.ListenAndServe(conf.LocalAddress, conf.PublicAddress, conf.HttpAddress); err != nil {
+			if err := api.ListenAndServe(conf.LocalAddress, conf.PublicAddress, conf.HTTPAddress); err != nil {
 				log.Errorf("Serve: %v", err)
 				cancel()
 			}
@@ -120,7 +120,7 @@ type Config struct {
 	Discovery      string        `json:"discovery"`
 	LocalAddress   string        `json:"local_address"`
 	PublicAddress  string        `json:"public_address"`
-	HttpAddress    string        `json:"health_endpoint_address,omitempty"` // defaults to 8082
+	HTTPAddress    string        `json:"health_endpoint_address,omitempty"` // defaults to 8082
 	MaxSessions    int           `json:"max_sessions"`
 	UpdateInterval time.Duration `json:"update_interval"`
 	LogLevel       string        `json:"log_level"`
@@ -141,7 +141,7 @@ func genDefaultConfig() (io.ReadCloser, error) {
 		Discovery:     defaultDiscoveryURL,
 		LocalAddress:  fmt.Sprintf("localhost%s", defaultPort),
 		PublicAddress: defaultPort,
-		HttpAddress:   fmt.Sprintf("localhost%s", httpPort),
+		HTTPAddress:   fmt.Sprintf("localhost%d", httpPort),
 		MaxSessions:   2048,
 		LogLevel:      "info",
 	}
