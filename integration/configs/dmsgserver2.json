@@ -4,6 +4,7 @@
   "discovery": "http://localhost:9090",
   "public_address": "127.0.0.1:8083",
   "local_address": ":8083",
+  "health_endpoint_address": ":8084",
   "log_level": "info",
   "max_sessions": 2048
 }

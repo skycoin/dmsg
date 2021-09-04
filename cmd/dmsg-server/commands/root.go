@@ -6,7 +6,10 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -54,6 +57,19 @@ var rootCmd = &cobra.Command{
 			log.WithError(err).Fatal("parsing config failed, generating default one...")
 		}
 
+		if conf.HttpAddress == "" {
+			u, err := url.Parse(conf.LocalAddress)
+			if err != nil {
+				log.Fatal("unable to parse local address url: ", err)
+			}
+			hp, err := strconv.Atoi(u.Port())
+			if err != nil {
+				log.Fatal("unable to parse local address url: ", err)
+			}
+			httpPort := strconv.Itoa(hp + 1)
+			conf.HttpAddress = ":" + httpPort
+		}
+
 		var m servermetrics.Metrics
 		if sf.MetricsAddr == "" {
 			m = servermetrics.NewEmpty()
@@ -85,9 +101,9 @@ var rootCmd = &cobra.Command{
 		defer cancel()
 
 		go api.RunBackgroundTasks(ctx)
-		log.WithField("addr", sf.HTTPAddr).Info("Serving server API...")
+		log.WithField("addr", conf.HttpAddress).Info("Serving server API...")
 		go func() {
-			if err := api.ListenAndServe(conf.LocalAddress, conf.PublicAddress, sf.HTTPAddr); err != nil {
+			if err := api.ListenAndServe(conf.LocalAddress, conf.PublicAddress, conf.HttpAddress); err != nil {
 				log.Errorf("Serve: %v", err)
 				cancel()
 			}
@@ -104,6 +120,7 @@ type Config struct {
 	Discovery      string        `json:"discovery"`
 	LocalAddress   string        `json:"local_address"`
 	PublicAddress  string        `json:"public_address"`
+	HttpAddress    string        `json:"health_endpoint_address,omitempty"` // defaults to 8082
 	MaxSessions    int           `json:"max_sessions"`
 	UpdateInterval time.Duration `json:"update_interval"`
 	LogLevel       string        `json:"log_level"`
@@ -112,12 +129,19 @@ type Config struct {
 func genDefaultConfig() (io.ReadCloser, error) {
 	pk, sk := cipher.GenerateKeyPair()
 
+	hP, err := strconv.Atoi(strings.Split(defaultPort, ":")[1])
+	if err != nil {
+		return nil, err
+	}
+	httpPort := hP + 1
+
 	cfg := Config{
 		PubKey:        pk,
 		SecKey:        sk,
 		Discovery:     defaultDiscoveryURL,
 		LocalAddress:  fmt.Sprintf("localhost%s", defaultPort),
 		PublicAddress: defaultPort,
+		HttpAddress:   fmt.Sprintf("localhost%s", httpPort),
 		MaxSessions:   2048,
 		LogLevel:      "info",
 	}
