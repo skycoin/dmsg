@@ -27,4 +27,3 @@ func (m *Map) Store(key interface{}, elem interface{}) {
 	m.data[key] = elem
 	m.lock.Unlock()
 }
-
