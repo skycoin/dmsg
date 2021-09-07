@@ -36,7 +36,7 @@ var (
 	dmsgSessions = dmsg.DefaultMinSessions
 	dmsgPort     = dmsgpty.DefaultPort
 	cliNet       = dmsgpty.DefaultCLINet
-	cliAddr      = dmsgpty.DefaultCLIAddr
+	cliAddr      = dmsgpty.DefaultCLIAddr()
 	sk           cipher.SecKey
 	pk           cipher.PubKey
 	wl           cipher.PubKeys
@@ -151,7 +151,11 @@ func configFromJSON(conf dmsgpty.Config) (dmsgpty.Config, error) {
 	}
 
 	if conf.CLIAddr != "" {
-		conf.CLIAddr = jsonConf.CLIAddr
+		conf.CLIAddr = dmsgpty.ParseWindowsEnv(jsonConf.CLIAddr)
+	}
+
+	if conf.CLIAddr == "" {
+		conf.CLIAddr = dmsgpty.DefaultCLIAddr()
 	}
 
 	return conf, nil
@@ -209,7 +213,7 @@ func fillConfigFromFlags(conf dmsgpty.Config) dmsgpty.Config {
 		conf.CLINet = cliNet
 	}
 
-	if cliAddr != dmsgpty.DefaultCLIAddr {
+	if cliAddr != dmsgpty.DefaultCLIAddr() {
 		conf.CLIAddr = cliAddr
 	}
 

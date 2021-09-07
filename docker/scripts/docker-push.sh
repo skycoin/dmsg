@@ -6,6 +6,10 @@ function print_usage() {
   echo "use -b for build image locally"
 }
 
+function docker_login() {
+  docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+}
+
 function docker_build() {
   docker image build \
     --tag=skycoinpro/dmsg-server:"$tag" \
@@ -17,7 +21,6 @@ function docker_build() {
 }
 
 function docker_push() {
-  docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
   docker tag skycoinpro/dmsg-server:"$tag" skycoinpro/dmsg-server:"$tag"
   docker tag skycoinpro/dmsg-discovery:"$tag" skycoinpro/dmsg-discovery:"$tag"
   docker image push skycoinpro/dmsg-server:"$tag"
@@ -35,10 +38,12 @@ while getopts ":t:pb" o; do
     fi
     ;;
   p)
+		docker_login
     docker_build
     docker_push
     ;;
   b)
+		docker_login
     docker_build
     ;;
   *)
