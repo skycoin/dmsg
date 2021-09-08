@@ -17,14 +17,14 @@ ifeq ($(OS),Windows_NT)
     BIN_DIR?=.\bin
     CMD_DIR := .\cmd
 	DATE := $(shell powershell -Command date -u ${RFC_3339})
+	OPTS?=powershell -Command setx GO111MODULE on;
 else
 	BIN := ${PWD}/bin
 	BIN_DIR?=./bin
 	CMD_DIR := ./cmd
 	DATE := $(shell date -u ${RFC_3339})
+	OPTS?=GO111MODULE=on
 endif
-
-OPTS?=GO111MODULE=on
 
 TEST_OPTS:=-tags no_ci -cover -timeout=5m
 
@@ -49,6 +49,8 @@ BUILD_OPTS_DEPLOY?=-mod=vendor "-ldflags=$(BUILDINFO) -w -s"
 
 check: lint test ## Run linters and tests
 
+check-windows: lint test-windows ## Run linters and tests on windows
+
 lint: ## Run linters. Use make install-linters first	
 	${OPTS} golangci-lint run -c .golangci.yml ./...
 	# The govet version in golangci-lint is out of date and has spurious warnings, run it separately
@@ -59,6 +61,10 @@ vendorcheck:  ## Run vendorcheck
 
 test: ## Run tests
 	-go clean -testcache &>/dev/null
+	${OPTS} go test ${TEST_OPTS} ./...
+
+test-windows:
+	-go clean -testcache > NUL
 	${OPTS} go test ${TEST_OPTS} ./...
 
 install-linters: ## Install linters
