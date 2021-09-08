@@ -243,7 +243,7 @@ func checkPty(t *testing.T, ptyC *PtyClient, msg string) {
 		cmd = "echo"
 	}
 
-	require.NoError(t, ptyC.Start(DefaultCmd, DefaultFlagExec, cmd, msg))
+	require.NoError(t, ptyC.Start(cmd, msg))
 
 	readB := make([]byte, len(msg))
 	n, err := io.ReadFull(ptyC, readB)
