@@ -1,4 +1,5 @@
-//+build windows
+//go:build windows
+// +build windows
 
 package dmsgpty
 
@@ -8,6 +9,7 @@ import (
 )
 
 const (
+	// DefaultCLINet for windows
 	DefaultCLINet = "unix"
 )
 

@@ -78,6 +78,9 @@ install-linters: ## Install linters
 format: ## Formats the code. Must have goimports and goimports-reviser installed (use make install-linters).
 	${OPTS} goimports -w -local ${DMSG_REPO} .
 
+format-windows:
+	powershell 'Get-ChildItem -Directory | where Name -NotMatch vendor | % { Get-ChildItem $$_ -Recurse -Include *.go } | % {goimports-reviser -project-name ${DMSG_REPO} -file-path $$_ }'
+
 dep: ## Sorts dependencies
 	${OPTS} go mod download
 	${OPTS} go mod tidy -v
