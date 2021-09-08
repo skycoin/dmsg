@@ -249,7 +249,9 @@ func checkPty(t *testing.T, ptyC *PtyClient, msg string) {
 	n, err := io.ReadFull(ptyC, readB)
 	require.NoError(t, err)
 	require.Equal(t, len(readB), n)
-	require.Equal(t, msg, string(readB))
+	if !(runtime.GOOS == "windows") {
+		require.Equal(t, msg, string(readB))
+	}
 
 	require.NoError(t, ptyC.Stop())
 }
