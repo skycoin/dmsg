@@ -79,7 +79,7 @@ format: ## Formats the code. Must have goimports and goimports-reviser installed
 	${OPTS} goimports -w -local ${DMSG_REPO} .
 
 format-windows:
-	powershell 'Get-ChildItem -Directory | where Name -NotMatch vendor | % { Get-ChildItem $$_ -Recurse -Include *.go } | % {goimports-reviser -project-name ${DMSG_REPO} -file-path $$_ }'
+	powershell -Command .\scripts\format-windows.ps1
 
 dep: ## Sorts dependencies
 	${OPTS} go mod download
