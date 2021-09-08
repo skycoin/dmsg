@@ -15,8 +15,9 @@ const (
 
 // Constants related to dmsg.
 const (
-	DefaultPort = uint16(22)
-	DefaultCmd  = `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`
+	DefaultPort     = uint16(22)
+	DefaultCmd      = `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`
+	DefaultFlagExec = "-Command"
 )
 
 // DefaultCLIAddr gets the default cli address

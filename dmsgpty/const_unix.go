@@ -15,8 +15,9 @@ const (
 
 // Constants related to dmsg.
 const (
-	DefaultPort = uint16(22)
-	DefaultCmd  = "/bin/bash"
+	DefaultPort     = uint16(22)
+	DefaultCmd      = "/bin/bash"
+	DefaultFlagExec = "-c"
 )
 
 // DefaultCLIAddr gets the default cli address (temp address)
