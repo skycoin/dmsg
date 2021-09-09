@@ -80,7 +80,7 @@ func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMod
 	r.Get("/dmsg-discovery/entry/{pk}", api.getEntry())
 	r.Post("/dmsg-discovery/entry/", api.setEntry())
 	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
-	r.Delete("/dmsg-discovery/entry/{pk}", api.deleteEntry())
+	r.Delete("/dmsg-discovery/entry/{pk}", api.delEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/health", api.health())
 	r.Get("/health", api.serviceHealth)
@@ -212,12 +212,12 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// deleteEntry deletes the entry associated with the given public key
+// delEntry deletes the entry associated with the given public key
 // URI: /dmsg-discovery/entry/[?timeout={true|false}]
 // Method: DELETE
 // Args:
 //	json serialized entry object
-func (a *API) deleteEntry() func(w http.ResponseWriter, r *http.Request) {
+func (a *API) delEntry() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		staticPK := cipher.PubKey{}
 		if err := staticPK.UnmarshalText([]byte(chi.URLParam(r, "pk"))); err != nil {
@@ -225,7 +225,7 @@ func (a *API) deleteEntry() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		entry, err := a.db.Entry(r.Context(), staticPK)
+		err := a.db.DelEntry(r.Context(), staticPK)
 
 		// If we make sure that every error is handled then we can
 		// remove the if and make the entry return the switch default
@@ -234,7 +234,7 @@ func (a *API) deleteEntry() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		a.writeJSON(w, r, http.StatusOK, entry)
+		a.writeJSON(w, r, http.StatusOK, disc.MsgEntryDeleted)
 	}
 }
 

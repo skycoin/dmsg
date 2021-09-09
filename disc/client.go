@@ -25,6 +25,7 @@ type APIClient interface {
 	Entry(context.Context, cipher.PubKey) (*Entry, error)
 	PostEntry(context.Context, *Entry) error
 	PutEntry(context.Context, cipher.SecKey, *Entry) error
+	DelEntry(context.Context, cipher.PubKey) error
 	AvailableServers(context.Context) ([]*Entry, error)
 }
 
@@ -141,6 +142,43 @@ func (c *httpClient) PostEntry(ctx context.Context, e *Entry) error {
 			WithField("resp_status", resp.StatusCode).
 			Error()
 		return errFromString(httpResponse.Message)
+	}
+	return nil
+}
+
+// DelEntry creates a new Entry.
+func (c *httpClient) DelEntry(ctx context.Context, publicKey cipher.PubKey) error {
+	endpoint := fmt.Sprintf("%s/dmsg-discovery/entry/%s", c.address, publicKey)
+	log := log.WithField("endpoint", endpoint)
+
+	req, err := http.NewRequest(http.MethodDelete, endpoint, nil)
+	if err != nil {
+		return err
+	}
+
+	req = req.WithContext(ctx)
+
+	resp, err := c.client.Do(req)
+	if resp != nil {
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				log.WithError(err).Warn("Failed to close response body.")
+			}
+		}()
+	}
+	if err != nil {
+		return err
+	}
+
+	// if the response is an error it will be codified as an HTTPMessage
+	if resp.StatusCode != http.StatusOK {
+		var message HTTPMessage
+		err = json.NewDecoder(resp.Body).Decode(&message)
+		if err != nil {
+			return err
+		}
+
+		return errFromString(message.Message)
 	}
 	return nil
 }
