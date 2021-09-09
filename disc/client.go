@@ -107,8 +107,8 @@ func (c *httpClient) PostEntry(ctx context.Context, e *Entry) error {
 	req.Header.Set("Content-Type", "application/json")
 
 	// Since v0.3.0 visors send ?timeout=true, before v0.3.0 do not.
+	// Since v0.5.0 visors send do not send ?timeout=true anymore.
 	q := req.URL.Query()
-	q.Add("timeout", "true")
 	req.URL.RawQuery = q.Encode()
 
 	req = req.WithContext(ctx)
