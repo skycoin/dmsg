@@ -94,8 +94,8 @@ func (m *mockClient) PostEntry(_ context.Context, entry *Entry) error {
 }
 
 // DelEntry returns the mock client static public key associated entry
-func (m *mockClient) DelEntry(_ context.Context, pk cipher.PubKey) error {
-	m.delEntry(pk)
+func (m *mockClient) DelEntry(_ context.Context, entry *Entry) error {
+	m.delEntry(entry.Static)
 	return nil
 }
 

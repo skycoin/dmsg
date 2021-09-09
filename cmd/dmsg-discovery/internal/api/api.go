@@ -80,7 +80,7 @@ func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMod
 	r.Get("/dmsg-discovery/entry/{pk}", api.getEntry())
 	r.Post("/dmsg-discovery/entry/", api.setEntry())
 	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
-	r.Delete("/dmsg-discovery/entry/{pk}", api.delEntry())
+	r.Delete("/dmsg-discovery/entry", api.delEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/health", api.health())
 	r.Get("/health", api.serviceHealth)
@@ -220,9 +220,35 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 func (a *API) delEntry() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		staticPK := cipher.PubKey{}
-		if err := staticPK.UnmarshalText([]byte(chi.URLParam(r, "pk"))); err != nil {
-			a.handleError(w, r, disc.ErrBadInput)
+
+		entry := new(disc.Entry)
+		if err := json.NewDecoder(r.Body).Decode(entry); err != nil {
+			a.handleError(w, r, disc.ErrUnexpected)
 			return
+		}
+
+		if entry.Server != nil && !a.testMode {
+			if ok, err := isLoopbackAddr(entry.Server.Address); ok {
+				if err != nil {
+					a.log(r).Warningf("failed to parse hostname and port: %s", err)
+				}
+
+				a.handleError(w, r, disc.ErrValidationServerAddress)
+				return
+			}
+		}
+
+		validateTimestamp := !a.enableLoadTesting
+		if err := entry.Validate(validateTimestamp); err != nil {
+			a.handleError(w, r, err)
+			return
+		}
+
+		if !a.enableLoadTesting {
+			if err := entry.VerifySignature(); err != nil {
+				a.handleError(w, r, disc.ErrUnauthorized)
+				return
+			}
 		}
 
 		err := a.db.DelEntry(r.Context(), staticPK)

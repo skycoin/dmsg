@@ -25,7 +25,7 @@ type APIClient interface {
 	Entry(context.Context, cipher.PubKey) (*Entry, error)
 	PostEntry(context.Context, *Entry) error
 	PutEntry(context.Context, cipher.SecKey, *Entry) error
-	DelEntry(context.Context, cipher.PubKey) error
+	DelEntry(context.Context, *Entry) error
 	AvailableServers(context.Context) ([]*Entry, error)
 }
 
@@ -147,14 +147,24 @@ func (c *httpClient) PostEntry(ctx context.Context, e *Entry) error {
 }
 
 // DelEntry creates a new Entry.
-func (c *httpClient) DelEntry(ctx context.Context, publicKey cipher.PubKey) error {
-	endpoint := fmt.Sprintf("%s/dmsg-discovery/entry/%s", c.address, publicKey)
+func (c *httpClient) DelEntry(ctx context.Context, e *Entry) error {
+	endpoint := c.address + "/dmsg-discovery/entry/"
 	log := log.WithField("endpoint", endpoint)
 
-	req, err := http.NewRequest(http.MethodDelete, endpoint, nil)
+	marshaledEntry, err := json.Marshal(e)
 	if err != nil {
 		return err
 	}
+
+	req, err := http.NewRequest(http.MethodDelete, endpoint, bytes.NewBuffer(marshaledEntry))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	q := req.URL.Query()
+	req.URL.RawQuery = q.Encode()
 
 	req = req.WithContext(ctx)
 
@@ -167,18 +177,25 @@ func (c *httpClient) DelEntry(ctx context.Context, publicKey cipher.PubKey) erro
 		}()
 	}
 	if err != nil {
+		log.WithError(err).Error("Failed to perform request.")
 		return err
 	}
 
-	// if the response is an error it will be codified as an HTTPMessage
 	if resp.StatusCode != http.StatusOK {
-		var message HTTPMessage
-		err = json.NewDecoder(resp.Body).Decode(&message)
+		var httpResponse HTTPMessage
+
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}
-
-		return errFromString(message.Message)
+		err = json.Unmarshal(bodyBytes, &httpResponse)
+		if err != nil {
+			return err
+		}
+		log.WithField("resp_body", httpResponse.Message).
+			WithField("resp_status", resp.StatusCode).
+			Error()
+		return errFromString(httpResponse.Message)
 	}
 	return nil
 }
