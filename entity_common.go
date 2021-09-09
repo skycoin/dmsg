@@ -250,35 +250,6 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}
 	return c.dc.PutEntry(ctx, c.sk, entry)
 }
 
-func (c *EntityCommon) updateClientEntryLoop(ctx context.Context, done chan struct{}) {
-	t := time.NewTimer(c.updateInterval)
-	defer t.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-
-		case <-t.C:
-			if lastUpdate, due := c.updateIsDue(); !due {
-				t.Reset(c.updateInterval - time.Since(lastUpdate))
-				continue
-			}
-
-			c.sessionsMx.Lock()
-			err := c.updateClientEntry(ctx, done)
-			c.sessionsMx.Unlock()
-
-			if err != nil {
-				c.log.WithError(err).Warn("Failed to update discovery entry.")
-			}
-
-			// Ensure we trigger another update within given 'updateInterval'.
-			t.Reset(c.updateInterval)
-		}
-	}
-}
-
 func getServerEntry(ctx context.Context, dc disc.APIClient, srvPK cipher.PubKey) (*disc.Entry, error) {
 	entry, err := dc.Entry(ctx, srvPK)
 	if err != nil {

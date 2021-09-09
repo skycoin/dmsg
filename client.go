@@ -149,9 +149,6 @@ func (ce *Client) Serve(ctx context.Context) {
 		}
 	}(cancellabelCtx)
 
-	// Ensure we start updateClientEntryLoop once only.
-	updateEntryLoopOnce := new(sync.Once)
-
 	for {
 		if isClosed(ce.done) {
 			return
@@ -197,9 +194,6 @@ func (ce *Client) Serve(ctx context.Context) {
 				}
 				time.Sleep(serveWait)
 			}
-
-			// Only start the update entry loop once we have at least one session established.
-			updateEntryLoopOnce.Do(func() { go ce.updateClientEntryLoop(cancellabelCtx, ce.done) })
 		}
 	}
 }
