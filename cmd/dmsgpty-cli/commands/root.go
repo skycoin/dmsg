@@ -17,16 +17,6 @@ import (
 
 var cli = dmsgpty.DefaultCLI()
 
-func init() {
-	RootCmd.PersistentFlags().StringVar(&cli.Net, "clinet", cli.Net,
-		"network to use for dialing to dmsgpty-host\n")
-
-	RootCmd.PersistentFlags().StringVar(&cli.Addr, "cliaddr", cli.Addr,
-		"address to use for dialing to dmsgpty-host\n")
-
-	RootCmd.PersistentFlags().StringVar(&confPath, "confpath", confPath,
-		"config path\n")
-}
 // path for config file ( required for whitelists )
 var (
 	defaultConfPath = "config.json"
@@ -41,13 +31,13 @@ var cmdName = dmsgpty.DefaultCmd
 var cmdArgs []string
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&cli.Net, "clinet", cli.Net,
+	RootCmd.PersistentFlags().StringVar(&cli.Net, "clinet", cli.Net,
 		"network to use for dialing to dmsgpty-host")
 
-	rootCmd.PersistentFlags().StringVar(&cli.Addr, "cliaddr", cli.Addr,
+	RootCmd.PersistentFlags().StringVar(&cli.Addr, "cliaddr", cli.Addr,
 		"address to use for dialing to dmsgpty-host")
 
-	rootCmd.PersistentFlags().StringVarP(&confPath, "confpath", confPath,
+	RootCmd.PersistentFlags().StringVarP(&confPath, "confpath", confPath,
 		defaultConfPath, "config path")
 
 	cobra.OnInitialize(initConfig)
