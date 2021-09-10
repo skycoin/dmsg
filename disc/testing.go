@@ -36,8 +36,8 @@ func (m *mockClient) entry(pk cipher.PubKey) (Entry, bool) {
 }
 
 func (m *mockClient) delEntry(pk cipher.PubKey) {
-	m.mx.RLock()
-	defer m.mx.RUnlock()
+	m.mx.Lock()
+	defer m.mx.Unlock()
 	delete(m.entries, pk)
 }
 
