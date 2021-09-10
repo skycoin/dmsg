@@ -148,7 +148,7 @@ func (c *httpClient) PostEntry(ctx context.Context, e *Entry) error {
 
 // DelEntry creates a new Entry.
 func (c *httpClient) DelEntry(ctx context.Context, e *Entry) error {
-	endpoint := c.address + "/dmsg-discovery/entry/"
+	endpoint := c.address + "/dmsg-discovery/entry"
 	log := log.WithField("endpoint", endpoint)
 
 	marshaledEntry, err := json.Marshal(e)
