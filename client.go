@@ -231,7 +231,7 @@ func (ce *Client) Close() error {
 			ce.log.
 				WithError(dSes.Close()).
 				Info("Session closed.")
-			ce.delSession(context.Background(), dSes.RemotePK())
+			// ce.delSession(context.Background(), dSes.RemotePK())
 		}
 		ce.sessions = make(map[cipher.PubKey]*SessionCommon)
 		ce.sessionsMx.Unlock()
