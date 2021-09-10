@@ -259,7 +259,7 @@ func (c *EntityCommon) delClientEntry(ctx context.Context, _ chan struct{}) (err
 
 	defer func() {
 		if err == nil {
-			c.log.WithField("entry", entry).Debug("Entry Deleted successfully.")
+			c.log.Debug("Entry Deleted successfully.")
 		}
 	}()
 
