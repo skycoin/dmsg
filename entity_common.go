@@ -30,8 +30,8 @@ type EntityCommon struct {
 
 	log logrus.FieldLogger
 
-	setSessionCallback func(ctx context.Context, sessionCount int) error
-	delSessionCallback func(ctx context.Context, sessionCount int) error
+	setSessionCallback func(ctx context.Context) error
+	delSessionCallback func(ctx context.Context) error
 }
 
 func (c *EntityCommon) init(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, log logrus.FieldLogger, updateInterval time.Duration) {
@@ -107,7 +107,7 @@ func (c *EntityCommon) setSession(ctx context.Context, dSes *SessionCommon) bool
 	c.sessions[dSes.RemotePK()] = dSes
 
 	if c.setSessionCallback != nil {
-		if err := c.setSessionCallback(ctx, len(c.sessions)); err != nil {
+		if err := c.setSessionCallback(ctx); err != nil {
 			c.log.
 				WithField("func", "EntityCommon.setSession").
 				WithError(err).
@@ -121,7 +121,7 @@ func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
 	c.sessionsMx.Lock()
 	delete(c.sessions, pk)
 	if c.delSessionCallback != nil {
-		if err := c.delSessionCallback(ctx, len(c.sessions)); err != nil {
+		if err := c.delSessionCallback(ctx); err != nil {
 			c.log.
 				WithField("func", "EntityCommon.delSession").
 				WithError(err).

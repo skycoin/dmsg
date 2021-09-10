@@ -106,7 +106,7 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 	c.EntityCommon.init(pk, sk, dc, log, conf.UpdateInterval)
 
 	// Init callback: on set session.
-	c.EntityCommon.setSessionCallback = func(ctx context.Context, sessionCount int) error {
+	c.EntityCommon.setSessionCallback = func(ctx context.Context) error {
 		if err := c.EntityCommon.updateClientEntry(ctx, c.done); err != nil {
 			return err
 		}
@@ -118,7 +118,7 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 	}
 
 	// Init callback: on delete session.
-	c.EntityCommon.delSessionCallback = func(ctx context.Context, sessionCount int) error {
+	c.EntityCommon.delSessionCallback = func(ctx context.Context) error {
 		err := c.EntityCommon.updateClientEntry(ctx, c.done)
 		return err
 	}
@@ -231,10 +231,11 @@ func (ce *Client) Close() error {
 			ce.log.
 				WithError(dSes.Close()).
 				Info("Session closed.")
+			ce.delSession(context.Background(), dSes.RemotePK())
 		}
 		ce.sessions = make(map[cipher.PubKey]*SessionCommon)
-		ce.log.Info("All sessions closed.")
 		ce.sessionsMx.Unlock()
+		ce.log.Info("All sessions closed.")
 
 		ce.porter.CloseAll(ce.log)
 	})
