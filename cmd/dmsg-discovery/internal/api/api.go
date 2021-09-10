@@ -213,29 +213,16 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 }
 
 // delEntry deletes the entry associated with the given public key
-// URI: /dmsg-discovery/entry/[?timeout={true|false}]
+// URI: /dmsg-discovery/entry
 // Method: DELETE
 // Args:
 //	json serialized entry object
 func (a *API) delEntry() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		staticPK := cipher.PubKey{}
-
 		entry := new(disc.Entry)
 		if err := json.NewDecoder(r.Body).Decode(entry); err != nil {
 			a.handleError(w, r, disc.ErrUnexpected)
 			return
-		}
-
-		if entry.Server != nil && !a.testMode {
-			if ok, err := isLoopbackAddr(entry.Server.Address); ok {
-				if err != nil {
-					a.log(r).Warningf("failed to parse hostname and port: %s", err)
-				}
-
-				a.handleError(w, r, disc.ErrValidationServerAddress)
-				return
-			}
 		}
 
 		validateTimestamp := !a.enableLoadTesting
@@ -251,7 +238,7 @@ func (a *API) delEntry() func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		err := a.db.DelEntry(r.Context(), staticPK)
+		err := a.db.DelEntry(r.Context(), entry.Static)
 
 		// If we make sure that every error is handled then we can
 		// remove the if and make the entry return the switch default
