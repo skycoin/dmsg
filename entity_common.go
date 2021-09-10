@@ -250,6 +250,23 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}
 	return c.dc.PutEntry(ctx, c.sk, entry)
 }
 
+func (c *EntityCommon) delClientEntry(ctx context.Context, _ chan struct{}) (err error) {
+
+	entry, err := c.dc.Entry(ctx, c.pk)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err == nil {
+			c.log.WithField("entry", entry).Debug("Entry Deleted successfully.")
+		}
+	}()
+
+	c.log.WithField("entry", entry).Debug("Deleting entry.")
+	return c.dc.DelEntry(ctx, entry)
+}
+
 func getServerEntry(ctx context.Context, dc disc.APIClient, srvPK cipher.PubKey) (*disc.Entry, error) {
 	entry, err := dc.Entry(ctx, srvPK)
 	if err != nil {
