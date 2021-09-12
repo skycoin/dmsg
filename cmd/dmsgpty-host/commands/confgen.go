@@ -15,7 +15,7 @@ func init() {
 	confgenCmd.Flags().BoolVar(&unsafe, "unsafe", unsafe,
 		"will unsafely write config if set")
 
-	rootCmd.AddCommand(confgenCmd)
+	RootCmd.AddCommand(confgenCmd)
 }
 
 var confgenCmd = &cobra.Command{

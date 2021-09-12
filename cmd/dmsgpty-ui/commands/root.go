@@ -21,23 +21,24 @@ var (
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&hostNet, "hnet", hostNet,
+	RootCmd.PersistentFlags().StringVar(&hostNet, "hnet", hostNet,
 		"dmsgpty-host network name")
 
-	rootCmd.PersistentFlags().StringVar(&hostAddr, "haddr", hostAddr,
+	RootCmd.PersistentFlags().StringVar(&hostAddr, "haddr", hostAddr,
 		"dmsgpty-host network address")
 
-	rootCmd.PersistentFlags().StringVar(&addr, "addr", addr,
+	RootCmd.PersistentFlags().StringVar(&addr, "addr", addr,
 		"network address to serve UI on")
 
-	rootCmd.PersistentFlags().StringVar(&conf.CmdName, "cmd", conf.CmdName,
+	RootCmd.PersistentFlags().StringVar(&conf.CmdName, "cmd", conf.CmdName,
 		"command to run when initiating pty")
 
-	rootCmd.PersistentFlags().StringArrayVar(&conf.CmdArgs, "arg", conf.CmdArgs,
+	RootCmd.PersistentFlags().StringArrayVar(&conf.CmdArgs, "arg", conf.CmdArgs,
 		"command arguments to include when initiating pty")
 }
 
-var rootCmd = &cobra.Command{
+// RootCmd contains commands to start a dmsgpty-ui server for a dmsgpty-host
+var RootCmd = &cobra.Command{
 	Use:   cmdutil.RootCmdName(),
 	Short: "hosts a UI server for a dmsgpty-host",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -59,7 +60,7 @@ var rootCmd = &cobra.Command{
 
 // Execute executes the root command.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }
