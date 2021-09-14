@@ -218,7 +218,7 @@ func (ce *Client) Close() error {
 	if ce == nil {
 		return nil
 	}
-
+	var err error
 	ce.once.Do(func() {
 		close(ce.done)
 
@@ -235,14 +235,10 @@ func (ce *Client) Close() error {
 		ce.sessions = make(map[cipher.PubKey]*SessionCommon)
 		ce.log.Info("All sessions closed.")
 		ce.sessionsMx.Unlock()
-
 		ce.porter.CloseAll(ce.log)
+		err = ce.EntityCommon.delClientEntry(context.Background())
 	})
-	err := ce.EntityCommon.delClientEntry(context.Background())
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // Listen listens on a given dmsg port.
