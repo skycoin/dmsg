@@ -237,14 +237,6 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}
 		return c.dc.PostEntry(ctx, entry)
 	}
 
-	// Whether the client's CURRENT delegated servers is the same as what would be advertised.
-	sameSrvPKs := cipher.SamePubKeys(srvPKs, entry.Client.DelegatedServers)
-
-	// No update is needed if delegated servers has no delta, and an entry update is not due.
-	if _, due := c.updateIsDue(); sameSrvPKs && !due {
-		return nil
-	}
-
 	entry.Client.DelegatedServers = srvPKs
 	c.log.WithField("entry", entry).Debug("Updating entry.")
 	return c.dc.PutEntry(ctx, c.sk, entry)
