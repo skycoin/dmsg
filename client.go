@@ -238,7 +238,7 @@ func (ce *Client) Close() error {
 		ce.delSession(context.Background(), ce.pk)
 		ce.porter.CloseAll(ce.log)
 	})
-
+	ce.log.Info("All sessions closed.")
 	return nil
 }
 

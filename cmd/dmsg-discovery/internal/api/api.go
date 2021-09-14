@@ -148,6 +148,11 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 
 		entryTimeout := time.Duration(0) // no timeout
 
+		// Since v0.5.0 visors do not send ?timeout=true anymore so this is for older visors.
+		if timeout := r.URL.Query().Get("timeout"); timeout == "true" {
+			entryTimeout = store.DefaultTimeout
+		}
+
 		entry := new(disc.Entry)
 		if err := json.NewDecoder(r.Body).Decode(entry); err != nil {
 			a.handleError(w, r, disc.ErrUnexpected)
