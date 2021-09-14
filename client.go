@@ -119,7 +119,7 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 
 	// Init callback: on delete session.
 	c.EntityCommon.delSessionCallback = func(ctx context.Context) error {
-		err := c.EntityCommon.delClientEntry(ctx, c.done)
+		err := c.EntityCommon.updateClientEntry(ctx, c.done)
 		return err
 	}
 
@@ -233,12 +233,11 @@ func (ce *Client) Close() error {
 				Info("Session closed.")
 		}
 		ce.sessions = make(map[cipher.PubKey]*SessionCommon)
+		ce.log.Info("All sessions closed.")
 		ce.sessionsMx.Unlock()
 
-		ce.delSession(context.Background(), ce.pk)
 		ce.porter.CloseAll(ce.log)
 	})
-	ce.log.Info("All sessions closed.")
 	return nil
 }
 
