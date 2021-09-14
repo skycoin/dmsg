@@ -238,6 +238,10 @@ func (ce *Client) Close() error {
 
 		ce.porter.CloseAll(ce.log)
 	})
+	err := ce.EntityCommon.delClientEntry(context.Background())
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
