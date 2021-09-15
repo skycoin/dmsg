@@ -84,6 +84,16 @@ func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry, timeout ti
 	return nil
 }
 
+// DelEntry implements Storer DelEntry method for redisdb database
+func (r *redisStore) DelEntry(ctx context.Context, staticPubKey cipher.PubKey) error {
+	err := r.client.Del(staticPubKey.Hex()).Err()
+	if err != nil {
+		log.WithError(err).WithField("pk", staticPubKey).Errorf("Failed to delete entry from redis")
+		return err
+	}
+	return nil
+}
+
 // AvailableServers implements Storer AvailableServers method for redisdb database
 func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*disc.Entry, error) {
 	var entries []*disc.Entry
