@@ -28,6 +28,9 @@ type Storer interface {
 	// This is unsafe and does not check signature.
 	SetEntry(ctx context.Context, entry *disc.Entry, timeout time.Duration) error
 
+	// DelEntry delete's an entry.
+	DelEntry(ctx context.Context, staticPubKey cipher.PubKey) error
+
 	// AvailableServers discovers available dmsg servers.
 	AvailableServers(ctx context.Context, maxCount int) ([]*disc.Entry, error)
 

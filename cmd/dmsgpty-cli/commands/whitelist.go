@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(
+	RootCmd.AddCommand(
 		whitelistCmd,
 		whitelistAddCmd,
 		whitelistRemoveCmd)

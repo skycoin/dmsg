@@ -56,7 +56,7 @@ func TestEnv(t *testing.T) {
 		require.Len(t, env.AllClients(), 0)
 	})
 
-	// Ensure client/server entries are available and timeout when expected.
+	// Ensure server entries are available and timeout when expected.
 	// - Start discovery with entry_timeout=1s and x servers and y clients with update_interval=250ms
 	// - Start as normal. Entries should show up in discovery, and stay there.
 	t.Run("discovery_entry_timeout", func(t *testing.T) {
@@ -65,7 +65,7 @@ func TestEnv(t *testing.T) {
 			entryTimeout   = time.Millisecond * 500
 		)
 
-		// Start env, discovery, server and client.
+		// Start env, discovery, server.
 		env := NewEnv(t, timeout)
 		defer env.Shutdown()
 
@@ -75,20 +75,13 @@ func TestEnv(t *testing.T) {
 		s, err := env.NewServer(updateInterval)
 		require.NoError(t, err)
 
-		c, err := env.NewClient(&dmsg.Config{UpdateInterval: updateInterval})
-		require.NoError(t, err)
-
-		// Ensure existence of client/server entries in given time interval.
+		// Ensure existence of server entries in given time interval.
 		done := time.After(entryTimeout * 3)
 	Loop:
 		for {
 			se, err := d.Entry(context.TODO(), s.LocalPK())
 			require.NoError(t, err)
 			require.NotNil(t, se.Server)
-
-			ce, err := d.Entry(context.TODO(), c.LocalPK())
-			require.NoError(t, err)
-			require.NotNil(t, ce.Client)
 
 			select {
 			case <-done:

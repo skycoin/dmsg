@@ -32,16 +32,17 @@ var (
 )
 
 func init() {
-	sf.Init(rootCmd, "dmsg_disc", "")
+	sf.Init(RootCmd, "dmsg_disc", "")
 
-	rootCmd.Flags().StringVarP(&addr, "addr", "a", ":9090", "address to bind to")
-	rootCmd.Flags().StringVar(&redisURL, "redis", store.DefaultURL, "connections string for a redis store")
-	rootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
-	rootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
-	rootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
+	RootCmd.Flags().StringVarP(&addr, "addr", "a", ":9090", "address to bind to")
+	RootCmd.Flags().StringVar(&redisURL, "redis", store.DefaultURL, "connections string for a redis store")
+	RootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
+	RootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
+	RootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
 }
 
-var rootCmd = &cobra.Command{
+// RootCmd contains commands for dmsg-discovery
+var RootCmd = &cobra.Command{
 	Use:   "dmsg-discovery",
 	Short: "Dmsg Discovery Server for skywire",
 	Run: func(_ *cobra.Command, _ []string) {
@@ -97,7 +98,7 @@ func prepareDB(log logrus.FieldLogger) store.Storer {
 
 // Execute executes root CLI command.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -80,6 +80,7 @@ func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMod
 	r.Get("/dmsg-discovery/entry/{pk}", api.getEntry())
 	r.Post("/dmsg-discovery/entry/", api.setEntry())
 	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
+	r.Delete("/dmsg-discovery/entry", api.delEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/health", api.health())
 	r.Get("/health", api.serviceHealth)
@@ -147,6 +148,7 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 
 		entryTimeout := time.Duration(0) // no timeout
 
+		// Since v0.5.0 visors do not send ?timeout=true anymore so this is for older visors.
 		if timeout := r.URL.Query().Get("timeout"); timeout == "true" {
 			entryTimeout = store.DefaultTimeout
 		}
@@ -212,6 +214,45 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		a.writeJSON(w, r, http.StatusOK, disc.MsgEntryUpdated)
+	}
+}
+
+// delEntry deletes the entry associated with the given public key
+// URI: /dmsg-discovery/entry
+// Method: DELETE
+// Args:
+//	json serialized entry object
+func (a *API) delEntry() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		entry := new(disc.Entry)
+		if err := json.NewDecoder(r.Body).Decode(entry); err != nil {
+			a.handleError(w, r, disc.ErrUnexpected)
+			return
+		}
+
+		validateTimestamp := !a.enableLoadTesting
+		if err := entry.Validate(validateTimestamp); err != nil {
+			a.handleError(w, r, err)
+			return
+		}
+
+		if !a.enableLoadTesting {
+			if err := entry.VerifySignature(); err != nil {
+				a.handleError(w, r, disc.ErrUnauthorized)
+				return
+			}
+		}
+
+		err := a.db.DelEntry(r.Context(), entry.Static)
+
+		// If we make sure that every error is handled then we can
+		// remove the if and make the entry return the switch default
+		if err != nil {
+			a.handleError(w, r, err)
+			return
+		}
+
+		a.writeJSON(w, r, http.StatusOK, disc.MsgEntryDeleted)
 	}
 }
 

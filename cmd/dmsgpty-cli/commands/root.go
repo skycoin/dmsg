@@ -31,23 +31,23 @@ var cmdName = dmsgpty.DefaultCmd
 var cmdArgs []string
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&cli.Net, "clinet", cli.Net,
+	RootCmd.PersistentFlags().StringVar(&cli.Net, "clinet", cli.Net,
 		"network to use for dialing to dmsgpty-host")
 
-	rootCmd.PersistentFlags().StringVar(&cli.Addr, "cliaddr", cli.Addr,
+	RootCmd.PersistentFlags().StringVar(&cli.Addr, "cliaddr", cli.Addr,
 		"address to use for dialing to dmsgpty-host")
 
-	rootCmd.PersistentFlags().StringVarP(&confPath, "confpath", confPath,
+	RootCmd.PersistentFlags().StringVarP(&confPath, "confpath", confPath,
 		defaultConfPath, "config path")
 
 	cobra.OnInitialize(initConfig)
-	rootCmd.Flags().Var(&remoteAddr, "addr",
-		"remote dmsg address of format 'pk:port'. If unspecified, the pty will start locally")
+	RootCmd.Flags().Var(&remoteAddr, "addr",
+		"remote dmsg address of format 'pk:port'\n If unspecified, the pty will start locally\n")
 
-	rootCmd.Flags().StringVarP(&cmdName, "cmd", "c", cmdName,
-		"name of command to run")
+	RootCmd.Flags().StringVarP(&cmdName, "cmd", "c", cmdName,
+		"name of command to run\n")
 
-	rootCmd.Flags().StringSliceVarP(&cmdArgs, "args", "a", cmdArgs,
+	RootCmd.Flags().StringSliceVarP(&cmdArgs, "args", "a", cmdArgs,
 		"command arguments")
 
 }
@@ -100,7 +100,8 @@ func initConfig() {
 	}
 }
 
-var rootCmd = &cobra.Command{
+// RootCmd contains commands for dmsgpty-cli; which interacts with the dmsgpty-host instance (i.e. skywire-visor)
+var RootCmd = &cobra.Command{
 	Use:   "dmsgpty-cli",
 	Short: "Run commands over dmsg",
 	PreRun: func(*cobra.Command, []string) {
@@ -127,7 +128,7 @@ var rootCmd = &cobra.Command{
 
 // Execute executes the root command.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
 }
