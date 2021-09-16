@@ -57,7 +57,7 @@ lint: ## Run linters. Use make install-linters first
 	# The govet version in golangci-lint is out of date and has spurious warnings, run it separately
 	${OPTS} go vet -all ./...
 
-lint-windows-appveyor:
+lint-windows-appveyor: ## Run linters on appveyor only (windows)
 	C:\Users\appveyor\go\bin\golangci-lint run -c .golangci.yml ./...
 	# The govet version in golangci-lint is out of date and has spurious warnings, run it separately
 	${OPTS} go vet -all ./...
@@ -69,7 +69,7 @@ test: ## Run tests
 	-go clean -testcache &>/dev/null
 	${OPTS} go test ${TEST_OPTS} ./...
 
-test-windows:
+test-windows: ## Run tests
 	-go clean -testcache > NUL
 	${OPTS} go test ${TEST_OPTS} ./...
 
@@ -77,14 +77,19 @@ install-linters: ## Install linters
 	# GO111MODULE=off go get -u github.com/FiloSottile/vendorcheck
 	# For some reason this install method is not recommended, see https://github.com/golangci/golangci-lint#install
 	# However, they suggest `curl ... | bash` which we should not do
-	${OPTS} go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
-	${OPTS} go get -u golang.org/x/tools/cmd/goimports
-	${OPTS} go get -u github.com/incu6us/goimports-reviser/v2
+	${OPTS} go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	${OPTS} go install golang.org/x/tools/cmd/goimports@latest
+	${OPTS} go install github.com/incu6us/goimports-reviser@latest
+
+install-linters-windows: ## Install linters on windows
+	${OPTS} go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	${OPTS} go install golang.org/x/tools/cmd/goimports@latest
+	${OPTS} go install github.com/incu6us/goimports-reviser@latest
 
 format: ## Formats the code. Must have goimports and goimports-reviser installed (use make install-linters).
 	${OPTS} goimports -w -local ${DMSG_REPO} .
 
-format-windows:
+format-windows: ## Formats the code. Must have goimports and goimports-reviser installed (use make install-linters-windows).
 	powershell -Command .\scripts\format-windows.ps1
 
 dep: ## Sorts dependencies
@@ -97,7 +102,7 @@ install: ## Install `dmsg-discovery`, `dmsg-server`, `dmsgget`,`dmsgpty-cli`, `d
 build: ## Build binaries into ./bin
 	mkdir -p ${BIN}; go build ${BUILD_OPTS} -o ${BIN} ${CMD_DIR}/*
 	
-build-windows:
+build-windows: ## Build binaries into ./bin
 	powershell -Command new-item ${BIN} -itemtype directory -force
 	powershell 'Get-ChildItem ${CMD_DIR} | % { go build ${BUILD_OPTS} -o ${BIN} $$_.FullName }'
 
@@ -137,11 +142,14 @@ attach-pty: ## Attach local dmsgpty tmux session.
 
 stop-all: stop-pty stop-dmsg stop-db ## Stop all local tmux sessions.
 
-integration-windows-start:
+integration-windows-start: ## Start integration test on windows.
 	powershell -Command .\integration\integration.ps1 start
 
-integration-windows-stop:
+integration-windows-stop: ## Stops integration test on windows.
 	powershell -Command .\integration\integration.ps1 stop
 
-help:
+help: ## Display help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+help-windows: ## Display help for windows
+	@powershell 'Select-String -Pattern "windows+:.*## .*$$" $(MAKEFILE_LIST) | % { $$_.Line -split ":.*?## " -Join "`t:`t" } '
