@@ -5,10 +5,10 @@ environment:
   # For regular jobs, such as push, pr and etc.
   - job_name: Linux
     appveyor_build_worker_image: ubuntu1804
-  - job_name: MacOS
-    appveyor_build_worker_image: macos
-  - job_name: Windows
-    appveyor_build_worker_image: Visual Studio 2019
+  # - job_name: MacOS
+  #   appveyor_build_worker_image: macos
+  # - job_name: Windows
+  #   appveyor_build_worker_image: Visual Studio 2019
   - job_name: Deploy
     appveyor_build_worker_image: ubuntu1804
   
@@ -62,6 +62,6 @@ for:
           - master
           - develop
     before_deploy:
-      - bash ./docker/scripts/docker-push.sh -t "$TRAVIS_BRANCH" -p
+      - bash ./docker/scripts/docker-push.sh -t "$APPVEYOR_REPO_BRANCH" -p
     deploy_script:
       - echo "Complete!"
