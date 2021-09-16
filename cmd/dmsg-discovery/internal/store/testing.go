@@ -24,6 +24,12 @@ func (ms *MockStore) setEntry(staticPubKey string, payload []byte) {
 	ms.m[staticPubKey] = payload
 }
 
+func (ms *MockStore) delEntry(staticPubKey string) {
+	ms.mLock.Lock()
+	defer ms.mLock.Unlock()
+	delete(ms.m, staticPubKey)
+}
+
 func (ms *MockStore) entry(staticPubkey string) ([]byte, bool) {
 	ms.mLock.RLock()
 	defer ms.mLock.RUnlock()
@@ -84,6 +90,12 @@ func (ms *MockStore) SetEntry(ctx context.Context, entry *disc.Entry, timeout ti
 		ms.setServer(entry.Static.Hex(), payload)
 	}
 
+	return nil
+}
+
+// DelEntry implements Storer DelEntry method for MockStore
+func (ms *MockStore) DelEntry(ctx context.Context, staticPubKey cipher.PubKey) error {
+	ms.delEntry(staticPubKey.Hex())
 	return nil
 }
 

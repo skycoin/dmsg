@@ -48,9 +48,15 @@ BUILD_OPTS?=-mod=vendor "-ldflags=$(BUILDINFO)"
 BUILD_OPTS_DEPLOY?=-mod=vendor "-ldflags=$(BUILDINFO) -w -s"
 
 check: lint test ## Run linters and tests
+check-windows-appveyor: lint-windows-appveyor test ## Run linters and tests
 
 lint: ## Run linters. Use make install-linters first	
 	${OPTS} golangci-lint run -c .golangci.yml ./...
+	# The govet version in golangci-lint is out of date and has spurious warnings, run it separately
+	${OPTS} go vet -all ./...
+
+lint-windows-appveyor:
+	C:\Users\appveyor\go\bin\golangci-lint run -c .golangci.yml ./...
 	# The govet version in golangci-lint is out of date and has spurious warnings, run it separately
 	${OPTS} go vet -all ./...
 
