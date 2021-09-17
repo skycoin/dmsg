@@ -7,7 +7,7 @@ github.com/Azure/go-ansiterm/winterm
 # github.com/VictoriaMetrics/metrics v1.12.3
 ## explicit
 github.com/VictoriaMetrics/metrics
-# github.com/creack/pty v1.1.10
+# github.com/creack/pty v1.1.15
 ## explicit
 github.com/creack/pty
 # github.com/davecgh/go-spew v1.1.1

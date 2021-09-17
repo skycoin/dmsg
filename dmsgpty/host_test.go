@@ -239,11 +239,10 @@ func checkPty(t *testing.T, ptyC *PtyClient, msg string) {
 
 	if runtime.GOOS == "windows" {
 		cmd = "Write-Host"
+		require.NoError(t, ptyC.Start(cmd, msg))
 	} else {
-		cmd = "echo"
+		require.NoError(t, ptyC.Start(DefaultCmd, "-c", "echo "+msg))
 	}
-
-	require.NoError(t, ptyC.Start(cmd, msg))
 
 	readB := make([]byte, len(msg))
 	n, err := io.ReadFull(ptyC, readB)
