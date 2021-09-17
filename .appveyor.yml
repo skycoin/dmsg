@@ -47,6 +47,9 @@ for:
       - set GO111MODULE=on
       - make check-windows
 
+    build_script:
+      - make build-windows
+
   - # Deploy
     build: off
     matrix:
