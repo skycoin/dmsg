@@ -235,11 +235,8 @@ func tempWhitelist(t *testing.T, c *dmsg.Client) (Whitelist, func()) {
 }
 
 func checkPty(t *testing.T, ptyC *PtyClient, msg string) {
-	var cmd string
-
 	if runtime.GOOS == "windows" {
-		cmd = "Write-Host"
-		require.NoError(t, ptyC.Start(cmd, msg))
+		require.NoError(t, ptyC.Start(DefaultCmd, "-Command", "Write-Host "+msg))
 	} else {
 		require.NoError(t, ptyC.Start(DefaultCmd, "-c", "echo "+msg))
 	}
