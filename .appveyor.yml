@@ -39,9 +39,10 @@ for:
 
     install:
       - choco install make
-      - go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.42.0
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.42.0
       - go mod vendor
-    
+      - set PATH=C:\Users\appveyor\go\bin:C:\MinGW\bin;%PATH%
+
     before_build:
       - set GO111MODULE=on
       - make check-windows-appveyor 
