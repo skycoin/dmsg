@@ -27,7 +27,7 @@ else
 	.DEFAULT_GOAL := help
 endif
 
-TEST_OPTS:=-tags no_ci -cover -timeout=5m
+TEST_OPTS:=-v -tags no_ci -cover -timeout=5m
 
 RACE_FLAG:=-race
 GOARCH:=$(shell go env GOARCH)
@@ -71,7 +71,7 @@ test: ## Run tests
 	${OPTS} go test ${TEST_OPTS} ./...
 
 test-windows: ## Run tests
-	-go clean -testcache > NUL
+	-go clean -testcache
 	${OPTS} go test ${TEST_OPTS} ./...
 
 install-linters: ## Install linters
