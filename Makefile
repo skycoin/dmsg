@@ -4,7 +4,6 @@ else
 	SHELL := /bin/bash
 endif
 
-.DEFAULT_GOAL := help
 .PHONY : check lint install-linters dep test build
 
 VERSION := $(shell git describe --always)
@@ -18,12 +17,14 @@ ifeq ($(OS),Windows_NT)
     CMD_DIR := .\cmd
 	DATE := $(shell powershell -Command date -u ${RFC_3339})
 	OPTS?=powershell -Command setx GO111MODULE on;
+	.DEFAULT_GOAL := help
 else
 	BIN := ${PWD}/bin
 	BIN_DIR?=./bin
 	CMD_DIR := ./cmd
 	DATE := $(shell date -u ${RFC_3339})
 	OPTS?=GO111MODULE=on
+	.DEFAULT_GOAL := help
 endif
 
 TEST_OPTS:=-tags no_ci -cover -timeout=5m
@@ -152,4 +153,4 @@ help: ## Display help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 help-windows: ## Display help for windows
-	@powershell 'Select-String -Pattern "windows+:.*## .*$$" $(MAKEFILE_LIST) | % { $$_.Line -split ":.*?## " -Join "`t:`t" } '
+	@powershell 'Select-String -Pattern "windows[a-zA-Z_-]*:.*## .*$$" $(MAKEFILE_LIST) | % { $$_.Line -split ":.*?## " -Join "`t:`t" } '
