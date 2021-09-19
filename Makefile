@@ -17,7 +17,7 @@ ifeq ($(OS),Windows_NT)
     CMD_DIR := .\cmd
 	DATE := $(shell powershell -Command date -u ${RFC_3339})
 	OPTS?=powershell -Command setx GO111MODULE on;
-	.DEFAULT_GOAL := help
+	.DEFAULT_GOAL := help-windows
 else
 	BIN := ${PWD}/bin
 	BIN_DIR?=./bin
