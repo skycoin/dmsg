@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -234,13 +235,19 @@ func tempWhitelist(t *testing.T, c *dmsg.Client) (Whitelist, func()) {
 }
 
 func checkPty(t *testing.T, ptyC *PtyClient, msg string) {
-	require.NoError(t, ptyC.Start("echo", msg))
+	if runtime.GOOS == "windows" {
+		require.NoError(t, ptyC.Start(DefaultCmd, "-Command", "Write-Host "+msg))
+	} else {
+		require.NoError(t, ptyC.Start(DefaultCmd, "-c", "echo "+msg))
+	}
 
 	readB := make([]byte, len(msg))
 	n, err := io.ReadFull(ptyC, readB)
 	require.NoError(t, err)
 	require.Equal(t, len(readB), n)
-	require.Equal(t, msg, string(readB))
+	if !(runtime.GOOS == "windows") {
+		require.Equal(t, msg, string(readB))
+	}
 
 	require.NoError(t, ptyC.Stop())
 }
