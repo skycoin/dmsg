@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	defaultDiscoveryURL = "https://dmsg.discovery.skywire.skycoin.com"
+	defaultDiscoveryURL = "http://dmsgd.skywire.skycoin.com"
 	defaultPort         = ":8081"
 	defaultConfigPath   = "config.json"
 )
