@@ -121,7 +121,7 @@ type Config struct {
 	Discovery      string        `json:"discovery"`
 	LocalAddress   string        `json:"local_address"`
 	PublicAddress  string        `json:"public_address"`
-	HTTPAddress    string        `json:"health_endpoint_address,omitempty"` // defaults to 8082
+	HTTPAddress    string        `json:"health_endpoint_address,omitempty"` // defaults to :8082
 	MaxSessions    int           `json:"max_sessions"`
 	UpdateInterval time.Duration `json:"update_interval"`
 	LogLevel       string        `json:"log_level"`
@@ -134,7 +134,7 @@ func genDefaultConfig() (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	httpPort := hP + 1
+	httpPort := fmt.Sprintf(":%d", hP+1)
 
 	cfg := Config{
 		PubKey:        pk,
@@ -142,7 +142,7 @@ func genDefaultConfig() (io.ReadCloser, error) {
 		Discovery:     defaultDiscoveryURL,
 		LocalAddress:  fmt.Sprintf("localhost%s", defaultPort),
 		PublicAddress: defaultPort,
-		HTTPAddress:   fmt.Sprintf("localhost%d", httpPort),
+		HTTPAddress:   fmt.Sprintf("localhost%s", httpPort),
 		MaxSessions:   2048,
 		LogLevel:      "info",
 	}
