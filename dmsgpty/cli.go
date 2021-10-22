@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -135,7 +136,7 @@ func (cli *CLI) servePty(ctx context.Context, ptyC *PtyClient, cmd string, args 
 	}()
 
 	// Read loop.
-	if _, err := io.Copy(os.Stdout, ptyC); err != nil {
+	if _, err := io.Copy(os.Stdout, ptyC); err != nil && strings.Compare(err.Error(), EioPtyErr.Error()) != 0 {
 		cli.Log.
 			WithError(err).
 			Error("Read loop closed with error.")

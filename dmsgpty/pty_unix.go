@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"syscall"
 
 	"github.com/creack/pty"
 )
@@ -16,6 +17,11 @@ import (
 var (
 	ErrPtyAlreadyRunning = errors.New("a pty session is already running")
 	ErrPtyNotRunning     = errors.New("no active pty session")
+	EioPtyErr            = os.PathError{
+		Op:   "read",
+		Path: "/dev/ptmx",
+		Err:  syscall.Errno(0x5),
+	}
 )
 
 // Pty runs a local pty.
