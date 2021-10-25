@@ -98,6 +98,7 @@ func (s *Server) Close() error {
 		close(s.done)
 		s.wg.Wait()
 	})
+	s.delEntry(context.Background())
 	return nil
 }
 

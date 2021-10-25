@@ -236,7 +236,7 @@ func (ce *Client) Close() error {
 		ce.log.Info("All sessions closed.")
 		ce.sessionsMx.Unlock()
 		ce.porter.CloseAll(ce.log)
-		err = ce.EntityCommon.delClientEntry(context.Background())
+		err = ce.EntityCommon.delEntry(context.Background())
 	})
 	return err
 }

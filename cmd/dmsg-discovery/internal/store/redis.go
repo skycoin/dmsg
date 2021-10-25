@@ -91,6 +91,9 @@ func (r *redisStore) DelEntry(ctx context.Context, staticPubKey cipher.PubKey) e
 		log.WithError(err).WithField("pk", staticPubKey).Errorf("Failed to delete entry from redis")
 		return err
 	}
+	// Delete pubkey from servers or clients set stored
+	r.client.SRem("servers", staticPubKey.Hex())
+	r.client.SRem("clients", staticPubKey.Hex())
 	return nil
 }
 
