@@ -6,7 +6,9 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -134,6 +136,12 @@ func (cli *CLI) servePty(ctx context.Context, ptyC *PtyClient, cmd string, args 
 		defer cancel()
 		_, _ = io.Copy(ptyC, os.Stdin) //nolint:errcheck
 	}()
+
+	EioPtyErr := os.PathError{
+		Op:   "read",
+		Path: filepath.FromSlash("/dev/ptmx"),
+		Err:  syscall.Errno(0x5),
+	}
 
 	// Read loop.
 	if _, err := io.Copy(os.Stdout, ptyC); err != nil && strings.Compare(err.Error(), EioPtyErr.Error()) != 0 {
