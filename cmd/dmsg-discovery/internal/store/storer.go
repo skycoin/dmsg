@@ -36,6 +36,9 @@ type Storer interface {
 
 	// CountEntries returns numbers of servers and clients.
 	CountEntries(ctx context.Context) (int64, int64, error)
+
+	// RemoveOldServerEntries check and remove old server entries that left on redis because of unexpected server shutdown
+	RemoveOldServerEntries(ctx context.Context) error
 }
 
 // Config configures the Store object.

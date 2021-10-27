@@ -7,6 +7,7 @@ import (
 	"github.com/go-redis/redis"
 	jsoniter "github.com/json-iterator/go"
 
+	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/disc"
 )
@@ -58,6 +59,10 @@ func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry, timeout ti
 	payload, err := json.Marshal(entry)
 	if err != nil {
 		return disc.ErrUnexpected
+	}
+
+	if entry.Server != nil {
+		timeout = dmsg.DefaultUpdateInterval
 	}
 
 	err = r.client.Set(entry.Static.Hex(), payload, timeout).Err()
@@ -141,6 +146,7 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 
 	return entries, nil
 }
+
 func (r *redisStore) CountEntries(ctx context.Context) (int64, int64, error) {
 	numberOfServers, err := r.client.SCard("servers").Result()
 	if err != nil {
@@ -154,4 +160,17 @@ func (r *redisStore) CountEntries(ctx context.Context) (int64, int64, error) {
 	}
 
 	return numberOfServers, numberOfClients, nil
+}
+
+func (r *redisStore) RemoveOldServerEntries(ctx context.Context) error {
+	servers, err := r.client.SMembers("servers").Result()
+	if err != nil {
+		return err
+	}
+	for _, server := range servers {
+		if r.client.Exists(server).Val() == 0 {
+			r.client.SRem(server)
+		}
+	}
+	return nil
 }

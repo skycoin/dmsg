@@ -99,6 +99,11 @@ func (ms *MockStore) DelEntry(ctx context.Context, staticPubKey cipher.PubKey) e
 	return nil
 }
 
+// RemoveOldServerEntries implements Storer RemoveOldServerEntries method for MockStore
+func (ms *MockStore) RemoveOldServerEntries(ctx context.Context) error {
+	return nil
+}
+
 // Clear its a mock-only method to clear the mock store data
 func (ms *MockStore) Clear() {
 	ms.m = map[string][]byte{}
