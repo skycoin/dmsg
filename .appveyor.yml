@@ -25,6 +25,7 @@ for:
       - go mod vendor
 
     before_build:
+      - golangci-lint cache clean
       - make check
 
   - # Windows
