@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	"syscall"
 
@@ -19,7 +20,7 @@ var (
 	ErrPtyNotRunning     = errors.New("no active pty session")
 	EioPtyErr            = os.PathError{
 		Op:   "read",
-		Path: "/dev/ptmx",
+		Path: filepath.FromSlash("/dev/ptmx"),
 		Err:  syscall.Errno(0x5),
 	}
 )
