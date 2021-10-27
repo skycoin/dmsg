@@ -20,4 +20,4 @@ COPY --from=builder /release/dmsg-server /usr/local/bin/dmsg-server
 
 STOPSIGNAL SIGINT
 
-ENTRYPOINT [ "sh", "-c", "dmsg-server" ]
+ENTRYPOINT [ "dmsg-server" ]
