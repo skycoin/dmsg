@@ -52,9 +52,6 @@ func (c *Config) Ensure() {
 	if c.MinSessions == 0 {
 		c.MinSessions = DefaultMinSessions
 	}
-	if c.UpdateInterval == 0 {
-		c.UpdateInterval = DefaultUpdateInterval
-	}
 	if c.Callbacks == nil {
 		c.Callbacks = new(ClientCallbacks)
 	}
