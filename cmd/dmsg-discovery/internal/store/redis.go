@@ -62,7 +62,7 @@ func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry, timeout ti
 	}
 
 	if entry.Server != nil {
-		timeout = dmsg.DefaultUpdateInterval * 5
+		timeout = dmsg.DefaultUpdateInterval * 2
 	}
 
 	err = r.client.Set(entry.Static.Hex(), payload, timeout).Err()
