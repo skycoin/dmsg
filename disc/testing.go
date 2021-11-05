@@ -3,6 +3,7 @@ package disc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -45,6 +46,7 @@ func (m *mockClient) setEntry(entry Entry) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 
+	fmt.Println("the timeout of the mock client is:", m.timeout)
 	// timeout trigger
 	if m.timeout != 0 {
 		go func(pk cipher.PubKey) {
@@ -54,6 +56,12 @@ func (m *mockClient) setEntry(entry Entry) {
 			defer m.mx.Unlock()
 
 			if entry, ok := m.entries[pk]; ok {
+				if entry.Server != nil {
+					fmt.Println("cleaning up server: ", entry.Static.Hex())
+				}
+				if entry.Client != nil {
+					fmt.Println("cleaning up client: ", entry.Client)
+				}
 				if ts := time.Unix(0, entry.Timestamp); time.Since(ts) > m.timeout {
 					delete(m.entries, entry.Static)
 				}
