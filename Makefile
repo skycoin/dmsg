@@ -68,7 +68,7 @@ vendorcheck:  ## Run vendorcheck
 
 test: ## Run tests
 	-go clean -testcache &>/dev/null
-	${OPTS} go test ${TEST_OPTS} ./dmsgget/...
+	${OPTS} go test ${TEST_OPTS} ./...
 
 test-windows: ## Run tests
 	-go clean -testcache

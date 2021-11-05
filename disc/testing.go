@@ -46,10 +46,10 @@ func (m *mockClient) setEntry(entry Entry) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 
-	fmt.Println("the timeout of the mock client is:", m.timeout)
 	// timeout trigger
 	if m.timeout != 0 {
 		go func(pk cipher.PubKey) {
+			fmt.Println("setting the ")
 			<-time.After(m.timeout)
 
 			m.mx.Lock()
