@@ -327,6 +327,11 @@ func (a *API) writeJSON(w http.ResponseWriter, r *http.Request, code int, object
 }
 
 func (a *API) updateInternalState(ctx context.Context, logger logrus.FieldLogger) {
+	err := a.db.RemoveOldServerEntries(ctx)
+	if err != nil {
+		logger.WithError(err).Errorf("failed to check and remove servers entries")
+		return
+	}
 	serversCount, clientsCount, err := a.db.CountEntries(ctx)
 	if err != nil {
 		logger.WithError(err).Errorf("failed to get clients and servers count")
