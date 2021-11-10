@@ -159,5 +159,8 @@ func serveHTTPOverDmsg(ctx context.Context, a *api.API, dmsgPort uint16, log *lo
 		}
 	}()
 
+	log.WithField("dmsg_addr", lis.Addr().String()).
+		Info("Serving...")
+
 	return http.Serve(lis, a)
 }
