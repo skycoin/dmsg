@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -13,11 +14,15 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/buildinfo"
+	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/api"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/cmdutil"
+	"github.com/skycoin/dmsg/direct"
 	"github.com/skycoin/dmsg/discmetrics"
 	"github.com/skycoin/dmsg/metricsutil"
+
+	"github.com/skycoin/skycoin/src/util/logging"
 )
 
 const redisPasswordEnvName = "REDIS_PASSWORD"
@@ -29,6 +34,8 @@ var (
 	entryTimeout      time.Duration
 	testMode          bool
 	enableLoadTesting bool
+	pk                cipher.PubKey
+	sk                cipher.SecKey
 )
 
 func init() {
@@ -39,6 +46,7 @@ func init() {
 	RootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
 	RootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
 	RootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
+	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key")
 }
 
 // RootCmd contains commands for dmsg-discovery
@@ -51,6 +59,10 @@ var RootCmd = &cobra.Command{
 		}
 
 		log := sf.Logger()
+
+		if err := parse(); err != nil {
+			log.WithError(err).Fatal("No SK found.")
+		}
 
 		metricsutil.ServeHTTPMetrics(log, sf.MetricsAddr)
 
@@ -77,8 +89,20 @@ var RootCmd = &cobra.Command{
 				cancel()
 			}
 		}()
+
+		go func() {
+			if err := serveHTTPOverDmsg(ctx, a, uint16(80), log); err != nil {
+				log.Errorf("serveHttpOverDmsg: %v", err)
+				cancel()
+			}
+		}()
 		<-ctx.Done()
 	},
+}
+
+func parse() (err error) {
+	pk, err = sk.PubKey()
+	return err
 }
 
 func prepareDB(log logrus.FieldLogger) store.Storer {
@@ -115,4 +139,25 @@ func listenAndServe(addr string, handler http.Handler) error {
 		return err
 	}
 	return srv.Serve(proxyListener)
+}
+
+func serveHTTPOverDmsg(ctx context.Context, a *api.API, dmsgPort uint16, log *logging.Logger) error {
+	dmsgC, closeDmsg, err := direct.StartDmsg(ctx, log, pk, sk)
+	if err != nil {
+		return fmt.Errorf("failed to start dmsg: %w", err)
+	}
+	defer closeDmsg()
+
+	lis, err := dmsgC.Listen(dmsgPort)
+	if err != nil {
+		log.WithError(err).Fatal()
+	}
+	go func() {
+		<-ctx.Done()
+		if err := lis.Close(); err != nil {
+			log.WithError(err).Error()
+		}
+	}()
+
+	return http.Serve(lis, a)
 }

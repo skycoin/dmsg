@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"strconv"
@@ -92,7 +93,7 @@ var RootCmd = &cobra.Command{
 			MaxSessions:    conf.MaxSessions,
 			UpdateInterval: conf.UpdateInterval,
 		}
-		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery), &srvConf, m)
+		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery, http.Client{}), &srvConf, m)
 		srv.SetLogger(log)
 
 		api.SetDmsgServer(srv)
