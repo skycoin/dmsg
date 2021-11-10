@@ -28,8 +28,8 @@ type directClient struct {
 	mx      sync.RWMutex
 }
 
-// NewClient constructs a new APIClient that communicates with discovery via http.
-func NewClient(entries []*disc.Entry) APIClient {
+// NewDirectClient constructs a new APIClient that communicates with discovery via http.
+func NewDirectClient(entries []*disc.Entry) APIClient {
 	entriesMap := make(map[cipher.PubKey]*disc.Entry)
 	for _, entry := range entries {
 		entriesMap[entry.Static] = entry

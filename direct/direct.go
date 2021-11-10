@@ -9,9 +9,12 @@ import (
 	"github.com/skycoin/dmsg/cipher"
 )
 
-// StartDmsg
-func StartDmsg(ctx context.Context, log logrus.FieldLogger, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
-	dmsgC = dmsg.NewClient(pk, sk, NewClient(GetAllEntries(pk)), dmsg.DefaultConfig())
+// StartDmsg starts dmsg directly without the discovery
+func StartDmsg(ctx context.Context, log logrus.FieldLogger, remotePK, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
+	var keys cipher.PubKeys
+	keys = append(keys, pk, remotePK)
+
+	dmsgC = dmsg.NewClient(pk, sk, NewDirectClient(GetAllEntries(keys)), dmsg.DefaultConfig())
 	go dmsgC.Serve(context.Background())
 
 	stop = func() {

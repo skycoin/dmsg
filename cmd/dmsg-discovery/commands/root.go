@@ -142,7 +142,7 @@ func listenAndServe(addr string, handler http.Handler) error {
 }
 
 func serveHTTPOverDmsg(ctx context.Context, a *api.API, dmsgPort uint16, log *logging.Logger) error {
-	dmsgC, closeDmsg, err := direct.StartDmsg(ctx, log, pk, sk)
+	dmsgC, closeDmsg, err := direct.StartDmsg(ctx, log, cipher.PubKey{}, pk, sk)
 	if err != nil {
 		return fmt.Errorf("failed to start dmsg: %w", err)
 	}
