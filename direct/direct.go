@@ -32,8 +32,9 @@ type directClient struct {
 // NewClient constructs a new APIClient that communicates with discovery via http.
 func NewClient(entries []*disc.Entry) APIClient {
 	entriesMap := make(map[cipher.PubKey]*disc.Entry)
-	for i := 0; i < len(entries); i += 2 {
-		entriesMap[entries[i].Static] = entries[i+1]
+	for _, entry := range entries {
+		log.Error(entries)
+		entriesMap[entry.Static] = entry
 	}
 	log.WithField("func", "direct.NewClient").
 		WithField("entries", entriesMap).
