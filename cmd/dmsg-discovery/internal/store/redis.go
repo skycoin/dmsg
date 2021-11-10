@@ -169,7 +169,7 @@ func (r *redisStore) RemoveOldServerEntries(ctx context.Context) error {
 	}
 	for _, server := range servers {
 		if r.client.Exists(server).Val() == 0 {
-			r.client.SRem(server)
+			r.client.SRem("servers", server)
 		}
 	}
 	return nil
