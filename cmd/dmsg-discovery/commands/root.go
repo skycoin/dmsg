@@ -91,7 +91,7 @@ var RootCmd = &cobra.Command{
 
 		go func() {
 			if err := dmsghttp.ListenAndServe(ctx, pk, sk, a, dmsg.DefaultDmsgHTTPPort, log); err != nil {
-				log.Errorf("serveHttpOverDmsg: %v", err)
+				log.Errorf("dmsghttp.ListenAndServe: %v", err)
 				cancel()
 			}
 		}()
