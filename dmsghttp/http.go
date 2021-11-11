@@ -7,6 +7,7 @@ import (
 
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/direct"
+
 	"github.com/skycoin/skycoin/src/util/logging"
 )
 
