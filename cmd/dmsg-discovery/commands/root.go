@@ -2,7 +2,6 @@ package commands
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -18,11 +17,9 @@ import (
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/api"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/cmdutil"
-	"github.com/skycoin/dmsg/direct"
 	"github.com/skycoin/dmsg/discmetrics"
+	"github.com/skycoin/dmsg/dmsghttp"
 	"github.com/skycoin/dmsg/metricsutil"
-
-	"github.com/skycoin/skycoin/src/util/logging"
 )
 
 const redisPasswordEnvName = "REDIS_PASSWORD"
@@ -91,7 +88,7 @@ var RootCmd = &cobra.Command{
 		}()
 
 		go func() {
-			if err := serveHTTPOverDmsg(ctx, a, uint16(80), log); err != nil {
+			if err := dmsghttp.ListenAndServe(ctx, pk, sk, a, uint16(80), log); err != nil {
 				log.Errorf("serveHttpOverDmsg: %v", err)
 				cancel()
 			}
@@ -139,28 +136,4 @@ func listenAndServe(addr string, handler http.Handler) error {
 		return err
 	}
 	return srv.Serve(proxyListener)
-}
-
-func serveHTTPOverDmsg(ctx context.Context, a *api.API, dmsgPort uint16, log *logging.Logger) error {
-	dmsgC, closeDmsg, err := direct.StartDmsg(ctx, log, cipher.PubKey{}, pk, sk)
-	if err != nil {
-		return fmt.Errorf("failed to start dmsg: %w", err)
-	}
-	defer closeDmsg()
-
-	lis, err := dmsgC.Listen(dmsgPort)
-	if err != nil {
-		log.WithError(err).Fatal()
-	}
-	go func() {
-		<-ctx.Done()
-		if err := lis.Close(); err != nil {
-			log.WithError(err).Error()
-		}
-	}()
-
-	log.WithField("dmsg_addr", lis.Addr().String()).
-		Info("Serving...")
-
-	return http.Serve(lis, a)
 }
