@@ -45,6 +45,7 @@ func init() {
 	RootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
 	RootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
 	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key")
+	RootCmd.MarkFlagRequired("sk")
 }
 
 // RootCmd contains commands for dmsg-discovery
