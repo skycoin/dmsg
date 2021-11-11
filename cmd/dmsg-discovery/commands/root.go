@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/buildinfo"
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/api"
@@ -88,7 +89,7 @@ var RootCmd = &cobra.Command{
 		}()
 
 		go func() {
-			if err := dmsghttp.ListenAndServe(ctx, pk, sk, a, uint16(80), log); err != nil {
+			if err := dmsghttp.ListenAndServe(ctx, pk, sk, a, dmsg.DefaultDmsgHTTPPort, log); err != nil {
 				log.Errorf("serveHttpOverDmsg: %v", err)
 				cancel()
 			}
