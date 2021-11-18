@@ -110,7 +110,6 @@ func (a *API) RunBackgroundTasks(ctx context.Context, log logrus.FieldLogger) {
 // AllServers is test.
 func (a *API) AllServers(ctx context.Context, log logrus.FieldLogger) (entries []*disc.Entry, err error) {
 	entries, err = a.db.AvailableServers(ctx, maxGetAvailableServersResult)
-	log.Debug(entries)
 	if err != nil {
 		return entries, err
 	}

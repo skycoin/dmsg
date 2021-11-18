@@ -92,7 +92,10 @@ var RootCmd = &cobra.Command{
 		}()
 
 		servers := getServers(ctx, a, log)
-
+		config := &dmsg.Config{
+			MinSessions:    0, // listen on all avaliable servers
+			UpdateInterval: dmsg.DefaultUpdateInterval,
+		}
 		var keys cipher.PubKeys
 		keys = append(keys, pk)
 		dClient := direct.NewDirectClient(direct.GetAllEntries(keys, servers))
@@ -100,7 +103,7 @@ var RootCmd = &cobra.Command{
 		go updateServers(ctx, a, dClient, log)
 
 		go func() {
-			if err := dmsghttp.ListenAndServe(ctx, pk, sk, a, dClient, dmsg.DefaultDmsgHTTPPort, log); err != nil {
+			if err := dmsghttp.ListenAndServe(ctx, pk, sk, a, dClient, dmsg.DefaultDmsgHTTPPort, config, log); err != nil {
 				log.Errorf("dmsghttp.ListenAndServe: %v", err)
 				cancel()
 			}

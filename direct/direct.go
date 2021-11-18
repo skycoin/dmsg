@@ -10,9 +10,10 @@ import (
 )
 
 // StartDmsg starts dmsg directly without the discovery
-func StartDmsg(ctx context.Context, log logrus.FieldLogger, pk cipher.PubKey, sk cipher.SecKey, dClient APIClient) (dmsgC *dmsg.Client, stop func(), err error) {
+func StartDmsg(ctx context.Context, log logrus.FieldLogger, pk cipher.PubKey, sk cipher.SecKey,
+	dClient APIClient, config *dmsg.Config) (dmsgC *dmsg.Client, stop func(), err error) {
 
-	dmsgC = dmsg.NewClient(pk, sk, dClient, dmsg.DefaultConfig())
+	dmsgC = dmsg.NewClient(pk, sk, dClient, config)
 	go dmsgC.Serve(context.Background())
 
 	stop = func() {
