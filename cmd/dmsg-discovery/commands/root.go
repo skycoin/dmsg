@@ -18,6 +18,8 @@ import (
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/api"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/cmdutil"
+	"github.com/skycoin/dmsg/direct"
+	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/discmetrics"
 	"github.com/skycoin/dmsg/dmsghttp"
 	"github.com/skycoin/dmsg/metricsutil"
@@ -89,12 +91,21 @@ var RootCmd = &cobra.Command{
 			}
 		}()
 
+		servers := getServers(ctx, a, log)
+
+		var keys cipher.PubKeys
+		keys = append(keys, pk)
+		dClient := direct.NewDirectClient(direct.GetAllEntries(keys, servers))
+
+		go updateServers(ctx, a, dClient, log)
+
 		go func() {
-			if err := dmsghttp.ListenAndServe(ctx, pk, sk, a, dmsg.DefaultDmsgHTTPPort, log); err != nil {
+			if err := dmsghttp.ListenAndServe(ctx, pk, sk, a, dClient, dmsg.DefaultDmsgHTTPPort, log); err != nil {
 				log.Errorf("dmsghttp.ListenAndServe: %v", err)
 				cancel()
 			}
 		}()
+
 		<-ctx.Done()
 	},
 }
@@ -117,6 +128,47 @@ func prepareDB(log logrus.FieldLogger) store.Storer {
 	}
 
 	return db
+}
+
+func getServers(ctx context.Context, a *api.API, log logrus.FieldLogger) (servers []*disc.Entry) {
+	ticker := time.NewTicker(time.Second * 10)
+	defer ticker.Stop()
+	for {
+		servers, err := a.AllServers(ctx, log)
+		if err != nil {
+			log.WithError(err).Fatal("Error getting dmsg-servers.")
+		}
+		if len(servers) > 0 {
+			return servers
+		}
+		log.Warn("No dmsg-servers found, trying again in 1 minute.")
+		select {
+		case <-ctx.Done():
+			return []*disc.Entry{}
+		case <-ticker.C:
+			getServers(ctx, a, log)
+		}
+	}
+}
+
+func updateServers(ctx context.Context, a *api.API, dClient direct.APIClient, log logrus.FieldLogger) {
+	ticker := time.NewTicker(time.Second * 10)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			servers, err := a.AllServers(ctx, log)
+			if err != nil {
+				log.WithError(err).Error("Error getting dmsg-servers.")
+				break
+			}
+			for _, server := range servers {
+				dClient.PostEntry(ctx, server)
+			}
+		}
+	}
 }
 
 // Execute executes root CLI command.

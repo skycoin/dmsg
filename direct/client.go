@@ -57,7 +57,30 @@ func (c *directClient) Entry(ctx context.Context, publicKey cipher.PubKey) (*dis
 func (c *directClient) PostEntry(ctx context.Context, e *disc.Entry) error {
 	c.mx.Lock()
 	defer c.mx.Unlock()
-	c.entries[e.Static] = e
+	var servers cipher.PubKeys
+
+	for _, entry := range c.entries {
+		if entry.Server != nil {
+			servers = append(servers, entry.Static)
+		}
+	}
+
+	if e.Client != nil {
+		e.Client.DelegatedServers = servers
+		c.entries[e.Static] = e
+	}
+
+	if e.Server != nil {
+		servers = append(servers, e.Static)
+		c.entries[e.Static] = e
+	}
+
+	for _, entry := range c.entries {
+		if entry.Client != nil {
+			entry.Client.DelegatedServers = servers
+		}
+	}
+
 	return nil
 }
 

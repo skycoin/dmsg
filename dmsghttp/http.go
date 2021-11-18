@@ -12,8 +12,8 @@ import (
 )
 
 // ListenAndServe serves http over dmsg
-func ListenAndServe(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, a http.Handler, dmsgPort uint16, log *logging.Logger) error {
-	dmsgC, closeDmsg, err := direct.StartDmsg(ctx, log, cipher.PubKey{}, pk, sk)
+func ListenAndServe(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, a http.Handler, dClient direct.APIClient, dmsgPort uint16, log *logging.Logger) error {
+	dmsgC, closeDmsg, err := direct.StartDmsg(ctx, log, pk, sk, dClient)
 	if err != nil {
 		return fmt.Errorf("failed to start dmsg: %w", err)
 	}
@@ -30,7 +30,7 @@ func ListenAndServe(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, a h
 		}
 	}()
 
-	log.WithField("dmsg_addr", lis.Addr().String()).
+	log.WithField("dmsg_addr", fmt.Sprintf("dmsg://%v", lis.Addr().String())).
 		Info("Serving...")
 
 	return http.Serve(lis, a)
