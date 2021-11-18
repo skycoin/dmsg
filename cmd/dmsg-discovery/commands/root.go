@@ -93,7 +93,7 @@ var RootCmd = &cobra.Command{
 
 		servers := getServers(ctx, a, log)
 		config := &dmsg.Config{
-			MinSessions:    0, // listen on all avaliable servers
+			MinSessions:    0, // listen on all available servers
 			UpdateInterval: dmsg.DefaultUpdateInterval,
 		}
 		var keys cipher.PubKeys
@@ -168,7 +168,7 @@ func updateServers(ctx context.Context, a *api.API, dClient direct.APIClient, lo
 				break
 			}
 			for _, server := range servers {
-				dClient.PostEntry(ctx, server)
+				dClient.PostEntry(ctx, server) //nolint
 			}
 		}
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/skycoin/dmsg/direct"
 	"github.com/skycoin/dmsg/disc"
+
 	"github.com/skycoin/skycoin/src/util/logging"
 )
 
@@ -49,7 +50,7 @@ func UpdateServers(ctx context.Context, dClient direct.APIClient, dmsgDisc strin
 				break
 			}
 			for _, server := range servers {
-				dClient.PostEntry(ctx, server)
+				dClient.PostEntry(ctx, server) //nolint
 			}
 		}
 	}
