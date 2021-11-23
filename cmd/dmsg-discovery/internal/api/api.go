@@ -107,7 +107,7 @@ func (a *API) RunBackgroundTasks(ctx context.Context, log logrus.FieldLogger) {
 	}
 }
 
-// AllServers is test.
+// AllServers is used to get all the available servers registered to the dmsg-discovery.
 func (a *API) AllServers(ctx context.Context, log logrus.FieldLogger) (entries []*disc.Entry, err error) {
 	entries, err = a.db.AvailableServers(ctx, maxGetAvailableServersResult)
 	if err != nil {

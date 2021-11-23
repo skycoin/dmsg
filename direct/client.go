@@ -42,11 +42,11 @@ func NewDirectClient(entries []*disc.Entry) APIClient {
 }
 
 // Entry retrieves an entry associated with the given public key.
-func (c *directClient) Entry(ctx context.Context, publicKey cipher.PubKey) (*disc.Entry, error) {
+func (c *directClient) Entry(ctx context.Context, pubKey cipher.PubKey) (*disc.Entry, error) {
 	c.mx.RLock()
 	defer c.mx.RUnlock()
 	for _, entry := range c.entries {
-		if entry.Static == publicKey {
+		if entry.Static == pubKey {
 			return entry, nil
 		}
 	}

@@ -189,7 +189,7 @@ func (ce *Client) Serve(ctx context.Context) {
 				time.Sleep(serveWait)
 			}
 		}
-		// We dail all servers and wait for error or done signal.
+		// We dial all servers and wait for error or done signal.
 		select {
 		case <-ce.done:
 			return

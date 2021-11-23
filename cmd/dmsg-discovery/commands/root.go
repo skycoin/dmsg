@@ -61,8 +61,10 @@ var RootCmd = &cobra.Command{
 
 		log := sf.Logger()
 
-		if err := parse(); err != nil {
-			log.WithError(err).Fatal("No SK found.")
+		var err error
+
+		if pk, err = sk.PubKey(); err != nil {
+			log.WithError(err).Fatal("No SecKey found.")
 		}
 
 		metricsutil.ServeHTTPMetrics(log, sf.MetricsAddr)
@@ -85,7 +87,7 @@ var RootCmd = &cobra.Command{
 		go a.RunBackgroundTasks(ctx, log)
 		log.WithField("addr", addr).Info("Serving discovery API...")
 		go func() {
-			if err := listenAndServe(addr, a); err != nil {
+			if err = listenAndServe(addr, a); err != nil {
 				log.Errorf("ListenAndServe: %v", err)
 				cancel()
 			}
@@ -103,7 +105,7 @@ var RootCmd = &cobra.Command{
 		go updateServers(ctx, a, dClient, log)
 
 		go func() {
-			if err := dmsghttp.ListenAndServe(ctx, pk, sk, a, dClient, dmsg.DefaultDmsgHTTPPort, config, log); err != nil {
+			if err = dmsghttp.ListenAndServe(ctx, pk, sk, a, dClient, dmsg.DefaultDmsgHTTPPort, config, log); err != nil {
 				log.Errorf("dmsghttp.ListenAndServe: %v", err)
 				cancel()
 			}
@@ -111,11 +113,6 @@ var RootCmd = &cobra.Command{
 
 		<-ctx.Done()
 	},
-}
-
-func parse() (err error) {
-	pk, err = sk.PubKey()
-	return err
 }
 
 func prepareDB(log logrus.FieldLogger) store.Storer {
@@ -134,7 +131,7 @@ func prepareDB(log logrus.FieldLogger) store.Storer {
 }
 
 func getServers(ctx context.Context, a *api.API, log logrus.FieldLogger) (servers []*disc.Entry) {
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	for {
 		servers, err := a.AllServers(ctx, log)
