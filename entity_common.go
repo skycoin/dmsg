@@ -12,6 +12,7 @@ import (
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/netutil"
+
 	"github.com/skycoin/skycoin/src/util/logging"
 )
 
