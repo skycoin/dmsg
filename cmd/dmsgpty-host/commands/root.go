@@ -5,6 +5,7 @@ import (
 	"fmt"
 	stdlog "log"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -289,7 +290,7 @@ var RootCmd = &cobra.Command{
 		}
 
 		// Prepare and serve dmsg client and wait until ready.
-		dmsgC := dmsg.NewClient(pk, sk, disc.NewHTTP(conf.DmsgDisc), &dmsg.Config{
+		dmsgC := dmsg.NewClient(pk, sk, disc.NewHTTP(conf.DmsgDisc, http.Client{}), &dmsg.Config{
 			MinSessions: conf.DmsgSessions,
 		})
 		go dmsgC.Serve(context.Background())
