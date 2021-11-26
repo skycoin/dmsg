@@ -44,7 +44,7 @@ func main() {
 		log.WithError(err).Fatal("Invalid CLI args.")
 	}
 
-	c := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, nil), dmsg.DefaultConfig())
+	c := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, http.Client{}, nil), dmsg.DefaultConfig())
 	defer func() {
 		if err := c.Close(); err != nil {
 			log.WithError(err).Error()

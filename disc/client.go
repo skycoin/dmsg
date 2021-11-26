@@ -39,15 +39,15 @@ type httpClient struct {
 }
 
 // NewHTTP constructs a new APIClient that communicates with discovery via http.
-func NewHTTP(address string, logger *logging.Logger) APIClient {
+func NewHTTP(address string, client http.Client, logger *logging.Logger) APIClient {
 	if logger == nil {
 		logger = log
 	}
-	logger.WithField("func", "disc.NewHTTP").
+	log.WithField("func", "disc.NewHTTP").
 		WithField("addr", address).
 		Debug("Created HTTP client.")
 	return &httpClient{
-		client:  http.Client{},
+		client:  client,
 		address: address,
 		log:     logger,
 	}
