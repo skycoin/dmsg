@@ -32,14 +32,14 @@ type APIClient interface {
 // HTTPClient represents a client that communicates with a dmsg-discovery service through http, it
 // implements APIClient
 type httpClient struct {
-	client    http.Client
+	client    *http.Client
 	address   string
 	updateMux sync.Mutex // for thread-safe sequence incrementing
 	log       *logging.Logger
 }
 
 // NewHTTP constructs a new APIClient that communicates with discovery via http.
-func NewHTTP(address string, client http.Client, logger *logging.Logger) APIClient {
+func NewHTTP(address string, client *http.Client, logger *logging.Logger) APIClient {
 	if logger == nil {
 		logger = log
 	}
