@@ -7,11 +7,12 @@ import (
 
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/disc"
 )
 
 // StartDmsg starts dmsg directly without the discovery
 func StartDmsg(ctx context.Context, log logrus.FieldLogger, pk cipher.PubKey, sk cipher.SecKey,
-	dClient APIClient, config *dmsg.Config) (dmsgC *dmsg.Client, stop func(), err error) {
+	dClient disc.APIClient, config *dmsg.Config) (dmsgC *dmsg.Client, stop func(), err error) {
 
 	dmsgC = dmsg.NewClient(pk, sk, dClient, config)
 	go dmsgC.Serve(context.Background())

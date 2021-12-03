@@ -151,7 +151,7 @@ func getServers(ctx context.Context, a *api.API, log logrus.FieldLogger) (server
 	}
 }
 
-func updateServers(ctx context.Context, a *api.API, dClient direct.APIClient, log logrus.FieldLogger) {
+func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, log logrus.FieldLogger) {
 	ticker := time.NewTicker(time.Second * 10)
 	defer ticker.Stop()
 	for {

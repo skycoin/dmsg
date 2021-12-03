@@ -8,12 +8,13 @@ import (
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/direct"
+	"github.com/skycoin/dmsg/disc"
 
 	"github.com/skycoin/skycoin/src/util/logging"
 )
 
 // ListenAndServe serves http over dmsg
-func ListenAndServe(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, a http.Handler, dClient direct.APIClient, dmsgPort uint16,
+func ListenAndServe(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, a http.Handler, dClient disc.APIClient, dmsgPort uint16,
 	config *dmsg.Config, log *logging.Logger) error {
 	dmsgC, closeDmsg, err := direct.StartDmsg(ctx, log, pk, sk, dClient, config)
 	if err != nil {
