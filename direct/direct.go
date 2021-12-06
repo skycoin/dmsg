@@ -6,6 +6,7 @@ import (
 
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
+
 	"github.com/skycoin/skycoin/src/util/logging"
 )
 

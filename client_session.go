@@ -7,6 +7,7 @@ import (
 
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/netutil"
+
 	"github.com/skycoin/yamux"
 )
 
