@@ -16,8 +16,6 @@ import (
 	"github.com/skycoin/dmsg/cipher"
 )
 
-var log = logging.MustGetLogger("disc")
-
 var json = jsoniter.ConfigFastest
 
 // APIClient implements dmsg discovery API client.
@@ -39,17 +37,14 @@ type httpClient struct {
 }
 
 // NewHTTP constructs a new APIClient that communicates with discovery via http.
-func NewHTTP(address string, client *http.Client, logger *logging.Logger) APIClient {
-	if logger == nil {
-		logger = log
-	}
+func NewHTTP(address string, client *http.Client, log *logging.Logger) APIClient {
 	log.WithField("func", "disc.NewHTTP").
 		WithField("addr", address).
 		Debug("Created HTTP client.")
 	return &httpClient{
 		client:  client,
 		address: address,
-		log:     logger,
+		log:     log,
 	}
 }
 
