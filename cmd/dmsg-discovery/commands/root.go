@@ -102,10 +102,17 @@ var RootCmd = &cobra.Command{
 		keys = append(keys, pk)
 		dClient := direct.NewDirectClient(direct.GetAllEntries(keys, servers))
 
-		go updateServers(ctx, a, dClient, log)
+		dmsgDC, closeDmsgDC, err := direct.StartDmsg(ctx, log, pk, sk, dClient, config)
+		if err != nil {
+			log.WithError(err).Fatal("failed to start direct dmsg client.")
+		}
+
+		defer closeDmsgDC()
+
+		go updateServers(ctx, a, dClient, dmsgDC, log)
 
 		go func() {
-			if err = dmsghttp.ListenAndServe(ctx, pk, sk, a, dClient, dmsg.DefaultDmsgHTTPPort, config, log); err != nil {
+			if err = dmsghttp.ListenAndServe(ctx, pk, sk, a, dClient, dmsg.DefaultDmsgHTTPPort, config, dmsgDC, log); err != nil {
 				log.Errorf("dmsghttp.ListenAndServe: %v", err)
 				cancel()
 			}
@@ -151,7 +158,7 @@ func getServers(ctx context.Context, a *api.API, log logrus.FieldLogger) (server
 	}
 }
 
-func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, log logrus.FieldLogger) {
+func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, dmsgC *dmsg.Client, log logrus.FieldLogger) {
 	ticker := time.NewTicker(time.Second * 10)
 	defer ticker.Stop()
 	for {
@@ -165,7 +172,8 @@ func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, log 
 				break
 			}
 			for _, server := range servers {
-				dClient.PostEntry(ctx, server) //nolint
+				dClient.PostEntry(ctx, server)   //nolint
+				dmsgC.EnsureSession(ctx, server) //nolint
 			}
 		}
 	}
