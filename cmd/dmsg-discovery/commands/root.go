@@ -192,10 +192,10 @@ func listenAndServe(addr string, handler http.Handler) error {
 		addr = ":http"
 	}
 	ln, err := net.Listen("tcp", addr)
-	proxyListener := &proxyproto.Listener{Listener: ln}
-	defer proxyListener.Close() // nolint:errcheck
 	if err != nil {
 		return err
 	}
+	proxyListener := &proxyproto.Listener{Listener: ln}
+	defer proxyListener.Close() // nolint:errcheck
 	return srv.Serve(proxyListener)
 }
