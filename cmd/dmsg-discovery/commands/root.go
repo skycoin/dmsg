@@ -100,7 +100,7 @@ var RootCmd = &cobra.Command{
 		}
 		var keys cipher.PubKeys
 		keys = append(keys, pk)
-		dClient := direct.NewDirectClient(direct.GetAllEntries(keys, servers))
+		dClient := direct.NewClient(direct.GetAllEntries(keys, servers), log)
 
 		go updateServers(ctx, a, dClient, log)
 
