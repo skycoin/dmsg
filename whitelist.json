@@ -1,0 +1,7 @@
+{
+    "whitelistPKs" : [
+        "abc",
+        "def",
+        "ghi"
+    ]
+}
