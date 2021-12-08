@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -24,6 +25,8 @@ import (
 var log = logging.MustGetLogger("dmsg-discovery")
 
 var json = jsoniter.ConfigFastest
+
+var WhitelistPKs = make(map[string]bool)
 
 const maxGetAvailableServersResult = 512
 
@@ -146,6 +149,7 @@ func (a *API) getEntry() func(w http.ResponseWriter, r *http.Request) {
 // Method: GET
 func (a *API) allEntries() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println(WhitelistPKs)
 		entries, err := a.db.AllEntries(r.Context())
 		if err != nil {
 			a.handleError(w, r, err)
