@@ -41,7 +41,7 @@ type Storer interface {
 	RemoveOldServerEntries(ctx context.Context) error
 
 	// AllEntries returns all clients PKs.
-	AllEntries(ctx context.Context) ([]string, error)
+	AllEntries(ctx context.Context) (map[string][]string, error)
 }
 
 // Config configures the Store object.
