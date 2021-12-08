@@ -47,7 +47,6 @@ func init() {
 	RootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
 	RootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
 	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key")
-	RootCmd.MarkFlagRequired("sk") //nolint
 }
 
 // RootCmd contains commands for dmsg-discovery
@@ -62,9 +61,8 @@ var RootCmd = &cobra.Command{
 		log := sf.Logger()
 
 		var err error
-
 		if pk, err = sk.PubKey(); err != nil {
-			log.WithError(err).Fatal("No SecKey found.")
+			log.WithError(err).Warn("No SecKey found. Skipping serving on dmsghttp.")
 		}
 
 		metricsutil.ServeHTTPMetrics(log, sf.MetricsAddr)
@@ -93,30 +91,32 @@ var RootCmd = &cobra.Command{
 			}
 		}()
 
-		servers := getServers(ctx, a, log)
-		config := &dmsg.Config{
-			MinSessions:    0, // listen on all available servers
-			UpdateInterval: dmsg.DefaultUpdateInterval,
-		}
-		var keys cipher.PubKeys
-		keys = append(keys, pk)
-		dClient := direct.NewDirectClient(direct.GetAllEntries(keys, servers))
-
-		dmsgDC, closeDmsgDC, err := direct.StartDmsg(ctx, log, pk, sk, dClient, config)
-		if err != nil {
-			log.WithError(err).Fatal("failed to start direct dmsg client.")
-		}
-
-		defer closeDmsgDC()
-
-		go updateServers(ctx, a, dClient, dmsgDC, log)
-
-		go func() {
-			if err = dmsghttp.ListenAndServe(ctx, pk, sk, a, dClient, dmsg.DefaultDmsgHTTPPort, config, dmsgDC, log); err != nil {
-				log.Errorf("dmsghttp.ListenAndServe: %v", err)
-				cancel()
+		if !pk.Null() {
+			servers := getServers(ctx, a, log)
+			config := &dmsg.Config{
+				MinSessions:    0, // listen on all available servers
+				UpdateInterval: dmsg.DefaultUpdateInterval,
 			}
-		}()
+			var keys cipher.PubKeys
+			keys = append(keys, pk)
+			dClient := direct.NewDirectClient(direct.GetAllEntries(keys, servers))
+
+			dmsgDC, closeDmsgDC, err := direct.StartDmsg(ctx, log, pk, sk, dClient, config)
+			if err != nil {
+				log.WithError(err).Fatal("failed to start direct dmsg client.")
+			}
+
+			defer closeDmsgDC()
+
+			go updateServers(ctx, a, dClient, dmsgDC, log)
+
+			go func() {
+				if err = dmsghttp.ListenAndServe(ctx, pk, sk, a, dClient, dmsg.DefaultDmsgHTTPPort, config, dmsgDC, log); err != nil {
+					log.Errorf("dmsghttp.ListenAndServe: %v", err)
+					cancel()
+				}
+			}()
+		}
 
 		<-ctx.Done()
 	},
