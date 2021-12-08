@@ -4,13 +4,11 @@ import (
 	"context"
 	"sync"
 
-	"github.com/skycoin/skycoin/src/util/logging"
-
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/disc"
-)
 
-var log = logging.MustGetLogger("direct")
+	"github.com/skycoin/skycoin/src/util/logging"
+)
 
 // directClient represents a client that doesnot communicates with a dmsg-discovery, instead directly gets the dmsg-server info via the user or is hardcoded, it
 // implements APIClient
@@ -19,8 +17,8 @@ type directClient struct {
 	mx      sync.RWMutex
 }
 
-// NewDirectClient constructs a new APIClient that communicates with discovery via http.
-func NewDirectClient(entries []*disc.Entry) disc.APIClient {
+// NewClient constructs a new APIClient that communicates with discovery via http.
+func NewClient(entries []*disc.Entry, log *logging.Logger) disc.APIClient {
 	entriesMap := make(map[cipher.PubKey]*disc.Entry)
 	for _, entry := range entries {
 		entriesMap[entry.Static] = entry

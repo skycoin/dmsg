@@ -90,7 +90,6 @@ var RootCmd = &cobra.Command{
 				cancel()
 			}
 		}()
-
 		if !pk.Null() {
 			servers := getServers(ctx, a, log)
 			config := &dmsg.Config{
@@ -99,7 +98,7 @@ var RootCmd = &cobra.Command{
 			}
 			var keys cipher.PubKeys
 			keys = append(keys, pk)
-			dClient := direct.NewDirectClient(direct.GetAllEntries(keys, servers))
+			dClient := direct.NewClient(direct.GetAllEntries(keys, servers), log)
 
 			dmsgDC, closeDmsgDC, err := direct.StartDmsg(ctx, log, pk, sk, dClient, config)
 			if err != nil {
