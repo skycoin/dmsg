@@ -85,6 +85,7 @@ func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMod
 	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
 	r.Delete("/dmsg-discovery/entry", api.delEntry())
 	r.Get("/dmsg-discovery/entries", api.allEntries())
+	r.Delete("/dmsg-discovery/deregister/{pk}", api.deregisterEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/health", api.health())
 	r.Get("/health", api.serviceHealth)
@@ -155,6 +156,33 @@ func (a *API) allEntries() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.writeJSON(w, r, http.StatusOK, entries)
+	}
+}
+
+// deregisterEntry delete entries of a PK from by network monitor request
+// URI: /dmsg-discovery/deregister/:pk
+// Method: DELETE
+func (a *API) deregisterEntry() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		staticPK := cipher.PubKey{}
+		if err := staticPK.UnmarshalText([]byte(chi.URLParam(r, "pk"))); err != nil {
+			a.handleError(w, r, disc.ErrBadInput)
+			return
+		}
+
+		requestPK := r.Header.Get("PK")
+		if _, ok := WhitelistPKs[requestPK]; !ok {
+			a.handleError(w, r, disc.ErrUnauthorizedNetworkMonitor)
+			return
+		}
+
+		err := a.db.DelEntry(r.Context(), staticPK)
+		if err != nil {
+			a.handleError(w, r, err)
+			return
+		}
+
+		a.writeJSON(w, r, http.StatusOK, nil)
 	}
 }
 
