@@ -45,7 +45,7 @@ func init() {
 
 	RootCmd.Flags().StringVarP(&addr, "addr", "a", ":9090", "address to bind to")
 	RootCmd.Flags().StringVar(&redisURL, "redis", store.DefaultURL, "connections string for a redis store")
-	RootCmd.Flags().StringVar(&whitelistPath, "whitelist", "", "path of whitelist PK for network monitor derigstration")
+	RootCmd.Flags().StringVar(&whitelistPath, "whitelist", "", "path of whitelisted keys list for network monitor derigstration")
 	RootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
 	RootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
 	RootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")

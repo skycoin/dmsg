@@ -175,11 +175,10 @@ func (r *redisStore) RemoveOldServerEntries(ctx context.Context) error {
 	return nil
 }
 
-func (r *redisStore) AllEntries(ctx context.Context) (map[string][]string, error) {
+func (r *redisStore) AllEntries(ctx context.Context) ([]string, error) {
 	clients, err := r.client.SMembers("clients").Result()
 	if err != nil {
 		return nil, err
 	}
-	response := map[string][]string{"dsmg_clients": clients}
-	return response, err
+	return clients, err
 }
