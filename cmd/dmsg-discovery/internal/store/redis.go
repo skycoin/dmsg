@@ -174,3 +174,11 @@ func (r *redisStore) RemoveOldServerEntries(ctx context.Context) error {
 	}
 	return nil
 }
+
+func (r *redisStore) AllEntries(ctx context.Context) ([]string, error) {
+	clients, err := r.client.SMembers("clients").Result()
+	if err != nil {
+		return nil, err
+	}
+	return clients, err
+}

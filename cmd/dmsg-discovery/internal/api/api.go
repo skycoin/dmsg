@@ -81,6 +81,7 @@ func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMod
 	r.Post("/dmsg-discovery/entry/", api.setEntry())
 	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
 	r.Delete("/dmsg-discovery/entry", api.delEntry())
+	r.Get("/dmsg-discovery/entries", api.allEntries())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/health", api.health())
 	r.Get("/health", api.serviceHealth)
@@ -137,6 +138,20 @@ func (a *API) getEntry() func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		a.writeJSON(w, r, http.StatusOK, entry)
+	}
+}
+
+// allEntries returns all client entries connected to dmsg
+// URI: /dmsg-discovery/entries
+// Method: GET
+func (a *API) allEntries() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		entries, err := a.db.AllEntries(r.Context())
+		if err != nil {
+			a.handleError(w, r, err)
+			return
+		}
+		a.writeJSON(w, r, http.StatusOK, entries)
 	}
 }
 

@@ -172,3 +172,25 @@ func arrayFromMap(m map[string][]byte) [][]byte {
 
 	return entries
 }
+
+// AllEntries implements Storer CountEntries method for MockStore
+func (ms *MockStore) AllEntries(ctx context.Context) ([]string, error) {
+	entries := []string{}
+
+	ms.mLock.RLock()
+	defer ms.mLock.RUnlock()
+
+	clients := arrayFromMap(ms.m)
+	for _, entryString := range clients {
+		var e disc.Entry
+
+		err := json.Unmarshal(entryString, &e)
+		if err != nil {
+			return nil, disc.ErrUnexpected
+		}
+
+		entries = append(entries, e.String())
+	}
+
+	return entries, nil
+}

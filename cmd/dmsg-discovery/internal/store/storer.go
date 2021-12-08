@@ -39,6 +39,9 @@ type Storer interface {
 
 	// RemoveOldServerEntries check and remove old server entries that left on redis because of unexpected server shutdown
 	RemoveOldServerEntries(ctx context.Context) error
+
+	// AllEntries returns all clients PKs.
+	AllEntries(ctx context.Context) ([]string, error)
 }
 
 // Config configures the Store object.
