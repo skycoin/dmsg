@@ -10,15 +10,6 @@ import (
 	"github.com/skycoin/skycoin/src/util/logging"
 )
 
-// APIClient implements dmsg discovery API client.
-type APIClient interface {
-	Entry(context.Context, cipher.PubKey) (*disc.Entry, error)
-	PostEntry(context.Context, *disc.Entry) error
-	PutEntry(context.Context, cipher.SecKey, *disc.Entry) error
-	DelEntry(context.Context, *disc.Entry) error
-	AvailableServers(context.Context) ([]*disc.Entry, error)
-}
-
 // directClient represents a client that doesnot communicates with a dmsg-discovery, instead directly gets the dmsg-server info via the user or is hardcoded, it
 // implements APIClient
 type directClient struct {
@@ -27,7 +18,7 @@ type directClient struct {
 }
 
 // NewClient constructs a new APIClient that communicates with discovery via http.
-func NewClient(entries []*disc.Entry, log *logging.Logger) APIClient {
+func NewClient(entries []*disc.Entry, log *logging.Logger) disc.APIClient {
 	entriesMap := make(map[cipher.PubKey]*disc.Entry)
 	for _, entry := range entries {
 		entriesMap[entry.Static] = entry
