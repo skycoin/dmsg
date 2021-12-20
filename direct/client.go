@@ -43,18 +43,18 @@ func (c *directClient) Entry(ctx context.Context, pubKey cipher.PubKey) (*disc.E
 }
 
 // PostEntry adds a new Entry.
-func (c *directClient) PostEntry(ctx context.Context, e *disc.Entry) error {
+func (c *directClient) PostEntry(ctx context.Context, entry *disc.Entry) error {
 	c.mx.Lock()
 	defer c.mx.Unlock()
-	c.entries[e.Static] = e
+	c.entries[entry.Static] = entry
 	return nil
 }
 
 // DelEntry deletes an Entry.
-func (c *directClient) DelEntry(ctx context.Context, e *disc.Entry) error {
+func (c *directClient) DelEntry(ctx context.Context, entry *disc.Entry) error {
 	c.mx.Lock()
 	defer c.mx.Unlock()
-	delete(c.entries, e.Static)
+	delete(c.entries, entry.Static)
 	return nil
 }
 
