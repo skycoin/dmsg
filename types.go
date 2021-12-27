@@ -220,10 +220,11 @@ func (req StreamRequest) Verify(lastTimestamp int64) error {
 
 // StreamResponse is the response of a StreamRequest.
 type StreamResponse struct {
-	ReqHash  cipher.SHA256 // Hash of associated dial request.
-	Accepted bool          // Whether the request is accepted.
-	ErrCode  errorCode     // Check if not accepted.
-	NoiseMsg []byte
+	ReqHash    cipher.SHA256 // Hash of associated dial request.
+	Accepted   bool          // Whether the request is accepted.
+	RemoteAddr bool          // Whether the request is accepted.
+	ErrCode    errorCode     // Check if not accepted.
+	NoiseMsg   []byte
 
 	raw SignedObject `enc:"-"` // back reference.
 }

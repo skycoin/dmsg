@@ -120,9 +120,10 @@ func (s *Stream) writeResponse(reqHash cipher.SHA256) error {
 		return err
 	}
 	resp := StreamResponse{
-		ReqHash:  reqHash,
-		Accepted: true,
-		NoiseMsg: nsMsg,
+		ReqHash:    reqHash,
+		Accepted:   true,
+		RemoteAddr: true,
+		NoiseMsg:   nsMsg,
 	}
 	obj := MakeSignedStreamResponse(&resp, s.ses.localSK())
 
