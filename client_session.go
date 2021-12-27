@@ -125,6 +125,11 @@ func (cs *ClientSession) acceptStream() (dStr *Stream, err error) {
 		return nil, err
 	}
 
+	// Read remote addr sent by the dmsg server
+	if err = dStr.readRemoteAddr(); err != nil {
+		return nil, err
+	}
+
 	// Clear deadline.
 	if err = dStr.SetDeadline(time.Time{}); err != nil {
 		return nil, err

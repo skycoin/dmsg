@@ -146,11 +146,21 @@ func (ss *ServerSession) forwardRequest(req StreamRequest) (yStr *yamux.Stream, 
 	if respObj, err = ss.readObject(yStr); err != nil {
 		return nil, nil, err
 	}
+
 	var resp StreamResponse
 	if resp, err = respObj.ObtainStreamResponse(); err != nil {
 		return nil, nil, err
 	}
 	if err = resp.Verify(req); err != nil {
+		return nil, nil, err
+	}
+
+	// send remote addr of the src to the dst
+	rAddr := RemoteAddr{
+		Addr: ss.SessionCommon.RemoteTCPAddr().String(),
+	}
+	obj := MakeSignedRemoteAddr(&rAddr, ss.entity.LocalSK())
+	if err = ss.writeObject(yStr, obj); err != nil {
 		return nil, nil, err
 	}
 	return yStr, respObj, nil

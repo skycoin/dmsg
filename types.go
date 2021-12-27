@@ -117,6 +117,15 @@ func MakeSignedStreamResponse(resp *StreamResponse, sk cipher.SecKey) SignedObje
 	return signedObj
 }
 
+// MakeSignedRemoteAddr encodes and signs a StreamRequest into a SignedObject format.
+func MakeSignedRemoteAddr(rAddr *RemoteAddr, sk cipher.SecKey) SignedObject {
+	obj := encodeGob(rAddr)
+	sig := SignBytes(obj, sk)
+	signedObj := append(sig[:], obj...)
+	rAddr.raw = signedObj
+	return signedObj
+}
+
 // Valid returns true if the SignedObject has a valid length.
 func (so SignedObject) Valid() bool {
 	return len(so) > sigLen
@@ -159,6 +168,17 @@ func (so SignedObject) ObtainStreamResponse() (StreamResponse, error) {
 	err := decodeGob(&resp, so[sigLen:])
 	resp.raw = so
 	return resp, err
+}
+
+// ObtainRemoteAddr obtains a ForwardReq from the encoded object bytes.
+func (so SignedObject) ObtainRemoteAddr() (RemoteAddr, error) {
+	if !so.Valid() {
+		return RemoteAddr{}, ErrSignedObjectInvalid
+	}
+	var rAddr RemoteAddr
+	err := decodeGob(&rAddr, so[sigLen:])
+	rAddr.raw = so
+	return rAddr, err
 }
 
 // StreamRequest represents a stream dial request object.
@@ -227,6 +247,27 @@ func (resp StreamResponse) Verify(req StreamRequest) error {
 			err = ErrDialRespNotAccepted
 		}
 		return err
+	}
+
+	return nil
+}
+
+// RemoteAddr is the response of a StreamRequest.
+type RemoteAddr struct {
+	Addr string // Addr of the source
+
+	raw SignedObject `enc:"-"` // back reference.
+}
+
+// Verify verifies the StreamResponse.
+func (r RemoteAddr) Verify(pk cipher.PubKey) error {
+	// Check signature.
+	if err := cipher.VerifyPubKeySignedPayload(pk, r.raw.Sig(), r.raw.Object()); err != nil {
+		return ErrDialRespInvalidSig.Wrap(err)
+	}
+	// Check field
+	if r.Addr == "" {
+		return ErrRemInvalidAddr
 	}
 
 	return nil

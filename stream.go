@@ -18,12 +18,13 @@ type Stream struct {
 	yStr *yamux.Stream
 
 	// The following fields are to be filled after handshake.
-	lAddr  Addr
-	rAddr  Addr
-	ns     *noise.Noise
-	nsConn *noise.ReadWriter
-	close  func() // to be called when closing
-	log    logrus.FieldLogger
+	lAddr    Addr
+	rAddr    Addr
+	rTCPAddr net.Addr // TCP addr of the remote
+	ns       *noise.Noise
+	nsConn   *noise.ReadWriter
+	close    func() // to be called when closing
+	log      logrus.FieldLogger
 }
 
 func newInitiatingStream(cSes *ClientSession) (*Stream, error) {
@@ -112,15 +113,6 @@ func (s *Stream) readRequest() (req StreamRequest, err error) {
 }
 
 func (s *Stream) writeResponse(reqHash cipher.SHA256) error {
-	// Obtain associated local listener.
-	pVal, ok := s.ses.porter.PortValue(s.lAddr.Port)
-	if !ok {
-		return ErrReqNoListener
-	}
-	lis, ok := pVal.(*Listener)
-	if !ok {
-		return ErrReqNoListener
-	}
 
 	// Prepare and write response.
 	nsMsg, err := s.ns.MakeHandshakeMessage()
@@ -138,8 +130,7 @@ func (s *Stream) writeResponse(reqHash cipher.SHA256) error {
 		return err
 	}
 
-	// Push stream to listener.
-	return lis.introduceStream(s)
+	return nil
 }
 
 func (s *Stream) readResponse(req StreamRequest) error {
@@ -155,6 +146,46 @@ func (s *Stream) readResponse(req StreamRequest) error {
 		return err
 	}
 	return s.ns.ProcessHandshakeMessage(resp.NoiseMsg)
+}
+
+func (s *Stream) readRemoteAddr() (err error) {
+	// Obtain associated local listener.
+	pVal, ok := s.ses.porter.PortValue(s.lAddr.Port)
+	if !ok {
+		return ErrReqNoListener
+	}
+	lis, ok := pVal.(*Listener)
+	if !ok {
+		return ErrReqNoListener
+	}
+	var obj SignedObject
+	if obj, err = s.ses.readObject(s.yStr); err != nil {
+		return
+	}
+
+	rAddr, err := obj.ObtainRemoteAddr()
+	if err != nil {
+		return
+	}
+
+	if err = rAddr.Verify(s.ses.rPK); err != nil {
+		return
+	}
+
+	host, _, err := net.SplitHostPort(rAddr.Addr)
+	if err != nil {
+		host = rAddr.Addr
+	}
+
+	rTCPAddr, err := net.ResolveIPAddr("ip", host)
+	if err != nil {
+		return
+	}
+
+	s.setRemoteAddr(rTCPAddr)
+
+	// Push stream to listener.
+	return lis.introduceStream(s)
 }
 
 func (s *Stream) prepareFields(init bool, lAddr, rAddr Addr) {
@@ -175,6 +206,10 @@ func (s *Stream) prepareFields(init bool, lAddr, rAddr Addr) {
 	s.log = s.ses.log.WithField("stream", s.lAddr.ShortString()+"->"+s.rAddr.ShortString())
 }
 
+func (s *Stream) setRemoteAddr(rTCPAddr net.Addr) {
+	s.rTCPAddr = rTCPAddr
+}
+
 // LocalAddr returns the local address of the dmsg stream.
 func (s *Stream) LocalAddr() net.Addr {
 	return s.lAddr
@@ -187,7 +222,7 @@ func (s *Stream) RawLocalAddr() Addr {
 
 // RemoteAddr returns the remote address of the dmsg stream.
 func (s *Stream) RemoteAddr() net.Addr {
-	return s.rAddr
+	return s.rTCPAddr
 }
 
 // RawRemoteAddr returns the remote address as dmsg.Addr type.

@@ -36,6 +36,9 @@ var (
 	ErrDialRespInvalidHash = registerErr(Error{code: 351, msg: "response has invalid hash of associated request"})
 	ErrDialRespNotAccepted = registerErr(Error{code: 352, msg: "response rejected associated request without reason"})
 
+	ErrRemInvalidAddr    = registerErr(Error{code: 360, msg: "remote address has invalid address"})
+	ErrRemInvalidNetwork = registerErr(Error{code: 361, msg: "remote address has invalid network"})
+
 	ErrSignedObjectInvalid = registerErr(Error{code: 370, msg: "signed object is invalid"})
 )
 
