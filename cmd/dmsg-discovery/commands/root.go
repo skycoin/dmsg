@@ -158,7 +158,7 @@ func getServers(ctx context.Context, a *api.API, log logrus.FieldLogger) (server
 }
 
 func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, dmsgC *dmsg.Client, log logrus.FieldLogger) {
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(time.Minute * 10)
 	defer ticker.Stop()
 	for {
 		select {

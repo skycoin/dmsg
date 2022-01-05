@@ -37,7 +37,7 @@ func GetServers(ctx context.Context, dmsgDisc string, log *logging.Logger) (entr
 // UpdateServers is used to update the servers in the direct client.
 func UpdateServers(ctx context.Context, dClient disc.APIClient, dmsgDisc string, dmsgC *dmsg.Client, log *logging.Logger) (entries []*disc.Entry) {
 	dmsgclient := disc.NewHTTP(dmsgDisc, &http.Client{}, log)
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(time.Minute * 10)
 	defer ticker.Stop()
 	for {
 		select {
