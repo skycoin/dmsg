@@ -49,9 +49,13 @@ func UpdateServers(ctx context.Context, dClient disc.APIClient, dmsgDisc string,
 				log.WithError(err).Error("Error getting dmsg-servers.")
 				break
 			}
+			log.Infof("Servers found : %v.", len(servers))
 			for _, server := range servers {
-				dClient.PostEntry(ctx, server)   //nolint
-				dmsgC.EnsureSession(ctx, server) //nolint
+				dClient.PostEntry(ctx, server) //nolint
+				err := dmsgC.EnsureSession(ctx, server)
+				if err != nil {
+					log.WithField("remote_pk", server.Static).WithError(err).Warn("Failed to establish session.")
+				}
 			}
 		}
 	}
