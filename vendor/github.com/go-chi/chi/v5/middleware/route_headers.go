@@ -50,7 +50,7 @@ func RouteHeaders() HeaderRouter {
 
 type HeaderRouter map[string][]HeaderRoute
 
-func (hr HeaderRouter) Route(header string, match string, middlewareHandler func(next http.Handler) http.Handler) HeaderRouter {
+func (hr HeaderRouter) Route(header, match string, middlewareHandler func(next http.Handler) http.Handler) HeaderRouter {
 	header = strings.ToLower(header)
 	k := hr[header]
 	if k == nil {
@@ -112,9 +112,9 @@ func (hr HeaderRouter) Handler(next http.Handler) http.Handler {
 }
 
 type HeaderRoute struct {
-	MatchAny   []Pattern
-	MatchOne   Pattern
 	Middleware func(next http.Handler) http.Handler
+	MatchOne   Pattern
+	MatchAny   []Pattern
 }
 
 func (r HeaderRoute) IsMatch(value string) bool {
