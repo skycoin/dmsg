@@ -158,7 +158,7 @@ func getServers(ctx context.Context, a *api.API, log logrus.FieldLogger) (server
 }
 
 func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, dmsgC *dmsg.Client, log logrus.FieldLogger) {
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(time.Minute * 10)
 	defer ticker.Stop()
 	for {
 		select {
@@ -171,8 +171,11 @@ func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, dmsg
 				break
 			}
 			for _, server := range servers {
-				dClient.PostEntry(ctx, server)   //nolint
-				dmsgC.EnsureSession(ctx, server) //nolint
+				dClient.PostEntry(ctx, server) //nolint
+				err := dmsgC.EnsureSession(ctx, server)
+				if err != nil {
+					log.WithField("remote_pk", server.Static).WithError(err).Warn("Failed to establish session.")
+				}
 			}
 		}
 	}
