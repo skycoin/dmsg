@@ -12,8 +12,10 @@ import (
 
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/dmsghttp"
+	"github.com/skycoin/skycoin/src/util/logging"
 )
 
 func ExampleMakeHTTPTransport() {
@@ -87,8 +89,11 @@ func ExampleMakeHTTPTransport() {
 	go dmsgC2.Serve(context.Background())
 	<-dmsgC2.Ready()
 
+	log := logging.MustGetLogger(fmt.Sprintf("http_client"))
+	ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+	defer cancel()
 	// Run HTTP client.
-	httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(dmsgC2)}
+	httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC2)}
 	resp, err := httpC.Get(fmt.Sprintf("http://%s:%d/", c1PK.String(), dmsgHTTPPort))
 	if err != nil {
 		panic(err)

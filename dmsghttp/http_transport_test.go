@@ -15,6 +15,7 @@ import (
 
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
 )
 
@@ -63,10 +64,13 @@ func TestHTTPTransport_RoundTrip(t *testing.T) {
 		startHTTPServer(t, server0Results, lis)
 		addr := lis.Addr().String()
 
+		log := logging.MustGetLogger(fmt.Sprintf("http_client"))
+		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+		defer cancel()
 		// Arrange: create http clients (in which each http client has an underlying dmsg client).
-		httpC1 := http.Client{Transport: MakeHTTPTransport(newDmsgClient(t, dc, minSessions, "client1"))}
-		httpC2 := http.Client{Transport: MakeHTTPTransport(newDmsgClient(t, dc, minSessions, "client2"))}
-		httpC3 := http.Client{Transport: MakeHTTPTransport(newDmsgClient(t, dc, minSessions, "client3"))}
+		httpC1 := http.Client{Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client1"))}
+		httpC2 := http.Client{Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client2"))}
+		httpC3 := http.Client{Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client3"))}
 		httpC1.Timeout = timeout
 		httpC2.Timeout = timeout
 		httpC3.Timeout = timeout

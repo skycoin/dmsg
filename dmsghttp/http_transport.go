@@ -2,8 +2,10 @@ package dmsghttp
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/skycoin/dmsg"
 )
@@ -13,12 +15,16 @@ const defaultHTTPPort = uint16(80)
 // HTTPTransport implements http.RoundTripper
 // Do not confuse this with a Skywire Transport implementation.
 type HTTPTransport struct {
+	ctx   context.Context
 	dmsgC *dmsg.Client
 }
 
 // MakeHTTPTransport makes an HTTPTransport.
-func MakeHTTPTransport(dmsgC *dmsg.Client) HTTPTransport {
-	return HTTPTransport{dmsgC: dmsgC}
+func MakeHTTPTransport(ctx context.Context, dmsgC *dmsg.Client) HTTPTransport {
+	return HTTPTransport{
+		ctx:   ctx,
+		dmsgC: dmsgC,
+	}
 }
 
 // RoundTrip implements golang's http package support for alternative HTTP transport protocols.
@@ -39,10 +45,42 @@ func (t HTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if err := req.Write(stream); err != nil {
 		return nil, err
 	}
 	bufR := bufio.NewReader(stream)
-	return http.ReadResponse(bufR, req)
+	resp, err := http.ReadResponse(bufR, req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		go test(t.ctx, resp, stream)
+	}()
+
+	return resp, nil
+}
+
+func test(ctx context.Context, resp *http.Response, stream *dmsg.Stream) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			_, err := resp.Body.Read(nil)
+			log := stream.Logger()
+			log.Errorf("err %v", err)
+			if err == nil {
+				// can still read from body so it's not closed
+
+			} else if err != nil && err.Error() == "http: invalid Read on closed Body" {
+				stream.Close()
+				return
+			}
+		}
+	}
+
 }
