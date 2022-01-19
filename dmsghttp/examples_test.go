@@ -86,9 +86,10 @@ func ExampleMakeHTTPTransport() {
 	}()
 	go dmsgC2.Serve(context.Background())
 	<-dmsgC2.Ready()
+	test := make(chan map[*http.Request]uint32)
 
 	// Run HTTP client.
-	httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(dmsgC2)}
+	httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(dmsgC2, test)}
 	resp, err := httpC.Get(fmt.Sprintf("http://%s:%d/", c1PK.String(), dmsgHTTPPort))
 	if err != nil {
 		panic(err)

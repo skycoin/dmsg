@@ -13,12 +13,14 @@ const defaultHTTPPort = uint16(80)
 // HTTPTransport implements http.RoundTripper
 // Do not confuse this with a Skywire Transport implementation.
 type HTTPTransport struct {
-	dmsgC *dmsg.Client
+	dmsgC     *dmsg.Client
+	streamMap chan map[*http.Request]uint32
 }
 
 // MakeHTTPTransport makes an HTTPTransport.
-func MakeHTTPTransport(dmsgC *dmsg.Client) HTTPTransport {
-	return HTTPTransport{dmsgC: dmsgC}
+func MakeHTTPTransport(dmsgC *dmsg.Client, streamMap chan map[*http.Request]uint32) HTTPTransport {
+
+	return HTTPTransport{dmsgC: dmsgC, streamMap: streamMap}
 }
 
 // RoundTrip implements golang's http package support for alternative HTTP transport protocols.
@@ -39,6 +41,10 @@ func (t HTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	streamMap := make(map[*http.Request]uint32)
+	streamMap[req] = stream.StreamID()
+	t.streamMap <- streamMap
 
 	if err := req.Write(stream); err != nil {
 		return nil, err

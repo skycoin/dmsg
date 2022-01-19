@@ -109,8 +109,12 @@ func (dg *DmsgGet) Run(ctx context.Context, log *logging.Logger, skStr string, a
 		return fmt.Errorf("failed to start dmsg: %w", err)
 	}
 	defer closeDmsg()
+	streamMap := make(chan map[*http.Request]uint32)
 
-	httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(dmsgC)}
+	streamCloser := dmsghttp.NewStreamCloser(dmsgC)
+	httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(dmsgC, streamMap)}
+
+	go streamCloser.GetMap(ctx, streamMap)
 
 	for i := 0; i < dg.dlF.Tries; i++ {
 		log.Infof("Download attempt %d/%d ...", i, dg.dlF.Tries)
@@ -119,7 +123,7 @@ func (dg *DmsgGet) Run(ctx context.Context, log *logging.Logger, skStr string, a
 			return fmt.Errorf("failed to reset file: %w", err)
 		}
 
-		if err := Download(ctx, log, &httpC, file, u.URL.String()); err != nil {
+		if err := Download(ctx, log, &httpC, file, u.URL.String(), streamCloser); err != nil {
 			log.WithError(err).Error()
 			select {
 			case <-ctx.Done():
@@ -215,7 +219,7 @@ func (dg *DmsgGet) startDmsg(ctx context.Context, log *logging.Logger, pk cipher
 }
 
 // Download downloads a file from the given URL into 'w'.
-func Download(ctx context.Context, log logrus.FieldLogger, httpC *http.Client, w io.Writer, urlStr string) error {
+func Download(ctx context.Context, log logrus.FieldLogger, httpC *http.Client, w io.Writer, urlStr string, streamCloser *dmsghttp.StreamCloser) error {
 	req, err := http.NewRequest(http.MethodGet, urlStr, nil)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to formulate HTTP request.")
@@ -232,6 +236,9 @@ func Download(ctx context.Context, log logrus.FieldLogger, httpC *http.Client, w
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
 			log.WithError(err).Warn("HTTP Response body closed with non-nil error.")
+		}
+		if err := streamCloser.CloseStream(req); err != nil {
+			log.WithError(err).Warn("Failed to close stream.")
 		}
 	}()
 

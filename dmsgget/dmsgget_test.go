@@ -66,7 +66,7 @@ func TestDownload(t *testing.T) {
 			log := logging.MustGetLogger(fmt.Sprintf("dl_client_%d", i))
 			ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 			defer cancel()
-			err := Download(ctx, log, newHTTPClient(t, dc), dsts[i], hsAddr)
+			err := Download(ctx, log, newHTTPClient(t, dc), dsts[i], hsAddr, &dmsghttp.StreamCloser{})
 
 			errs[i] <- err
 			close(errs[i])
@@ -172,5 +172,6 @@ func newHTTPClient(t *testing.T, dc disc.APIClient) *http.Client {
 	t.Cleanup(func() { assert.NoError(t, dmsgC.Close()) })
 	<-dmsgC.Ready()
 
-	return &http.Client{Transport: dmsghttp.MakeHTTPTransport(dmsgC)}
+	test := make(chan map[*http.Request]uint32)
+	return &http.Client{Transport: dmsghttp.MakeHTTPTransport(dmsgC, test)}
 }

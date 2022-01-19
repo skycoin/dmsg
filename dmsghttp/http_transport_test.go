@@ -62,11 +62,12 @@ func TestHTTPTransport_RoundTrip(t *testing.T) {
 		require.NoError(t, err)
 		startHTTPServer(t, server0Results, lis)
 		addr := lis.Addr().String()
+		test := make(chan map[*http.Request]uint32)
 
 		// Arrange: create http clients (in which each http client has an underlying dmsg client).
-		httpC1 := http.Client{Transport: MakeHTTPTransport(newDmsgClient(t, dc, minSessions, "client1"))}
-		httpC2 := http.Client{Transport: MakeHTTPTransport(newDmsgClient(t, dc, minSessions, "client2"))}
-		httpC3 := http.Client{Transport: MakeHTTPTransport(newDmsgClient(t, dc, minSessions, "client3"))}
+		httpC1 := http.Client{Transport: MakeHTTPTransport(newDmsgClient(t, dc, minSessions, "client1"), test)}
+		httpC2 := http.Client{Transport: MakeHTTPTransport(newDmsgClient(t, dc, minSessions, "client2"), test)}
+		httpC3 := http.Client{Transport: MakeHTTPTransport(newDmsgClient(t, dc, minSessions, "client3"), test)}
 		httpC1.Timeout = timeout
 		httpC2.Timeout = timeout
 		httpC3.Timeout = timeout
