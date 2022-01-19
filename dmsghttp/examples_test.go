@@ -15,6 +15,7 @@ import (
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/dmsghttp"
+
 	"github.com/skycoin/skycoin/src/util/logging"
 )
 
@@ -89,7 +90,7 @@ func ExampleMakeHTTPTransport() {
 	go dmsgC2.Serve(context.Background())
 	<-dmsgC2.Ready()
 
-	log := logging.MustGetLogger(fmt.Sprintf("http_client"))
+	log := logging.MustGetLogger("http_client")
 	ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 	defer cancel()
 	// Run HTTP client.

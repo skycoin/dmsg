@@ -64,7 +64,7 @@ func TestHTTPTransport_RoundTrip(t *testing.T) {
 		startHTTPServer(t, server0Results, lis)
 		addr := lis.Addr().String()
 
-		log := logging.MustGetLogger(fmt.Sprintf("http_client"))
+		log := logging.MustGetLogger("http_client")
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
 		// Arrange: create http clients (in which each http client has an underlying dmsg client).

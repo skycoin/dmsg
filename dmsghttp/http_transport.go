@@ -38,9 +38,6 @@ func (t HTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		hostAddr.Port = defaultHTTPPort
 	}
 
-	// TODO(evanlinjin): In the future, we should implement stream reuse to save bandwidth.
-	// We do not close the stream here as it is the user's responsibility to close the stream after resp.Body is fully
-	// read.
 	stream, err := t.dmsgC.DialStream(req.Context(), hostAddr)
 	if err != nil {
 		return nil, err
@@ -55,13 +52,13 @@ func (t HTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	defer func() {
-		go test(t.ctx, resp, stream)
+		go closeStream(t.ctx, resp, stream)
 	}()
 
 	return resp, nil
 }
 
-func test(ctx context.Context, resp *http.Response, stream *dmsg.Stream) {
+func closeStream(ctx context.Context, resp *http.Response, stream *dmsg.Stream) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -72,12 +69,13 @@ func test(ctx context.Context, resp *http.Response, stream *dmsg.Stream) {
 		case <-ticker.C:
 			_, err := resp.Body.Read(nil)
 			log := stream.Logger()
-			log.Errorf("err %v", err)
-			if err == nil {
-				// can still read from body so it's not closed
-
-			} else if err != nil && err.Error() == "http: invalid Read on closed Body" {
-				stream.Close()
+			// If error is not nil and is equal to `http: invalid Read on closed Body`
+			// then it means that the body has been closed so we close the stream
+			if err != nil && err.Error() == "http: invalid Read on closed Body" {
+				err := stream.Close()
+				if err != nil {
+					log.Warnf("Error closing stream: %v", err)
+				}
 				return
 			}
 		}
