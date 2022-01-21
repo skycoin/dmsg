@@ -3,7 +3,9 @@ package dmsghttp
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -69,9 +71,9 @@ func closeStream(ctx context.Context, resp *http.Response, stream *dmsg.Stream) 
 		case <-ticker.C:
 			_, err := resp.Body.Read(nil)
 			log := stream.Logger()
-			// If error is not nil and is equal to `http: invalid Read on closed Body`
+			// If error is not nil and is equal to ErrBodyReadAfterClose or EOF
 			// then it means that the body has been closed so we close the stream
-			if err != nil && err.Error() == "http: invalid Read on closed Body" {
+			if err != nil && (errors.Is(err, http.ErrBodyReadAfterClose) || errors.Is(err, io.EOF)) {
 				err := stream.Close()
 				if err != nil {
 					log.Warnf("Error closing stream: %v", err)
