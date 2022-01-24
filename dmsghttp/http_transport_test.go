@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -26,7 +25,6 @@ func TestHTTPTransport_RoundTrip(t *testing.T) {
 		nSrvs       = 5
 		minSessions = 3
 		maxSessions = 20
-		timeout     = time.Second * 5
 	)
 
 	// Ensure HTTP request/response works.
@@ -71,9 +69,6 @@ func TestHTTPTransport_RoundTrip(t *testing.T) {
 		httpC1 := http.Client{Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client1"))}
 		httpC2 := http.Client{Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client2"))}
 		httpC3 := http.Client{Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client3"))}
-		httpC1.Timeout = timeout
-		httpC2.Timeout = timeout
-		httpC3.Timeout = timeout
 
 		// Act: http clients send requests concurrently.
 		// - client1 sends "/index.html" requests.
