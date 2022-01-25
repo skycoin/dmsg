@@ -172,5 +172,8 @@ func newHTTPClient(t *testing.T, dc disc.APIClient) *http.Client {
 	t.Cleanup(func() { assert.NoError(t, dmsgC.Close()) })
 	<-dmsgC.Ready()
 
-	return &http.Client{Transport: dmsghttp.MakeHTTPTransport(dmsgC)}
+	log := logging.MustGetLogger("http_client")
+	ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+	defer cancel()
+	return &http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
 }

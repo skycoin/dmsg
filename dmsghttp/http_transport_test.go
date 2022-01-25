@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
 )
 
@@ -25,7 +25,6 @@ func TestHTTPTransport_RoundTrip(t *testing.T) {
 		nSrvs       = 5
 		minSessions = 3
 		maxSessions = 20
-		timeout     = time.Second * 5
 	)
 
 	// Ensure HTTP request/response works.
@@ -63,13 +62,13 @@ func TestHTTPTransport_RoundTrip(t *testing.T) {
 		startHTTPServer(t, server0Results, lis)
 		addr := lis.Addr().String()
 
+		log := logging.MustGetLogger("http_client")
+		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+		defer cancel()
 		// Arrange: create http clients (in which each http client has an underlying dmsg client).
-		httpC1 := http.Client{Transport: MakeHTTPTransport(newDmsgClient(t, dc, minSessions, "client1"))}
-		httpC2 := http.Client{Transport: MakeHTTPTransport(newDmsgClient(t, dc, minSessions, "client2"))}
-		httpC3 := http.Client{Transport: MakeHTTPTransport(newDmsgClient(t, dc, minSessions, "client3"))}
-		httpC1.Timeout = timeout
-		httpC2.Timeout = timeout
-		httpC3.Timeout = timeout
+		httpC1 := http.Client{Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client1"))}
+		httpC2 := http.Client{Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client2"))}
+		httpC3 := http.Client{Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client3"))}
 
 		// Act: http clients send requests concurrently.
 		// - client1 sends "/index.html" requests.
