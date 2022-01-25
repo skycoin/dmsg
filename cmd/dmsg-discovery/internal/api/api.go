@@ -240,6 +240,11 @@ func (a *API) delEntry() func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		validateTimestamp := !a.enableLoadTesting
+		// we donot validate timestamp when entry is a client as the client no longer updates itself
+		// periodically and so the timestamp is never updated
+		if entry.Client != nil {
+			validateTimestamp = false
+		}
 		if err := entry.Validate(validateTimestamp); err != nil {
 			a.handleError(w, r, err)
 			return
