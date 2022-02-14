@@ -147,6 +147,45 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 	return entries, nil
 }
 
+// AllServers implements Storer AllServers method for redisdb database
+func (r *redisStore) AllServers(ctx context.Context) ([]*disc.Entry, error) {
+	var entries []*disc.Entry
+
+	pks, err := r.client.SRandMemberN("servers", r.client.SCard("servers").Val()).Result()
+	if err != nil {
+		log.WithError(err).Errorf("Failed to get servers (SRandMemberN) from redis")
+		return nil, disc.ErrUnexpected
+	}
+
+	if len(pks) == 0 {
+		return entries, nil
+	}
+
+	payloads, err := r.client.MGet(pks...).Result()
+	if err != nil {
+		log.WithError(err).Errorf("Failed to set servers (MGet) from redis")
+		return nil, disc.ErrUnexpected
+	}
+
+	for _, payload := range payloads {
+		// if there's no record for this PK, nil is returned. The below
+		// type assertion will panic in this case, so we skip
+		if payload == nil {
+			continue
+		}
+
+		var entry *disc.Entry
+		if err := json.Unmarshal([]byte(payload.(string)), &entry); err != nil {
+			log.WithError(err).Warnf("Failed to unmarshal payload %s", payload.(string))
+			continue
+		}
+
+		entries = append(entries, entry)
+	}
+
+	return entries, nil
+}
+
 func (r *redisStore) CountEntries(ctx context.Context) (int64, int64, error) {
 	numberOfServers, err := r.client.SCard("servers").Result()
 	if err != nil {
