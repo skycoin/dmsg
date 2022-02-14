@@ -295,7 +295,7 @@ func (a *API) getAvailableServers() http.HandlerFunc {
 	}
 }
 
-// getAllServers returns all servers entries as am array of json codified entry objects
+// getAllServers returns all servers entries as an array of json codified entry objects
 // URI: /dmsg-discovery/all_servers
 // Method: GET
 func (a *API) getAllServers() http.HandlerFunc {

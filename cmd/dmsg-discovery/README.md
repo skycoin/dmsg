@@ -170,7 +170,7 @@ Possible Status Codes:
 
 - Internal Server Error (500) - Something unexpected happened.
 
-### GET Available Servers
+### GET All Servers
 
 Obtains a subset of all server entries.
 
