@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -143,6 +144,10 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 
 		entries = append(entries, entry)
 	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Server.AvailableSessions > entries[j].Server.AvailableSessions
+	})
 
 	return entries, nil
 }
