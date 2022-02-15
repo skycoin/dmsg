@@ -38,8 +38,8 @@ const (
 // - Ensure the downloaded data (of all downloads) is the same as the original document.
 func TestDownload(t *testing.T) {
 	const (
-		fileSize  = 512
-		dlClients = 10 // number of clients to download from HTTP server.
+		fileSize  = 64
+		dlClients = 2 // number of clients to download from HTTP server.
 	)
 
 	// Arrange: Prepare file to be downloaded.
