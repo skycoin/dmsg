@@ -82,6 +82,7 @@ func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMod
 	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
 	r.Delete("/dmsg-discovery/entry", api.delEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
+	r.Get("/dmsg-discovery/all_servers", api.getAllServers())
 	r.Get("/dmsg-discovery/health", api.health())
 	r.Get("/health", api.serviceHealth)
 
@@ -109,7 +110,7 @@ func (a *API) RunBackgroundTasks(ctx context.Context, log logrus.FieldLogger) {
 
 // AllServers is used to get all the available servers registered to the dmsg-discovery.
 func (a *API) AllServers(ctx context.Context, log logrus.FieldLogger) (entries []*disc.Entry, err error) {
-	entries, err = a.db.AvailableServers(ctx, maxGetAvailableServersResult)
+	entries, err = a.db.AllServers(ctx)
 	if err != nil {
 		return entries, err
 	}
@@ -276,6 +277,30 @@ func (a *API) delEntry() func(w http.ResponseWriter, r *http.Request) {
 func (a *API) getAvailableServers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		entries, err := a.db.AvailableServers(r.Context(), maxGetAvailableServersResult)
+		if err != nil {
+			a.handleError(w, r, err)
+			return
+		}
+
+		if len(entries) == 0 {
+			a.writeJSON(w, r, http.StatusNotFound, disc.HTTPMessage{
+				Code:    http.StatusNotFound,
+				Message: disc.ErrNoAvailableServers.Error(),
+			})
+
+			return
+		}
+
+		a.writeJSON(w, r, http.StatusOK, entries)
+	}
+}
+
+// getAllServers returns all servers entries as an array of json codified entry objects
+// URI: /dmsg-discovery/all_servers
+// Method: GET
+func (a *API) getAllServers() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		entries, err := a.db.AllServers(r.Context())
 		if err != nil {
 			a.handleError(w, r, err)
 			return

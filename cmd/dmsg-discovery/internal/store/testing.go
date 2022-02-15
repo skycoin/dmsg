@@ -132,6 +132,28 @@ func (ms *MockStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 	return entries, nil
 }
 
+// AllServers implements Storer AllServers method for MockStore
+func (ms *MockStore) AllServers(ctx context.Context) ([]*disc.Entry, error) {
+	entries := make([]*disc.Entry, 0)
+
+	ms.serversLock.RLock()
+	defer ms.serversLock.RUnlock()
+
+	servers := arrayFromMap(ms.servers)
+	for _, entryString := range servers {
+		var e disc.Entry
+
+		err := json.Unmarshal(entryString, &e)
+		if err != nil {
+			return nil, disc.ErrUnexpected
+		}
+
+		entries = append(entries, &e)
+	}
+
+	return entries, nil
+}
+
 // CountEntries implements Storer CountEntries method for MockStore
 func (ms *MockStore) CountEntries(ctx context.Context) (int64, int64, error) {
 	var numberOfServers int64
