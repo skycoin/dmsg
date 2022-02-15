@@ -2,11 +2,11 @@ package commands
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	proxyproto "github.com/pires/go-proxyproto"
@@ -32,7 +32,7 @@ var (
 	sf                cmdutil.ServiceFlags
 	addr              string
 	redisURL          string
-	whitelistPath     string
+	whitelistKeys     string
 	entryTimeout      time.Duration
 	testMode          bool
 	enableLoadTesting bool
@@ -45,12 +45,11 @@ func init() {
 
 	RootCmd.Flags().StringVarP(&addr, "addr", "a", ":9090", "address to bind to")
 	RootCmd.Flags().StringVar(&redisURL, "redis", store.DefaultURL, "connections string for a redis store")
-	RootCmd.Flags().StringVar(&whitelistPath, "whitelist", "", "path of whitelisted keys list for network monitor derigstration")
+	RootCmd.Flags().StringVar(&whitelistKeys, "whitelist-keys", "", "list of whitelisted keys used network monitor derigstration")
 	RootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
 	RootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
 	RootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
 	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key")
-	RootCmd.MarkFlagRequired("whitelist") //nolint
 }
 
 // RootCmd contains commands for dmsg-discovery
@@ -84,17 +83,10 @@ var RootCmd = &cobra.Command{
 		enableMetrics := sf.MetricsAddr != ""
 		a := api.New(log, db, m, testMode, enableLoadTesting, enableMetrics)
 
-		if whitelistPath != "" {
-			whitelistByte, err := os.ReadFile(whitelistPath) //nolint
-			if err != nil {
-				log.Fatal(err)
-			}
-			var whitelistData map[string][]string
-			err = json.Unmarshal(whitelistByte, &whitelistData)
-			if err != nil {
-				log.Fatal(err)
-			}
-			for _, v := range whitelistData["whitelistPKs"] {
+		var whitelistPKs []string
+		if whitelistKeys != "" {
+			whitelistPKs = strings.Split(whitelistKeys, ",")
+			for _, v := range whitelistPKs {
 				api.WhitelistPKs[v] = true
 			}
 		}
