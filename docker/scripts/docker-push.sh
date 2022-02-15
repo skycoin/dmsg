@@ -12,19 +12,19 @@ function docker_login() {
 
 function docker_build() {
   docker image build \
-    --tag=skycoinpro/dmsg-server:"$tag" \
+    --tag=skycoin/dmsg-server:"$tag" \
     -f ./docker/images/dmsg-server/Dockerfile .
 
   docker image build \
-    --tag=skycoinpro/dmsg-discovery:"$tag" \
+    --tag=skycoin/dmsg-discovery:"$tag" \
     -f ./docker/images/dmsg-discovery/Dockerfile .
 }
 
 function docker_push() {
-  docker tag skycoinpro/dmsg-server:"$tag" skycoinpro/dmsg-server:"$tag"
-  docker tag skycoinpro/dmsg-discovery:"$tag" skycoinpro/dmsg-discovery:"$tag"
-  docker image push skycoinpro/dmsg-server:"$tag"
-  docker image push skycoinpro/dmsg-discovery:"$tag"
+  docker tag skycoin/dmsg-server:"$tag" skycoin/dmsg-server:"$tag"
+  docker tag skycoin/dmsg-discovery:"$tag" skycoin/dmsg-discovery:"$tag"
+  docker image push skycoin/dmsg-server:"$tag"
+  docker image push skycoin/dmsg-discovery:"$tag"
 }
 
 while getopts ":t:pb" o; do
@@ -34,7 +34,7 @@ while getopts ":t:pb" o; do
     if [[ $tag == "develop" ]]; then
       tag="test"
     elif [[ $tag == "master" ]]; then
-      tag="latest"
+      tag="prod"
     fi
     ;;
   p)
