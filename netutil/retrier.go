@@ -81,7 +81,7 @@ func (r *Retrier) Do(ctx context.Context, f RetryFunc) error {
 			select {
 			case <-t.C:
 				if r.log != nil {
-					r.log.WithError(err).WithField("current_backoff", bo).Debug("Retrying...")
+					r.log.WithError(err).WithField("current_backoff", bo).Warn("Retrying...")
 				}
 				t.Reset(bo)
 				continue
