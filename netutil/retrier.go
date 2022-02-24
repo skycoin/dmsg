@@ -36,13 +36,14 @@ type Retrier struct {
 
 // NewRetrier returns a retrier that is ready to call Do() method
 func NewRetrier(log logrus.FieldLogger, initBO, maxBO time.Duration, tries int64, factor float64) *Retrier {
+	logger := log.WithField("func", "retrier")
 	return &Retrier{
 		initBO: initBO,
 		maxBO:  maxBO,
 		tries:  tries,
 		factor: factor,
 		errWl:  make(map[error]struct{}),
-		log:    log,
+		log:    logger,
 	}
 }
 
