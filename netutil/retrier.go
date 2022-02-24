@@ -78,11 +78,11 @@ func (r *Retrier) Do(ctx context.Context, f RetryFunc) error {
 			if newBO := time.Duration(float64(bo) * r.factor); r.maxBO == 0 || newBO <= r.maxBO {
 				bo = newBO
 			}
-			if r.log != nil {
-				r.log.WithError(err).WithField("current_backoff", bo).Debug("Retrying...")
-			}
 			select {
 			case <-t.C:
+				if r.log != nil {
+					r.log.WithError(err).WithField("current_backoff", bo).Debug("Retrying...")
+				}
 				t.Reset(bo)
 				continue
 			case <-ctx.Done():
