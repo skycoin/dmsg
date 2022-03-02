@@ -28,7 +28,14 @@ func NewWrapResponseWriter(w http.ResponseWriter, protoMajor int) WrapResponseWr
 		if fl && hj && rf {
 			return &httpFancyWriter{bw}
 		}
+		if fl && hj {
+			return &flushHijackWriter{bw}
+		}
+		if hj {
+			return &hijackWriter{bw}
+		}
 	}
+
 	if fl {
 		return &flushWriter{bw}
 	}
@@ -110,6 +117,7 @@ func (b *basicWriter) Unwrap() http.ResponseWriter {
 	return b.ResponseWriter
 }
 
+// flushWriter ...
 type flushWriter struct {
 	basicWriter
 }
@@ -121,6 +129,37 @@ func (f *flushWriter) Flush() {
 }
 
 var _ http.Flusher = &flushWriter{}
+
+// hijackWriter ...
+type hijackWriter struct {
+	basicWriter
+}
+
+func (f *hijackWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hj := f.basicWriter.ResponseWriter.(http.Hijacker)
+	return hj.Hijack()
+}
+
+var _ http.Hijacker = &hijackWriter{}
+
+// flushHijackWriter ...
+type flushHijackWriter struct {
+	basicWriter
+}
+
+func (f *flushHijackWriter) Flush() {
+	f.wroteHeader = true
+	fl := f.basicWriter.ResponseWriter.(http.Flusher)
+	fl.Flush()
+}
+
+func (f *flushHijackWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hj := f.basicWriter.ResponseWriter.(http.Hijacker)
+	return hj.Hijack()
+}
+
+var _ http.Flusher = &flushHijackWriter{}
+var _ http.Hijacker = &flushHijackWriter{}
 
 // httpFancyWriter is a HTTP writer that additionally satisfies
 // http.Flusher, http.Hijacker, and io.ReaderFrom. It exists for the common case
