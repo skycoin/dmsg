@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build darwin || dragonfly || freebsd || netbsd || openbsd
 // +build darwin dragonfly freebsd netbsd openbsd
 
 // BSD system call wrappers shared by *BSD based systems
@@ -17,6 +18,21 @@ import (
 	"syscall"
 	"unsafe"
 )
+
+const ImplementsGetwd = true
+
+func Getwd() (string, error) {
+	var buf [PathMax]byte
+	_, err := Getcwd(buf[0:])
+	if err != nil {
+		return "", err
+	}
+	n := clen(buf[:])
+	if n < 1 {
+		return "", EINVAL
+	}
+	return string(buf[:n]), nil
+}
 
 /*
  * Wrapped
@@ -262,7 +278,7 @@ func anyToSockaddr(fd int, rsa *RawSockaddrAny) (Sockaddr, error) {
 		}
 		return sa, nil
 	}
-	return nil, EAFNOSUPPORT
+	return anyToSockaddrGOOS(fd, rsa)
 }
 
 func Accept(fd int) (nfd int, sa Sockaddr, err error) {
@@ -272,7 +288,7 @@ func Accept(fd int) (nfd int, sa Sockaddr, err error) {
 	if err != nil {
 		return
 	}
-	if runtime.GOOS == "darwin" && len == 0 {
+	if (runtime.GOOS == "darwin" || runtime.GOOS == "ios") && len == 0 {
 		// Accepted socket has no address.
 		// This is likely due to a bug in xnu kernels,
 		// where instead of ECONNABORTED error socket
@@ -525,6 +541,23 @@ func SysctlClockinfo(name string) (*Clockinfo, error) {
 		return nil, EIO
 	}
 	return &ci, nil
+}
+
+func SysctlTimeval(name string) (*Timeval, error) {
+	mib, err := sysctlmib(name)
+	if err != nil {
+		return nil, err
+	}
+
+	var tv Timeval
+	n := uintptr(unsafe.Sizeof(tv))
+	if err := sysctl(mib, (*byte)(unsafe.Pointer(&tv)), &n, nil, 0); err != nil {
+		return nil, err
+	}
+	if n != unsafe.Sizeof(tv) {
+		return nil, EIO
+	}
+	return &tv, nil
 }
 
 //sys	utimes(path string, timeval *[2]Timeval) (err error)

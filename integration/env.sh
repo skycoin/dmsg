@@ -173,7 +173,7 @@ function init_dmsg() {
   func_print "Running ${DMSG_SRV2}..."
   tmux send-keys -t ${DMSG_SRV2} './bin/dmsg-server ./integration/configs/dmsgserver2.json' C-m
   catch_ec $?
-
+  sleep 1
   func_print "${DMSG} session started successfully."
   tmux select-window -t bash
 }

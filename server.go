@@ -67,10 +67,10 @@ func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Serv
 	s.done = make(chan struct{})
 	s.addrDone = make(chan struct{})
 	s.maxSessions = conf.MaxSessions
-	s.setSessionCallback = func(ctx context.Context, sessionCount int) error {
+	s.setSessionCallback = func(ctx context.Context) error {
 		return s.updateServerEntry(ctx, s.AdvertisedAddr(), s.maxSessions)
 	}
-	s.delSessionCallback = func(ctx context.Context, sessionCount int) error {
+	s.delSessionCallback = func(ctx context.Context) error {
 		return s.updateServerEntry(ctx, s.AdvertisedAddr(), s.maxSessions)
 	}
 	return s
@@ -98,6 +98,10 @@ func (s *Server) Close() error {
 		close(s.done)
 		s.wg.Wait()
 	})
+	err := s.delEntry(context.Background())
+	if err != nil {
+		s.log.Warn("Cannot delete entry from db.")
+	}
 	return nil
 }
 

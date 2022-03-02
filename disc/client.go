@@ -16,8 +16,6 @@ import (
 	"github.com/skycoin/dmsg/cipher"
 )
 
-var log = logging.MustGetLogger("disc")
-
 var json = jsoniter.ConfigFastest
 
 // APIClient implements dmsg discovery API client.
@@ -25,32 +23,36 @@ type APIClient interface {
 	Entry(context.Context, cipher.PubKey) (*Entry, error)
 	PostEntry(context.Context, *Entry) error
 	PutEntry(context.Context, cipher.SecKey, *Entry) error
+	DelEntry(context.Context, *Entry) error
 	AvailableServers(context.Context) ([]*Entry, error)
+	AllServers(context.Context) ([]*Entry, error)
 }
 
 // HTTPClient represents a client that communicates with a dmsg-discovery service through http, it
 // implements APIClient
 type httpClient struct {
-	client    http.Client
+	client    *http.Client
 	address   string
 	updateMux sync.Mutex // for thread-safe sequence incrementing
+	log       *logging.Logger
 }
 
 // NewHTTP constructs a new APIClient that communicates with discovery via http.
-func NewHTTP(address string) APIClient {
+func NewHTTP(address string, client *http.Client, log *logging.Logger) APIClient {
 	log.WithField("func", "disc.NewHTTP").
 		WithField("addr", address).
 		Debug("Created HTTP client.")
 	return &httpClient{
-		client:  http.Client{},
+		client:  client,
 		address: address,
+		log:     log,
 	}
 }
 
 // Entry retrieves an entry associated with the given public key.
 func (c *httpClient) Entry(ctx context.Context, publicKey cipher.PubKey) (*Entry, error) {
 	endpoint := fmt.Sprintf("%s/dmsg-discovery/entry/%s", c.address, publicKey)
-	log := log.WithField("endpoint", endpoint)
+	log := c.log.WithField("endpoint", endpoint)
 
 	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -90,11 +92,11 @@ func (c *httpClient) Entry(ctx context.Context, publicKey cipher.PubKey) (*Entry
 }
 
 // PostEntry creates a new Entry.
-func (c *httpClient) PostEntry(ctx context.Context, e *Entry) error {
+func (c *httpClient) PostEntry(ctx context.Context, entry *Entry) error {
 	endpoint := c.address + "/dmsg-discovery/entry/"
-	log := log.WithField("endpoint", endpoint)
+	log := c.log.WithField("endpoint", endpoint)
 
-	marshaledEntry, err := json.Marshal(e)
+	marshaledEntry, err := json.Marshal(entry)
 	if err != nil {
 		return err
 	}
@@ -106,9 +108,61 @@ func (c *httpClient) PostEntry(ctx context.Context, e *Entry) error {
 
 	req.Header.Set("Content-Type", "application/json")
 
-	// Since v0.3.0 visors send ?timeout=true, before v0.3.0 do not.
 	q := req.URL.Query()
-	q.Add("timeout", "true")
+	req.URL.RawQuery = q.Encode()
+
+	req = req.WithContext(ctx)
+
+	resp, err := c.client.Do(req)
+	if resp != nil {
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				log.WithError(err).Warn("Failed to close response body.")
+			}
+		}()
+	}
+	if err != nil {
+		log.WithError(err).Error("Failed to perform request.")
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		var httpResponse HTTPMessage
+
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(bodyBytes, &httpResponse)
+		if err != nil {
+			return err
+		}
+		log.WithField("resp_body", httpResponse.Message).
+			WithField("resp_status", resp.StatusCode).
+			Error()
+		return errFromString(httpResponse.Message)
+	}
+	return nil
+}
+
+// DelEntry deletes an Entry.
+func (c *httpClient) DelEntry(ctx context.Context, entry *Entry) error {
+	endpoint := c.address + "/dmsg-discovery/entry"
+	log := c.log.WithField("endpoint", endpoint)
+
+	marshaledEntry, err := json.Marshal(entry)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, endpoint, bytes.NewBuffer(marshaledEntry))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	q := req.URL.Query()
 	req.URL.RawQuery = q.Encode()
 
 	req = req.WithContext(ctx)
@@ -193,7 +247,49 @@ func (c *httpClient) AvailableServers(ctx context.Context) ([]*Entry, error) {
 	if resp != nil {
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
-				log.WithError(err).Warn("Failed to close response body")
+				c.log.WithError(err).Warn("Failed to close response body")
+			}
+		}()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// if the response is an error it will be codified as an HTTPMessage
+	if resp.StatusCode != http.StatusOK {
+		var message HTTPMessage
+		err = json.NewDecoder(resp.Body).Decode(&message)
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, errFromString(message.Message)
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&entries)
+	if err != nil {
+		return nil, err
+	}
+
+	return entries, nil
+}
+
+// AllServers returns list of all servers.
+func (c *httpClient) AllServers(ctx context.Context) ([]*Entry, error) {
+	var entries []*Entry
+	endpoint := c.address + "/dmsg-discovery/all_servers"
+
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+
+	resp, err := c.client.Do(req)
+	if resp != nil {
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				c.log.WithError(err).Warn("Failed to close response body")
 			}
 		}()
 	}

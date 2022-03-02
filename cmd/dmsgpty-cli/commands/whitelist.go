@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/spf13/cobra"
 
@@ -9,7 +10,7 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(
+	RootCmd.AddCommand(
 		whitelistCmd,
 		whitelistAddCmd,
 		whitelistRemoveCmd)
@@ -27,8 +28,12 @@ var whitelistCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		for _, pk := range pks {
-			fmt.Println(pk)
+		if len(pks) == 0 {
+			log.Println("Whitelist Empty")
+		} else {
+			for _, pk := range pks {
+				fmt.Println(pk)
+			}
 		}
 		return nil
 	},
@@ -39,15 +44,22 @@ var whitelistAddCmd = &cobra.Command{
 	Short: "adds public key(s) to the whitelist",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(_ *cobra.Command, args []string) error {
+
 		pks, err := pksFromArgs(args)
 		if err != nil {
 			return err
 		}
+
 		wlC, err := cli.WhitelistClient()
 		if err != nil {
 			return err
 		}
-		return wlC.WhitelistAdd(pks...)
+		err = wlC.WhitelistAdd(pks...)
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+		return nil
 	},
 }
 
@@ -56,10 +68,12 @@ var whitelistRemoveCmd = &cobra.Command{
 	Short: "removes public key(s) from the whitelist",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(_ *cobra.Command, args []string) error {
+
 		pks, err := pksFromArgs(args)
 		if err != nil {
 			return err
 		}
+
 		wlC, err := cli.WhitelistClient()
 		if err != nil {
 			return err

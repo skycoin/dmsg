@@ -2,14 +2,20 @@ package commands
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
-	"net"
+	"net/http"
+	"net/url"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
-	"github.com/pires/go-proxyproto"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg"
@@ -18,9 +24,14 @@ import (
 	"github.com/skycoin/dmsg/cmd/dmsg-server/internal/api"
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
-	"github.com/skycoin/dmsg/discord"
 	"github.com/skycoin/dmsg/metricsutil"
 	"github.com/skycoin/dmsg/servermetrics"
+)
+
+const (
+	defaultDiscoveryURL = "http://dmsgd.skywire.skycoin.com"
+	defaultPort         = ":8081"
+	defaultConfigPath   = "config.json"
 )
 
 var (
@@ -28,10 +39,11 @@ var (
 )
 
 func init() {
-	sf.Init(rootCmd, "dmsg_srv", "config.json")
+	sf.Init(RootCmd, "dmsg_srv", defaultConfigPath)
 }
 
-var rootCmd = &cobra.Command{
+// RootCmd contains commands for dmsg-server
+var RootCmd = &cobra.Command{
 	Use:     "dmsg-server",
 	Short:   "Dmsg Server for Skywire.",
 	PreRunE: func(cmd *cobra.Command, args []string) error { return sf.Check() },
@@ -42,18 +54,22 @@ var rootCmd = &cobra.Command{
 
 		log := sf.Logger()
 
-		if discordWebhookURL := discord.GetWebhookURLFromEnv(); discordWebhookURL != "" {
-			// Workaround for Discord logger hook. Actually, it's Info.
-			log.Error(discord.StartLogMessage)
-			defer log.Error(discord.StopLogMessage)
-		} else {
-			log.Info(discord.StartLogMessage)
-			defer log.Info(discord.StopLogMessage)
+		var conf Config
+		if err := sf.ParseConfig(os.Args, true, &conf, genDefaultConfig); err != nil {
+			log.WithError(err).Fatal("parsing config failed, generating default one...")
 		}
 
-		var conf Config
-		if err := sf.ParseConfig(os.Args, true, &conf); err != nil {
-			log.WithError(err).Fatal()
+		if conf.HTTPAddress == "" {
+			u, err := url.Parse(conf.LocalAddress)
+			if err != nil {
+				log.Fatal("unable to parse local address url: ", err)
+			}
+			hp, err := strconv.Atoi(u.Port())
+			if err != nil {
+				log.Fatal("unable to parse local address url: ", err)
+			}
+			httpPort := strconv.Itoa(hp + 1)
+			conf.HTTPAddress = ":" + httpPort
 		}
 
 		var m servermetrics.Metrics
@@ -71,36 +87,25 @@ var rootCmd = &cobra.Command{
 		r.Use(middleware.Logger)
 		r.Use(middleware.Recoverer)
 
-		a := api.New(r, log, m)
-		r.Get("/health", a.Health)
-		ln, err := net.Listen("tcp", conf.LocalAddress)
-		if err != nil {
-			log.Fatalf("Error listening on %s: %v", conf.LocalAddress, err)
-		}
-
-		lis := &proxyproto.Listener{Listener: ln}
-		defer lis.Close() // nolint:errcheck
-
-		if err != nil {
-			log.Fatalf("Error creating proxy on %s: %v", conf.LocalAddress, err)
-		}
+		api := api.New(r, log, m)
 
 		srvConf := dmsg.ServerConfig{
 			MaxSessions:    conf.MaxSessions,
 			UpdateInterval: conf.UpdateInterval,
 		}
-		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery), &srvConf, m)
+		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery, &http.Client{}, log), &srvConf, m)
 		srv.SetLogger(log)
 
-		a.SetDmsgServer(srv)
-		defer func() { log.WithError(srv.Close()).Info("Closed server.") }()
+		api.SetDmsgServer(srv)
+		defer func() { log.WithError(api.Close()).Info("Closed server.") }()
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
 
-		go a.RunBackgroundTasks(ctx)
+		go api.RunBackgroundTasks(ctx)
+		log.WithField("addr", conf.HTTPAddress).Info("Serving server API...")
 		go func() {
-			if err := srv.Serve(lis, conf.PublicAddress); err != nil {
+			if err := api.ListenAndServe(conf.LocalAddress, conf.PublicAddress, conf.HTTPAddress); err != nil {
 				log.Errorf("Serve: %v", err)
 				cancel()
 			}
@@ -117,14 +122,47 @@ type Config struct {
 	Discovery      string        `json:"discovery"`
 	LocalAddress   string        `json:"local_address"`
 	PublicAddress  string        `json:"public_address"`
+	HTTPAddress    string        `json:"health_endpoint_address,omitempty"` // defaults to :8082
 	MaxSessions    int           `json:"max_sessions"`
 	UpdateInterval time.Duration `json:"update_interval"`
 	LogLevel       string        `json:"log_level"`
 }
 
+func genDefaultConfig() (io.ReadCloser, error) {
+	pk, sk := cipher.GenerateKeyPair()
+
+	hP, err := strconv.Atoi(strings.Split(defaultPort, ":")[1])
+	if err != nil {
+		return nil, err
+	}
+	httpPort := fmt.Sprintf(":%d", hP+1)
+
+	cfg := Config{
+		PubKey:        pk,
+		SecKey:        sk,
+		Discovery:     defaultDiscoveryURL,
+		LocalAddress:  fmt.Sprintf("localhost%s", defaultPort),
+		PublicAddress: defaultPort,
+		HTTPAddress:   fmt.Sprintf("localhost%s", httpPort),
+		MaxSessions:   2048,
+		LogLevel:      "info",
+	}
+
+	configData, err := jsoniter.MarshalIndent(&cfg, "", " ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal default json config: %v", err)
+	}
+
+	if err = ioutil.WriteFile(defaultConfigPath, configData, 0600); err != nil {
+		return nil, err
+	}
+
+	return os.Open(defaultConfigPath)
+}
+
 // Execute executes root CLI command.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
 }

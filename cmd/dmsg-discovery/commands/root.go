@@ -12,12 +12,16 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/buildinfo"
+	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/api"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/cmdutil"
+	"github.com/skycoin/dmsg/direct"
+	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/discmetrics"
-	"github.com/skycoin/dmsg/discord"
+	"github.com/skycoin/dmsg/dmsghttp"
 	"github.com/skycoin/dmsg/metricsutil"
 )
 
@@ -30,19 +34,23 @@ var (
 	entryTimeout      time.Duration
 	testMode          bool
 	enableLoadTesting bool
+	pk                cipher.PubKey
+	sk                cipher.SecKey
 )
 
 func init() {
-	sf.Init(rootCmd, "dmsg_disc", "")
+	sf.Init(RootCmd, "dmsg_disc", "")
 
-	rootCmd.Flags().StringVarP(&addr, "addr", "a", ":9090", "address to bind to")
-	rootCmd.Flags().StringVar(&redisURL, "redis", store.DefaultURL, "connections string for a redis store")
-	rootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
-	rootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
-	rootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
+	RootCmd.Flags().StringVarP(&addr, "addr", "a", ":9090", "address to bind to")
+	RootCmd.Flags().StringVar(&redisURL, "redis", store.DefaultURL, "connections string for a redis store")
+	RootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
+	RootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
+	RootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
+	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key")
 }
 
-var rootCmd = &cobra.Command{
+// RootCmd contains commands for dmsg-discovery
+var RootCmd = &cobra.Command{
 	Use:   "dmsg-discovery",
 	Short: "Dmsg Discovery Server for skywire",
 	Run: func(_ *cobra.Command, _ []string) {
@@ -52,13 +60,9 @@ var rootCmd = &cobra.Command{
 
 		log := sf.Logger()
 
-		if discordWebhookURL := discord.GetWebhookURLFromEnv(); discordWebhookURL != "" {
-			// Workaround for Discord logger hook. Actually, it's Info.
-			log.Error(discord.StartLogMessage)
-			defer log.Error(discord.StopLogMessage)
-		} else {
-			log.Info(discord.StartLogMessage)
-			defer log.Info(discord.StopLogMessage)
+		var err error
+		if pk, err = sk.PubKey(); err != nil {
+			log.WithError(err).Warn("No SecKey found. Skipping serving on dmsghttp.")
 		}
 
 		metricsutil.ServeHTTPMetrics(log, sf.MetricsAddr)
@@ -81,11 +85,38 @@ var rootCmd = &cobra.Command{
 		go a.RunBackgroundTasks(ctx, log)
 		log.WithField("addr", addr).Info("Serving discovery API...")
 		go func() {
-			if err := listenAndServe(addr, a); err != nil {
+			if err = listenAndServe(addr, a); err != nil {
 				log.Errorf("ListenAndServe: %v", err)
 				cancel()
 			}
 		}()
+		if !pk.Null() {
+			servers := getServers(ctx, a, log)
+			config := &dmsg.Config{
+				MinSessions:    0, // listen on all available servers
+				UpdateInterval: dmsg.DefaultUpdateInterval,
+			}
+			var keys cipher.PubKeys
+			keys = append(keys, pk)
+			dClient := direct.NewClient(direct.GetAllEntries(keys, servers), log)
+
+			dmsgDC, closeDmsgDC, err := direct.StartDmsg(ctx, log, pk, sk, dClient, config)
+			if err != nil {
+				log.WithError(err).Fatal("failed to start direct dmsg client.")
+			}
+
+			defer closeDmsgDC()
+
+			go updateServers(ctx, a, dClient, dmsgDC, log)
+
+			go func() {
+				if err = dmsghttp.ListenAndServe(ctx, pk, sk, a, dClient, dmsg.DefaultDmsgHTTPPort, config, dmsgDC, log); err != nil {
+					log.Errorf("dmsghttp.ListenAndServe: %v", err)
+					cancel()
+				}
+			}()
+		}
+
 		<-ctx.Done()
 	},
 }
@@ -105,9 +136,54 @@ func prepareDB(log logrus.FieldLogger) store.Storer {
 	return db
 }
 
+func getServers(ctx context.Context, a *api.API, log logrus.FieldLogger) (servers []*disc.Entry) {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+	for {
+		servers, err := a.AllServers(ctx, log)
+		if err != nil {
+			log.WithError(err).Fatal("Error getting dmsg-servers.")
+		}
+		if len(servers) > 0 {
+			return servers
+		}
+		log.Warn("No dmsg-servers found, trying again in 1 minute.")
+		select {
+		case <-ctx.Done():
+			return []*disc.Entry{}
+		case <-ticker.C:
+			getServers(ctx, a, log)
+		}
+	}
+}
+
+func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, dmsgC *dmsg.Client, log logrus.FieldLogger) {
+	ticker := time.NewTicker(time.Minute * 10)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			servers, err := a.AllServers(ctx, log)
+			if err != nil {
+				log.WithError(err).Error("Error getting dmsg-servers.")
+				break
+			}
+			for _, server := range servers {
+				dClient.PostEntry(ctx, server) //nolint
+				err := dmsgC.EnsureSession(ctx, server)
+				if err != nil {
+					log.WithField("remote_pk", server.Static).WithError(err).Warn("Failed to establish session.")
+				}
+			}
+		}
+	}
+}
+
 // Execute executes root CLI command.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -118,10 +194,10 @@ func listenAndServe(addr string, handler http.Handler) error {
 		addr = ":http"
 	}
 	ln, err := net.Listen("tcp", addr)
-	proxyListener := &proxyproto.Listener{Listener: ln}
-	defer proxyListener.Close() // nolint:errcheck
 	if err != nil {
 		return err
 	}
+	proxyListener := &proxyproto.Listener{Listener: ln}
+	defer proxyListener.Close() // nolint:errcheck
 	return srv.Serve(proxyListener)
 }

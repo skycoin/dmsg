@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -80,7 +80,9 @@ func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMod
 	r.Get("/dmsg-discovery/entry/{pk}", api.getEntry())
 	r.Post("/dmsg-discovery/entry/", api.setEntry())
 	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
+	r.Delete("/dmsg-discovery/entry", api.delEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
+	r.Get("/dmsg-discovery/all_servers", api.getAllServers())
 	r.Get("/dmsg-discovery/health", api.health())
 	r.Get("/health", api.serviceHealth)
 
@@ -104,6 +106,15 @@ func (a *API) RunBackgroundTasks(ctx context.Context, log logrus.FieldLogger) {
 			a.updateInternalState(ctx, log)
 		}
 	}
+}
+
+// AllServers is used to get all the available servers registered to the dmsg-discovery.
+func (a *API) AllServers(ctx context.Context, log logrus.FieldLogger) (entries []*disc.Entry, err error) {
+	entries, err = a.db.AllServers(ctx)
+	if err != nil {
+		return entries, err
+	}
+	return entries, err
 }
 
 // getEntry returns the entry associated with the given public key
@@ -147,6 +158,7 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 
 		entryTimeout := time.Duration(0) // no timeout
 
+		// Since v0.5.0 visors do not send ?timeout=true anymore so this is for older visors.
 		if timeout := r.URL.Query().Get("timeout"); timeout == "true" {
 			entryTimeout = store.DefaultTimeout
 		}
@@ -169,6 +181,11 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		validateTimestamp := !a.enableLoadTesting
+		// we donot validate timestamp when entry is a client as the client no longer updates itself
+		// periodically and so the timestamp is never updated
+		if entry.Client != nil {
+			validateTimestamp = false
+		}
 		if err := entry.Validate(validateTimestamp); err != nil {
 			a.handleError(w, r, err)
 			return
@@ -215,12 +232,80 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// delEntry deletes the entry associated with the given public key
+// URI: /dmsg-discovery/entry
+// Method: DELETE
+// Args:
+//	json serialized entry object
+func (a *API) delEntry() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		entry := new(disc.Entry)
+		if err := json.NewDecoder(r.Body).Decode(entry); err != nil {
+			a.handleError(w, r, disc.ErrUnexpected)
+			return
+		}
+
+		validateTimestamp := !a.enableLoadTesting
+		// we donot validate timestamp when entry is a client as the client no longer updates itself
+		// periodically and so the timestamp is never updated
+		if entry.Client != nil {
+			validateTimestamp = false
+		}
+		if err := entry.Validate(validateTimestamp); err != nil {
+			a.handleError(w, r, err)
+			return
+		}
+
+		if !a.enableLoadTesting {
+			if err := entry.VerifySignature(); err != nil {
+				a.handleError(w, r, disc.ErrUnauthorized)
+				return
+			}
+		}
+
+		err := a.db.DelEntry(r.Context(), entry.Static)
+
+		// If we make sure that every error is handled then we can
+		// remove the if and make the entry return the switch default
+		if err != nil {
+			a.handleError(w, r, err)
+			return
+		}
+
+		a.writeJSON(w, r, http.StatusOK, disc.MsgEntryDeleted)
+	}
+}
+
 // getAvailableServers returns all available server entries as an array of json codified entry objects
 // URI: /dmsg-discovery/available_servers
 // Method: GET
 func (a *API) getAvailableServers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		entries, err := a.db.AvailableServers(r.Context(), maxGetAvailableServersResult)
+		if err != nil {
+			a.handleError(w, r, err)
+			return
+		}
+
+		if len(entries) == 0 {
+			a.writeJSON(w, r, http.StatusNotFound, disc.HTTPMessage{
+				Code:    http.StatusNotFound,
+				Message: disc.ErrNoAvailableServers.Error(),
+			})
+
+			return
+		}
+
+		a.writeJSON(w, r, http.StatusOK, entries)
+	}
+}
+
+// getAllServers returns all servers entries as an array of json codified entry objects
+// URI: /dmsg-discovery/all_servers
+// Method: GET
+func (a *API) getAllServers() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		entries, err := a.db.AllServers(r.Context())
 		if err != nil {
 			a.handleError(w, r, err)
 			return
@@ -286,6 +371,11 @@ func (a *API) writeJSON(w http.ResponseWriter, r *http.Request, code int, object
 }
 
 func (a *API) updateInternalState(ctx context.Context, logger logrus.FieldLogger) {
+	err := a.db.RemoveOldServerEntries(ctx)
+	if err != nil {
+		logger.WithError(err).Errorf("failed to check and remove servers entries")
+		return
+	}
 	serversCount, clientsCount, err := a.db.CountEntries(ctx)
 	if err != nil {
 		logger.WithError(err).Errorf("failed to get clients and servers count")

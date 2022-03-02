@@ -4,11 +4,13 @@ import "time"
 
 // Constants.
 const (
-	DefaultDiscAddr = "http://dmsg.discovery.skywire.skycoin.com"
+	DefaultDiscAddr = "http://dmsgd.skywire.skycoin.com"
 
 	DefaultMinSessions = 1
 
 	DefaultUpdateInterval = time.Minute
 
 	DefaultMaxSessions = 100
+
+	DefaultDmsgHTTPPort = uint16(80)
 )

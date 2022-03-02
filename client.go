@@ -49,12 +49,6 @@ type Config struct {
 
 // Ensure ensures all config values are set.
 func (c *Config) Ensure() {
-	if c.MinSessions == 0 {
-		c.MinSessions = DefaultMinSessions
-	}
-	if c.UpdateInterval == 0 {
-		c.UpdateInterval = DefaultUpdateInterval
-	}
 	if c.Callbacks == nil {
 		c.Callbacks = new(ClientCallbacks)
 	}
@@ -106,7 +100,7 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 	c.EntityCommon.init(pk, sk, dc, log, conf.UpdateInterval)
 
 	// Init callback: on set session.
-	c.EntityCommon.setSessionCallback = func(ctx context.Context, sessionCount int) error {
+	c.EntityCommon.setSessionCallback = func(ctx context.Context) error {
 		if err := c.EntityCommon.updateClientEntry(ctx, c.done); err != nil {
 			return err
 		}
@@ -118,7 +112,7 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 	}
 
 	// Init callback: on delete session.
-	c.EntityCommon.delSessionCallback = func(ctx context.Context, sessionCount int) error {
+	c.EntityCommon.delSessionCallback = func(ctx context.Context) error {
 		err := c.EntityCommon.updateClientEntry(ctx, c.done)
 		return err
 	}
@@ -149,9 +143,6 @@ func (ce *Client) Serve(ctx context.Context) {
 		}
 	}(cancellabelCtx)
 
-	// Ensure we start updateClientEntryLoop once only.
-	updateEntryLoopOnce := new(sync.Once)
-
 	for {
 		if isClosed(ce.done) {
 			return
@@ -176,9 +167,9 @@ func (ce *Client) Serve(ctx context.Context) {
 			if isClosed(ce.done) {
 				return
 			}
-
-			// If we have enough sessions, we wait for error or done signal.
-			if ce.SessionCount() >= ce.conf.MinSessions {
+			// If MinSessions is set to 0 then we connect to all available servers.
+			// If MinSessions is not 0 AND we have enough sessions, we wait for error or done signal.
+			if ce.conf.MinSessions != 0 && ce.SessionCount() >= ce.conf.MinSessions {
 				select {
 				case <-ce.done:
 					return
@@ -190,16 +181,23 @@ func (ce *Client) Serve(ctx context.Context) {
 				}
 			}
 
-			if err := ce.ensureSession(cancellabelCtx, entry); err != nil {
+			if err := ce.EnsureSession(cancellabelCtx, entry); err != nil {
 				ce.log.WithField("remote_pk", entry.Static).WithError(err).Warn("Failed to establish session.")
 				if err == context.Canceled || err == context.DeadlineExceeded {
 					return
 				}
 				time.Sleep(serveWait)
 			}
-
-			// Only start the update entry loop once we have at least one session established.
-			updateEntryLoopOnce.Do(func() { go ce.updateClientEntryLoop(cancellabelCtx, ce.done) })
+		}
+		// We dial all servers and wait for error or done signal.
+		select {
+		case <-ce.done:
+			return
+		case err := <-ce.errCh:
+			ce.log.WithError(err).Info("Session stopped.")
+			if isClosed(ce.done) {
+				return
+			}
 		}
 	}
 }
@@ -224,7 +222,7 @@ func (ce *Client) Close() error {
 	if ce == nil {
 		return nil
 	}
-
+	var err error
 	ce.once.Do(func() {
 		close(ce.done)
 
@@ -241,11 +239,10 @@ func (ce *Client) Close() error {
 		ce.sessions = make(map[cipher.PubKey]*SessionCommon)
 		ce.log.Info("All sessions closed.")
 		ce.sessionsMx.Unlock()
-
 		ce.porter.CloseAll(ce.log)
+		err = ce.EntityCommon.delEntry(context.Background())
 	})
-
-	return nil
+	return err
 }
 
 // Listen listens on a given dmsg port.
@@ -334,14 +331,15 @@ func (ce *Client) EnsureAndObtainSession(ctx context.Context, srvPK cipher.PubKe
 	return ce.dialSession(ctx, srvEntry)
 }
 
-// ensureSession ensures the existence of a session.
+// EnsureSession ensures the existence of a session.
 // It returns an error if the session does not exist AND cannot be established.
-func (ce *Client) ensureSession(ctx context.Context, entry *disc.Entry) error {
+func (ce *Client) EnsureSession(ctx context.Context, entry *disc.Entry) error {
 	ce.sesMx.Lock()
 	defer ce.sesMx.Unlock()
 
 	// If session with server of pk already exists, skip.
 	if _, ok := ce.clientSession(ce.porter, entry.Static); ok {
+		ce.log.WithField("remote_pk", entry.Static).Info("Session already exists...")
 		return nil
 	}
 

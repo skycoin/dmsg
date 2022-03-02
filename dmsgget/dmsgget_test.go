@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,6 +17,7 @@ import (
 
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
+	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/dmsghttp"
 )
@@ -37,8 +38,8 @@ const (
 // - Ensure the downloaded data (of all downloads) is the same as the original document.
 func TestDownload(t *testing.T) {
 	const (
-		fileSize  = 512
-		dlClients = 10 // number of clients to download from HTTP server.
+		fileSize  = 64
+		dlClients = 2 // number of clients to download from HTTP server.
 	)
 
 	// Arrange: Prepare file to be downloaded.
@@ -63,7 +64,9 @@ func TestDownload(t *testing.T) {
 	for i := 0; i < dlClients; i++ {
 		func(i int) {
 			log := logging.MustGetLogger(fmt.Sprintf("dl_client_%d", i))
-			err := Download(log, newHTTPClient(t, dc), dsts[i], hsAddr)
+			ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+			defer cancel()
+			err := Download(ctx, log, newHTTPClient(t, dc), dsts[i], hsAddr)
 
 			errs[i] <- err
 			close(errs[i])
@@ -169,5 +172,8 @@ func newHTTPClient(t *testing.T, dc disc.APIClient) *http.Client {
 	t.Cleanup(func() { assert.NoError(t, dmsgC.Close()) })
 	<-dmsgC.Ready()
 
-	return &http.Client{Transport: dmsghttp.MakeHTTPTransport(dmsgC)}
+	log := logging.MustGetLogger("http_client")
+	ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+	defer cancel()
+	return &http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
 }

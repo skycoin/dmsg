@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build arm && linux
 // +build arm,linux
 
 package unix
 
 import (
-	"syscall"
 	"unsafe"
 )
 
@@ -49,10 +49,6 @@ func Pipe2(p []int, flags int) (err error) {
 	return
 }
 
-// Underlying system call writes to newoffset via pointer.
-// Implemented in assembly to avoid allocation.
-func seek(fd int, offset int64, whence int) (newoffset int64, err syscall.Errno)
-
 func Seek(fd int, offset int64, whence int) (newoffset int64, err error) {
 	newoffset, errno := seek(fd, offset, whence)
 	if errno != 0 {
@@ -80,7 +76,7 @@ func Seek(fd int, offset int64, whence int) (newoffset int64, err error) {
 
 // 64-bit file system and 32-bit uid calls
 // (16-bit uid calls are not always supported in newer kernels)
-//sys	Dup2(oldfd int, newfd int) (err error)
+//sys	dup2(oldfd int, newfd int) (err error)
 //sysnb	EpollCreate(size int) (fd int, err error)
 //sys	EpollWait(epfd int, events []EpollEvent, msec int) (n int, err error)
 //sys	Fchown(fd int, uid int, gid int) (err error) = SYS_FCHOWN32

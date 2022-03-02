@@ -24,6 +24,12 @@ func (ms *MockStore) setEntry(staticPubKey string, payload []byte) {
 	ms.m[staticPubKey] = payload
 }
 
+func (ms *MockStore) delEntry(staticPubKey string) {
+	ms.mLock.Lock()
+	defer ms.mLock.Unlock()
+	delete(ms.m, staticPubKey)
+}
+
 func (ms *MockStore) entry(staticPubkey string) ([]byte, bool) {
 	ms.mLock.RLock()
 	defer ms.mLock.RUnlock()
@@ -87,6 +93,17 @@ func (ms *MockStore) SetEntry(ctx context.Context, entry *disc.Entry, timeout ti
 	return nil
 }
 
+// DelEntry implements Storer DelEntry method for MockStore
+func (ms *MockStore) DelEntry(ctx context.Context, staticPubKey cipher.PubKey) error {
+	ms.delEntry(staticPubKey.Hex())
+	return nil
+}
+
+// RemoveOldServerEntries implements Storer RemoveOldServerEntries method for MockStore
+func (ms *MockStore) RemoveOldServerEntries(ctx context.Context) error {
+	return nil
+}
+
 // Clear its a mock-only method to clear the mock store data
 func (ms *MockStore) Clear() {
 	ms.m = map[string][]byte{}
@@ -115,10 +132,32 @@ func (ms *MockStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 	return entries, nil
 }
 
+// AllServers implements Storer AllServers method for MockStore
+func (ms *MockStore) AllServers(ctx context.Context) ([]*disc.Entry, error) {
+	entries := make([]*disc.Entry, 0)
+
+	ms.serversLock.RLock()
+	defer ms.serversLock.RUnlock()
+
+	servers := arrayFromMap(ms.servers)
+	for _, entryString := range servers {
+		var e disc.Entry
+
+		err := json.Unmarshal(entryString, &e)
+		if err != nil {
+			return nil, disc.ErrUnexpected
+		}
+
+		entries = append(entries, &e)
+	}
+
+	return entries, nil
+}
+
 // CountEntries implements Storer CountEntries method for MockStore
 func (ms *MockStore) CountEntries(ctx context.Context) (int64, int64, error) {
-	var numberOfServers int64 = 0
-	var numberOfClients int64 = 0
+	var numberOfServers int64
+	var numberOfClients int64
 	ms.serversLock.RLock()
 	defer ms.serversLock.RUnlock()
 

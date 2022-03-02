@@ -13,7 +13,7 @@ $ dmsgget --help
     -U AGENT
           identify as AGENT (default "dmsgget/v0.1.0")
     -dmsg-disc URL
-          dmsg discovery URL (default "http://dmsg.discovery.skywire.skycoin.com")
+          dmsg discovery URL (default "http://dmsgd.skywire.skycoin.com")
     -dmsg-sessions NUMBER
           connect to NUMBER of dmsg servers (default 1)
     -h    
@@ -27,7 +27,7 @@ $ dmsgget --help
 
 ### Example usage
 
-In this example, we will use the `dmsg` network where the `dmsg.Discovery` address is `http://dmsg.discovery.skywire.skycoin.com`. However, any `dmsg.Discovery` would work.
+In this example, we will use the `dmsg` network where the `dmsg.Discovery` address is `http://dmsgd.skywire.skycoin.com`. However, any `dmsg.Discovery` would work.
 
 First, lets create a folder where we will host files to serve over `dmsg` and create a `hello.txt` file within.
 

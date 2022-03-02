@@ -12,6 +12,8 @@ import (
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/netutil"
+
+	"github.com/skycoin/skycoin/src/util/logging"
 )
 
 // EntityCommon contains the common fields and methods for server and client entities.
@@ -28,10 +30,11 @@ type EntityCommon struct {
 
 	updateInterval time.Duration // Minimum duration between discovery entry updates.
 
-	log logrus.FieldLogger
+	log  logrus.FieldLogger
+	mlog *logging.MasterLogger
 
-	setSessionCallback func(ctx context.Context, sessionCount int) error
-	delSessionCallback func(ctx context.Context, sessionCount int) error
+	setSessionCallback func(ctx context.Context) error
+	delSessionCallback func(ctx context.Context) error
 }
 
 func (c *EntityCommon) init(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, log logrus.FieldLogger, updateInterval time.Duration) {
@@ -59,6 +62,13 @@ func (c *EntityCommon) Logger() logrus.FieldLogger { return c.log }
 // SetLogger sets the internal logger.
 // This should be called before we serve.
 func (c *EntityCommon) SetLogger(log logrus.FieldLogger) { c.log = log }
+
+// MasterLogger obtains the master logger.
+func (c *EntityCommon) MasterLogger() *logging.MasterLogger { return c.mlog }
+
+// SetMasterLogger sets the internal master logger.
+// This should be called before we serve.
+func (c *EntityCommon) SetMasterLogger(mlog *logging.MasterLogger) { c.mlog = mlog }
 
 func (c *EntityCommon) session(pk cipher.PubKey) (*SessionCommon, bool) {
 	c.sessionsMx.Lock()
@@ -107,7 +117,7 @@ func (c *EntityCommon) setSession(ctx context.Context, dSes *SessionCommon) bool
 	c.sessions[dSes.RemotePK()] = dSes
 
 	if c.setSessionCallback != nil {
-		if err := c.setSessionCallback(ctx, len(c.sessions)); err != nil {
+		if err := c.setSessionCallback(ctx); err != nil {
 			c.log.
 				WithField("func", "EntityCommon.setSession").
 				WithError(err).
@@ -121,7 +131,7 @@ func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
 	c.sessionsMx.Lock()
 	delete(c.sessions, pk)
 	if c.delSessionCallback != nil {
-		if err := c.delSessionCallback(ctx, len(c.sessions)); err != nil {
+		if err := c.delSessionCallback(ctx); err != nil {
 			c.log.
 				WithField("func", "EntityCommon.delSession").
 				WithError(err).
@@ -237,46 +247,26 @@ func (c *EntityCommon) updateClientEntry(ctx context.Context, done chan struct{}
 		return c.dc.PostEntry(ctx, entry)
 	}
 
-	// Whether the client's CURRENT delegated servers is the same as what would be advertised.
-	sameSrvPKs := cipher.SamePubKeys(srvPKs, entry.Client.DelegatedServers)
-
-	// No update is needed if delegated servers has no delta, and an entry update is not due.
-	if _, due := c.updateIsDue(); sameSrvPKs && !due {
-		return nil
-	}
-
 	entry.Client.DelegatedServers = srvPKs
 	c.log.WithField("entry", entry).Debug("Updating entry.")
 	return c.dc.PutEntry(ctx, c.sk, entry)
 }
 
-func (c *EntityCommon) updateClientEntryLoop(ctx context.Context, done chan struct{}) {
-	t := time.NewTimer(c.updateInterval)
-	defer t.Stop()
+func (c *EntityCommon) delEntry(ctx context.Context) (err error) {
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-
-		case <-t.C:
-			if lastUpdate, due := c.updateIsDue(); !due {
-				t.Reset(c.updateInterval - time.Since(lastUpdate))
-				continue
-			}
-
-			c.sessionsMx.Lock()
-			err := c.updateClientEntry(ctx, done)
-			c.sessionsMx.Unlock()
-
-			if err != nil {
-				c.log.WithError(err).Warn("Failed to update discovery entry.")
-			}
-
-			// Ensure we trigger another update within given 'updateInterval'.
-			t.Reset(c.updateInterval)
-		}
+	entry, err := c.dc.Entry(ctx, c.pk)
+	if err != nil {
+		return err
 	}
+
+	defer func() {
+		if err == nil {
+			c.log.Debug("Entry Deleted successfully.")
+		}
+	}()
+
+	c.log.WithField("entry", entry).Debug("Deleting entry.")
+	return c.dc.DelEntry(ctx, entry)
 }
 
 func getServerEntry(ctx context.Context, dc disc.APIClient, srvPK cipher.PubKey) (*disc.Entry, error) {

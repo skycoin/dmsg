@@ -2,11 +2,13 @@ package store
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/go-redis/redis"
 	jsoniter "github.com/json-iterator/go"
 
+	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/disc"
 )
@@ -60,6 +62,10 @@ func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry, timeout ti
 		return disc.ErrUnexpected
 	}
 
+	if entry.Server != nil {
+		timeout = dmsg.DefaultUpdateInterval * 2
+	}
+
 	err = r.client.Set(entry.Static.Hex(), payload, timeout).Err()
 	if err != nil {
 		log.WithError(err).Errorf("Failed to set entry in redis")
@@ -81,6 +87,19 @@ func (r *redisStore) SetEntry(ctx context.Context, entry *disc.Entry, timeout ti
 		}
 	}
 
+	return nil
+}
+
+// DelEntry implements Storer DelEntry method for redisdb database
+func (r *redisStore) DelEntry(ctx context.Context, staticPubKey cipher.PubKey) error {
+	err := r.client.Del(staticPubKey.Hex()).Err()
+	if err != nil {
+		log.WithError(err).WithField("pk", staticPubKey).Errorf("Failed to delete entry from redis")
+		return err
+	}
+	// Delete pubkey from servers or clients set stored
+	r.client.SRem("servers", staticPubKey.Hex())
+	r.client.SRem("clients", staticPubKey.Hex())
 	return nil
 }
 
@@ -126,8 +145,52 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 		entries = append(entries, entry)
 	}
 
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Server.AvailableSessions > entries[j].Server.AvailableSessions
+	})
+
 	return entries, nil
 }
+
+// AllServers implements Storer AllServers method for redisdb database
+func (r *redisStore) AllServers(ctx context.Context) ([]*disc.Entry, error) {
+	var entries []*disc.Entry
+
+	pks, err := r.client.SRandMemberN("servers", r.client.SCard("servers").Val()).Result()
+	if err != nil {
+		log.WithError(err).Errorf("Failed to get servers (SRandMemberN) from redis")
+		return nil, disc.ErrUnexpected
+	}
+
+	if len(pks) == 0 {
+		return entries, nil
+	}
+
+	payloads, err := r.client.MGet(pks...).Result()
+	if err != nil {
+		log.WithError(err).Errorf("Failed to set servers (MGet) from redis")
+		return nil, disc.ErrUnexpected
+	}
+
+	for _, payload := range payloads {
+		// if there's no record for this PK, nil is returned. The below
+		// type assertion will panic in this case, so we skip
+		if payload == nil {
+			continue
+		}
+
+		var entry *disc.Entry
+		if err := json.Unmarshal([]byte(payload.(string)), &entry); err != nil {
+			log.WithError(err).Warnf("Failed to unmarshal payload %s", payload.(string))
+			continue
+		}
+
+		entries = append(entries, entry)
+	}
+
+	return entries, nil
+}
+
 func (r *redisStore) CountEntries(ctx context.Context) (int64, int64, error) {
 	numberOfServers, err := r.client.SCard("servers").Result()
 	if err != nil {
@@ -141,4 +204,17 @@ func (r *redisStore) CountEntries(ctx context.Context) (int64, int64, error) {
 	}
 
 	return numberOfServers, numberOfClients, nil
+}
+
+func (r *redisStore) RemoveOldServerEntries(ctx context.Context) error {
+	servers, err := r.client.SMembers("servers").Result()
+	if err != nil {
+		return err
+	}
+	for _, server := range servers {
+		if r.client.Exists(server).Val() == 0 {
+			r.client.SRem("servers", server)
+		}
+	}
+	return nil
 }

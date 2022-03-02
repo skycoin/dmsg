@@ -15,7 +15,7 @@ import (
 
 var (
 	dir      = "." // local dir to serve via http
-	dmsgDisc = "http://dmsg.discovery.skywire.skycoin.com"
+	dmsgDisc = "http://dmsgd.skywire.skycoin.com"
 	dmsgPort = uint(80)
 	pk, sk   = cipher.GenerateKeyPair()
 )
@@ -44,7 +44,7 @@ func main() {
 		log.WithError(err).Fatal("Invalid CLI args.")
 	}
 
-	c := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc), dmsg.DefaultConfig())
+	c := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, log), dmsg.DefaultConfig())
 	defer func() {
 		if err := c.Close(); err != nil {
 			log.WithError(err).Error()
