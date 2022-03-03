@@ -94,7 +94,7 @@ format-windows: ## Formats the code. Must have goimports and goimports-reviser i
 	powershell -Command .\scripts\format-windows.ps1
 
 dep: ## Sorts dependencies
-	${OPTS} go mod download
+	${OPTS} go mod vendor -v
 	${OPTS} go mod tidy -v
 
 install: ## Install `dmsg-discovery`, `dmsg-server`, `dmsgget`,`dmsgpty-cli`, `dmsgpty-host`, `dmsgpty-ui`
