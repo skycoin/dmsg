@@ -12,7 +12,7 @@ import (
 
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/disc"
-	"github.com/skycoin/dmsg/netutil"
+	"github.com/skycoin/skywire-utilities/pkg/netutil"
 )
 
 // TODO(evanlinjin): We should implement exponential backoff at some point.
