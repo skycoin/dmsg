@@ -35,22 +35,16 @@ github.com/json-iterator/go
 # github.com/klauspost/compress v1.11.0
 ## explicit
 github.com/klauspost/compress/flate
-# github.com/kr/text v0.2.0
-## explicit
 # github.com/mattn/go-colorable v0.1.11
-## explicit
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.14
 github.com/mattn/go-isatty
 # github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
-## explicit
 github.com/mgutz/ansi
 # github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421
 github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742
 github.com/modern-go/reflect2
-# github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e
-## explicit
 # github.com/nxadm/tail v1.4.8
 ## explicit
 # github.com/onsi/ginkgo v1.15.0
@@ -77,6 +71,9 @@ github.com/skycoin/skycoin/src/cipher/ripemd160
 github.com/skycoin/skycoin/src/cipher/secp256k1-go
 github.com/skycoin/skycoin/src/cipher/secp256k1-go/secp256k1-go2
 github.com/skycoin/skycoin/src/util/logging
+# github.com/skycoin/skywire-utilities v0.0.0-20220302170252-2371f6a2c73f
+## explicit
+github.com/skycoin/skywire-utilities/pkg/netutil
 # github.com/skycoin/yamux v0.0.0-20200803175205-571ceb89da9f
 ## explicit
 github.com/skycoin/yamux
@@ -115,12 +112,8 @@ golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 # golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
-## explicit
 golang.org/x/term
-# gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f
-## explicit
 # gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
-## explicit
 gopkg.in/yaml.v3
 # nhooyr.io/websocket v1.8.2
 ## explicit
