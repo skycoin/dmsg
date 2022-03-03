@@ -22,7 +22,7 @@ import (
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/discmetrics"
 	"github.com/skycoin/dmsg/dmsghttp"
-	"github.com/skycoin/dmsg/metricsutil"
+	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
 )
 
 const redisPasswordEnvName = "REDIS_PASSWORD"

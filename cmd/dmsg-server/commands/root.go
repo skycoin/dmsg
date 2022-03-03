@@ -24,8 +24,8 @@ import (
 	"github.com/skycoin/dmsg/cmd/dmsg-server/internal/api"
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/disc"
-	"github.com/skycoin/dmsg/metricsutil"
 	"github.com/skycoin/dmsg/servermetrics"
+	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
 )
 
 const (

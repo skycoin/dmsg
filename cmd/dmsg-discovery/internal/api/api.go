@@ -18,7 +18,7 @@ import (
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/discmetrics"
 	"github.com/skycoin/dmsg/httputil"
-	"github.com/skycoin/dmsg/metricsutil"
+	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
 )
 
 var log = logging.MustGetLogger("dmsg-discovery")
