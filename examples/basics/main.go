@@ -8,8 +8,8 @@ import (
 	"golang.org/x/net/nettest"
 
 	"github.com/skycoin/dmsg"
-	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/disc"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 func main() {

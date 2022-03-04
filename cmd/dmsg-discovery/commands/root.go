@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg"
-	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/api"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/cmdutil"
@@ -22,6 +21,7 @@ import (
 	"github.com/skycoin/dmsg/discmetrics"
 	"github.com/skycoin/dmsg/dmsghttp"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
 )
 
