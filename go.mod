@@ -28,4 +28,4 @@ require (
 )
 
 // Uncomment for tests with alternate branches of 'skywire-utilities'
-replace github.com/skycoin/skywire-utilities => ../skywire-utilities
+// replace github.com/skycoin/skywire-utilities => ../skywire-utilities
