@@ -8,9 +8,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/skycoin/dmsg/buildinfo"
 	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/dmsgpty"
+	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 )
 
 var (

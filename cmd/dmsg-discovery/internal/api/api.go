@@ -12,12 +12,12 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 
-	"github.com/skycoin/dmsg/buildinfo"
 	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/discmetrics"
-	"github.com/skycoin/dmsg/httputil"
+	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire-utilities/pkg/httputil"
 	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
 )
 
