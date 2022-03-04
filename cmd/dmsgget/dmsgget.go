@@ -7,8 +7,8 @@ import (
 
 	"github.com/skycoin/skycoin/src/util/logging"
 
-	"github.com/skycoin/dmsg/cmdutil"
 	"github.com/skycoin/dmsg/dmsgget"
+	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 )
 
 func main() {
