@@ -19,6 +19,7 @@ import (
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/discmetrics"
 	"github.com/skycoin/dmsg/dmsghttp"
+
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/skycoin/dmsg/ioutil"
+
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 

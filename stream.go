@@ -9,6 +9,7 @@ import (
 	"github.com/skycoin/yamux"
 
 	"github.com/skycoin/dmsg/noise"
+
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 

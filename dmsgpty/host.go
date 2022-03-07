@@ -15,6 +15,7 @@ import (
 	"github.com/skycoin/skycoin/src/util/logging"
 
 	"github.com/skycoin/dmsg"
+
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 

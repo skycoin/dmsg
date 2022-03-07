@@ -8,6 +8,7 @@ import (
 	"github.com/skycoin/skycoin/src/util/logging"
 
 	"github.com/skycoin/dmsg/dmsgget"
+
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 )
 

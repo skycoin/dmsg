@@ -15,6 +15,7 @@ import (
 
 	store2 "github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/disc"
+
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 

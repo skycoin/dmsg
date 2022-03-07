@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/skycoin/dmsg"
+
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 

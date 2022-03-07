@@ -9,6 +9,7 @@ import (
 
 	"github.com/skycoin/dmsg/noise"
 	"github.com/skycoin/dmsg/servermetrics"
+
 	"github.com/skycoin/skywire-utilities/pkg/netutil"
 )
 

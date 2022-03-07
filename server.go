@@ -11,6 +11,7 @@ import (
 
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/servermetrics"
+
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/netutil"
 )
