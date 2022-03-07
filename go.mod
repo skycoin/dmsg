@@ -21,9 +21,9 @@ require (
 	github.com/skycoin/yamux v0.0.0-20200803175205-571ceb89da9f
 	github.com/spf13/cobra v1.3.0
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d
 	golang.org/x/sys v0.0.0-20211205182925-97ca703d548d
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	nhooyr.io/websocket v1.8.2
 )
 
