@@ -16,7 +16,7 @@ github.com/davecgh/go-spew/spew
 ## explicit
 github.com/go-chi/chi/v5
 github.com/go-chi/chi/v5/middleware
-# github.com/go-redis/redis v6.15.8+incompatible
+# github.com/go-redis/redis v6.15.9+incompatible
 ## explicit
 github.com/go-redis/redis
 github.com/go-redis/redis/internal
@@ -43,13 +43,7 @@ github.com/mgutz/ansi
 github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v1.0.2
 github.com/modern-go/reflect2
-# github.com/nxadm/tail v1.4.8
-## explicit
-# github.com/onsi/ginkgo v1.15.0
-## explicit
-# github.com/onsi/gomega v1.10.5
-## explicit
-# github.com/pires/go-proxyproto v0.3.3
+# github.com/pires/go-proxyproto v0.6.2
 ## explicit
 github.com/pires/go-proxyproto
 # github.com/pmezard/go-difflib v1.0.0
@@ -69,7 +63,7 @@ github.com/skycoin/skycoin/src/cipher/ripemd160
 github.com/skycoin/skycoin/src/cipher/secp256k1-go
 github.com/skycoin/skycoin/src/cipher/secp256k1-go/secp256k1-go2
 github.com/skycoin/skycoin/src/util/logging
-# github.com/skycoin/skywire-utilities v0.0.0-20220304110203-2c19051374a2
+# github.com/skycoin/skywire-utilities v0.0.0-20220308074734-3ac20b7c3254
 ## explicit
 github.com/skycoin/skywire-utilities/pkg/buildinfo
 github.com/skycoin/skywire-utilities/pkg/cipher
@@ -106,7 +100,7 @@ golang.org/x/crypto/ssh/terminal
 # golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d
 ## explicit
 golang.org/x/net/nettest
-# golang.org/x/sys v0.0.0-20211205182925-97ca703d548d
+# golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
 ## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
