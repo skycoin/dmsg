@@ -16,6 +16,9 @@ var (
 	SIGV1 = []byte{'\x50', '\x52', '\x4F', '\x58', '\x59'}
 	SIGV2 = []byte{'\x0D', '\x0A', '\x0D', '\x0A', '\x00', '\x0D', '\x0A', '\x51', '\x55', '\x49', '\x54', '\x0A'}
 
+	ErrCantReadVersion1Header               = errors.New("proxyproto: can't read version 1 header")
+	ErrVersion1HeaderTooLong                = errors.New("proxyproto: version 1 header must be 107 bytes or less")
+	ErrLineMustEndWithCrlf                  = errors.New("proxyproto: version 1 header is invalid, must end with \\r\\n")
 	ErrCantReadProtocolVersionAndCommand    = errors.New("proxyproto: can't read proxy protocol version and command")
 	ErrCantReadAddressFamilyAndProtocol     = errors.New("proxyproto: can't read address family or protocol")
 	ErrCantReadLength                       = errors.New("proxyproto: can't read length")
@@ -53,7 +56,7 @@ func HeaderProxyFromAddrs(version byte, sourceAddr, destAddr net.Addr) *Header {
 	}
 	h := &Header{
 		Version:           version,
-		Command:           PROXY,
+		Command:           LOCAL,
 		TransportProtocol: UNSPEC,
 	}
 	switch sourceAddr := sourceAddr.(type) {
@@ -87,6 +90,7 @@ func HeaderProxyFromAddrs(version byte, sourceAddr, destAddr net.Addr) *Header {
 		}
 	}
 	if h.TransportProtocol != UNSPEC {
+		h.Command = PROXY
 		h.SourceAddr = sourceAddr
 		h.DestinationAddr = destAddr
 	}
@@ -151,17 +155,15 @@ func (header *Header) EqualsTo(otherHeader *Header) bool {
 	if otherHeader == nil {
 		return false
 	}
-	if header.Command.IsLocal() {
-		return true
-	}
 	// TLVs only exist for version 2
-	if header.Version == 0x02 && !bytes.Equal(header.rawTLVs, otherHeader.rawTLVs) {
+	if header.Version == 2 && !bytes.Equal(header.rawTLVs, otherHeader.rawTLVs) {
 		return false
 	}
-	if header.Version != otherHeader.Version || header.TransportProtocol != otherHeader.TransportProtocol {
+	if header.Version != otherHeader.Version || header.Command != otherHeader.Command || header.TransportProtocol != otherHeader.TransportProtocol {
 		return false
 	}
-	if header.TransportProtocol == UNSPEC {
+	// Return early for header with LOCAL command, which contains no address information
+	if header.Command == LOCAL {
 		return true
 	}
 	return header.SourceAddr.String() == otherHeader.SourceAddr.String() &&

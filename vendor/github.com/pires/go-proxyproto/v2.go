@@ -10,10 +10,15 @@ import (
 )
 
 var (
-	lengthV4   = uint16(12)
-	lengthV6   = uint16(36)
-	lengthUnix = uint16(216)
-
+	lengthUnspec      = uint16(0)
+	lengthV4          = uint16(12)
+	lengthV6          = uint16(36)
+	lengthUnix        = uint16(216)
+	lengthUnspecBytes = func() []byte {
+		a := make([]byte, 2)
+		binary.BigEndian.PutUint16(a, lengthUnspec)
+		return a
+	}()
 	lengthV4Bytes = func() []byte {
 		a := make([]byte, 2)
 		binary.BigEndian.PutUint16(a, lengthV4)
@@ -82,7 +87,8 @@ func parseVersion2(reader *bufio.Reader) (header *Header, err error) {
 		return nil, ErrCantReadAddressFamilyAndProtocol
 	}
 	header.TransportProtocol = AddressFamilyAndProtocol(b14)
-	if _, ok := supportedTransportProtocol[header.TransportProtocol]; !ok {
+	// UNSPEC is only supported when LOCAL is set.
+	if header.TransportProtocol == UNSPEC && header.Command != LOCAL {
 		return nil, ErrUnsupportedAddressFamilyAndProtocol
 	}
 
@@ -95,6 +101,12 @@ func parseVersion2(reader *bufio.Reader) (header *Header, err error) {
 		return nil, ErrInvalidLength
 	}
 
+	// Return early if the length is zero, which means that
+	// there's no address information and TLVs present for UNSPEC.
+	if length == 0 {
+		return header, nil
+	}
+
 	if _, err := reader.Peek(int(length)); err != nil {
 		return nil, ErrInvalidLength
 	}
@@ -102,39 +114,43 @@ func parseVersion2(reader *bufio.Reader) (header *Header, err error) {
 	// Length-limited reader for payload section
 	payloadReader := io.LimitReader(reader, int64(length)).(*io.LimitedReader)
 
-	// Read addresses and ports
-	if header.TransportProtocol.IsIPv4() {
-		var addr _addr4
-		if err := binary.Read(payloadReader, binary.BigEndian, &addr); err != nil {
-			return nil, ErrInvalidAddress
-		}
-		header.SourceAddr = newIPAddr(header.TransportProtocol, addr.Src[:], addr.SrcPort)
-		header.DestinationAddr = newIPAddr(header.TransportProtocol, addr.Dst[:], addr.DstPort)
-	} else if header.TransportProtocol.IsIPv6() {
-		var addr _addr6
-		if err := binary.Read(payloadReader, binary.BigEndian, &addr); err != nil {
-			return nil, ErrInvalidAddress
-		}
-		header.SourceAddr = newIPAddr(header.TransportProtocol, addr.Src[:], addr.SrcPort)
-		header.DestinationAddr = newIPAddr(header.TransportProtocol, addr.Dst[:], addr.DstPort)
-	} else if header.TransportProtocol.IsUnix() {
-		var addr _addrUnix
-		if err := binary.Read(payloadReader, binary.BigEndian, &addr); err != nil {
-			return nil, ErrInvalidAddress
-		}
+	// Read addresses and ports for protocols other than UNSPEC.
+	// Ignore address information for UNSPEC, and skip straight to read TLVs,
+	// since the length is greater than zero.
+	if header.TransportProtocol != UNSPEC {
+		if header.TransportProtocol.IsIPv4() {
+			var addr _addr4
+			if err := binary.Read(payloadReader, binary.BigEndian, &addr); err != nil {
+				return nil, ErrInvalidAddress
+			}
+			header.SourceAddr = newIPAddr(header.TransportProtocol, addr.Src[:], addr.SrcPort)
+			header.DestinationAddr = newIPAddr(header.TransportProtocol, addr.Dst[:], addr.DstPort)
+		} else if header.TransportProtocol.IsIPv6() {
+			var addr _addr6
+			if err := binary.Read(payloadReader, binary.BigEndian, &addr); err != nil {
+				return nil, ErrInvalidAddress
+			}
+			header.SourceAddr = newIPAddr(header.TransportProtocol, addr.Src[:], addr.SrcPort)
+			header.DestinationAddr = newIPAddr(header.TransportProtocol, addr.Dst[:], addr.DstPort)
+		} else if header.TransportProtocol.IsUnix() {
+			var addr _addrUnix
+			if err := binary.Read(payloadReader, binary.BigEndian, &addr); err != nil {
+				return nil, ErrInvalidAddress
+			}
 
-		network := "unix"
-		if header.TransportProtocol.IsDatagram() {
-			network = "unixgram"
-		}
+			network := "unix"
+			if header.TransportProtocol.IsDatagram() {
+				network = "unixgram"
+			}
 
-		header.SourceAddr = &net.UnixAddr{
-			Net:  network,
-			Name: parseUnixName(addr.Src[:]),
-		}
-		header.DestinationAddr = &net.UnixAddr{
-			Net:  network,
-			Name: parseUnixName(addr.Dst[:]),
+			header.SourceAddr = &net.UnixAddr{
+				Net:  network,
+				Name: parseUnixName(addr.Src[:]),
+			}
+			header.DestinationAddr = &net.UnixAddr{
+				Net:  network,
+				Name: parseUnixName(addr.Dst[:]),
+			}
 		}
 	}
 
@@ -152,48 +168,58 @@ func (header *Header) formatVersion2() ([]byte, error) {
 	buf.Write(SIGV2)
 	buf.WriteByte(header.Command.toByte())
 	buf.WriteByte(header.TransportProtocol.toByte())
-	var addrSrc, addrDst []byte
-	if header.TransportProtocol.IsIPv4() {
-		hdrLen, err := addTLVLen(lengthV4Bytes, len(header.rawTLVs))
+	if header.TransportProtocol.IsUnspec() {
+		// For UNSPEC, write no addresses and ports but only TLVs if they are present
+		hdrLen, err := addTLVLen(lengthUnspecBytes, len(header.rawTLVs))
 		if err != nil {
 			return nil, err
 		}
 		buf.Write(hdrLen)
-		sourceIP, destIP, _ := header.IPs()
-		addrSrc = sourceIP.To4()
-		addrDst = destIP.To4()
-	} else if header.TransportProtocol.IsIPv6() {
-		hdrLen, err := addTLVLen(lengthV6Bytes, len(header.rawTLVs))
-		if err != nil {
-			return nil, err
+	} else {
+		var addrSrc, addrDst []byte
+		if header.TransportProtocol.IsIPv4() {
+			hdrLen, err := addTLVLen(lengthV4Bytes, len(header.rawTLVs))
+			if err != nil {
+				return nil, err
+			}
+			buf.Write(hdrLen)
+			sourceIP, destIP, _ := header.IPs()
+			addrSrc = sourceIP.To4()
+			addrDst = destIP.To4()
+		} else if header.TransportProtocol.IsIPv6() {
+			hdrLen, err := addTLVLen(lengthV6Bytes, len(header.rawTLVs))
+			if err != nil {
+				return nil, err
+			}
+			buf.Write(hdrLen)
+			sourceIP, destIP, _ := header.IPs()
+			addrSrc = sourceIP.To16()
+			addrDst = destIP.To16()
+		} else if header.TransportProtocol.IsUnix() {
+			buf.Write(lengthUnixBytes)
+			sourceAddr, destAddr, ok := header.UnixAddrs()
+			if !ok {
+				return nil, ErrInvalidAddress
+			}
+			addrSrc = formatUnixName(sourceAddr.Name)
+			addrDst = formatUnixName(destAddr.Name)
 		}
-		buf.Write(hdrLen)
-		sourceIP, destIP, _ := header.IPs()
-		addrSrc = sourceIP.To16()
-		addrDst = destIP.To16()
-	} else if header.TransportProtocol.IsUnix() {
-		buf.Write(lengthUnixBytes)
-		sourceAddr, destAddr, ok := header.UnixAddrs()
-		if !ok {
+
+		if addrSrc == nil || addrDst == nil {
 			return nil, ErrInvalidAddress
 		}
-		addrSrc = formatUnixName(sourceAddr.Name)
-		addrDst = formatUnixName(destAddr.Name)
-	}
-	if addrSrc == nil || addrDst == nil {
-		return nil, ErrInvalidAddress
-	}
-	buf.Write(addrSrc)
-	buf.Write(addrDst)
+		buf.Write(addrSrc)
+		buf.Write(addrDst)
 
-	if sourcePort, destPort, ok := header.Ports(); ok {
-		portBytes := make([]byte, 2)
+		if sourcePort, destPort, ok := header.Ports(); ok {
+			portBytes := make([]byte, 2)
 
-		binary.BigEndian.PutUint16(portBytes, uint16(sourcePort))
-		buf.Write(portBytes)
+			binary.BigEndian.PutUint16(portBytes, uint16(sourcePort))
+			buf.Write(portBytes)
 
-		binary.BigEndian.PutUint16(portBytes, uint16(destPort))
-		buf.Write(portBytes)
+			binary.BigEndian.PutUint16(portBytes, uint16(destPort))
+			buf.Write(portBytes)
+		}
 	}
 
 	if len(header.rawTLVs) > 0 {
@@ -210,6 +236,8 @@ func (header *Header) validateLength(length uint16) bool {
 		return length >= lengthV6
 	} else if header.TransportProtocol.IsUnix() {
 		return length >= lengthUnix
+	} else if header.TransportProtocol.IsUnspec() {
+		return length >= lengthUnspec
 	}
 	return false
 }

@@ -16,8 +16,9 @@ import (
 	"github.com/skycoin/skycoin/src/util/logging"
 
 	"github.com/skycoin/dmsg"
-	"github.com/skycoin/dmsg/cipher"
 	"github.com/skycoin/dmsg/dmsgtest"
+
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 // TODO(evanlinjin): fix failing tests

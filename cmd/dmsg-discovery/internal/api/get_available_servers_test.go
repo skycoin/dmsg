@@ -10,10 +10,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/skycoin/dmsg/cipher"
 	store2 "github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
 	"github.com/skycoin/dmsg/disc"
 	"github.com/skycoin/dmsg/discmetrics"
+
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 func TestGetAvailableServers(t *testing.T) {
