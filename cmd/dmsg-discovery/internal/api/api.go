@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -87,6 +87,7 @@ func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMod
 	r.Get("/dmsg-discovery/entries", api.allEntries())
 	r.Delete("/dmsg-discovery/deregister/{pk}", api.deregisterEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
+	r.Get("/dmsg-discovery/all_servers", api.getAllServers())
 	r.Get("/dmsg-discovery/health", api.health())
 	r.Get("/health", api.serviceHealth)
 
@@ -114,7 +115,7 @@ func (a *API) RunBackgroundTasks(ctx context.Context, log logrus.FieldLogger) {
 
 // AllServers is used to get all the available servers registered to the dmsg-discovery.
 func (a *API) AllServers(ctx context.Context, log logrus.FieldLogger) (entries []*disc.Entry, err error) {
-	entries, err = a.db.AvailableServers(ctx, maxGetAvailableServersResult)
+	entries, err = a.db.AllServers(ctx)
 	if err != nil {
 		return entries, err
 	}
@@ -226,6 +227,11 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		validateTimestamp := !a.enableLoadTesting
+		// we donot validate timestamp when entry is a client as the client no longer updates itself
+		// periodically and so the timestamp is never updated
+		if entry.Client != nil {
+			validateTimestamp = false
+		}
 		if err := entry.Validate(validateTimestamp); err != nil {
 			a.handleError(w, r, err)
 			return
@@ -322,6 +328,30 @@ func (a *API) delEntry() func(w http.ResponseWriter, r *http.Request) {
 func (a *API) getAvailableServers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		entries, err := a.db.AvailableServers(r.Context(), maxGetAvailableServersResult)
+		if err != nil {
+			a.handleError(w, r, err)
+			return
+		}
+
+		if len(entries) == 0 {
+			a.writeJSON(w, r, http.StatusNotFound, disc.HTTPMessage{
+				Code:    http.StatusNotFound,
+				Message: disc.ErrNoAvailableServers.Error(),
+			})
+
+			return
+		}
+
+		a.writeJSON(w, r, http.StatusOK, entries)
+	}
+}
+
+// getAllServers returns all servers entries as an array of json codified entry objects
+// URI: /dmsg-discovery/all_servers
+// Method: GET
+func (a *API) getAllServers() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		entries, err := a.db.AllServers(r.Context())
 		if err != nil {
 			a.handleError(w, r, err)
 			return

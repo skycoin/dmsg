@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -138,6 +139,49 @@ func (r *redisStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 		if entry.Server.AvailableSessions <= 0 {
 			log.WithField("server_pk", entry.Static).
 				Warn("Server is at max capacity. Skipping...")
+			continue
+		}
+
+		entries = append(entries, entry)
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Server.AvailableSessions > entries[j].Server.AvailableSessions
+	})
+
+	return entries, nil
+}
+
+// AllServers implements Storer AllServers method for redisdb database
+func (r *redisStore) AllServers(ctx context.Context) ([]*disc.Entry, error) {
+	var entries []*disc.Entry
+
+	pks, err := r.client.SRandMemberN("servers", r.client.SCard("servers").Val()).Result()
+	if err != nil {
+		log.WithError(err).Errorf("Failed to get servers (SRandMemberN) from redis")
+		return nil, disc.ErrUnexpected
+	}
+
+	if len(pks) == 0 {
+		return entries, nil
+	}
+
+	payloads, err := r.client.MGet(pks...).Result()
+	if err != nil {
+		log.WithError(err).Errorf("Failed to set servers (MGet) from redis")
+		return nil, disc.ErrUnexpected
+	}
+
+	for _, payload := range payloads {
+		// if there's no record for this PK, nil is returned. The below
+		// type assertion will panic in this case, so we skip
+		if payload == nil {
+			continue
+		}
+
+		var entry *disc.Entry
+		if err := json.Unmarshal([]byte(payload.(string)), &entry); err != nil {
+			log.WithError(err).Warnf("Failed to unmarshal payload %s", payload.(string))
 			continue
 		}
 

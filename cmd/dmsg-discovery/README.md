@@ -169,3 +169,39 @@ Possible Status Codes:
 - Forbidden (403) - When access is forbidden.
 
 - Internal Server Error (500) - Something unexpected happened.
+
+### GET All Servers
+
+Obtains a subset of all server entries.
+
+> `GET {domain}/discovery/all_servers`
+
+**REQUEST**
+
+Header:
+
+```
+Accept: application/json
+```
+
+**RESPONSE**
+
+Possible Status Codes:
+
+- Success (200) - Got results.
+
+  - Header:
+
+    ```
+    Content-Type: application/json
+    ```
+
+  - Body:
+
+    > JSON-encoded `[]Entry`.
+
+- Not Found (404) - No results.
+
+- Forbidden (403) - When access is forbidden.
+
+- Internal Server Error (500) - Something unexpected happened.

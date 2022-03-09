@@ -18,10 +18,10 @@ var (
 
 // ThrottleOpts represents a set of throttling options.
 type ThrottleOpts struct {
+	RetryAfterFn   func(ctxDone bool) time.Duration
 	Limit          int
 	BacklogLimit   int
 	BacklogTimeout time.Duration
-	RetryAfterFn   func(ctxDone bool) time.Duration
 }
 
 // Throttle is a middleware that limits number of currently processed requests
@@ -35,7 +35,7 @@ func Throttle(limit int) func(http.Handler) http.Handler {
 // ThrottleBacklog is a middleware that limits number of currently processed
 // requests at a time and provides a backlog for holding a finite number of
 // pending requests.
-func ThrottleBacklog(limit int, backlogLimit int, backlogTimeout time.Duration) func(http.Handler) http.Handler {
+func ThrottleBacklog(limit, backlogLimit int, backlogTimeout time.Duration) func(http.Handler) http.Handler {
 	return ThrottleWithOpts(ThrottleOpts{Limit: limit, BacklogLimit: backlogLimit, BacklogTimeout: backlogTimeout})
 }
 
@@ -72,7 +72,7 @@ func ThrottleWithOpts(opts ThrottleOpts) func(http.Handler) http.Handler {
 
 			case <-ctx.Done():
 				t.setRetryAfterHeaderIfNeeded(w, true)
-				http.Error(w, errContextCanceled, http.StatusServiceUnavailable)
+				http.Error(w, errContextCanceled, http.StatusTooManyRequests)
 				return
 
 			case btok := <-t.backlogTokens:
@@ -85,12 +85,12 @@ func ThrottleWithOpts(opts ThrottleOpts) func(http.Handler) http.Handler {
 				select {
 				case <-timer.C:
 					t.setRetryAfterHeaderIfNeeded(w, false)
-					http.Error(w, errTimedOut, http.StatusServiceUnavailable)
+					http.Error(w, errTimedOut, http.StatusTooManyRequests)
 					return
 				case <-ctx.Done():
 					timer.Stop()
 					t.setRetryAfterHeaderIfNeeded(w, true)
-					http.Error(w, errContextCanceled, http.StatusServiceUnavailable)
+					http.Error(w, errContextCanceled, http.StatusTooManyRequests)
 					return
 				case tok := <-t.tokens:
 					defer func() {
@@ -103,7 +103,7 @@ func ThrottleWithOpts(opts ThrottleOpts) func(http.Handler) http.Handler {
 
 			default:
 				t.setRetryAfterHeaderIfNeeded(w, false)
-				http.Error(w, errCapacityExceeded, http.StatusServiceUnavailable)
+				http.Error(w, errCapacityExceeded, http.StatusTooManyRequests)
 				return
 			}
 		}
@@ -119,8 +119,8 @@ type token struct{}
 type throttler struct {
 	tokens         chan token
 	backlogTokens  chan token
-	backlogTimeout time.Duration
 	retryAfterFn   func(ctxDone bool) time.Duration
+	backlogTimeout time.Duration
 }
 
 // setRetryAfterHeaderIfNeeded sets Retry-After HTTP header if corresponding retryAfterFn option of throttler is initialized.
