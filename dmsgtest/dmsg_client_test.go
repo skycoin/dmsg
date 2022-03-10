@@ -16,7 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/skycoin/dmsg"
-	"github.com/skycoin/dmsg/cipher"
+
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 func TestClient_RemoteClients(t *testing.T) {

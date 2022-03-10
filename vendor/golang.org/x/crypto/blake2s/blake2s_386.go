@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-//go:build 386 && !gccgo && !appengine
-// +build 386,!gccgo,!appengine
+//go:build 386 && gc && !purego
+// +build 386,gc,!purego
 
 package blake2s
 
