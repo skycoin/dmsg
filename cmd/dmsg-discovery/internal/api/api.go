@@ -172,9 +172,26 @@ func (a *API) deregisterEntry() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		requestPK := r.Header.Get("PK")
-		if _, ok := WhitelistPKs[requestPK]; !ok {
-			a.handleError(w, r, disc.ErrUnauthorizedNetworkMonitor)
+		nmPkString := r.Header.Get("NM-PK")
+		if _, ok := WhitelistPKs[nmPkString]; !ok {
+			w.WriteHeader(http.StatusNonAuthoritativeInfo)
+			return
+		}
+
+		nmPk := cipher.PubKey{}
+		if err := nmPk.UnmarshalText([]byte(nmPkString)); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		nmSign := cipher.Sig{}
+		if err := nmSign.UnmarshalText([]byte(r.Header.Get("NM-Sign"))); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if err := cipher.VerifyPubKeySignedPayload(nmPk, nmSign, []byte(nmPk.Hex())); err != nil {
+			w.WriteHeader(http.StatusNonAuthoritativeInfo)
 			return
 		}
 
