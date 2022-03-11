@@ -63,7 +63,7 @@ github.com/skycoin/skycoin/src/cipher/ripemd160
 github.com/skycoin/skycoin/src/cipher/secp256k1-go
 github.com/skycoin/skycoin/src/cipher/secp256k1-go/secp256k1-go2
 github.com/skycoin/skycoin/src/util/logging
-# github.com/skycoin/skywire-utilities v0.0.0-20220308074734-3ac20b7c3254
+# github.com/skycoin/skywire-utilities v0.0.0-20220311154445-96c4422db953
 ## explicit
 github.com/skycoin/skywire-utilities/pkg/buildinfo
 github.com/skycoin/skywire-utilities/pkg/cipher
@@ -71,6 +71,7 @@ github.com/skycoin/skywire-utilities/pkg/cmdutil
 github.com/skycoin/skywire-utilities/pkg/httputil
 github.com/skycoin/skywire-utilities/pkg/metricsutil
 github.com/skycoin/skywire-utilities/pkg/netutil
+github.com/skycoin/skywire-utilities/pkg/skyenv
 # github.com/skycoin/yamux v0.0.0-20200803175205-571ceb89da9f
 ## explicit
 github.com/skycoin/yamux

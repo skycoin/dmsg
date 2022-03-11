@@ -25,6 +25,7 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
+	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 )
 
 const redisPasswordEnvName = "REDIS_PASSWORD"
@@ -87,9 +88,16 @@ var RootCmd = &cobra.Command{
 		var whitelistPKs []string
 		if whitelistKeys != "" {
 			whitelistPKs = strings.Split(whitelistKeys, ",")
-			for _, v := range whitelistPKs {
-				api.WhitelistPKs[v] = true
+		} else {
+			if testMode {
+				whitelistPKs = strings.Split(skyenv.TestNetworkMonitorPK, ",")
+			} else {
+				whitelistPKs = strings.Split(skyenv.DefaultNetworkMonitorPK, ",")
 			}
+		}
+
+		for _, v := range whitelistPKs {
+			api.WhitelistPKs[v] = true
 		}
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
