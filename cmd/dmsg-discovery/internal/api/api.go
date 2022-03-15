@@ -20,6 +20,7 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/httputil"
 	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
+	"github.com/skycoin/skywire-utilities/pkg/networkmonitor"
 )
 
 var log = logging.MustGetLogger("dmsg-discovery")
@@ -27,7 +28,7 @@ var log = logging.MustGetLogger("dmsg-discovery")
 var json = jsoniter.ConfigFastest
 
 // WhitelistPKs store whitelisted pks of network monitor
-var WhitelistPKs = make(map[string]bool)
+var WhitelistPKs = make(networkmonitor.WhitelistPKs)
 
 const maxGetAvailableServersResult = 512
 
