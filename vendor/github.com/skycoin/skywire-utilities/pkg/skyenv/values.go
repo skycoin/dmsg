@@ -31,7 +31,7 @@ const (
 	DefaultUptimeTrackerAddr   = "http://ut.skywire.skycoin.com"
 	DefaultAddressResolverAddr = "http://ar.skywire.skycoin.com"
 	DefaultSetupPK             = "0324579f003e6b4048bae2def4365e634d8e0e3054a20fc7af49daf2a179658557"
-	DefaultNetworkMonitorPK    = ""
+	DefaultNetworkMonitorPKs   = ""
 )
 
 // Constants for testing deployment.
@@ -43,7 +43,7 @@ const (
 	TestUptimeTrackerAddr   = "http://ut.skywire.dev"
 	TestAddressResolverAddr = "http://ar.skywire.dev"
 	TestSetupPK             = "026c2a3e92d6253c5abd71a42628db6fca9dd9aa037ab6f4e3a31108558dfd87cf"
-	TestNetworkMonitorPK    = "0218905f5d9079bab0b62985a05bd162623b193e948e17e7b719133f2c60b92093"
+	TestNetworkMonitorPKs   = "0218905f5d9079bab0b62985a05bd162623b193e948e17e7b719133f2c60b92093"
 )
 
 // Dmsg port constants.
