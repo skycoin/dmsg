@@ -97,7 +97,7 @@ var RootCmd = &cobra.Command{
 		}
 
 		for _, v := range whitelistPKs {
-			api.WhitelistPKs[v] = struct{}{}
+			api.WhitelistPKs.Set(v)
 		}
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)

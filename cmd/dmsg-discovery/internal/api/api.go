@@ -28,7 +28,7 @@ var log = logging.MustGetLogger("dmsg-discovery")
 var json = jsoniter.ConfigFastest
 
 // WhitelistPKs store whitelisted pks of network monitor
-var WhitelistPKs = make(networkmonitor.WhitelistPKs)
+var WhitelistPKs = networkmonitor.GetWhitelistPKs()
 
 const maxGetAvailableServersResult = 512
 
@@ -174,7 +174,7 @@ func (a *API) deregisterEntry() func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		nmPkString := r.Header.Get("NM-PK")
-		if _, ok := WhitelistPKs[nmPkString]; !ok {
+		if ok := WhitelistPKs.Get(nmPkString); !ok {
 			w.WriteHeader(http.StatusNonAuthoritativeInfo)
 			return
 		}
