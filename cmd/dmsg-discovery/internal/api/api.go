@@ -161,7 +161,7 @@ func (a *API) allEntries() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// deregisterEntry delete entries of a PK from by network monitor request
+// deregisterEntry deletes the client entry associated with the PK requested by the network monitor
 // URI: /dmsg-discovery/deregister/:pk
 // Method: DELETE
 func (a *API) deregisterEntry() func(w http.ResponseWriter, r *http.Request) {
