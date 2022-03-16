@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"time"
@@ -87,7 +88,7 @@ func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMod
 	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
 	r.Delete("/dmsg-discovery/entry", api.delEntry())
 	r.Get("/dmsg-discovery/entries", api.allEntries())
-	r.Delete("/dmsg-discovery/deregister/{pk}", api.deregisterEntry())
+	r.Delete("/dmsg-discovery/deregister", api.deregisterEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/all_servers", api.getAllServers())
 	r.Get("/dmsg-discovery/health", api.health())
@@ -167,10 +168,25 @@ func (a *API) allEntries() func(w http.ResponseWriter, r *http.Request) {
 // Method: DELETE
 func (a *API) deregisterEntry() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		staticPK := cipher.PubKey{}
-		if err := staticPK.UnmarshalText([]byte(chi.URLParam(r, "pk"))); err != nil {
-			a.handleError(w, r, disc.ErrBadInput)
+		keys := []cipher.PubKey{}
+		keysBody, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
 			return
+		}
+		var keysSlice []string
+		if err := json.Unmarshal(keysBody, &keysSlice); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		for _, key := range keysSlice {
+			tempKey := cipher.PubKey{}
+			if err := tempKey.UnmarshalText([]byte(key)); err != nil {
+				a.handleError(w, r, disc.ErrBadInput)
+				return
+			}
+			keys = append(keys, tempKey)
 		}
 
 		nmPkString := r.Header.Get("NM-PK")
@@ -196,10 +212,12 @@ func (a *API) deregisterEntry() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err := a.db.DelEntry(r.Context(), staticPK)
-		if err != nil {
-			a.handleError(w, r, err)
-			return
+		for _, key := range keys {
+			err := a.db.DelEntry(r.Context(), key)
+			if err != nil {
+				a.handleError(w, r, err)
+				return
+			}
 		}
 
 		a.writeJSON(w, r, http.StatusOK, nil)
