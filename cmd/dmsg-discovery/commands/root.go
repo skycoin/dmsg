@@ -38,6 +38,7 @@ var (
 	entryTimeout      time.Duration
 	testMode          bool
 	enableLoadTesting bool
+	testEnvironment   bool
 	pk                cipher.PubKey
 	sk                cipher.SecKey
 )
@@ -51,6 +52,7 @@ func init() {
 	RootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
 	RootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
 	RootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
+	RootCmd.Flags().BoolVar(&testEnvironment, "test-environment", false, "distinguished between prod and test environment")
 	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key")
 }
 
@@ -89,7 +91,7 @@ var RootCmd = &cobra.Command{
 		if whitelistKeys != "" {
 			whitelistPKs = strings.Split(whitelistKeys, ",")
 		} else {
-			if testMode {
+			if testEnvironment {
 				whitelistPKs = strings.Split(skyenv.TestNetworkMonitorPKs, ",")
 			} else {
 				whitelistPKs = strings.Split(skyenv.DefaultNetworkMonitorPKs, ",")
