@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 
-	"github.com/skycoin/dmsg/disc"
-	"github.com/skycoin/dmsg/noise"
+	"github.com/skycoin/dmsg/pkg/disc"
+	"github.com/skycoin/dmsg/pkg/noise"
 
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )

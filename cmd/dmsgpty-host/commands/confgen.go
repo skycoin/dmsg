@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/skycoin/dmsg/dmsgpty"
-	"github.com/skycoin/dmsg/fsutil"
+	"github.com/skycoin/dmsg/internal/fsutil"
+	"github.com/skycoin/dmsg/pkg/dmsgpty"
 )
 
 var unsafe = false
