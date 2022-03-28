@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"time"
@@ -20,11 +21,15 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/httputil"
 	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
+	"github.com/skycoin/skywire-utilities/pkg/networkmonitor"
 )
 
 var log = logging.MustGetLogger("dmsg-discovery")
 
 var json = jsoniter.ConfigFastest
+
+// WhitelistPKs store whitelisted pks of network monitor
+var WhitelistPKs = networkmonitor.GetWhitelistPKs()
 
 const maxGetAvailableServersResult = 512
 
@@ -82,6 +87,8 @@ func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMod
 	r.Post("/dmsg-discovery/entry/", api.setEntry())
 	r.Post("/dmsg-discovery/entry/{pk}", api.setEntry())
 	r.Delete("/dmsg-discovery/entry", api.delEntry())
+	r.Get("/dmsg-discovery/entries", api.allEntries())
+	r.Delete("/dmsg-discovery/deregister", api.deregisterEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/all_servers", api.getAllServers())
 	r.Get("/dmsg-discovery/health", api.health())
@@ -139,6 +146,81 @@ func (a *API) getEntry() func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		a.writeJSON(w, r, http.StatusOK, entry)
+	}
+}
+
+// allEntries returns all client entries connected to dmsg
+// URI: /dmsg-discovery/entries
+// Method: GET
+func (a *API) allEntries() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		entries, err := a.db.AllEntries(r.Context())
+		if err != nil {
+			a.handleError(w, r, err)
+			return
+		}
+		a.writeJSON(w, r, http.StatusOK, entries)
+	}
+}
+
+// deregisterEntry deletes the client entry associated with the PK requested by the network monitor
+// URI: /dmsg-discovery/deregister/:pk
+// Method: DELETE
+func (a *API) deregisterEntry() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		keys := []cipher.PubKey{}
+		keysBody, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		var keysSlice []string
+		if err := json.Unmarshal(keysBody, &keysSlice); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		for _, key := range keysSlice {
+			tempKey := cipher.PubKey{}
+			if err := tempKey.UnmarshalText([]byte(key)); err != nil {
+				a.handleError(w, r, disc.ErrBadInput)
+				return
+			}
+			keys = append(keys, tempKey)
+		}
+
+		nmPkString := r.Header.Get("NM-PK")
+		if ok := WhitelistPKs.Get(nmPkString); !ok {
+			w.WriteHeader(http.StatusNonAuthoritativeInfo)
+			return
+		}
+
+		nmPk := cipher.PubKey{}
+		if err := nmPk.UnmarshalText([]byte(nmPkString)); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		nmSign := cipher.Sig{}
+		if err := nmSign.UnmarshalText([]byte(r.Header.Get("NM-Sign"))); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if err := cipher.VerifyPubKeySignedPayload(nmPk, nmSign, []byte(nmPk.Hex())); err != nil {
+			w.WriteHeader(http.StatusNonAuthoritativeInfo)
+			return
+		}
+
+		for _, key := range keys {
+			err := a.db.DelEntry(r.Context(), key)
+			if err != nil {
+				a.handleError(w, r, err)
+				return
+			}
+		}
+
+		a.writeJSON(w, r, http.StatusOK, nil)
 	}
 }
 

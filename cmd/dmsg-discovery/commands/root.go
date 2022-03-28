@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	proxyproto "github.com/pires/go-proxyproto"
@@ -24,6 +25,7 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
+	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 )
 
 const redisPasswordEnvName = "REDIS_PASSWORD"
@@ -32,9 +34,11 @@ var (
 	sf                cmdutil.ServiceFlags
 	addr              string
 	redisURL          string
+	whitelistKeys     string
 	entryTimeout      time.Duration
 	testMode          bool
 	enableLoadTesting bool
+	testEnvironment   bool
 	pk                cipher.PubKey
 	sk                cipher.SecKey
 )
@@ -44,9 +48,11 @@ func init() {
 
 	RootCmd.Flags().StringVarP(&addr, "addr", "a", ":9090", "address to bind to")
 	RootCmd.Flags().StringVar(&redisURL, "redis", store.DefaultURL, "connections string for a redis store")
+	RootCmd.Flags().StringVar(&whitelistKeys, "whitelist-keys", "", "list of whitelisted keys of network monitor used for deregistration")
 	RootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
 	RootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
 	RootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
+	RootCmd.Flags().BoolVar(&testEnvironment, "test-environment", false, "distinguished between prod and test environment")
 	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key")
 }
 
@@ -80,6 +86,21 @@ var RootCmd = &cobra.Command{
 		// we enable metrics middleware if address is passed
 		enableMetrics := sf.MetricsAddr != ""
 		a := api.New(log, db, m, testMode, enableLoadTesting, enableMetrics)
+
+		var whitelistPKs []string
+		if whitelistKeys != "" {
+			whitelistPKs = strings.Split(whitelistKeys, ",")
+		} else {
+			if testEnvironment {
+				whitelistPKs = strings.Split(skyenv.TestNetworkMonitorPKs, ",")
+			} else {
+				whitelistPKs = strings.Split(skyenv.DefaultNetworkMonitorPKs, ",")
+			}
+		}
+
+		for _, v := range whitelistPKs {
+			api.WhitelistPKs.Set(v)
+		}
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
