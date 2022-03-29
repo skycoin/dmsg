@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/skycoin/dmsg"
+	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )

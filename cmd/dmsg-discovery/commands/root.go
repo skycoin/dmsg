@@ -13,12 +13,12 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/internal/discmetrics"
 	"github.com/skycoin/dmsg/internal/dmsg-discovery/api"
 	"github.com/skycoin/dmsg/internal/dmsg-discovery/store"
 	"github.com/skycoin/dmsg/pkg/direct"
 	"github.com/skycoin/dmsg/pkg/disc"
+	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"

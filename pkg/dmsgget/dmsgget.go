@@ -15,8 +15,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 
-	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/pkg/disc"
+	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 
 	"github.com/skycoin/skywire-utilities/pkg/cipher"

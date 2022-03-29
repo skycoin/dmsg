@@ -10,8 +10,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/nettest"
 
-	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/pkg/disc"
+	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 
 	"github.com/skycoin/skywire-utilities/pkg/cipher"

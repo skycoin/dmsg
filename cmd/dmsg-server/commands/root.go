@@ -18,10 +18,10 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/cobra"
 
-	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/internal/dmsg-server/api"
 	"github.com/skycoin/dmsg/internal/servermetrics"
 	"github.com/skycoin/dmsg/pkg/disc"
+	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"

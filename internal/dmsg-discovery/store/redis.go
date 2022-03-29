@@ -8,8 +8,8 @@ import (
 	"github.com/go-redis/redis"
 	jsoniter "github.com/json-iterator/go"
 
-	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/pkg/disc"
+	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
