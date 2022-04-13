@@ -294,7 +294,7 @@ func ReadRawFrame(r *bufio.Reader) (p []byte, err error) {
 }
 
 func isTemp(err error) bool {
-	if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+	if netErr, ok := err.(net.Error); ok && netErr.Temporary() { //nolint
 		return true
 	}
 	return false
