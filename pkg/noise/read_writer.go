@@ -105,7 +105,7 @@ func (rw *ReadWriter) Read(p []byte) (int, error) {
 // * If error is non-temporary, save error in state so further reads will fail.
 func (rw *ReadWriter) processReadError(err error) error {
 	if nErr, ok := err.(net.Error); ok {
-		if !nErr.Temporary() {
+		if !nErr.Temporary() { //nolint
 			rw.rErr = err
 		}
 		return err
