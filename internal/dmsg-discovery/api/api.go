@@ -168,14 +168,45 @@ func (a *API) allEntries() func(w http.ResponseWriter, r *http.Request) {
 // Method: DELETE
 func (a *API) deregisterEntry() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Info("Deregistration process started.")
+
+		nmPkString := r.Header.Get("NM-PK")
+		if ok := WhitelistPKs.Get(nmPkString); !ok {
+			log.WithError(disc.ErrUnauthorizedNetworkMonitor).WithField("Step", "Checking NMs PK").Error("Deregistration process interrupt.")
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		nmPk := cipher.PubKey{}
+		if err := nmPk.UnmarshalText([]byte(nmPkString)); err != nil {
+			log.WithError(disc.ErrBadInput).WithField("Step", "Reading NMs PK").Error("Deregistration process interrupt.")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		nmSign := cipher.Sig{}
+		if err := nmSign.UnmarshalText([]byte(r.Header.Get("NM-Sign"))); err != nil {
+			log.WithError(disc.ErrBadInput).WithField("Step", "Checking sign").Error("Deregistration process interrupt.")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if err := cipher.VerifyPubKeySignedPayload(nmPk, nmSign, []byte(nmPk.Hex())); err != nil {
+			log.WithError(disc.ErrUnauthorizedNetworkMonitor).WithField("Step", "Veryfing request").Error("Deregistration process interrupt.")
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
 		keys := []cipher.PubKey{}
 		keysBody, err := io.ReadAll(r.Body)
 		if err != nil {
+			log.WithError(disc.ErrBadInput).WithField("Step", "Reading keys").Error("Deregistration process interrupt.")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		var keysSlice []string
 		if err := json.Unmarshal(keysBody, &keysSlice); err != nil {
+			log.WithError(disc.ErrBadInput).WithField("Step", "Slicing keys").Error("Deregistration process interrupt.")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -183,43 +214,22 @@ func (a *API) deregisterEntry() func(w http.ResponseWriter, r *http.Request) {
 		for _, key := range keysSlice {
 			tempKey := cipher.PubKey{}
 			if err := tempKey.UnmarshalText([]byte(key)); err != nil {
+				log.WithError(disc.ErrBadInput).WithField("Step", "Checking keys").Error("Deregistration process interrupt.")
 				a.handleError(w, r, disc.ErrBadInput)
 				return
 			}
 			keys = append(keys, tempKey)
 		}
 
-		nmPkString := r.Header.Get("NM-PK")
-		if ok := WhitelistPKs.Get(nmPkString); !ok {
-			w.WriteHeader(http.StatusNonAuthoritativeInfo)
-			return
-		}
-
-		nmPk := cipher.PubKey{}
-		if err := nmPk.UnmarshalText([]byte(nmPkString)); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		nmSign := cipher.Sig{}
-		if err := nmSign.UnmarshalText([]byte(r.Header.Get("NM-Sign"))); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		if err := cipher.VerifyPubKeySignedPayload(nmPk, nmSign, []byte(nmPk.Hex())); err != nil {
-			w.WriteHeader(http.StatusNonAuthoritativeInfo)
-			return
-		}
-
 		for _, key := range keys {
 			err := a.db.DelEntry(r.Context(), key)
 			if err != nil {
+				log.WithFields(logrus.Fields{"PK": key.Hex(), "Step": "Delete Entry"}).Error("Deregistration process interrupt.")
 				a.handleError(w, r, err)
 				return
 			}
 		}
-
+		log.WithFields(logrus.Fields{"Number of Keys": len(keys), "Keys": keys}).Info("Deregistration process completed.")
 		a.writeJSON(w, r, http.StatusOK, nil)
 	}
 }
