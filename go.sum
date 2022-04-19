@@ -370,6 +370,8 @@ github.com/skycoin/skywire-utilities v0.0.0-20220315050606-172bb2cd90d9 h1:LzdEb
 github.com/skycoin/skywire-utilities v0.0.0-20220315050606-172bb2cd90d9/go.mod h1:9fOsut+rqCBd33NPF3cuolXrw8uQESYshSvdYMaZNEo=
 github.com/skycoin/skywire-utilities v0.0.0-20220331141811-c29ff9ab891e h1:2LOmMQqYEk2XX4H8A/MXQmYIIl7opIVYmY3k76D1+Oc=
 github.com/skycoin/skywire-utilities v0.0.0-20220331141811-c29ff9ab891e/go.mod h1:9fOsut+rqCBd33NPF3cuolXrw8uQESYshSvdYMaZNEo=
+github.com/skycoin/skywire-utilities v0.0.0-20220412111240-e8921109e514 h1:gnpD1meoHdFp5t2nHazMOYYh52h0BS+IO9vkGsAz6rk=
+github.com/skycoin/skywire-utilities v0.0.0-20220412111240-e8921109e514/go.mod h1:9fOsut+rqCBd33NPF3cuolXrw8uQESYshSvdYMaZNEo=
 github.com/skycoin/yamux v0.0.0-20200803175205-571ceb89da9f h1:A5dEM1OE9YhN3LciZU9qPjo7fJ46JeHNi3JCroDkK0Y=
 github.com/skycoin/yamux v0.0.0-20200803175205-571ceb89da9f/go.mod h1:48cleOxgkiLbgv322LOg2Vrxtu180Mb8GG1HbuhmFYM=
 github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
