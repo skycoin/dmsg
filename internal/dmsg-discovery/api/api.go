@@ -44,14 +44,6 @@ type API struct {
 	enableLoadTesting           bool
 }
 
-// HealthCheckResponse is struct of /health endpoint
-type HealthCheckResponse struct {
-	BuildInfo       *buildinfo.Info `json:"build_info"`
-	NumberOfServers int64           `json:"servers"`
-	StartedAt       time.Time       `json:"started_at,omitempty"`
-	Error           string          `json:"error,omitempty"`
-}
-
 // New returns a new API object, which can be started as a server
 func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMode, enableLoadTesting, enableMetrics bool) *API {
 	if log != nil {
@@ -91,7 +83,6 @@ func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMod
 	r.Delete("/dmsg-discovery/deregister", api.deregisterEntry())
 	r.Get("/dmsg-discovery/available_servers", api.getAvailableServers())
 	r.Get("/dmsg-discovery/all_servers", api.getAllServers())
-	r.Get("/dmsg-discovery/health", api.health())
 	r.Get("/health", api.serviceHealth)
 
 	return api
@@ -417,17 +408,9 @@ func (a *API) getAllServers() http.HandlerFunc {
 	}
 }
 
-// health returns status of dmsg discovery
-// URI: /dmsg-discovery/health
-// Method: GET
-func (a *API) health() http.HandlerFunc {
-	const expBase = "health"
-	return httputil.MakeHealthHandler(expBase, nil)
-}
-
 func (a *API) serviceHealth(w http.ResponseWriter, r *http.Request) {
 	info := buildinfo.Get()
-	a.writeJSON(w, r, http.StatusOK, HealthCheckResponse{
+	a.writeJSON(w, r, http.StatusOK, httputil.HealthCheckResponse{
 		BuildInfo: info,
 		StartedAt: a.startedAt,
 	})
