@@ -36,12 +36,6 @@ type API struct {
 	router          *chi.Mux
 }
 
-// HealthCheckResponse is struct of /health endpoint
-type HealthCheckResponse struct {
-	BuildInfo *buildinfo.Info `json:"build_info"`
-	StartedAt time.Time       `json:"started_at,omitempty"`
-}
-
 // New returns a new API object, which can be started as a server
 func New(r *chi.Mux, log *logging.Logger, m servermetrics.Metrics) *API {
 	api := &API{
@@ -123,7 +117,7 @@ func (a *API) Close() error {
 // Health serves health page
 func (a *API) health(w http.ResponseWriter, r *http.Request) {
 	info := buildinfo.Get()
-	a.writeJSON(w, r, http.StatusOK, HealthCheckResponse{
+	a.writeJSON(w, r, http.StatusOK, httputil.HealthCheckResponse{
 		BuildInfo: info,
 		StartedAt: a.startedAt,
 	})
