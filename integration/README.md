@@ -23,7 +23,7 @@
     $ ./bin/dmsg-server ./integration/configs/dmsgserver1.json
     ```
 
-## Take dmsg-server under load
+## Put dmsg-server under load
 You need [tmux](https://github.com/tmux/tmux) to continue this test
 1. Start a local dmsg environment
 2. Clone skywire, checkout to develop
