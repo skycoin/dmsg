@@ -128,11 +128,11 @@ func (c *EntityCommon) setSession(ctx context.Context, dSes *SessionCommon) bool
 	return true
 }
 
-func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey, batchDelete bool) {
+func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey, serverEndSession bool) {
 	c.sessionsMx.Lock()
 	defer c.sessionsMx.Unlock()
 	delete(c.sessions, pk)
-	if batchDelete {
+	if serverEndSession {
 		return
 	}
 	if c.delSessionCallback != nil {
