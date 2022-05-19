@@ -41,8 +41,8 @@ You need [tmux](https://github.com/tmux/tmux) to continue this test
     ...
     ```
 4. Build new binaries: `make build`
-5. Copy `underLoadLocal.sh` file to skywire clone directory
-6. Run it by `bash underLoadLocal.sh -n 200`
+5. Copy `underlocal.sh` file to skywire clone directory
+6. Run it by `bash underlocal.sh -n 200`
 
 For close all visors and delete generated configs, use these two commands:
 ```
