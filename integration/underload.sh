@@ -26,8 +26,8 @@ function makeConfigs() {
     while [ $n -gt 0 ]
     do 
         # Generate config
-        ./skywire-cli config gen -two config$n.json --disableapps skysocks,skysocks-client,skychat,vpn-server,vpn-client
-	    sed -i 's/dmsgd.skywire.dev/$u/gI' config$n.json
+        ./skywire-cli config gen -trwo config$n.json --disableapps skysocks,skysocks-client,skychat,vpn-server,vpn-client
+	    sed -i 's/dmsgd.skywire.dev/'$u'/gI' config$n.json
         # increment the value
         n=`expr $n - 1`
     done
