@@ -164,7 +164,7 @@ func (ce *Client) Serve(ctx context.Context) {
 			time.Sleep(serveWait)
 		}
 
-		for _, entry := range entries {
+		for n, entry := range entries {
 			if isClosed(ce.done) {
 				return
 			}
@@ -186,6 +186,12 @@ func (ce *Client) Serve(ctx context.Context) {
 				ce.log.WithField("remote_pk", entry.Static).WithError(err).Warn("Failed to establish session.")
 				if err == context.Canceled || err == context.DeadlineExceeded {
 					return
+				}
+				// we send an error if this is the last server
+				if n == (len(entries) - 1) {
+					if !isClosed(ce.done) {
+						ce.errCh <- err
+					}
 				}
 				time.Sleep(serveWait)
 			}
