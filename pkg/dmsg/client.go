@@ -16,9 +16,6 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/netutil"
 )
 
-// // TODO(evanlinjin): We should implement exponential backoff at some point.
-// const serveWait = time.Second
-
 // SessionDialCallback is triggered BEFORE a session is dialed to.
 // If a non-nil error is returned, the session dial is instantly terminated.
 type SessionDialCallback func(network, addr string) (err error)
@@ -164,7 +161,7 @@ func (ce *Client) Serve(ctx context.Context) {
 			if err == context.Canceled || err == context.DeadlineExceeded {
 				return
 			}
-			time.Sleep(time.Second) // TODO(evanlinjin): Implement exponential back off.
+			ce.serveWait()
 			continue
 		}
 		if len(entries) == 0 {
