@@ -198,7 +198,9 @@ func (ce *Client) Serve(ctx context.Context) {
 				// we send an error if this is the last server
 				if n == (len(entries) - 1) {
 					if !isClosed(ce.done) {
+						ce.sesMx.Lock()
 						ce.errCh <- err
+						ce.sesMx.Unlock()
 					}
 				}
 				ce.log.WithField("remote_pk", entry.Static).WithError(err).WithField("current_backoff", ce.bo.String()).
