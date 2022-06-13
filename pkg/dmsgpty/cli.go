@@ -99,7 +99,7 @@ func (cli *CLI) prepareConn() (net.Conn, error) {
 
 	cli.Log.
 		WithField("address", fmt.Sprintf("%s://%s", cli.Net, cli.Addr)).
-		Infof("Requesting...")
+		Debugf("Requesting...")
 
 	conn, err := net.Dial(cli.Net, cli.Addr)
 	if err != nil {
@@ -115,7 +115,7 @@ func (cli *CLI) servePty(ctx context.Context, ptyC *PtyClient, cmd string, args 
 
 	cli.Log.
 		WithField("cmd", fmt.Sprint(append([]string{cmd}, args...))).
-		Infof("Executing...")
+		Debugf("Executing...")
 
 	if err := ptyC.Start(cmd, args...); err != nil {
 		return fmt.Errorf("failed to start command on pty: %v", err)

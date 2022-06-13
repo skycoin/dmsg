@@ -29,7 +29,7 @@ func ListenAndServe(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, a h
 	}()
 
 	log.WithField("dmsg_addr", fmt.Sprintf("dmsg://%v", lis.Addr().String())).
-		Info("Serving...")
+		Debug("Serving...")
 
 	return http.Serve(lis, a)
 }
