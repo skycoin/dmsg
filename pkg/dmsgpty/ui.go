@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"nhooyr.io/websocket"
 
 	"github.com/skycoin/skywire-utilities/pkg/httputil"
