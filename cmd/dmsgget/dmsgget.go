@@ -5,7 +5,7 @@ import (
 	"flag"
 	"os"
 
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
 
 	"github.com/skycoin/dmsg/pkg/dmsgget"
 
