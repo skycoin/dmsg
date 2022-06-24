@@ -141,7 +141,7 @@ func (ce *Client) Serve(ctx context.Context) {
 	cancellabelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	setupNodeTicker := time.NewTicker(5 * time.Minute)
+	setupNodeTicker := time.NewTicker(1 * time.Minute)
 
 	go func(ctx context.Context) {
 		select {
@@ -217,7 +217,7 @@ func (ce *Client) Serve(ctx context.Context) {
 				return
 			}
 		case <-setupNodeTicker.C:
-			return
+			continue
 		}
 	}
 }
