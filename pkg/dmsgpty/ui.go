@@ -178,7 +178,7 @@ func (ui *UI) Handler() http.HandlerFunc {
 			}
 		}()
 
-		// userCommand from URL | set DMSGPTYTERM=1 all times
+		// urlCommands from URL | set DMSGPTYTERM=1 all times
 		ptyC.Write([]byte(urlCommands(r))) //nolint
 
 		// io
