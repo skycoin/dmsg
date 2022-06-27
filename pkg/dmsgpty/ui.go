@@ -178,11 +178,8 @@ func (ui *UI) Handler() http.HandlerFunc {
 			}
 		}()
 
-		// userCommand from URL | set DMSGPTYTERM=1 as default
-		ptyUserCommand := dmsgptyUICommands(r)
-		if ptyUserCommand != "" {
-			ptyC.Write([]byte(ptyUserCommand)) //nolint
-		}
+		// userCommand from URL | set DMSGPTYTERM=1 all times
+		ptyC.Write([]byte(urlCommands(r))) //nolint
 
 		// io
 		done, once := make(chan struct{}), new(sync.Once)
@@ -241,7 +238,7 @@ func writeError(log logrus.FieldLogger, w http.ResponseWriter, r *http.Request, 
 	})
 }
 
-func dmsgptyUICommands(r *http.Request) string {
+func urlCommands(r *http.Request) string {
 	commands := []string{"export DMSGPTYTERM=1"}
 	if commandsQuery, ok := r.URL.Query()["commands"]; ok {
 		if len(commandsQuery[0]) > 0 {
