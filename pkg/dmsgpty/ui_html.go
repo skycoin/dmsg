@@ -7,7 +7,8 @@ import (
 )
 
 // writeTermHTML returns raw, uncompressed file data.
-// This is copied from https://github.com/progrium/termshareg
+// For modified this hex value, should make changes on term.html file on scripts folder, make gz compress, and
+// get its hex value by some tools like http://tomeko.net/online_tools/file_to_hex.php
 func writeTermHTML(w io.Writer) (int64, error) {
 
 	gz, err := gzip.NewReader(bytes.NewBuffer([]byte{
