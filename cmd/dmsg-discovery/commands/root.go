@@ -6,23 +6,26 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	proxyproto "github.com/pires/go-proxyproto"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/skycoin/dmsg"
-	"github.com/skycoin/dmsg/buildinfo"
-	"github.com/skycoin/dmsg/cipher"
-	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/api"
-	"github.com/skycoin/dmsg/cmd/dmsg-discovery/internal/store"
-	"github.com/skycoin/dmsg/cmdutil"
-	"github.com/skycoin/dmsg/direct"
-	"github.com/skycoin/dmsg/disc"
-	"github.com/skycoin/dmsg/discmetrics"
-	"github.com/skycoin/dmsg/dmsghttp"
-	"github.com/skycoin/dmsg/metricsutil"
+	"github.com/skycoin/dmsg/internal/discmetrics"
+	"github.com/skycoin/dmsg/internal/dmsg-discovery/api"
+	"github.com/skycoin/dmsg/internal/dmsg-discovery/store"
+	"github.com/skycoin/dmsg/pkg/direct"
+	"github.com/skycoin/dmsg/pkg/disc"
+	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsghttp"
+
+	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
+	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 )
 
 const redisPasswordEnvName = "REDIS_PASSWORD"
@@ -31,9 +34,11 @@ var (
 	sf                cmdutil.ServiceFlags
 	addr              string
 	redisURL          string
+	whitelistKeys     string
 	entryTimeout      time.Duration
 	testMode          bool
 	enableLoadTesting bool
+	testEnvironment   bool
 	pk                cipher.PubKey
 	sk                cipher.SecKey
 )
@@ -43,9 +48,11 @@ func init() {
 
 	RootCmd.Flags().StringVarP(&addr, "addr", "a", ":9090", "address to bind to")
 	RootCmd.Flags().StringVar(&redisURL, "redis", store.DefaultURL, "connections string for a redis store")
+	RootCmd.Flags().StringVar(&whitelistKeys, "whitelist-keys", "", "list of whitelisted keys of network monitor used for deregistration")
 	RootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
 	RootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
 	RootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
+	RootCmd.Flags().BoolVar(&testEnvironment, "test-environment", false, "distinguished between prod and test environment")
 	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key")
 }
 
@@ -79,6 +86,21 @@ var RootCmd = &cobra.Command{
 		// we enable metrics middleware if address is passed
 		enableMetrics := sf.MetricsAddr != ""
 		a := api.New(log, db, m, testMode, enableLoadTesting, enableMetrics)
+
+		var whitelistPKs []string
+		if whitelistKeys != "" {
+			whitelistPKs = strings.Split(whitelistKeys, ",")
+		} else {
+			if testEnvironment {
+				whitelistPKs = strings.Split(skyenv.TestNetworkMonitorPKs, ",")
+			} else {
+				whitelistPKs = strings.Split(skyenv.NetworkMonitorPKs, ",")
+			}
+		}
+
+		for _, v := range whitelistPKs {
+			api.WhitelistPKs.Set(v)
+		}
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()

@@ -4,7 +4,7 @@ github.com/ActiveState/termtest/conpty
 # github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78
 github.com/Azure/go-ansiterm
 github.com/Azure/go-ansiterm/winterm
-# github.com/VictoriaMetrics/metrics v1.12.3
+# github.com/VictoriaMetrics/metrics v1.18.1
 ## explicit
 github.com/VictoriaMetrics/metrics
 # github.com/creack/pty v1.1.15
@@ -16,7 +16,7 @@ github.com/davecgh/go-spew/spew
 ## explicit
 github.com/go-chi/chi/v5
 github.com/go-chi/chi/v5/middleware
-# github.com/go-redis/redis v6.15.8+incompatible
+# github.com/go-redis/redis v6.15.9+incompatible
 ## explicit
 github.com/go-redis/redis
 github.com/go-redis/redis/internal
@@ -25,39 +25,25 @@ github.com/go-redis/redis/internal/hashtag
 github.com/go-redis/redis/internal/pool
 github.com/go-redis/redis/internal/proto
 github.com/go-redis/redis/internal/util
-# github.com/google/go-cmp v0.5.5
-## explicit
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
-# github.com/json-iterator/go v1.1.10
+# github.com/json-iterator/go v1.1.12
 ## explicit
 github.com/json-iterator/go
 # github.com/klauspost/compress v1.11.0
 ## explicit
 github.com/klauspost/compress/flate
-# github.com/kr/pretty v0.2.1
-## explicit
-# github.com/kr/text v0.2.0
-## explicit
-# github.com/mattn/go-colorable v0.1.8
-## explicit
+# github.com/mattn/go-colorable v0.1.12
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.12
+# github.com/mattn/go-isatty v0.0.14
 github.com/mattn/go-isatty
-# github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b
-## explicit
+# github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
 github.com/mgutz/ansi
-# github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421
+# github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
 github.com/modern-go/concurrent
-# github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742
+# github.com/modern-go/reflect2 v1.0.2
 github.com/modern-go/reflect2
-# github.com/nxadm/tail v1.4.8
-## explicit
-# github.com/onsi/ginkgo v1.15.0
-## explicit
-# github.com/onsi/gomega v1.10.5
-## explicit
-# github.com/pires/go-proxyproto v0.3.3
+# github.com/pires/go-proxyproto v0.6.2
 ## explicit
 github.com/pires/go-proxyproto
 # github.com/pmezard/go-difflib v1.0.0
@@ -69,53 +55,65 @@ github.com/sirupsen/logrus/hooks/syslog
 # github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
 ## explicit
 github.com/skycoin/noise
-# github.com/skycoin/skycoin v0.26.0
+# github.com/skycoin/skycoin v0.27.1
 ## explicit
 github.com/skycoin/skycoin/src/cipher
 github.com/skycoin/skycoin/src/cipher/base58
 github.com/skycoin/skycoin/src/cipher/ripemd160
 github.com/skycoin/skycoin/src/cipher/secp256k1-go
 github.com/skycoin/skycoin/src/cipher/secp256k1-go/secp256k1-go2
-github.com/skycoin/skycoin/src/util/logging
+# github.com/skycoin/skywire-utilities v0.0.0-20220617085111-5c8c8d3ced14
+## explicit
+github.com/skycoin/skywire-utilities/pkg/buildinfo
+github.com/skycoin/skywire-utilities/pkg/cipher
+github.com/skycoin/skywire-utilities/pkg/cmdutil
+github.com/skycoin/skywire-utilities/pkg/httputil
+github.com/skycoin/skywire-utilities/pkg/logging
+github.com/skycoin/skywire-utilities/pkg/metricsutil
+github.com/skycoin/skywire-utilities/pkg/netutil
+github.com/skycoin/skywire-utilities/pkg/networkmonitor
+github.com/skycoin/skywire-utilities/pkg/skyenv
 # github.com/skycoin/yamux v0.0.0-20200803175205-571ceb89da9f
 ## explicit
 github.com/skycoin/yamux
-# github.com/spf13/cobra v0.0.5
+# github.com/spf13/cobra v1.3.0
 ## explicit
 github.com/spf13/cobra
-# github.com/spf13/pflag v1.0.3
+# github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# github.com/stretchr/testify v1.4.0
+# github.com/stretchr/testify v1.7.0
 ## explicit
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
-# github.com/valyala/fastrand v1.0.0
+# github.com/valyala/fastrand v1.1.0
 github.com/valyala/fastrand
-# github.com/valyala/histogram v1.1.2
+# github.com/valyala/histogram v1.2.0
 github.com/valyala/histogram
-# golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+# golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 ## explicit
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/blake2s
 golang.org/x/crypto/chacha20
 golang.org/x/crypto/chacha20poly1305
 golang.org/x/crypto/curve25519
+golang.org/x/crypto/curve25519/internal/field
+golang.org/x/crypto/internal/poly1305
 golang.org/x/crypto/internal/subtle
-golang.org/x/crypto/poly1305
-golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb
+# golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d
 ## explicit
 golang.org/x/net/nettest
-# golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c
+# golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
 ## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
+golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
+# golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 ## explicit
-# gopkg.in/yaml.v2 v2.3.0
-gopkg.in/yaml.v2
+golang.org/x/term
+# gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+gopkg.in/yaml.v3
 # nhooyr.io/websocket v1.8.2
 ## explicit
 nhooyr.io/websocket
