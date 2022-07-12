@@ -92,9 +92,9 @@ var RootCmd = &cobra.Command{
 			whitelistPKs = strings.Split(whitelistKeys, ",")
 		} else {
 			if testEnvironment {
-				whitelistPKs = strings.Split(skyenv.TestNetworkMonitorPKs, ",")
+				whitelistPKs = strings.Split(skyenv.TestNetworkMonitorPK, ",")
 			} else {
-				whitelistPKs = strings.Split(skyenv.NetworkMonitorPKs, ",")
+				whitelistPKs = strings.Split(skyenv.NetworkMonitorPK, ",")
 			}
 		}
 
