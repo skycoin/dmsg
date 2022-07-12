@@ -10,7 +10,7 @@ const (
 	UptimeTrackerAddr   = "http://ut.skywire.skycoin.com"
 	AddressResolverAddr = "http://ar.skywire.skycoin.com"
 	SetupPK             = "0324579f003e6b4048bae2def4365e634d8e0e3054a20fc7af49daf2a179658557"
-	NetworkMonitorPKs   = ""
+	NetworkMonitorPK    = "0380ea88f0ad0aa4d93c330ba5f97aabca1d892190b94db69eee140b549d2817dd"
 )
 
 // Constants for testing deployment.
@@ -23,19 +23,22 @@ const (
 	TestUptimeTrackerAddr   = "http://ut.skywire.dev"
 	TestAddressResolverAddr = "http://ar.skywire.dev"
 	TestSetupPK             = "026c2a3e92d6253c5abd71a42628db6fca9dd9aa037ab6f4e3a31108558dfd87cf"
-	TestNetworkMonitorPKs   = "0218905f5d9079bab0b62985a05bd162623b193e948e17e7b719133f2c60b92093"
+	TestNetworkMonitorPK    = "0218905f5d9079bab0b62985a05bd162623b193e948e17e7b719133f2c60b92093"
 )
 
-// GetStunServers gives back deafault Stun Servers
+// GetStunServers gives back default Stun Servers
 func GetStunServers() []string {
 	return []string{
-		"172.104.188.139:3478",
-		"172.104.59.235:3478",
-		"172.104.183.187:3478",
-		"139.162.54.63:3478",
-		"172.105.115.97:3478",
-		"172.104.188.39:3478",
-		"172.104.188.140:3478",
-		"172.104.40.88:3478",
+		"192.46.224.108:3478",
+		"139.177.185.210:3478",
+		"139.162.17.54:3478",
+		"139.162.17.107:3478",
+		"139.162.17.156:3478",
+		"45.118.134.168:3478",
+		"139.177.185.180:3478",
+		"139.162.17.48:3478",
 	}
 }
+
+// DNSServer is value for DNS Server Address
+const DNSServer = "1.1.1.1"
