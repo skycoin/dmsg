@@ -13,8 +13,8 @@ type VictoriaMetrics struct {
 // NewVictoriaMetrics returns the Victoria Metrics implementation of Metrics.
 func NewVictoriaMetrics() *VictoriaMetrics {
 	return &VictoriaMetrics{
-		clientsCount: metricsutil.NewVictoriaMetricsIntGauge("clients_count"),
-		serversCount: metricsutil.NewVictoriaMetricsIntGauge("servers_count"),
+		clientsCount: metricsutil.NewVictoriaMetricsIntGauge("dmsg_discovery_clients_count"),
+		serversCount: metricsutil.NewVictoriaMetricsIntGauge("dmsg_discovery_servers_count"),
 	}
 }
 
