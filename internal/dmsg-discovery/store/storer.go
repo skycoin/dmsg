@@ -71,7 +71,7 @@ func DefaultConfig() *Config {
 
 // NewStore returns an initialized store, name represents which
 // store to initialize
-func NewStore(name string, conf *Config) (Storer, error) {
+func NewStore(ctx context.Context, name string, conf *Config) (Storer, error) {
 	if conf == nil {
 		conf = DefaultConfig()
 	}
@@ -79,7 +79,7 @@ func NewStore(name string, conf *Config) (Storer, error) {
 	case "mock":
 		return NewMock(), nil
 	case "redis":
-		return newRedis(conf.URL, conf.Password, conf.Timeout)
+		return newRedis(ctx, conf.URL, conf.Password, conf.Timeout)
 	default:
 		return nil, errors.New("no such store type")
 	}

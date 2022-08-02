@@ -7,7 +7,7 @@ require (
 	github.com/VictoriaMetrics/metrics v1.18.1
 	github.com/creack/pty v1.1.15
 	github.com/go-chi/chi/v5 v5.0.8-0.20220103230436-7dbe9a0bd10f
-	github.com/go-redis/redis v6.15.9+incompatible
+	github.com/go-redis/redis/v8 v8.11.5
 	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.11.0 // indirect
 	github.com/pires/go-proxyproto v0.6.2
