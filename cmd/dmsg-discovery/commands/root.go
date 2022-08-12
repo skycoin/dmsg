@@ -74,7 +74,9 @@ var RootCmd = &cobra.Command{
 
 		metricsutil.ServeHTTPMetrics(log, sf.MetricsAddr)
 
-		db := prepareDB(log)
+		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+		defer cancel()
+		db := prepareDB(ctx, log)
 
 		var m discmetrics.Metrics
 		if sf.MetricsAddr == "" {
@@ -102,8 +104,6 @@ var RootCmd = &cobra.Command{
 			api.WhitelistPKs.Set(v)
 		}
 
-		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
-		defer cancel()
 		go a.RunBackgroundTasks(ctx, log)
 		log.WithField("addr", addr).Info("Serving discovery API...")
 		go func() {
@@ -143,14 +143,14 @@ var RootCmd = &cobra.Command{
 	},
 }
 
-func prepareDB(log logrus.FieldLogger) store.Storer {
+func prepareDB(ctx context.Context, log logrus.FieldLogger) store.Storer {
 	dbConf := &store.Config{
 		URL:      redisURL,
 		Password: os.Getenv(redisPasswordEnvName),
 		Timeout:  entryTimeout,
 	}
 
-	db, err := store.NewStore("redis", dbConf)
+	db, err := store.NewStore(ctx, "redis", dbConf)
 	if err != nil {
 		log.Fatal("Failed to initialize redis store: ", err)
 	}
