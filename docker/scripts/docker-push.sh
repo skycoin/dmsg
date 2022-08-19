@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+git_tag="$(git describe --tags --abbrev=0)"
+
 function print_usage() {
   echo "Use: $0 [-t <docker_image_tag_name>] [-p | -b]"
   echo "use -p for push (it builds and push the image)"
@@ -32,7 +34,7 @@ while getopts ":t:pb" o; do
   t)
     tag="$(echo "${OPTARG}" | tr -d '[:space:]')"
     if [[ $tag == "develop" ]]; then
-      tag="test"
+      tag="$git_tag-test"
     elif [[ $tag == "master" ]]; then
       tag="prod"
     fi
