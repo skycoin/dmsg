@@ -15,6 +15,7 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"nhooyr.io/websocket"
 
+	"github.com/skycoin/skywire/pkg/skyenv"
 	"github.com/skycoin/skywire-utilities/pkg/httputil"
 )
 
@@ -248,7 +249,7 @@ func urlCommands(r *http.Request) string {
 	// var commandQuery string
 	for i, command := range commands {
 		if command == "update" {
-			commands[i] = "sudo apt update && sudo apt install skywire-bin -y"
+			commands[i] = skyenv.UpdateCommand
 		}
 	}
 	stringCommands := strings.Join(commands, " && ")
