@@ -211,7 +211,7 @@ func Execute() {
 }
 
 func listenAndServe(addr string, handler http.Handler) error {
-	srv := &http.Server{Addr: addr, Handler: handler, ReadTimeout: 1 * time.Second, WriteTimeout: 1 * time.Second, IdleTimeout: 30 * time.Second}
+	srv := &http.Server{Addr: addr, Handler: handler, ReadTimeout: 1 * time.Second, WriteTimeout: 1 * time.Second, IdleTimeout: 30 * time.Second, ReadHeaderTimeout: 2 * time.Second}
 	if addr == "" {
 		addr = ":http"
 	}
