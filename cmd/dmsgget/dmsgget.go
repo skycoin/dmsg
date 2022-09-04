@@ -1,3 +1,4 @@
+// package main cmd/dmsgget/dmsgget.go
 package main
 
 import (
@@ -5,11 +6,10 @@ import (
 	"flag"
 	"os"
 
+	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
 
 	"github.com/skycoin/dmsg/pkg/dmsgget"
-
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 )
 
 func main() {

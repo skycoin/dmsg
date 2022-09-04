@@ -1,15 +1,18 @@
+// Package dmsgget pkg/dmsgget/dmsgget_test.go
 package dmsgget
 
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,9 +21,6 @@ import (
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 )
 
 const (
@@ -78,14 +78,14 @@ func TestDownload(t *testing.T) {
 	for i := 0; i < dlClients; i++ {
 		assert.NoError(t, <-errs[i])
 
-		dstData, err := ioutil.ReadFile(dsts[i].Name())
+		dstData, err := os.ReadFile(dsts[i].Name())
 		assert.NoErrorf(t, err, "[%d] failed to read destination file", i)
 		assert.Equalf(t, srcData, dstData, "[%d] destination file data is not equal", i)
 	}
 }
 
 func makeFile(t *testing.T, data []byte) *os.File {
-	f, err := ioutil.TempFile(os.TempDir(), "dmsgget_test_file_*")
+	f, err := os.CreateTemp(os.TempDir(), "dmsgget_test_file_*")
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -152,8 +152,15 @@ func runHTTPSrv(t *testing.T, dc disc.APIClient, fName string) string {
 	require.NoError(t, err)
 
 	errCh := make(chan error, 1)
+	srv := &http.Server{
+		ReadTimeout:       1 * time.Second,
+		WriteTimeout:      1 * time.Second,
+		IdleTimeout:       30 * time.Second,
+		ReadHeaderTimeout: 2 * time.Second,
+		Handler:           r,
+	}
 	go func() {
-		errCh <- http.Serve(lis, r)
+		errCh <- srv.Serve(lis)
 		close(errCh)
 	}()
 

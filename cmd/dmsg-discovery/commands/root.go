@@ -1,3 +1,4 @@
+// Package commands cmd/dmsg-discovery/commands/root.go
 package commands
 
 import (
@@ -11,6 +12,11 @@ import (
 
 	proxyproto "github.com/pires/go-proxyproto"
 	"github.com/sirupsen/logrus"
+	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
+	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/internal/discmetrics"
@@ -20,12 +26,6 @@ import (
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
-
-	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
-	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
-	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 )
 
 const redisPasswordEnvName = "REDIS_PASSWORD"
@@ -211,7 +211,7 @@ func Execute() {
 }
 
 func listenAndServe(addr string, handler http.Handler) error {
-	srv := &http.Server{Addr: addr, Handler: handler}
+	srv := &http.Server{Addr: addr, Handler: handler, ReadTimeout: 1 * time.Second, WriteTimeout: 1 * time.Second, IdleTimeout: 30 * time.Second, ReadHeaderTimeout: 2 * time.Second}
 	if addr == "" {
 		addr = ":http"
 	}

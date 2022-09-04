@@ -1,3 +1,4 @@
+// Package store internal/dmsg-discovery/store/redis.go
 package store
 
 import (
@@ -7,11 +8,10 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
 
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 var json = jsoniter.ConfigFastest

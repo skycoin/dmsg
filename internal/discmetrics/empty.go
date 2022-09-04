@@ -1,3 +1,4 @@
+// Package discmetrics internal/discmetrics/empty.go
 package discmetrics
 
 // NewEmpty constructs new empty metrics.

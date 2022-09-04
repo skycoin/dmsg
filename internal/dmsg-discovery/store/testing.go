@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/skycoin/dmsg/pkg/disc"
-
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
+
+	"github.com/skycoin/dmsg/pkg/disc"
 )
 
 // MockStore implements a storer mock

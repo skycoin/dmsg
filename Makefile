@@ -54,8 +54,12 @@ check-windows-appveyor: lint-windows-appveyor test ## Run linters and tests
 
 check-windows: lint test-windows ## Run linters and tests on windows
 
-lint: ## Run linters. Use make install-linters first	
+lint: ## Run linters. Use make install-linters first
+	${OPTS} golangci-lint run -c .golangci.yml ./cmd/...
+	${OPTS} golangci-lint run -c .golangci.yml ./pkg/...
+	${OPTS} golangci-lint run -c .golangci.yml ./internal/...
 	${OPTS} golangci-lint run -c .golangci.yml ./...
+	${OPTS} golangci-lint run -c .golangci.yml .
 	# The govet version in golangci-lint is out of date and has spurious warnings, run it separately
 	${OPTS} go vet -all ./...
 
@@ -89,7 +93,9 @@ install-linters-windows: ## Install linters on windows
 	${OPTS} go install github.com/incu6us/goimports-reviser@latest
 
 format: ## Formats the code. Must have goimports and goimports-reviser installed (use make install-linters).
-	${OPTS} goimports -w -local ${DMSG_REPO} .
+	${OPTS} goimports -local ${DMSG_REPO} -w .
+	find . -type f -name '*.go' -not -path "./.git/*" -not -path "./vendor/*"  -exec goimports-reviser -project-name ${DMSG_REPO} {} \;
+
 
 format-windows: ## Formats the code. Must have goimports and goimports-reviser installed (use make install-linters-windows).
 	powershell -Command .\scripts\format-windows.ps1
@@ -103,7 +109,7 @@ install: ## Install `dmsg-discovery`, `dmsg-server`, `dmsgget`,`dmsgpty-cli`, `d
 
 build: ## Build binaries into ./bin
 	mkdir -p ${BIN}; go build ${BUILD_OPTS} -o ${BIN} ${CMD_DIR}/*
-	
+
 build-windows: ## Build binaries into ./bin
 	powershell -Command new-item ${BIN} -itemtype directory -force
 	powershell 'Get-ChildItem ${CMD_DIR} | % { go build ${BUILD_OPTS} -o ${BIN} $$_.FullName }'

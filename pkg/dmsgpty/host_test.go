@@ -1,24 +1,22 @@
+// Package dmsgpty pkg/dmsgpty/host_test.go
 package dmsgpty
 
 import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"runtime"
 	"testing"
 
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 
-	"github.com/skycoin/skywire-utilities/pkg/logging"
-
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsgtest"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 // TODO(evanlinjin): fix failing tests
@@ -216,7 +214,7 @@ func TestHost(t *testing.T) {
 }
 
 func tempWhitelist(t *testing.T, c *dmsg.Client) (Whitelist, func()) {
-	f, err := ioutil.TempFile(os.TempDir(), "")
+	f, err := os.CreateTemp(os.TempDir(), "")
 	require.NoError(t, err)
 
 	fName := f.Name()

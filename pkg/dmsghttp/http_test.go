@@ -1,19 +1,19 @@
+// Package dmsghttp pkg/dmsghttp/http_test.go
 package dmsghttp
 
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/stretchr/testify/assert"
 
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 const (
@@ -99,7 +99,7 @@ func startHTTPServer(t *testing.T, results chan httpServerResult, lis net.Listen
 	r.HandleFunc(endpointEcho, func(w http.ResponseWriter, r *http.Request) {
 		result := httpServerResult{Path: endpointEcho}
 
-		data, err := ioutil.ReadAll(r.Body)
+		data, err := io.ReadAll(r.Body)
 		result.ReqB = data
 		result.ReqErr = err
 
@@ -113,7 +113,7 @@ func startHTTPServer(t *testing.T, results chan httpServerResult, lis net.Listen
 	r.HandleFunc(endpointHash, func(w http.ResponseWriter, r *http.Request) {
 		result := httpServerResult{Path: endpointHash}
 
-		data, err := ioutil.ReadAll(r.Body)
+		data, err := io.ReadAll(r.Body)
 		result.ReqB = data
 		result.ReqErr = err
 
@@ -128,7 +128,14 @@ func startHTTPServer(t *testing.T, results chan httpServerResult, lis net.Listen
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- http.Serve(lis, r)
+		srv := &http.Server{
+			ReadTimeout:       1 * time.Second,
+			WriteTimeout:      1 * time.Second,
+			IdleTimeout:       30 * time.Second,
+			ReadHeaderTimeout: 2 * time.Second,
+			Handler:           r,
+		}
+		errCh <- srv.Serve(lis)
 		close(errCh)
 	}()
 
@@ -157,7 +164,7 @@ func requestHTTP(httpC *http.Client, method, url string, body []byte) httpClient
 		return result
 	}
 
-	b, respErr := ioutil.ReadAll(resp.Body)
+	b, respErr := io.ReadAll(resp.Body)
 	result.RespB = b
 	result.ReqErr = respErr
 	result.RespCloseErr = resp.Body.Close()

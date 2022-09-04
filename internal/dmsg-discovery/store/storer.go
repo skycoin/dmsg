@@ -5,11 +5,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
 
 	"github.com/skycoin/dmsg/pkg/disc"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 var log = logging.MustGetLogger("store")
