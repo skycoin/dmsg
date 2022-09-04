@@ -1,19 +1,18 @@
+// Package commands cmd/dmsgpty-cli/commands/root.go
 package commands
 
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"log"
 	"os"
 
+	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/spf13/cobra"
 
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsgpty"
-
-	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 )
 
 var cli = dmsgpty.DefaultCLI()
@@ -71,7 +70,7 @@ func initConfig() {
 	}
 
 	// read file using ioutil
-	file, err := ioutil.ReadFile(confPath) //nolint:gosec
+	file, err := os.ReadFile(confPath) //nolint:gosec
 	if err != nil {
 		cli.Log.Fatalln("Unable to read ", confPath, err)
 	}
@@ -87,7 +86,7 @@ func initConfig() {
 		}
 
 		// write to config.json
-		err = ioutil.WriteFile(confPath, b, 0600)
+		err = os.WriteFile(confPath, b, 0600)
 		if err != nil {
 			cli.Log.Fatalln("Unable to write", confPath, err)
 		}

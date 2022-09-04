@@ -1,3 +1,4 @@
+// Package fsutil internal/fsutil/fsutil.go
 package fsutil
 
 import (

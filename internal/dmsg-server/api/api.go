@@ -1,3 +1,4 @@
+// Package api internal/dmsg-server/api/api.go
 package api
 
 import (
@@ -13,14 +14,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pires/go-proxyproto"
 	"github.com/sirupsen/logrus"
+	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/httputil"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
 
 	"github.com/skycoin/dmsg/internal/servermetrics"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
-
-	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/httputil"
 )
 
 // API main object of the server
@@ -100,9 +100,17 @@ func (a *API) ListenAndServe(lAddr, pAddr, httpAddr string) error {
 	if err != nil {
 		return err
 	}
-	lis := &proxyproto.Listener{Listener: ln}
+	lis := &proxyproto.Listener{Listener: ln, ReadHeaderTimeout: 2 * time.Second}
 	defer lis.Close() // nolint:errcheck
-	if err := http.Serve(lis, a.router); err != nil {
+	srv := &http.Server{
+		ReadTimeout:       1 * time.Second,
+		WriteTimeout:      1 * time.Second,
+		IdleTimeout:       30 * time.Second,
+		ReadHeaderTimeout: 2 * time.Second,
+		//Addr:              lis,
+		Handler: a.router,
+	}
+	if err := srv.Serve(lis); err != nil {
 		errCh <- err
 	}
 

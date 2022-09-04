@@ -153,10 +153,7 @@ linters:
   enable:
     - revive
     - goimports
-    - varcheck
     - unparam
-    - deadcode
-    - structcheck
     - errcheck
     - gosimple
     - staticcheck

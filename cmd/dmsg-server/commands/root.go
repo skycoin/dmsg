@@ -1,10 +1,10 @@
+// Package commands cmd/dmsg-server/commands/root.go
 package commands
 
 import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -16,17 +16,16 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/internal/dmsg-server/api"
 	"github.com/skycoin/dmsg/internal/servermetrics"
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
-
-	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
-	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
 )
 
 const (
@@ -154,7 +153,7 @@ func genDefaultConfig() (io.ReadCloser, error) {
 		return nil, fmt.Errorf("failed to marshal default json config: %v", err)
 	}
 
-	if err = ioutil.WriteFile(defaultConfigPath, configData, 0600); err != nil {
+	if err = os.WriteFile(defaultConfigPath, configData, 0600); err != nil {
 		return nil, err
 	}
 

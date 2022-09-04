@@ -5,12 +5,11 @@ import (
 	"log"
 	"time"
 
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"golang.org/x/net/nettest"
 
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 func main() {
