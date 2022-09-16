@@ -8,6 +8,7 @@
 *.rdb
 *.json
 .DS_Store
+.vscode
 
 .idea/
 .vscode/
