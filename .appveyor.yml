@@ -8,7 +8,7 @@ environment:
     - job_name: MacOS
       appveyor_build_worker_image: macos-bigsur
     - job_name: Windows
-      appveyor_build_worker_image: Visual Studio 2019
+      appveyor_build_worker_image: Previous Visual Studio 2019
     - job_name: Deploy
       appveyor_build_worker_image: Ubuntu2004
 
@@ -40,7 +40,6 @@ for:
         - GOARCH: amd64
 
     install:
-      - gvm install go1.17.13
       - choco install make
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.47.2
       - go mod vendor
