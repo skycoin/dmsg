@@ -21,6 +21,7 @@ for:
         - job_name: MacOS
 
     install:
+      - gvm install go1.17.13
       - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.47.2
       - go mod vendor
 
@@ -39,6 +40,7 @@ for:
         - GOARCH: amd64
 
     install:
+      - gvm install go1.17.13
       - choco install make
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.47.2
       - go mod vendor
