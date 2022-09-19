@@ -1,3 +1,5 @@
+# bitbucket.org/creachadair/shell v0.0.7
+bitbucket.org/creachadair/shell
 # github.com/ActiveState/termtest/conpty v0.5.0
 ## explicit
 github.com/ActiveState/termtest/conpty
@@ -7,31 +9,37 @@ github.com/Azure/go-ansiterm/winterm
 # github.com/VictoriaMetrics/metrics v1.18.1
 ## explicit
 github.com/VictoriaMetrics/metrics
+# github.com/bitfield/script v0.19.0
+github.com/bitfield/script
+# github.com/cespare/xxhash/v2 v2.1.2
+github.com/cespare/xxhash/v2
 # github.com/creack/pty v1.1.15
 ## explicit
 github.com/creack/pty
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
+# github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f
+github.com/dgryski/go-rendezvous
 # github.com/go-chi/chi/v5 v5.0.8-0.20220103230436-7dbe9a0bd10f
 ## explicit
 github.com/go-chi/chi/v5
 github.com/go-chi/chi/v5/middleware
-# github.com/go-redis/redis v6.15.9+incompatible
+# github.com/go-redis/redis/v8 v8.11.5
 ## explicit
-github.com/go-redis/redis
-github.com/go-redis/redis/internal
-github.com/go-redis/redis/internal/consistenthash
-github.com/go-redis/redis/internal/hashtag
-github.com/go-redis/redis/internal/pool
-github.com/go-redis/redis/internal/proto
-github.com/go-redis/redis/internal/util
+github.com/go-redis/redis/v8
+github.com/go-redis/redis/v8/internal
+github.com/go-redis/redis/v8/internal/hashtag
+github.com/go-redis/redis/v8/internal/hscan
+github.com/go-redis/redis/v8/internal/pool
+github.com/go-redis/redis/v8/internal/proto
+github.com/go-redis/redis/v8/internal/rand
+github.com/go-redis/redis/v8/internal/util
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
 # github.com/json-iterator/go v1.1.12
 ## explicit
 github.com/json-iterator/go
 # github.com/klauspost/compress v1.11.0
-## explicit
 github.com/klauspost/compress/flate
 # github.com/mattn/go-colorable v0.1.12
 github.com/mattn/go-colorable
@@ -62,13 +70,16 @@ github.com/skycoin/skycoin/src/cipher/base58
 github.com/skycoin/skycoin/src/cipher/ripemd160
 github.com/skycoin/skycoin/src/cipher/secp256k1-go
 github.com/skycoin/skycoin/src/cipher/secp256k1-go/secp256k1-go2
-github.com/skycoin/skycoin/src/util/logging
-# github.com/skycoin/skywire-utilities v0.0.0-20220412111240-e8921109e514
+# github.com/skycoin/skywire v1.1.1-0.20220904173023-147ebb63e34f
+## explicit
+github.com/skycoin/skywire/pkg/skyenv
+# github.com/skycoin/skywire-utilities v0.0.0-20220712142443-abafa30105ce
 ## explicit
 github.com/skycoin/skywire-utilities/pkg/buildinfo
 github.com/skycoin/skywire-utilities/pkg/cipher
 github.com/skycoin/skywire-utilities/pkg/cmdutil
 github.com/skycoin/skywire-utilities/pkg/httputil
+github.com/skycoin/skywire-utilities/pkg/logging
 github.com/skycoin/skywire-utilities/pkg/metricsutil
 github.com/skycoin/skywire-utilities/pkg/netutil
 github.com/skycoin/skywire-utilities/pkg/networkmonitor
@@ -76,7 +87,7 @@ github.com/skycoin/skywire-utilities/pkg/skyenv
 # github.com/skycoin/yamux v0.0.0-20200803175205-571ceb89da9f
 ## explicit
 github.com/skycoin/yamux
-# github.com/spf13/cobra v1.3.0
+# github.com/spf13/cobra v1.4.0
 ## explicit
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
@@ -98,11 +109,10 @@ golang.org/x/crypto/curve25519
 golang.org/x/crypto/curve25519/internal/field
 golang.org/x/crypto/internal/poly1305
 golang.org/x/crypto/internal/subtle
-golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d
+# golang.org/x/net v0.0.0-20211020060615-d418f374d309
 ## explicit
 golang.org/x/net/nettest
-# golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
+# golang.org/x/sys v0.0.0-20220627191245-f75cf1eec38b
 ## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
@@ -121,3 +131,5 @@ nhooyr.io/websocket/internal/bpool
 nhooyr.io/websocket/internal/errd
 nhooyr.io/websocket/internal/wsjs
 nhooyr.io/websocket/internal/xsync
+# periph.io/x/periph v3.6.8+incompatible
+periph.io/x/periph/host/distro

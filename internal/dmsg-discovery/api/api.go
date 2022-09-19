@@ -1,3 +1,4 @@
+// Package api internal/dmsg-discovery/api/api.go
 package api
 
 import (
@@ -11,17 +12,16 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/httputil"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
+	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
+	"github.com/skycoin/skywire-utilities/pkg/networkmonitor"
 
 	"github.com/skycoin/dmsg/internal/discmetrics"
 	"github.com/skycoin/dmsg/internal/dmsg-discovery/store"
 	"github.com/skycoin/dmsg/pkg/disc"
-
-	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/httputil"
-	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
-	"github.com/skycoin/skywire-utilities/pkg/networkmonitor"
 )
 
 var log = logging.MustGetLogger("dmsg-discovery")
@@ -231,6 +231,7 @@ func (a *API) deregisterEntry() func(w http.ResponseWriter, r *http.Request) {
 // URI: /dmsg-discovery/entry/[?timeout={true|false}]
 // Method: POST
 // Args:
+//
 //	json serialized entry object
 func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -320,6 +321,7 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 // URI: /dmsg-discovery/entry
 // Method: DELETE
 // Args:
+//
 //	json serialized entry object
 func (a *API) delEntry() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {

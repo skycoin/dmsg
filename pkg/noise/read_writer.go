@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/skycoin/dmsg/pkg/ioutil"
-
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
+
+	"github.com/skycoin/dmsg/pkg/ioutil"
 )
 
 // MaxWriteSize is the largest amount for a single write.
@@ -187,6 +187,11 @@ func (rw *ReadWriter) Handshake(hsTimeout time.Duration) error {
 	case <-time.After(hsTimeout):
 		return timeoutError{}
 	}
+}
+
+// Buffered returns the number of bytes that can be read from the buffer rawInput.
+func (rw *ReadWriter) Buffered() int {
+	return rw.rawInput.Buffered()
 }
 
 // LocalStatic returns the local static public key.

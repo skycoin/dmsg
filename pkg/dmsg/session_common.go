@@ -1,7 +1,6 @@
 package dmsg
 
 import (
-	"bufio"
 	"encoding/binary"
 	"io"
 	"net"
@@ -9,11 +8,10 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/yamux"
 
 	"github.com/skycoin/dmsg/pkg/noise"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 // SessionCommon contains the common fields and methods used by a session, whether it be it from the client or server
@@ -62,11 +60,11 @@ func (sc *SessionCommon) initClient(entity *EntityCommon, conn net.Conn, rPK cip
 		return err
 	}
 
-	r := bufio.NewReader(conn)
-	if err := noise.InitiatorHandshake(ns, r, conn); err != nil {
+	rw := noise.NewReadWriter(conn, ns)
+	if err := rw.Handshake(time.Second * 5); err != nil {
 		return err
 	}
-	if r.Buffered() > 0 {
+	if rw.Buffered() > 0 {
 		return ErrSessionHandshakeExtraBytes
 	}
 
@@ -95,11 +93,11 @@ func (sc *SessionCommon) initServer(entity *EntityCommon, conn net.Conn) error {
 		return err
 	}
 
-	r := bufio.NewReader(conn)
-	if err := noise.ResponderHandshake(ns, r, conn); err != nil {
+	rw := noise.NewReadWriter(conn, ns)
+	if err := rw.Handshake(time.Second * 5); err != nil {
 		return err
 	}
-	if r.Buffered() > 0 {
+	if rw.Buffered() > 0 {
 		return ErrSessionHandshakeExtraBytes
 	}
 

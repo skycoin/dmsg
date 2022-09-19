@@ -1,3 +1,4 @@
+// Package dmsg pkg/dmsg/server.go
 package dmsg
 
 import (
@@ -7,13 +8,12 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
+	"github.com/skycoin/skywire-utilities/pkg/netutil"
 
 	"github.com/skycoin/dmsg/internal/servermetrics"
 	"github.com/skycoin/dmsg/pkg/disc"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/netutil"
 )
 
 // ServerConfig configues the Server
@@ -225,6 +225,6 @@ func (s *Server) handleSession(conn net.Conn) {
 		dSes.Serve()
 	}
 
-	s.delSession(ctx, dSes.RemotePK())
+	s.delSession(ctx, dSes.RemotePK(), true)
 	cancel()
 }

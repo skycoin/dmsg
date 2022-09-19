@@ -1,3 +1,4 @@
+// Package commands cmd/dmsg-server/commands/root.go
 package commands
 
 import (

@@ -8,12 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/skycoin/dmsg/pkg/disc"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 const (
@@ -22,12 +21,12 @@ const (
 )
 
 func TestRedisStoreClientEntry(t *testing.T) {
-	redis, err := newRedis(redisURL, redisPassword, 0)
+	ctx := context.TODO()
+	redis, err := newRedis(ctx, redisURL, redisPassword, 0)
 	require.NoError(t, err)
-	require.NoError(t, redis.(*redisStore).client.FlushDB().Err())
+	require.NoError(t, redis.(*redisStore).client.FlushDB(ctx).Err())
 
 	pk, sk := cipher.GenerateKeyPair()
-	ctx := context.TODO()
 
 	entry := &disc.Entry{
 		Static:    pk,
@@ -52,12 +51,12 @@ func TestRedisStoreClientEntry(t *testing.T) {
 }
 
 func TestRedisStoreServerEntry(t *testing.T) {
-	redis, err := newRedis(redisURL, redisPassword, 0)
+	ctx := context.TODO()
+	redis, err := newRedis(ctx, redisURL, redisPassword, 0)
 	require.NoError(t, err)
-	require.NoError(t, redis.(*redisStore).client.FlushDB().Err())
+	require.NoError(t, redis.(*redisStore).client.FlushDB(ctx).Err())
 
 	pk, sk := cipher.GenerateKeyPair()
-	ctx := context.TODO()
 
 	entry := &disc.Entry{
 		Static:    pk,
@@ -89,12 +88,12 @@ func TestRedisStoreServerEntry(t *testing.T) {
 	assert.Len(t, entries, 1)
 }
 func TestRedisCountEntries(t *testing.T) {
-	redis, err := newRedis(redisURL, redisPassword, 0)
+	ctx := context.TODO()
+	redis, err := newRedis(ctx, redisURL, redisPassword, 0)
 	require.NoError(t, err)
-	require.NoError(t, redis.(*redisStore).client.FlushDB().Err())
+	require.NoError(t, redis.(*redisStore).client.FlushDB(ctx).Err())
 
 	pk, sk := cipher.GenerateKeyPair()
-	ctx := context.TODO()
 
 	serverEntry := &disc.Entry{
 		Static:    pk,

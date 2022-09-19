@@ -6,15 +6,16 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/skycoin/skycoin/src/util/logging"
-	"nhooyr.io/websocket"
-
 	"github.com/skycoin/skywire-utilities/pkg/httputil"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
+	"github.com/skycoin/skywire/pkg/skyenv"
+	"nhooyr.io/websocket"
 )
 
 const (
@@ -101,7 +102,6 @@ func (ui *UI) writeBanner(w io.Writer, uiAddr string, sID int32) error {
 // Handler returns a http handler that serves the dmsgpty-ui.
 func (ui *UI) Handler() http.HandlerFunc {
 	var sc int32 // session counter
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := ui.log.WithField("remote_addr", r.RemoteAddr)
 
@@ -117,15 +117,15 @@ func (ui *UI) Handler() http.HandlerFunc {
 			n, err := writeTermHTML(w)
 			logrus.WithError(err).
 				WithField("bytes", n).
-				Info("Served web page.")
+				Debug("Served web page.")
 			return
 		}
 
 		// serve terminal
 		sID := atomic.AddInt32(&sc, 1)
 		log = log.WithField("ui_sid", sID)
-		log.Info("Serving terminal websocket...")
-		defer func() { log.Infof("Terminal closed: %d terminals left open.", atomic.AddInt32(&sc, -1)+1) }()
+		log.Debug("Serving terminal websocket...")
+		defer func() { log.Debugf("Terminal closed: %d terminals left open.", atomic.AddInt32(&sc, -1)+1) }()
 
 		// open websocket
 		ws, err := websocket.Accept(w, r, nil)
@@ -177,6 +177,9 @@ func (ui *UI) Handler() http.HandlerFunc {
 				time.Sleep(10 * time.Second)
 			}
 		}()
+
+		// urlCommands from URL | set DMSGPTYTERM=1 all times
+		ptyC.Write([]byte(urlCommands(r))) //nolint
 
 		// io
 		done, once := make(chan struct{}), new(sync.Once)
@@ -233,4 +236,22 @@ func writeError(log logrus.FieldLogger, w http.ResponseWriter, r *http.Request, 
 		ErrorCode: code,
 		ErrorMsg:  err.Error(),
 	})
+}
+
+func urlCommands(r *http.Request) string {
+	commands := []string{"export DMSGPTYTERM=1"}
+	if commandsQuery, ok := r.URL.Query()["commands"]; ok {
+		if len(commandsQuery[0]) > 0 {
+			commands = append(commands, strings.Split(commandsQuery[0], ",")...)
+		}
+	}
+	// var commandQuery string
+	for i, command := range commands {
+		if command == "update" {
+			commands[i] = strings.Join(skyenv.UpdateCommand(), " && ")
+		}
+	}
+	stringCommands := strings.Join(commands, " && ")
+	stringCommands += "\n"
+	return stringCommands
 }

@@ -9,14 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 
 	"github.com/skycoin/dmsg/pkg/disc"
 	"github.com/skycoin/dmsg/pkg/noise"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 func TestStream(t *testing.T) {

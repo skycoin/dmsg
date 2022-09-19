@@ -7,17 +7,15 @@ import (
 	"testing"
 
 	"github.com/sirupsen/logrus"
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 
-	"github.com/skycoin/dmsg/pkg/dmsg"
-
 	"github.com/skycoin/dmsg/pkg/disc"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/dmsg/pkg/dmsg"
 )
 
 func TestHTTPTransport_RoundTrip(t *testing.T) {

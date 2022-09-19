@@ -1,23 +1,22 @@
+// Package dmsghttp_test pkg/dmsghttp/examples_test.go
 package dmsghttp_test
 
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"golang.org/x/net/nettest"
 
 	"github.com/skycoin/dmsg/pkg/disc"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
-
-	"github.com/skycoin/skycoin/src/util/logging"
 )
 
 func ExampleMakeHTTPTransport() {
@@ -78,7 +77,7 @@ func ExampleMakeHTTPTransport() {
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("<html><body><h1>Hello World!</h1></body></html>")) //nolint:errcheck
 	})
-	go func() { _ = http.Serve(lis, r) }() //nolint:errcheck
+	go func() { _ = http.Serve(lis, r) }() //nolint
 
 	// Create dmsg client to run http client.
 	c2PK, c2SK := cipher.GenerateKeyPair()
@@ -105,7 +104,7 @@ func ExampleMakeHTTPTransport() {
 			panic(err)
 		}
 	}()
-	readB, err := ioutil.ReadAll(resp.Body)
+	readB, err := io.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}

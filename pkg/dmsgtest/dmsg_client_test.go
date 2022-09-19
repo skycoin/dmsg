@@ -1,23 +1,22 @@
+// Package dmsgtest pkg/dmsgtest/dmsg_client_test.go
 package dmsgtest
 
 import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 func TestClient_RemoteClients(t *testing.T) {
@@ -206,7 +205,7 @@ func listenAndDiscard(t *testing.T, c *dmsg.Client, port uint16) {
 				return
 			}
 			// nolint:errcheck
-			go func() { _, _ = io.Copy(ioutil.Discard, conn) }()
+			go func() { _, _ = io.Copy(io.Discard, conn) }()
 		}
 	}()
 }

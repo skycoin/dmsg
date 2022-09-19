@@ -1,3 +1,4 @@
+// Package dmsg pkg/dmsg/client.go
 package dmsg
 
 import (
@@ -8,16 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
+	"github.com/skycoin/skywire-utilities/pkg/netutil"
 
 	"github.com/skycoin/dmsg/pkg/disc"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/netutil"
 )
-
-// TODO(evanlinjin): We should implement exponential backoff at some point.
-const serveWait = time.Second
 
 // SessionDialCallback is triggered BEFORE a session is dialed to.
 // If a non-nil error is returned, the session dial is instantly terminated.
@@ -74,6 +71,10 @@ type Client struct {
 	conf   *Config
 	porter *netutil.Porter
 
+	bo     time.Duration // initial backoff duration
+	maxBO  time.Duration // maximum backoff duration
+	factor float64       // multiplier for the backoff duration that is applied on every retry
+
 	errCh chan error
 	done  chan struct{}
 	once  sync.Once
@@ -82,12 +83,6 @@ type Client struct {
 
 // NewClient creates a dmsg client entity.
 func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Config) *Client {
-	c := new(Client)
-	c.ready = make(chan struct{})
-	c.porter = netutil.NewPorter(netutil.PorterMinEphemeral)
-	c.errCh = make(chan error, 10)
-	c.done = make(chan struct{})
-
 	log := logging.MustGetLogger("dmsg_client")
 
 	// Init config.
@@ -95,7 +90,17 @@ func NewClient(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Conf
 		conf = DefaultConfig()
 	}
 	conf.Ensure()
-	c.conf = conf
+
+	c := &Client{
+		ready:  make(chan struct{}),
+		porter: netutil.NewPorter(netutil.PorterMinEphemeral),
+		errCh:  make(chan error, 10),
+		done:   make(chan struct{}),
+		conf:   conf,
+		bo:     time.Second * 5,
+		maxBO:  time.Minute,
+		factor: netutil.DefaultFactor,
+	}
 
 	// Init common fields.
 	c.EntityCommon.init(pk, sk, dc, log, conf.UpdateInterval)
@@ -130,11 +135,13 @@ func (*Client) Type() string {
 // It blocks until the client is closed.
 func (ce *Client) Serve(ctx context.Context) {
 	defer func() {
-		ce.log.Info("Stopped serving client!")
+		ce.log.Debug("Stopped serving client!")
 	}()
 
 	cancellabelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	setupNodeTicker := time.NewTicker(1 * time.Minute)
 
 	go func(ctx context.Context) {
 		select {
@@ -149,22 +156,22 @@ func (ce *Client) Serve(ctx context.Context) {
 			return
 		}
 
-		ce.log.Info("Discovering dmsg servers...")
+		ce.log.Debug("Discovering dmsg servers...")
 		entries, err := ce.discoverServers(cancellabelCtx)
 		if err != nil {
 			ce.log.WithError(err).Warn("Failed to discover dmsg servers.")
 			if err == context.Canceled || err == context.DeadlineExceeded {
 				return
 			}
-			time.Sleep(time.Second) // TODO(evanlinjin): Implement exponential back off.
+			ce.serveWait()
 			continue
 		}
 		if len(entries) == 0 {
-			ce.log.Warnf("No entries found. Retrying after %s...", serveWait.String())
-			time.Sleep(serveWait)
+			ce.log.Warnf("No entries found. Retrying after %s...", ce.bo.String())
+			ce.serveWait()
 		}
 
-		for _, entry := range entries {
+		for n, entry := range entries {
 			if isClosed(ce.done) {
 				return
 			}
@@ -175,7 +182,7 @@ func (ce *Client) Serve(ctx context.Context) {
 				case <-ce.done:
 					return
 				case err := <-ce.errCh:
-					ce.log.WithError(err).Info("Session stopped.")
+					ce.log.WithError(err).Debug("Session stopped.")
 					if isClosed(ce.done) {
 						return
 					}
@@ -183,11 +190,21 @@ func (ce *Client) Serve(ctx context.Context) {
 			}
 
 			if err := ce.EnsureSession(cancellabelCtx, entry); err != nil {
-				ce.log.WithField("remote_pk", entry.Static).WithError(err).Warn("Failed to establish session.")
 				if err == context.Canceled || err == context.DeadlineExceeded {
+					ce.log.WithField("remote_pk", entry.Static).WithError(err).Warn("Failed to establish session.")
 					return
 				}
-				time.Sleep(serveWait)
+				// we send an error if this is the last server
+				if n == (len(entries) - 1) {
+					if !isClosed(ce.done) {
+						ce.sesMx.Lock()
+						ce.errCh <- err
+						ce.sesMx.Unlock()
+					}
+				}
+				ce.log.WithField("remote_pk", entry.Static).WithError(err).WithField("current_backoff", ce.bo.String()).
+					Warn("Failed to establish session.")
+				ce.serveWait()
 			}
 		}
 		// We dial all servers and wait for error or done signal.
@@ -195,10 +212,12 @@ func (ce *Client) Serve(ctx context.Context) {
 		case <-ce.done:
 			return
 		case err := <-ce.errCh:
-			ce.log.WithError(err).Info("Session stopped.")
+			ce.log.WithError(err).Debug("Session stopped.")
 			if isClosed(ce.done) {
 				return
 			}
+		case <-setupNodeTicker.C:
+			continue
 		}
 	}
 }
@@ -235,10 +254,10 @@ func (ce *Client) Close() error {
 		for _, dSes := range ce.sessions {
 			ce.log.
 				WithError(dSes.Close()).
-				Info("Session closed.")
+				Debug("Session closed.")
 		}
 		ce.sessions = make(map[cipher.PubKey]*SessionCommon)
-		ce.log.Info("All sessions closed.")
+		ce.log.Debug("All sessions closed.")
 		ce.sessionsMx.Unlock()
 		ce.porter.CloseAll(ce.log)
 		err = ce.EntityCommon.delEntry(context.Background())
@@ -340,7 +359,7 @@ func (ce *Client) EnsureSession(ctx context.Context, entry *disc.Entry) error {
 
 	// If session with server of pk already exists, skip.
 	if _, ok := ce.clientSession(ce.porter, entry.Static); ok {
-		ce.log.WithField("remote_pk", entry.Static).Info("Session already exists...")
+		ce.log.WithField("remote_pk", entry.Static).Debug("Session already exists...")
 		return nil
 	}
 
@@ -353,7 +372,7 @@ func (ce *Client) EnsureSession(ctx context.Context, entry *disc.Entry) error {
 // NOTE: This should not be called directly as it may lead to session duplicates.
 // Only `ensureSession` or `EnsureAndObtainSession` should call this function.
 func (ce *Client) dialSession(ctx context.Context, entry *disc.Entry) (cs ClientSession, err error) {
-	ce.log.WithField("remote_pk", entry.Static).Info("Dialing session...")
+	ce.log.WithField("remote_pk", entry.Static).Debug("Dialing session...")
 
 	const network = "tcp"
 
@@ -384,13 +403,13 @@ func (ce *Client) dialSession(ctx context.Context, entry *disc.Entry) (cs Client
 	}
 
 	go func() {
-		ce.log.WithField("remote_pk", dSes.RemotePK()).Info("Serving session.")
+		ce.log.WithField("remote_pk", dSes.RemotePK()).Debug("Serving session.")
 		err := dSes.serve()
 		if !isClosed(ce.done) {
 			// We should only report an error when client is not closed.
 			// Also, when the client is closed, it will automatically delete all sessions.
 			ce.errCh <- fmt.Errorf("failed to serve dialed session to %s: %v", dSes.RemotePK(), err)
-			ce.delSession(ctx, dSes.RemotePK())
+			ce.delSession(ctx, dSes.RemotePK(), false)
 		}
 
 		// Trigger disconnect callback.
@@ -441,6 +460,21 @@ func (ce *Client) ConnectionsSummary() ConnectionsSummary {
 	}
 
 	return out
+}
+
+func (ce *Client) serveWait() {
+	bo := ce.bo
+
+	t := time.NewTimer(bo)
+	defer t.Stop()
+
+	if newBO := time.Duration(float64(bo) * ce.factor); ce.maxBO == 0 || newBO <= ce.maxBO {
+		ce.bo = newBO
+		if newBO > ce.maxBO {
+			ce.bo = ce.maxBO
+		}
+	}
+	<-t.C
 }
 
 func hasPK(pks []cipher.PubKey, pk cipher.PubKey) bool {

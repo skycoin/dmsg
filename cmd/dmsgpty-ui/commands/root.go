@@ -1,17 +1,18 @@
+// Package commands cmd/dmsgpty-ui/commands/root.go
 package commands
 
 import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/pkg/dmsgpty"
-
-	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 )
 
 var (
@@ -52,7 +53,16 @@ var RootCmd = &cobra.Command{
 			WithField("addr", addr).
 			Info("Serving.")
 
-		err := http.ListenAndServe(addr, ui.Handler())
+		srv := &http.Server{
+			ReadTimeout:       1 * time.Second,
+			WriteTimeout:      1 * time.Second,
+			IdleTimeout:       30 * time.Second,
+			ReadHeaderTimeout: 2 * time.Second,
+			Addr:              addr,
+			Handler:           ui.Handler(),
+		}
+
+		err := srv.ListenAndServe()
 		logrus.
 			WithError(err).
 			Info("Stopped serving.")

@@ -8,13 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/stretchr/testify/require"
 
 	"github.com/skycoin/dmsg/internal/discmetrics"
 	store2 "github.com/skycoin/dmsg/internal/dmsg-discovery/store"
 	"github.com/skycoin/dmsg/pkg/disc"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 func TestGetAvailableServers(t *testing.T) {
@@ -72,7 +71,8 @@ func TestGetAvailableServers(t *testing.T) {
 				err = entry3.Sign(ephemeralSk2)
 				require.NoError(t, err)
 
-				db, err := store2.NewStore("mock", nil)
+				ctx := context.TODO()
+				db, err := store2.NewStore(ctx, "mock", nil)
 				require.NoError(t, err)
 
 				err = db.SetEntry(context.Background(), &entry1, time.Duration(0))
@@ -94,7 +94,9 @@ func TestGetAvailableServers(t *testing.T) {
 			status:          http.StatusNotFound,
 			responseIsError: true,
 			databaseAndEntries: func(t *testing.T) (store2.Storer, []*disc.Entry) {
-				db, err := store2.NewStore("mock", nil)
+
+				ctx := context.TODO()
+				db, err := store2.NewStore(ctx, "mock", nil)
 				require.NoError(t, err)
 
 				return db, []*disc.Entry{}

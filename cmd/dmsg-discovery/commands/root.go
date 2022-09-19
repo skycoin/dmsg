@@ -1,3 +1,4 @@
+// Package commands cmd/dmsg-discovery/commands/root.go
 package commands
 
 import (
@@ -11,6 +12,11 @@ import (
 
 	proxyproto "github.com/pires/go-proxyproto"
 	"github.com/sirupsen/logrus"
+	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
+	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/internal/discmetrics"
@@ -20,12 +26,6 @@ import (
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
-
-	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
-	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
-	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 )
 
 const redisPasswordEnvName = "REDIS_PASSWORD"
@@ -74,7 +74,9 @@ var RootCmd = &cobra.Command{
 
 		metricsutil.ServeHTTPMetrics(log, sf.MetricsAddr)
 
-		db := prepareDB(log)
+		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+		defer cancel()
+		db := prepareDB(ctx, log)
 
 		var m discmetrics.Metrics
 		if sf.MetricsAddr == "" {
@@ -92,9 +94,9 @@ var RootCmd = &cobra.Command{
 			whitelistPKs = strings.Split(whitelistKeys, ",")
 		} else {
 			if testEnvironment {
-				whitelistPKs = strings.Split(skyenv.TestNetworkMonitorPKs, ",")
+				whitelistPKs = strings.Split(skyenv.TestNetworkMonitorPK, ",")
 			} else {
-				whitelistPKs = strings.Split(skyenv.NetworkMonitorPKs, ",")
+				whitelistPKs = strings.Split(skyenv.NetworkMonitorPK, ",")
 			}
 		}
 
@@ -102,8 +104,6 @@ var RootCmd = &cobra.Command{
 			api.WhitelistPKs.Set(v)
 		}
 
-		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
-		defer cancel()
 		go a.RunBackgroundTasks(ctx, log)
 		log.WithField("addr", addr).Info("Serving discovery API...")
 		go func() {
@@ -143,14 +143,14 @@ var RootCmd = &cobra.Command{
 	},
 }
 
-func prepareDB(log logrus.FieldLogger) store.Storer {
+func prepareDB(ctx context.Context, log logrus.FieldLogger) store.Storer {
 	dbConf := &store.Config{
 		URL:      redisURL,
 		Password: os.Getenv(redisPasswordEnvName),
 		Timeout:  entryTimeout,
 	}
 
-	db, err := store.NewStore("redis", dbConf)
+	db, err := store.NewStore(ctx, "redis", dbConf)
 	if err != nil {
 		log.Fatal("Failed to initialize redis store: ", err)
 	}
@@ -211,7 +211,7 @@ func Execute() {
 }
 
 func listenAndServe(addr string, handler http.Handler) error {
-	srv := &http.Server{Addr: addr, Handler: handler}
+	srv := &http.Server{Addr: addr, Handler: handler, ReadTimeout: 1 * time.Second, WriteTimeout: 1 * time.Second, IdleTimeout: 30 * time.Second, ReadHeaderTimeout: 2 * time.Second}
 	if addr == "" {
 		addr = ":http"
 	}

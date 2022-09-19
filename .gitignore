@@ -8,8 +8,10 @@
 *.rdb
 *.json
 .DS_Store
+.vscode
 
 .idea/
+.vscode/
 bin/
 
 /dmsg-discovery

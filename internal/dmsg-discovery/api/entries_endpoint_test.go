@@ -9,14 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/skycoin/dmsg/internal/discmetrics"
-
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/stretchr/testify/require"
 
+	"github.com/skycoin/dmsg/internal/discmetrics"
 	store2 "github.com/skycoin/dmsg/internal/dmsg-discovery/store"
 	"github.com/skycoin/dmsg/pkg/disc"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
 )
 
 func TestEntriesEndpoint(t *testing.T) {
@@ -173,7 +171,8 @@ func TestEntriesEndpoint(t *testing.T) {
 				tc.entryPreHook(t, &tc.entry, &tc.httpBody)
 			}
 
-			dbMock, err := store2.NewStore("mock", nil)
+			ctx := context.TODO()
+			dbMock, err := store2.NewStore(ctx, "mock", nil)
 			require.NoError(t, err)
 
 			if tc.storerPreHook != nil {

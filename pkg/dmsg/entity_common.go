@@ -8,13 +8,11 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-
-	"github.com/skycoin/dmsg/pkg/disc"
-
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/skycoin/skywire-utilities/pkg/netutil"
 
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/skycoin/dmsg/pkg/disc"
 )
 
 // EntityCommon contains the common fields and methods for server and client entities.
@@ -128,9 +126,13 @@ func (c *EntityCommon) setSession(ctx context.Context, dSes *SessionCommon) bool
 	return true
 }
 
-func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
+func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey, serverEndSession bool) {
 	c.sessionsMx.Lock()
+	defer c.sessionsMx.Unlock()
 	delete(c.sessions, pk)
+	if serverEndSession {
+		return
+	}
 	if c.delSessionCallback != nil {
 		if err := c.delSessionCallback(ctx); err != nil {
 			c.log.
@@ -139,7 +141,6 @@ func (c *EntityCommon) delSession(ctx context.Context, pk cipher.PubKey) {
 				Warn("Callback returned non-nil error.")
 		}
 	}
-	c.sessionsMx.Unlock()
 }
 
 // updateServerEntry updates the dmsg server's entry within dmsg discovery.

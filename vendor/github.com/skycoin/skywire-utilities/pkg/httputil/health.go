@@ -16,6 +16,7 @@ type HealthCheckResponse struct {
 	StartedAt time.Time       `json:"started_at"`
 }
 
+// GetServiceHealth gets the response from the given service url
 func GetServiceHealth(ctx context.Context, url string) (health *HealthCheckResponse, err error) {
 	resp, err := http.Get(url + path)
 	if err != nil {
