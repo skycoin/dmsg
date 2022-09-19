@@ -2,7 +2,7 @@ package internal
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -63,5 +63,5 @@ func (c Config) Flush(log *logging.Logger) (err error) {
 		return err
 	}
 
-	return ioutil.WriteFile(c.Path, raw, 0600)
+	return os.WriteFile(c.Path, raw, 0600)
 }
