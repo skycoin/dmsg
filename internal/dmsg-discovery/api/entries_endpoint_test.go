@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/stretchr/testify/require"
 
 	"github.com/skycoin/dmsg/internal/discmetrics"
@@ -172,7 +173,8 @@ func TestEntriesEndpoint(t *testing.T) {
 			}
 
 			ctx := context.TODO()
-			dbMock, err := store2.NewStore(ctx, "mock", nil)
+			log := logging.MustGetLogger("test")
+			dbMock, err := store2.NewStore(ctx, "mock", nil, log)
 			require.NoError(t, err)
 
 			if tc.storerPreHook != nil {

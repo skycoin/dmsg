@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/stretchr/testify/require"
 
 	"github.com/skycoin/dmsg/internal/discmetrics"
@@ -72,7 +73,8 @@ func TestGetAvailableServers(t *testing.T) {
 				require.NoError(t, err)
 
 				ctx := context.TODO()
-				db, err := store2.NewStore(ctx, "mock", nil)
+				log := logging.MustGetLogger("test")
+				db, err := store2.NewStore(ctx, "mock", nil, log)
 				require.NoError(t, err)
 
 				err = db.SetEntry(context.Background(), &entry1, time.Duration(0))
@@ -96,7 +98,8 @@ func TestGetAvailableServers(t *testing.T) {
 			databaseAndEntries: func(t *testing.T) (store2.Storer, []*disc.Entry) {
 
 				ctx := context.TODO()
-				db, err := store2.NewStore(ctx, "mock", nil)
+				log := logging.MustGetLogger("test")
+				db, err := store2.NewStore(ctx, "mock", nil, log)
 				require.NoError(t, err)
 
 				return db, []*disc.Entry{}

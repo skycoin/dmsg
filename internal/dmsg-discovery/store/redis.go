@@ -9,6 +9,8 @@ import (
 	"github.com/go-redis/redis/v8"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
+	"github.com/skycoin/skywire-utilities/pkg/netutil"
 
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
@@ -21,7 +23,7 @@ type redisStore struct {
 	timeout time.Duration
 }
 
-func newRedis(ctx context.Context, url, password string, timeout time.Duration) (Storer, error) {
+func newRedis(ctx context.Context, url, password string, timeout time.Duration, log *logging.Logger) (Storer, error) {
 	opt, err := redis.ParseURL(url)
 	if err != nil {
 		return nil, err
@@ -29,10 +31,14 @@ func newRedis(ctx context.Context, url, password string, timeout time.Duration) 
 	opt.Password = password
 
 	client := redis.NewClient(opt)
-	if _, err := client.Ping(ctx).Result(); err != nil {
+
+	err = netutil.NewRetrier(log, netutil.DefaultInitBackoff, netutil.DefaultMaxBackoff, 10, netutil.DefaultFactor).Do(ctx, func() error {
+		_, err = client.Ping(ctx).Result()
+		return err
+	})
+	if err != nil {
 		return nil, err
 	}
-
 	return &redisStore{client: client, timeout: timeout}, nil
 }
 
