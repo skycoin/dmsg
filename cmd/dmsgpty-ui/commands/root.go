@@ -54,10 +54,10 @@ var RootCmd = &cobra.Command{
 			Info("Serving.")
 
 		srv := &http.Server{
-			ReadTimeout:       1 * time.Second,
-			WriteTimeout:      1 * time.Second,
+			ReadTimeout:       3 * time.Second,
+			WriteTimeout:      3 * time.Second,
 			IdleTimeout:       30 * time.Second,
-			ReadHeaderTimeout: 2 * time.Second,
+			ReadHeaderTimeout: 3 * time.Second,
 			Addr:              addr,
 			Handler:           ui.Handler(),
 		}
