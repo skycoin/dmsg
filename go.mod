@@ -13,7 +13,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
 	github.com/skycoin/skycoin v0.27.1
-	github.com/skycoin/skywire v1.1.1-0.20220904173023-147ebb63e34f
+	github.com/skycoin/skywire v1.2.1-0.20221005134403-9824aba8b1bf
 	github.com/skycoin/skywire-utilities v0.0.0-20220712142443-abafa30105ce
 	github.com/skycoin/yamux v0.0.0-20200803175205-571ceb89da9f
 	github.com/spf13/cobra v1.4.0
