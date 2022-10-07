@@ -100,13 +100,13 @@ func (a *API) ListenAndServe(lAddr, pAddr, httpAddr string) error {
 	if err != nil {
 		return err
 	}
-	lis := &proxyproto.Listener{Listener: ln, ReadHeaderTimeout: 2 * time.Second}
+	lis := &proxyproto.Listener{Listener: ln}
 	defer lis.Close() // nolint:errcheck
 	srv := &http.Server{
-		ReadTimeout:       1 * time.Second,
-		WriteTimeout:      1 * time.Second,
+		ReadTimeout:       3 * time.Second,
+		WriteTimeout:      3 * time.Second,
 		IdleTimeout:       30 * time.Second,
-		ReadHeaderTimeout: 2 * time.Second,
+		ReadHeaderTimeout: 3 * time.Second,
 		//Addr:              lis,
 		Handler: a.router,
 	}

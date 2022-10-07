@@ -56,7 +56,6 @@ func TestHost(t *testing.T) {
 		require.NoError(t, connH.Close())
 		require.NoError(t, connC.Close())
 	})
-
 	if runtime.GOOS != "windows" { // TODO: This condition is temporary to pass test. Implementation for Windows should improve.
 		t.Run("serveConn_pty", func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.TODO())
@@ -106,6 +105,7 @@ func TestHost(t *testing.T) {
 			require.NoError(t, connCLI.Close())
 		})
 	}
+
 	t.Run("ServeCLI", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.TODO())
 

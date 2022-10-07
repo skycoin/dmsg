@@ -153,10 +153,10 @@ func runHTTPSrv(t *testing.T, dc disc.APIClient, fName string) string {
 
 	errCh := make(chan error, 1)
 	srv := &http.Server{
-		ReadTimeout:       1 * time.Second,
-		WriteTimeout:      1 * time.Second,
+		ReadTimeout:       3 * time.Second,
+		WriteTimeout:      3 * time.Second,
 		IdleTimeout:       30 * time.Second,
-		ReadHeaderTimeout: 2 * time.Second,
+		ReadHeaderTimeout: 3 * time.Second,
 		Handler:           r,
 	}
 	go func() {

@@ -15,6 +15,7 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
 	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 	"github.com/spf13/cobra"
@@ -143,14 +144,14 @@ var RootCmd = &cobra.Command{
 	},
 }
 
-func prepareDB(ctx context.Context, log logrus.FieldLogger) store.Storer {
+func prepareDB(ctx context.Context, log *logging.Logger) store.Storer {
 	dbConf := &store.Config{
 		URL:      redisURL,
 		Password: os.Getenv(redisPasswordEnvName),
 		Timeout:  entryTimeout,
 	}
 
-	db, err := store.NewStore(ctx, "redis", dbConf)
+	db, err := store.NewStore(ctx, "redis", dbConf, log)
 	if err != nil {
 		log.Fatal("Failed to initialize redis store: ", err)
 	}
@@ -211,7 +212,7 @@ func Execute() {
 }
 
 func listenAndServe(addr string, handler http.Handler) error {
-	srv := &http.Server{Addr: addr, Handler: handler, ReadTimeout: 1 * time.Second, WriteTimeout: 1 * time.Second, IdleTimeout: 30 * time.Second, ReadHeaderTimeout: 2 * time.Second}
+	srv := &http.Server{Addr: addr, Handler: handler, ReadTimeout: 3 * time.Second, WriteTimeout: 3 * time.Second, IdleTimeout: 30 * time.Second, ReadHeaderTimeout: 3 * time.Second}
 	if addr == "" {
 		addr = ":http"
 	}

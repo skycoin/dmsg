@@ -129,10 +129,10 @@ func startHTTPServer(t *testing.T, results chan httpServerResult, lis net.Listen
 	errCh := make(chan error, 1)
 	go func() {
 		srv := &http.Server{
-			ReadTimeout:       1 * time.Second,
-			WriteTimeout:      1 * time.Second,
+			ReadTimeout:       3 * time.Second,
+			WriteTimeout:      3 * time.Second,
 			IdleTimeout:       30 * time.Second,
-			ReadHeaderTimeout: 2 * time.Second,
+			ReadHeaderTimeout: 3 * time.Second,
 			Handler:           r,
 		}
 		errCh <- srv.Serve(lis)
