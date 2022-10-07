@@ -59,7 +59,7 @@ var RootCmd = &cobra.Command{
 			IdleTimeout:       30 * time.Second,
 			ReadHeaderTimeout: 3 * time.Second,
 			Addr:              addr,
-			Handler:           ui.Handler(),
+			Handler:           ui.Handler(nil),
 		}
 
 		err := srv.ListenAndServe()
