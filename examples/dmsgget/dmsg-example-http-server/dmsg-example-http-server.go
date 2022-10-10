@@ -3,7 +3,11 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"net/http"
+	"os"
+	"path"
+	"time"
 
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
@@ -76,5 +80,20 @@ func main() {
 		WithField("dmsg_addr", lis.Addr().String()).
 		Info("Serving...")
 
-	log.Fatal(http.Serve(lis, http.FileServer(http.Dir(dir))))
+	http.HandleFunc("/", fileServerHandler)
+
+	log.Fatal(http.Serve(lis, nil))
+}
+
+func fileServerHandler(w http.ResponseWriter, r *http.Request) {
+	filePath := dir + r.URL.Path
+	file, err := os.Open(filePath) //nolint
+	if err != nil {
+		fmt.Printf("%s not found\n", filePath)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	defer file.Close() //nolint
+	_, filename := path.Split(filePath)
+	http.ServeContent(w, r, filename, time.Time{}, file)
 }
