@@ -14,11 +14,11 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/spf13/cobra"
 
-	"github.com/skycoin/dmsg/cmd/dmsg-server/internal"
 	"github.com/skycoin/dmsg/internal/dmsg-server/api"
 	"github.com/skycoin/dmsg/internal/servermetrics"
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsgserver"
 
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
@@ -30,7 +30,7 @@ var (
 )
 
 func init() {
-	sf.Init(RootCmd, "dmsg_srv", internal.DefaultConfigPath)
+	sf.Init(RootCmd, "dmsg_srv", dmsgserver.DefaultConfigPath)
 }
 
 // RootCmd contains commands for dmsg-server
@@ -45,7 +45,7 @@ var RootCmd = &cobra.Command{
 
 		log := sf.Logger()
 
-		var conf internal.Config
+		var conf dmsgserver.Config
 		if err := sf.ParseConfig(os.Args, true, &conf, configNotFound); err != nil {
 			log.WithError(err).Fatal("parsing config failed, generating default one...")
 		}

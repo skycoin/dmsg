@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/skycoin/dmsg/cmd/dmsg-server/internal"
+	"github.com/skycoin/dmsg/pkg/dmsgserver"
 
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
@@ -30,14 +30,14 @@ var genConfigCmd = &cobra.Command{
 		mLog.SetLevel(logrus.InfoLevel)
 		logger := mLog.PackageLogger("dmsg-server config generator")
 		// generate config
-		conf := new(internal.Config)
+		conf := new(dmsgserver.Config)
 
 		// set default config values
-		internal.GenerateDefaultConfig(conf)
+		dmsgserver.GenerateDefaultConfig(conf)
 
 		//use test deployment
 		if testEnv {
-			conf.Discovery = internal.DefaultDiscoverURLTest
+			conf.Discovery = dmsgserver.DefaultDiscoverURLTest
 		}
 
 		// use output path/name
