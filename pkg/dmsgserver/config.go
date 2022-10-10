@@ -1,4 +1,4 @@
-package internal
+package dmsgserver
 
 import (
 	"encoding/json"
