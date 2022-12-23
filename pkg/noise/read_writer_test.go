@@ -50,8 +50,8 @@ func TestNewReadWriter(t *testing.T) {
 
 		hsCh := make(chan error, 2)
 		defer close(hsCh)
-		go func() { hsCh <- aRW.Handshake(time.Second) }()
-		go func() { hsCh <- bRW.Handshake(time.Second) }()
+		go func() { hsCh <- aRW.Handshake(5 * time.Second) }()
+		go func() { hsCh <- bRW.Handshake(5 * time.Second) }()
 		require.NoError(t, <-hsCh)
 		require.NoError(t, <-hsCh)
 
@@ -186,8 +186,8 @@ func TestReadWriterXKPattern(t *testing.T) {
 	rwR := NewReadWriter(connR, nR)
 
 	errCh := make(chan error)
-	go func() { errCh <- rwR.Handshake(time.Second) }()
-	require.NoError(t, rwI.Handshake(time.Second))
+	go func() { errCh <- rwR.Handshake(5 * time.Second) }()
+	require.NoError(t, rwI.Handshake(5*time.Second))
 	require.NoError(t, <-errCh)
 
 	go func() {
