@@ -15,8 +15,8 @@ before:
   hooks:
     - go mod tidy
 builds:
-  - id: skywire-visor
-    binary: skywire-visor
+  - id: dmsg-discovery
+    binary: dmsg-discovery
     goos:
       - windows
     goarch:
@@ -24,23 +24,11 @@ builds:
       - 386
     env:
       - CGO_ENABLED=1
-    main: ./cmd/skywire-visor/
-    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}} -X github.com/skycoin/skywire/pkg/visor.BuildTag={{.Os}}
-
-  - id: skywire-cli
-    binary: skywire-cli
-    goos:
-      - windows
-    goarch:
-      - amd64
-      - 386
-    env:
-      - CGO_ENABLED=0
-    main: ./cmd/skywire-cli/
+    main: ./cmd/dmsg-discovery/
     ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
-  - id: vpn-client
-    binary: apps/vpn-client
+  - id: dmsg-server
+    binary: dmsg-server
     goos:
       - windows
     goarch:
@@ -48,20 +36,69 @@ builds:
       - 386
     env:
       - CGO_ENABLED=0
-    main: ./cmd/apps/vpn-client/
+    main: ./cmd/dmsg-server/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
+  - id: dmsgget
+    binary: dmsgget
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - 386
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/dmsgget/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+  
+  - id: dmsgpty-ui
+    binary: dmsgpty-ui
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - 386
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/dmsgpty-ui/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
+  - id: dmsgpty-cli
+    binary: dmsgpty-cli
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - 386
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/dmsgpty-cli/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
+  - id: dmsgpty-host
+    binary: dmsgpty-host
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - 386
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/dmsgpty-host/
     ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
 archives:
   - id: archive
     format: zip
     wrap_in_directory: false
-    name_template: 'skywire-v{{ .Version }}-{{ .Os }}-{{ .Arch }}'
-    files:
-      - dmsghttp-config.json
+    name_template: 'dmsg-v{{ .Version }}-{{ .Os }}-{{ .Arch }}'
     builds:
-      - skywire-visor
-      - skywire-cli
-      - vpn-client
+      - dmsg-discovery
+      - dmsg-server
+      - dmsgget
+      - dmsgpty-cli
+      - dmsgpty-ui
+      - dmsgpty-host
     allow_different_binary_count: true
 
 checksum:
