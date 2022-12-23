@@ -121,6 +121,18 @@ build-deploy: ## Build for deployment Docker images
 build-docker:
 	./docker/scripts/docker-push.sh -t "develop" -b
 
+snapshot-linux: snapshot-clean
+	goreleaser --snapshot --config .goreleaser-linux.yml --skip-publish --rm-dist
+
+snapshot-darwin: snapshot-clean
+	goreleaser --snapshot --config .goreleaser-darwin.yml --skip-publish --rm-dist
+
+snapshot-windows: snapshot-clean
+	goreleaser --snapshot --config .goreleaser-windows.yml --skip-publish --rm-dist
+
+snapshot-clean: ## Cleans snapshot / release
+	rm -rf ./dist
+
 start-db: ## Init local database env.
 	source ./integration/env.sh && init_redis
 
