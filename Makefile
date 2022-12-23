@@ -121,6 +121,47 @@ build-deploy: ## Build for deployment Docker images
 build-docker:
 	./docker/scripts/docker-push.sh -t "develop" -b
 
+github-prepare-release:
+	$(eval GITHUB_TAG=$(shell git describe --abbrev=0 --tags | cut -c 2-6))
+	sed '/^## ${GITHUB_TAG}$$/,/^## .*/!d;//d;/^$$/d' ./CHANGELOG.md > releaseChangelog.md
+
+github-release: github-prepare-release
+	goreleaser --rm-dist --config .goreleaser-linux.yml --release-notes releaseChangelog.md
+
+github-release-darwin:
+	goreleaser --rm-dist  --config .goreleaser-darwin.yml --skip-publish
+	$(eval GITHUB_TAG=$(shell git describe --abbrev=0 --tags))
+	$(eval $(shell echo ${GITHUB_TOKEN} > ../token))
+	$(eval export GITHUB_TOKEN=)
+	gh auth login --with-token < ../token
+	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-darwin-amd64.tar.gz
+	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-darwin-arm64.tar.gz
+	gh release download ${GITHUB_TAG} --repo skycoin/dmsg --pattern 'checksums*'
+	cat ./dist/checksums.txt >> ./checksums.txt
+	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} --clobber ./checksums.txt
+
+github-release-windows:
+	.\goreleaser\goreleaser.exe --rm-dist  --config .goreleaser-windows.yml --skip-publish
+	$(eval GITHUB_TAG=$(shell powershell git describe --abbrev=0 --tags))
+	$(eval $(shell echo $(GITHUB_TOKEN) > ../token))
+	$(eval export GITHUB_TOKEN=)
+	cat ../token | ./gh/bin/gh.exe auth login --with-token
+	./gh/bin/gh.exe release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-windows-amd64.zip
+	./gh/bin/gh.exe release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-windows-386.zip
+	./gh/bin/gh.exe release download ${GITHUB_TAG} --repo skycoin/dmsg --pattern 'checksums*'
+	cat ./dist/checksums.txt >> ./checksums.txt
+	./gh/bin/gh.exe release upload --repo skycoin/dmsg ${GITHUB_TAG} --clobber ./checksums.txt
+
+dep-github-release:
+	wget -c https://more.musl.cc/10/x86_64-linux-musl/aarch64-linux-musl-cross.tgz -O ../aarch64-linux-musl-cross.tgz
+	tar -xzf ../aarch64-linux-musl-cross.tgz -C ../
+	wget -c https://more.musl.cc/10/x86_64-linux-musl/arm-linux-musleabi-cross.tgz -O ../arm-linux-musleabi-cross.tgz
+	tar -xzf ../arm-linux-musleabi-cross.tgz -C ../
+	wget -c https://more.musl.cc/10/x86_64-linux-musl/arm-linux-musleabihf-cross.tgz -O ../arm-linux-musleabihf-cross.tgz
+	tar -xzf ../arm-linux-musleabihf-cross.tgz -C ../
+	wget -c https://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-cross.tgz -O ../x86_64-linux-musl-cross.tgz
+	tar -xzf ../x86_64-linux-musl-cross.tgz -C ../	
+
 snapshot-linux: snapshot-clean
 	goreleaser --snapshot --config .goreleaser-linux.yml --skip-publish --rm-dist
 
