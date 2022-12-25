@@ -28,7 +28,7 @@ func TestEnv(t *testing.T) {
 		}
 		for i, c := range cases {
 			env := NewEnv(t, timeout)
-			err := env.Startup(0, c.ServerN, c.ClientN, &dmsg.Config{
+			err := env.Startup(5*time.Second, c.ServerN, c.ClientN, &dmsg.Config{
 				MinSessions: c.MinSessions,
 			})
 			require.NoError(t, err, i)
