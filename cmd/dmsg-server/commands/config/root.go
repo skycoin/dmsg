@@ -1,3 +1,4 @@
+// Package config cmd/dmsg-server/commands/cofnig/root.go
 package config
 
 import (
