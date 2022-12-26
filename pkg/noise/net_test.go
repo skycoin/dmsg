@@ -299,7 +299,7 @@ func TestConn(t *testing.T) {
 
 		rand.Seed(time.Now().UnixNano())
 		for i := 0; i < 10; i++ {
-			n := rand.Intn(1000000) // nolint:gosec
+			n := rand.Intn(10000000) // nolint:gosec
 			t.Run(fmt.Sprintf("%dBytes", n), func(t *testing.T) {
 				do(t, n)
 			})
