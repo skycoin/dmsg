@@ -25,12 +25,11 @@ environment:
     
 
 for:
-  - # Linux and MacOS
+  - # Linux
     skip_tags: true
     matrix:
       only:
         - job_name: Linux
-        - job_name: MacOS
 
     install:
       - gvm install go1.17.13
@@ -40,6 +39,29 @@ for:
     before_build:
       - golangci-lint cache clean
       - make check
+      - make build
+
+    build_script:
+      - make build
+
+  - # MacOS
+    skip_tags: true
+    matrix:
+      only:
+        - job_name: MacOS
+
+    install:
+      - gvm install go1.17.13
+      - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.47.2
+      - go mod vendor
+
+    before_build:
+      - golangci-lint cache clean
+      - make format
+    
+    build_script:
+      - make build
+
 
   - # Windows
     skip_tags: true
@@ -60,7 +82,7 @@ for:
     before_build:
       - set GO111MODULE=on
       - golangci-lint cache clean
-      - make check-windows
+      - make lint-windows-appveyor
 
     build_script:
       - make build-windows
