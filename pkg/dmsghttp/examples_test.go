@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
@@ -79,7 +78,6 @@ func ExampleMakeHTTPTransport() {
 		_, _ = w.Write([]byte("<html><body><h1>Hello World!</h1></body></html>")) //nolint:errcheck
 	})
 	go func() { _ = http.Serve(lis, r) }() //nolint
-	time.Sleep(5 * time.Second)
 	// Create dmsg client to run http client.
 	c2PK, c2SK := cipher.GenerateKeyPair()
 	dmsgC2 := dmsg.NewClient(c2PK, c2SK, dc, nil)
