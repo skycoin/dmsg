@@ -13,3 +13,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - increase limitation of ReadWritePacket on noise pkg from 4KB to 64KB
+- switch from AppVeyor to Github Action
