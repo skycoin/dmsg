@@ -1,3 +1,4 @@
+// Package api internal/dmsg-discovery/api/error_handler_test.go
 package api
 
 import (

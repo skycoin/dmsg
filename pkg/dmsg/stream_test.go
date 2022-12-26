@@ -1,3 +1,4 @@
+// Package dmsg pkg/dmsg/stream_test.go
 package dmsg
 
 import (

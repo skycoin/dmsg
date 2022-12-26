@@ -1,3 +1,4 @@
+// Package store internal/dmsg-discovery/store/storer.go
 package store
 
 import (

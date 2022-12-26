@@ -1,3 +1,4 @@
+// Package dmsgserver pkg/dmsgserver/config.go
 package dmsgserver
 
 import (

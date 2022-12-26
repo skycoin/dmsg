@@ -1,3 +1,4 @@
+// Package dmsgpty pkg/dmsgpty/conf_test.go
 package dmsgpty_test
 
 import (

@@ -1,4 +1,4 @@
-// Package disc implements client for dmsg discovery.
+// Package disc pkg/disc/client.go
 package disc
 
 import (
