@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
@@ -61,7 +62,7 @@ func TestHTTPTransport_RoundTrip(t *testing.T) {
 		require.NoError(t, err)
 		startHTTPServer(t, server0Results, lis)
 		addr := lis.Addr().String()
-
+		time.Sleep(5 * time.Second)
 		log := logging.MustGetLogger("http_client")
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
