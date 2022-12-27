@@ -3,12 +3,12 @@ version: "{build}"
 environment:
   matrix:
     # For regular jobs, such as push, pr and etc.
-    - job_name: Linux
-      appveyor_build_worker_image: Ubuntu2004
-    - job_name: MacOS
-      appveyor_build_worker_image: macos-monterey
-    - job_name: Windows
-      appveyor_build_worker_image: Visual Studio 2022
+    # - job_name: Linux
+    #   appveyor_build_worker_image: Ubuntu2004
+    # - job_name: MacOS
+    #   appveyor_build_worker_image: macos-monterey
+    # - job_name: Windows
+    #   appveyor_build_worker_image: Visual Studio 2022
     - job_name: Deploy
       appveyor_build_worker_image: Ubuntu2004
   
