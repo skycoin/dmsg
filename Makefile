@@ -131,9 +131,6 @@ github-release: github-prepare-release
 github-release-darwin:
 	goreleaser --rm-dist  --config .goreleaser-darwin.yml --skip-publish
 	$(eval GITHUB_TAG=$(shell git describe --abbrev=0 --tags))
-	$(eval $(shell echo ${GITHUB_TOKEN} > ../token))
-	$(eval export GITHUB_TOKEN=)
-	gh auth login --with-token < ../token
 	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-darwin-amd64.tar.gz
 	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-darwin-arm64.tar.gz
 	gh release download ${GITHUB_TAG} --repo skycoin/dmsg --pattern 'checksums*'
@@ -143,14 +140,11 @@ github-release-darwin:
 github-release-windows:
 	.\goreleaser\goreleaser.exe --rm-dist  --config .goreleaser-windows.yml --skip-publish
 	$(eval GITHUB_TAG=$(shell powershell git describe --abbrev=0 --tags))
-	$(eval $(shell echo $(GITHUB_TOKEN) > ../token))
-	$(eval export GITHUB_TOKEN=)
-	cat ../token | ./gh/bin/gh.exe auth login --with-token
-	./gh/bin/gh.exe release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-windows-amd64.zip
-	./gh/bin/gh.exe release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-windows-386.zip
-	./gh/bin/gh.exe release download ${GITHUB_TAG} --repo skycoin/dmsg --pattern 'checksums*'
+	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-windows-amd64.zip
+	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-windows-386.zip
+	gh release download ${GITHUB_TAG} --repo skycoin/dmsg --pattern 'checksums*'
 	cat ./dist/checksums.txt >> ./checksums.txt
-	./gh/bin/gh.exe release upload --repo skycoin/dmsg ${GITHUB_TAG} --clobber ./checksums.txt
+	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} --clobber ./checksums.txt
 
 dep-github-release:
 	wget -c https://more.musl.cc/10/x86_64-linux-musl/aarch64-linux-musl-cross.tgz -O ../aarch64-linux-musl-cross.tgz

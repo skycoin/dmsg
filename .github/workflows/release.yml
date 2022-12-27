@@ -18,6 +18,8 @@ jobs:
           sudo snap install goreleaser --classic
           make dep-github-release
       - name: Releasing
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: make github-release
   
   darwin:
@@ -31,10 +33,11 @@ jobs:
       - name: Install Requirements
         run: |
           brew install goreleaser
-          brew install gh
           brew install jq
           brew install wget
       - name: Releasing
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: make github-release-darwin
   
   windows:
@@ -50,8 +53,8 @@ jobs:
         run: |
           Invoke-WebRequest "https://github.com/goreleaser/goreleaser/releases/download/v1.8.3/goreleaser_Windows_x86_64.zip" -o goreleaser.zip
           Expand-Archive goreleaser.zip
-          Invoke-WebRequest "https://github.com/cli/cli/releases/download/v2.13.0/gh_2.13.0_windows_amd64.zip" -o gh.zip
-          Expand-Archive gh.zip
           choco install make
       - name: Releasing
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: make github-release-windows
