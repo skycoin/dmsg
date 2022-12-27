@@ -3,7 +3,7 @@ name: Deploy
 on:
   pull_request:
     branches:
-      - deploy
+      - develop
       - master
     types: [ closed ]
 
