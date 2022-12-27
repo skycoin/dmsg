@@ -27,3 +27,5 @@ bin/
 
 /musl-data
 releaseChangelog.md
+goreleaser.zip
+/goreleaser
