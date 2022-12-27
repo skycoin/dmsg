@@ -147,14 +147,15 @@ github-release-windows:
 	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} --clobber ./checksums.txt
 
 dep-github-release:
-	wget -c https://more.musl.cc/10/x86_64-linux-musl/aarch64-linux-musl-cross.tgz -O ../aarch64-linux-musl-cross.tgz
-	tar -xzf ../aarch64-linux-musl-cross.tgz -C ../
-	wget -c https://more.musl.cc/10/x86_64-linux-musl/arm-linux-musleabi-cross.tgz -O ../arm-linux-musleabi-cross.tgz
-	tar -xzf ../arm-linux-musleabi-cross.tgz -C ../
-	wget -c https://more.musl.cc/10/x86_64-linux-musl/arm-linux-musleabihf-cross.tgz -O ../arm-linux-musleabihf-cross.tgz
-	tar -xzf ../arm-linux-musleabihf-cross.tgz -C ../
-	wget -c https://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-cross.tgz -O ../x86_64-linux-musl-cross.tgz
-	tar -xzf ../x86_64-linux-musl-cross.tgz -C ../	
+	mkdir musl-data
+	wget -c https://more.musl.cc/10/x86_64-linux-musl/aarch64-linux-musl-cross.tgz -O aarch64-linux-musl-cross.tgz
+	tar -xzf aarch64-linux-musl-cross.tgz -C ./musl-data && rm aarch64-linux-musl-cross.tgz
+	wget -c https://more.musl.cc/10/x86_64-linux-musl/arm-linux-musleabi-cross.tgz -O arm-linux-musleabi-cross.tgz
+	tar -xzf arm-linux-musleabi-cross.tgz -C ./musl-data && rm arm-linux-musleabi-cross.tgz
+	wget -c https://more.musl.cc/10/x86_64-linux-musl/arm-linux-musleabihf-cross.tgz -O arm-linux-musleabihf-cross.tgz
+	tar -xzf arm-linux-musleabihf-cross.tgz -C ./musl-data && rm arm-linux-musleabihf-cross.tgz
+	wget -c https://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-cross.tgz -O x86_64-linux-musl-cross.tgz
+	tar -xzf x86_64-linux-musl-cross.tgz -C ./musl-data && rm x86_64-linux-musl-cross.tgz
 
 snapshot-linux: snapshot-clean
 	goreleaser --snapshot --config .goreleaser-linux.yml --skip-publish --rm-dist

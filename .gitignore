@@ -24,3 +24,6 @@ bin/
 /integration/integration-pids.csv
 
 /dist
+
+/musl-data
+releaseChangelog.md
