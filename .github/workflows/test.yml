@@ -1,7 +1,7 @@
 on: [push, pull_request]
 name: Test
 jobs:
-  test-linux:
+  linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-go@v3
@@ -17,7 +17,7 @@ jobs:
       - name: Build
         run: make build
   
-  test-mac:
+  darwin:
     runs-on: macos-latest
     steps:
       - uses: actions/setup-go@v3
@@ -33,7 +33,7 @@ jobs:
       - name: Build
         run: make build
   
-  test-windows:
+  windows:
     runs-on: windows-latest
     steps:
       - uses: actions/setup-go@v3

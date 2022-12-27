@@ -3,25 +3,25 @@ version: "{build}"
 environment:
   matrix:
     # For regular jobs, such as push, pr and etc.
-    - job_name: Linux
-      appveyor_build_worker_image: Ubuntu2004
-    - job_name: MacOS
-      appveyor_build_worker_image: macos-monterey
-    - job_name: Windows
-      appveyor_build_worker_image: Visual Studio 2022
-    - job_name: Deploy
-      appveyor_build_worker_image: Ubuntu2004
+    # - job_name: Linux
+    #   appveyor_build_worker_image: Ubuntu2004
+    # - job_name: MacOS
+    #   appveyor_build_worker_image: macos-monterey
+    # - job_name: Windows
+    #   appveyor_build_worker_image: Visual Studio 2022
+    # - job_name: Deploy
+    #   appveyor_build_worker_image: Ubuntu2004
   
     # For release, by pushing tag
-    - job_name: make-release-linux
-      appveyor_build_worker_image: ubuntu2004
-      GOARCH: amd64
-    - job_name: make-release-darwin
-      appveyor_build_worker_image: macos-monterey
-      GOARCH: amd64
-    - job_name: make-release-windows
-      appveyor_build_worker_image: Visual Studio 2022
-      GOARCH: amd64
+    # - job_name: make-release-linux
+    #   appveyor_build_worker_image: ubuntu2004
+    #   GOARCH: amd64
+    # - job_name: make-release-darwin
+    #   appveyor_build_worker_image: macos-monterey
+    #   GOARCH: amd64
+    # - job_name: make-release-windows
+    #   appveyor_build_worker_image: Visual Studio 2022
+    #   GOARCH: amd64
     
 
 for:
