@@ -13,8 +13,12 @@ jobs:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v3
     - name: deploy to docker
-      run: bash ./docker/scripts/docker-push.sh -t ${GITHUB_REF##*/} -p
+      run: |
+        chmod +x ./docker/scripts/docker-push.sh
+        ./docker/scripts/docker-push.sh -t ${GITHUB_REF##*/} -p
+      shell: bash
       env:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
