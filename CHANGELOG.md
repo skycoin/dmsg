@@ -12,5 +12,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - add `gen` command to generate config, with two flag `-o` for output file and `-t` for using test env values
 
 ### Changed
-- increase limitation of ReadWritePacket on noise pkg from 4KB to 64KB
-- switch from AppVeyor to Github Action
+- switch from AppVeyor to Github Action in CI process
