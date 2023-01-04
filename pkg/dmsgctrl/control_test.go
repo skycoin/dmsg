@@ -1,3 +1,4 @@
+// Package dmsgctrl pkg/dmsgctrl/control_test.go
 package dmsgctrl
 
 import (

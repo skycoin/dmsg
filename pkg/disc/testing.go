@@ -1,3 +1,4 @@
+// Package disc pkg/disc/testing.go
 package disc
 
 import (

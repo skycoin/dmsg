@@ -1,3 +1,4 @@
+// Package disc pkg/disc/client_mock_test.go
 package disc_test
 
 import (

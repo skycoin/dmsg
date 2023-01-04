@@ -1,3 +1,4 @@
+// Package commands cmd/dmsgpty-cli/commands/whitelist.go
 package commands
 
 import (

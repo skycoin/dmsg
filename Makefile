@@ -50,7 +50,6 @@ BUILD_OPTS?=-mod=vendor "-ldflags=$(BUILDINFO)"
 BUILD_OPTS_DEPLOY?=-mod=vendor "-ldflags=$(BUILDINFO) -w -s"
 
 check: lint test ## Run linters and tests
-check-windows-appveyor: lint-windows-appveyor test ## Run linters and tests
 
 check-windows: lint test-windows ## Run linters and tests on windows
 
@@ -60,11 +59,6 @@ lint: ## Run linters. Use make install-linters first
 	${OPTS} golangci-lint run -c .golangci.yml ./internal/...
 	${OPTS} golangci-lint run -c .golangci.yml ./...
 	${OPTS} golangci-lint run -c .golangci.yml .
-	# The govet version in golangci-lint is out of date and has spurious warnings, run it separately
-	${OPTS} go vet -all ./...
-
-lint-windows-appveyor: ## Run linters on appveyor only (windows)
-	C:\Users\appveyor\go\bin\golangci-lint run -c .golangci.yml ./...
 	# The govet version in golangci-lint is out of date and has spurious warnings, run it separately
 	${OPTS} go vet -all ./...
 
@@ -131,9 +125,6 @@ github-release: github-prepare-release
 github-release-darwin:
 	goreleaser --rm-dist  --config .goreleaser-darwin.yml --skip-publish
 	$(eval GITHUB_TAG=$(shell git describe --abbrev=0 --tags))
-	$(eval $(shell echo ${GITHUB_TOKEN} > ../token))
-	$(eval export GITHUB_TOKEN=)
-	gh auth login --with-token < ../token
 	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-darwin-amd64.tar.gz
 	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-darwin-arm64.tar.gz
 	gh release download ${GITHUB_TAG} --repo skycoin/dmsg --pattern 'checksums*'
@@ -143,24 +134,22 @@ github-release-darwin:
 github-release-windows:
 	.\goreleaser\goreleaser.exe --rm-dist  --config .goreleaser-windows.yml --skip-publish
 	$(eval GITHUB_TAG=$(shell powershell git describe --abbrev=0 --tags))
-	$(eval $(shell echo $(GITHUB_TOKEN) > ../token))
-	$(eval export GITHUB_TOKEN=)
-	cat ../token | ./gh/bin/gh.exe auth login --with-token
-	./gh/bin/gh.exe release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-windows-amd64.zip
-	./gh/bin/gh.exe release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-windows-386.zip
-	./gh/bin/gh.exe release download ${GITHUB_TAG} --repo skycoin/dmsg --pattern 'checksums*'
+	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-windows-amd64.zip
+	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-windows-386.zip
+	gh release download ${GITHUB_TAG} --repo skycoin/dmsg --pattern 'checksums*'
 	cat ./dist/checksums.txt >> ./checksums.txt
-	./gh/bin/gh.exe release upload --repo skycoin/dmsg ${GITHUB_TAG} --clobber ./checksums.txt
+	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} --clobber ./checksums.txt
 
 dep-github-release:
-	wget -c https://more.musl.cc/10/x86_64-linux-musl/aarch64-linux-musl-cross.tgz -O ../aarch64-linux-musl-cross.tgz
-	tar -xzf ../aarch64-linux-musl-cross.tgz -C ../
-	wget -c https://more.musl.cc/10/x86_64-linux-musl/arm-linux-musleabi-cross.tgz -O ../arm-linux-musleabi-cross.tgz
-	tar -xzf ../arm-linux-musleabi-cross.tgz -C ../
-	wget -c https://more.musl.cc/10/x86_64-linux-musl/arm-linux-musleabihf-cross.tgz -O ../arm-linux-musleabihf-cross.tgz
-	tar -xzf ../arm-linux-musleabihf-cross.tgz -C ../
-	wget -c https://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-cross.tgz -O ../x86_64-linux-musl-cross.tgz
-	tar -xzf ../x86_64-linux-musl-cross.tgz -C ../	
+	mkdir musl-data
+	wget -c https://more.musl.cc/10/x86_64-linux-musl/aarch64-linux-musl-cross.tgz -O aarch64-linux-musl-cross.tgz
+	tar -xzf aarch64-linux-musl-cross.tgz -C ./musl-data && rm aarch64-linux-musl-cross.tgz
+	wget -c https://more.musl.cc/10/x86_64-linux-musl/arm-linux-musleabi-cross.tgz -O arm-linux-musleabi-cross.tgz
+	tar -xzf arm-linux-musleabi-cross.tgz -C ./musl-data && rm arm-linux-musleabi-cross.tgz
+	wget -c https://more.musl.cc/10/x86_64-linux-musl/arm-linux-musleabihf-cross.tgz -O arm-linux-musleabihf-cross.tgz
+	tar -xzf arm-linux-musleabihf-cross.tgz -C ./musl-data && rm arm-linux-musleabihf-cross.tgz
+	wget -c https://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-cross.tgz -O x86_64-linux-musl-cross.tgz
+	tar -xzf x86_64-linux-musl-cross.tgz -C ./musl-data && rm x86_64-linux-musl-cross.tgz
 
 snapshot-linux: snapshot-clean
 	goreleaser --snapshot --config .goreleaser-linux.yml --skip-publish --rm-dist

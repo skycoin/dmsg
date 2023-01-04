@@ -1,3 +1,4 @@
+// Package dmsgtest pkg/dmsgtest/env_test.go
 package dmsgtest
 
 import (
