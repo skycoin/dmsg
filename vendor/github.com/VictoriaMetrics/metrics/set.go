@@ -22,8 +22,6 @@ type Set struct {
 }
 
 // NewSet creates new set of metrics.
-//
-// Pass the set to RegisterSet() function in order to export its metrics via global WritePrometheus() call.
 func NewSet() *Set {
 	return &Set{
 		m: make(map[string]*namedMetric),
@@ -60,9 +58,9 @@ func (s *Set) WritePrometheus(w io.Writer) {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned histogram is safe to use from concurrent goroutines.
 func (s *Set) NewHistogram(name string) *Histogram {
@@ -77,9 +75,9 @@ func (s *Set) NewHistogram(name string) *Histogram {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned histogram is safe to use from concurrent goroutines.
 //
@@ -118,9 +116,9 @@ func (s *Set) GetOrCreateHistogram(name string) *Histogram {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned counter is safe to use from concurrent goroutines.
 func (s *Set) NewCounter(name string) *Counter {
@@ -135,9 +133,9 @@ func (s *Set) NewCounter(name string) *Counter {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned counter is safe to use from concurrent goroutines.
 //
@@ -176,9 +174,9 @@ func (s *Set) GetOrCreateCounter(name string) *Counter {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned FloatCounter is safe to use from concurrent goroutines.
 func (s *Set) NewFloatCounter(name string) *FloatCounter {
@@ -193,9 +191,9 @@ func (s *Set) NewFloatCounter(name string) *FloatCounter {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned FloatCounter is safe to use from concurrent goroutines.
 //
@@ -235,9 +233,9 @@ func (s *Set) GetOrCreateFloatCounter(name string) *FloatCounter {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // f must be safe for concurrent calls.
 //
@@ -259,9 +257,9 @@ func (s *Set) NewGauge(name string, f func() float64) *Gauge {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned gauge is safe to use from concurrent goroutines.
 //
@@ -305,9 +303,9 @@ func (s *Set) GetOrCreateGauge(name string, f func() float64) *Gauge {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned summary is safe to use from concurrent goroutines.
 func (s *Set) NewSummary(name string) *Summary {
@@ -320,9 +318,9 @@ func (s *Set) NewSummary(name string) *Summary {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned summary is safe to use from concurrent goroutines.
 func (s *Set) NewSummaryExt(name string, window time.Duration, quantiles []float64) *Summary {
@@ -336,7 +334,7 @@ func (s *Set) NewSummaryExt(name string, window time.Duration, quantiles []float
 	// checks in tests
 	defer s.mu.Unlock()
 
-	s.mustRegisterLocked(name, sm, false)
+	s.mustRegisterLocked(name, sm)
 	registerSummaryLocked(sm)
 	s.registerSummaryQuantilesLocked(name, sm)
 	s.summaries = append(s.summaries, sm)
@@ -349,9 +347,9 @@ func (s *Set) NewSummaryExt(name string, window time.Duration, quantiles []float
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned summary is safe to use from concurrent goroutines.
 //
@@ -367,9 +365,9 @@ func (s *Set) GetOrCreateSummary(name string) *Summary {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned summary is safe to use from concurrent goroutines.
 //
@@ -420,7 +418,7 @@ func (s *Set) registerSummaryQuantilesLocked(name string, sm *Summary) {
 			sm:  sm,
 			idx: i,
 		}
-		s.mustRegisterLocked(quantileValueName, qv, true)
+		s.mustRegisterLocked(quantileValueName, qv)
 	}
 }
 
@@ -432,19 +430,18 @@ func (s *Set) registerMetric(name string, m metric) {
 	// defer will unlock in case of panic
 	// checks in test
 	defer s.mu.Unlock()
-	s.mustRegisterLocked(name, m, false)
+	s.mustRegisterLocked(name, m)
 }
 
-// mustRegisterLocked registers given metric with the given name.
-//
-// Panics if the given name was already registered before.
-func (s *Set) mustRegisterLocked(name string, m metric, isAux bool) {
+// mustRegisterLocked registers given metric with
+// the given name. Panics if the given name was
+// already registered before.
+func (s *Set) mustRegisterLocked(name string, m metric) {
 	nm, ok := s.m[name]
 	if !ok {
 		nm = &namedMetric{
 			name:   name,
 			metric: m,
-			isAux:  isAux,
 		}
 		s.m[name] = nm
 		s.a = append(s.a, nm)
@@ -466,16 +463,8 @@ func (s *Set) UnregisterMetric(name string) bool {
 	if !ok {
 		return false
 	}
-	if nm.isAux {
-		// Do not allow deleting auxiliary metrics such as summary_metric{quantile="..."}
-		// Such metrics must be deleted via parent metric name, e.g. summary_metric .
-		return false
-	}
-	return s.unregisterMetricLocked(nm)
-}
+	m := nm.metric
 
-func (s *Set) unregisterMetricLocked(nm *namedMetric) bool {
-	name := nm.name
 	delete(s.m, name)
 
 	deleteFromList := func(metricName string) {
@@ -491,9 +480,9 @@ func (s *Set) unregisterMetricLocked(nm *namedMetric) bool {
 	// remove metric from s.a
 	deleteFromList(name)
 
-	sm, ok := nm.metric.(*Summary)
+	sm, ok := m.(*Summary)
 	if !ok {
-		// There is no need in cleaning up non-summary metrics.
+		// There is no need in cleaning up summary.
 		return true
 	}
 
@@ -520,25 +509,13 @@ func (s *Set) unregisterMetricLocked(nm *namedMetric) bool {
 	return true
 }
 
-// UnregisterAllMetrics de-registers all metrics registered in s.
-func (s *Set) UnregisterAllMetrics() {
-	metricNames := s.ListMetricNames()
-	for _, name := range metricNames {
-		s.UnregisterMetric(name)
-	}
-}
-
-// ListMetricNames returns sorted list of all the metrics in s.
+// ListMetricNames returns a list of all the metrics in s.
 func (s *Set) ListMetricNames() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	metricNames := make([]string, 0, len(s.m))
-	for _, nm := range s.m {
-		if nm.isAux {
-			continue
-		}
-		metricNames = append(metricNames, nm.name)
+	var list []string
+	for name := range s.m {
+		list = append(list, name)
 	}
-	sort.Strings(metricNames)
-	return metricNames
+	return list
 }

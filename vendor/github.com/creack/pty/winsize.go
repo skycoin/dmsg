@@ -20,8 +20,5 @@ func InheritSize(pty, tty *os.File) error {
 // in each line) in terminal t.
 func Getsize(t *os.File) (rows, cols int, err error) {
 	ws, err := GetsizeFull(t)
-	if err != nil {
-		return 0, 0, err
-	}
-	return int(ws.Rows), int(ws.Cols), nil
+	return int(ws.Rows), int(ws.Cols), err
 }

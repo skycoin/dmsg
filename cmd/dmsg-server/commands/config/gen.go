@@ -2,11 +2,11 @@
 package config
 
 import (
+	"github.com/skycoin/dmsg/pkg/dmsgserver"
+
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/spf13/cobra"
-
-	"github.com/skycoin/dmsg/pkg/dmsgserver"
 )
 
 var (

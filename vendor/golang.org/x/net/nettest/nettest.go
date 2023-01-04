@@ -218,11 +218,7 @@ func NewLocalPacketListener(network string) (net.PacketConn, error) {
 // LocalPath returns a local path that can be used for Unix-domain
 // protocol testing.
 func LocalPath() (string, error) {
-	dir := ""
-	if runtime.GOOS == "darwin" {
-		dir = "/tmp"
-	}
-	f, err := ioutil.TempFile(dir, "go-nettest")
+	f, err := ioutil.TempFile("", "go-nettest")
 	if err != nil {
 		return "", err
 	}
