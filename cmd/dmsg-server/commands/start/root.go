@@ -1,3 +1,4 @@
+// Package start cmd/dmsg-server/commands/start/root.go
 package start
 
 import (

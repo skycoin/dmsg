@@ -1,6 +1,7 @@
 //go:build !no_ci
 // +build !no_ci
 
+// Package store internal/dmsg-discovery/store/redis_test.go
 package store
 
 import (

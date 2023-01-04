@@ -1,3 +1,4 @@
+// Package dmsghttp pkg/dmsghttp/http_transport_test.go
 package dmsghttp
 
 import (
@@ -61,7 +62,6 @@ func TestHTTPTransport_RoundTrip(t *testing.T) {
 		require.NoError(t, err)
 		startHTTPServer(t, server0Results, lis)
 		addr := lis.Addr().String()
-
 		log := logging.MustGetLogger("http_client")
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()

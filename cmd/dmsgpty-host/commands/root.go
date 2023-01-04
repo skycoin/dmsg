@@ -1,3 +1,4 @@
+// Package commands cmd/dmsgpty-host/commands/root.go
 package commands
 
 import (

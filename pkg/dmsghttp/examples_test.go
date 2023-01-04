@@ -78,7 +78,6 @@ func ExampleMakeHTTPTransport() {
 		_, _ = w.Write([]byte("<html><body><h1>Hello World!</h1></body></html>")) //nolint:errcheck
 	})
 	go func() { _ = http.Serve(lis, r) }() //nolint
-
 	// Create dmsg client to run http client.
 	c2PK, c2SK := cipher.GenerateKeyPair()
 	dmsgC2 := dmsg.NewClient(c2PK, c2SK, dc, nil)

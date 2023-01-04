@@ -1,3 +1,4 @@
+// Package store internal/dmsg-discovery/store/testing.go
 package store
 
 import (

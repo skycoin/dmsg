@@ -1,3 +1,4 @@
+// Package api internal/dmsg-discovery/api/get_available_servers_test.go
 package api
 
 import (

@@ -1,3 +1,4 @@
+// Package discmetrics internal/discmetrics/victoria_metrics.go
 package discmetrics
 
 import (

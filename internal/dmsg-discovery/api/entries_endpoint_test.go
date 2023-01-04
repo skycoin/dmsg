@@ -1,3 +1,4 @@
+// Package api internal/dmsg-discovery/api/entries_endpoint_test.go
 package api
 
 import (

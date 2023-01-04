@@ -1,3 +1,4 @@
+// Package noise pkg/noise/noise_test.go
 package noise
 
 import (

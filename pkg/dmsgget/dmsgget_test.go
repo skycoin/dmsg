@@ -52,7 +52,6 @@ func TestDownload(t *testing.T) {
 
 	// Arrange: Start dmsg client that serves a http server which hosts the src file.
 	hsAddr := runHTTPSrv(t, dc, src.Name())
-
 	// Arrange: Download results (dst files and client errors).
 	dsts := make([]*os.File, dlClients)
 	errs := make([]chan error, dlClients)
