@@ -155,3 +155,14 @@ func (m *mockClient) AllServers(_ context.Context) ([]*Entry, error) {
 	}
 	return list, nil
 }
+
+// AllEntries returns all entries that the APIClient mock has
+func (m *mockClient) AllEntries(_ context.Context) ([]string, error) {
+	m.mx.RLock()
+	defer m.mx.RUnlock()
+	list := make([]string, 0, len(m.entries))
+	for _, e := range m.entries {
+		list = append(list, e.Static.Hex())
+	}
+	return list, nil
+}
