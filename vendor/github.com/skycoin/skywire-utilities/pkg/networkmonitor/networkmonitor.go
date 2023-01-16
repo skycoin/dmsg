@@ -1,3 +1,4 @@
+// Package networkmonitor pkg/networkmonitor/networkmonitor.go
 package networkmonitor
 
 // WhitelistPKs store whitelisted keys of network monitor
