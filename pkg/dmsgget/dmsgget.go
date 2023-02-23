@@ -222,12 +222,14 @@ func Download(ctx context.Context, log logrus.FieldLogger, httpC *http.Client, w
 	if err != nil {
 		log.WithError(err).Fatal("Failed to formulate HTTP request.")
 	}
-	if maxSize > 0 {
-		req.ContentLength = maxSize * 1024
-	}
 	resp, err := httpC.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to connect to HTTP server: %w", err)
+	}
+	if maxSize > 0 {
+		if resp.ContentLength > maxSize*1024 {
+			return fmt.Errorf("requested file size is more than allowed size: %d KB > %d KB", (resp.ContentLength / 1024), maxSize)
+		}
 	}
 	n, err := CancellableCopy(ctx, w, resp.Body, resp.ContentLength)
 	if err != nil {
