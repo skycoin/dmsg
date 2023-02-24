@@ -66,7 +66,7 @@ func TestDownload(t *testing.T) {
 			log := logging.MustGetLogger(fmt.Sprintf("dl_client_%d", i))
 			ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 			defer cancel()
-			err := Download(ctx, log, newHTTPClient(t, dc), dsts[i], hsAddr)
+			err := Download(ctx, log, newHTTPClient(t, dc), dsts[i], hsAddr, fileSize)
 
 			errs[i] <- err
 			close(errs[i])
