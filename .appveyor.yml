@@ -1,0 +1,28 @@
+version: "{build}"
+
+environment:
+  matrix:
+    # For regular jobs, such as push, pr and etc.
+    - job_name: Deploy
+      appveyor_build_worker_image: ubuntu2004
+
+for:
+  - # Deploy
+    build: off
+    matrix:
+      only:
+        - job_name: Deploy
+    branches:
+      only:
+        - develop
+        - master
+    deploy:
+      provider: Script
+      on:
+        branch:
+          - master
+          - develop
+    before_deploy:
+      - bash ./docker/scripts/docker-push.sh -t "$APPVEYOR_REPO_BRANCH" -p
+    deploy_script:
+      - echo "Complete!"
