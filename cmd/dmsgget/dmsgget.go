@@ -70,6 +70,9 @@ var rootCmd = &cobra.Command{
 		if dmsgDisc == "" {
 			dmsgDisc = skyenv.DmsgDiscAddr
 		}
+		if dmsgSk = "" {
+			dmsgSk = skString
+		}
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if dmsggetLog == nil {
