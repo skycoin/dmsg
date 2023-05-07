@@ -3,41 +3,41 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"errors"
-	"os"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
-
-
 	"time"
-	"github.com/spf13/cobra"
+
 	cc "github.com/ivanpirog/coloredcobra"
+	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/skycoin/skywire-utilities/pkg/skyenv"
-	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
-	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/spf13/cobra"
+
 	"github.com/skycoin/dmsg/pkg/disc"
-	"github.com/skycoin/dmsg/pkg/dmsghttp"
-
-
+	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsgget"
+	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
+
 var (
-	dmsgDisc string
-	dmsgSessions int
-	dmsggetTries int
-	dmsggetWait int
+	dmsgDisc      string
+	dmsgSessions  int
+	dmsggetTries  int
+	dmsggetWait   int
 	dmsggetOutput string
-	dmsgSk string
-	dmsggetLog *logging.Logger
+	dmsgSk        string
+	dmsggetLog    *logging.Logger
 )
+
 func init() {
-	skString :=	os.Getenv("DMSGGET_SK")
+	skString := os.Getenv("DMSGGET_SK")
 	if skString == "" {
 		skString = "0000000000000000000000000000000000000000000000000000000000000000"
 	}
@@ -66,7 +66,7 @@ var rootCmd = &cobra.Command{
 	DisableSuggestions:    true,
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
-	PreRun:  func(cmd *cobra.Command, args []string) {
+	PreRun: func(cmd *cobra.Command, args []string) {
 		if dmsgDisc == "" {
 			dmsgDisc = skyenv.DmsgDiscAddr
 		}
@@ -77,7 +77,6 @@ var rootCmd = &cobra.Command{
 		}
 		ctx, cancel := cmdutil.SignalContext(context.Background(), dmsggetLog)
 		defer cancel()
-
 
 		pk, sk, err := parseKeyPair(dmsgSk)
 		if err != nil {
@@ -138,19 +137,18 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-
 func parseKeyPair(skStr string) (pk cipher.PubKey, sk cipher.SecKey, err error) {
-if skStr == "" {
-	pk, sk = cipher.GenerateKeyPair()
-	return
-}
+	if skStr == "" {
+		pk, sk = cipher.GenerateKeyPair()
+		return
+	}
 
-if err = sk.Set(skStr); err != nil {
-	return
-}
+	if err = sk.Set(skStr); err != nil {
+		return
+	}
 
-pk, err = sk.PubKey()
-return
+	pk, err = sk.PubKey()
+	return
 }
 
 // URL represents a dmsg http URL.
@@ -196,27 +194,27 @@ func parseURL(args []string) (*URL, error) {
 }
 
 func parseOutputFile(name string, urlPath string) (*os.File, error) {
-stat, statErr := os.Stat(name)
-if statErr != nil {
-	if os.IsNotExist(statErr) {
-		f, err := os.Create(name) //nolint
+	stat, statErr := os.Stat(name)
+	if statErr != nil {
+		if os.IsNotExist(statErr) {
+			f, err := os.Create(name) //nolint
+			if err != nil {
+				return nil, err
+			}
+			return f, nil
+		}
+		return nil, statErr
+	}
+
+	if stat.IsDir() {
+		f, err := os.Create(filepath.Join(name, urlPath)) //nolint
 		if err != nil {
 			return nil, err
 		}
 		return f, nil
 	}
-	return nil, statErr
-}
 
-if stat.IsDir() {
-	f, err := os.Create(filepath.Join(name, urlPath)) //nolint
-	if err != nil {
-		return nil, err
-	}
-	return f, nil
-}
-
-return nil, os.ErrExist
+	return nil, os.ErrExist
 }
 
 func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
