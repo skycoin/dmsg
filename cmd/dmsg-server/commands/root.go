@@ -12,6 +12,18 @@ import (
 	"github.com/skycoin/dmsg/cmd/dmsg-server/commands/start"
 )
 
+func init() {
+	rootCmd.AddCommand(
+		config.RootCmd,
+		start.RootCmd,
+	)
+	rootCmd.SetUsageTemplate(help)
+	var helpflag bool
+	rootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for "+rootCmd.Use)
+	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
+	rootCmd.PersistentFlags().MarkHidden("help") //nolint
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "dmsg-server",
 	Short: "Command Line Interface for DMSG-Server",
@@ -24,18 +36,6 @@ var rootCmd = &cobra.Command{
 	DisableSuggestions:    true,
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
-}
-
-func init() {
-	rootCmd.AddCommand(
-		config.RootCmd,
-		start.RootCmd,
-	)
-	rootCmd.SetUsageTemplate(help)
-	var helpflag bool
-	rootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for "+rootCmd.Use)
-	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
-	rootCmd.PersistentFlags().MarkHidden("help") //nolint
 }
 
 // Execute executes root CLI command.
