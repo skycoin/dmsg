@@ -121,8 +121,10 @@ var rootCmd = &cobra.Command{
 			Info("Serving...")
 
 		http.HandleFunc("/", fileServerHandler)
-
-		log.Fatal(http.Serve(lis, nil))
+		serve := &http.Server{
+			ReadHeaderTimeout: 3 * time.Second,
+		}
+		log.Fatal(serve.Serve(lis))
 
 	},
 }
