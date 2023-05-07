@@ -33,7 +33,7 @@ var (
 	dmsggetWait   int
 	dmsggetOutput string
 	dmsgSk        string
-	skString string
+	skString      string
 	dmsggetLog    *logging.Logger
 	dmsggetAgent  string
 )
