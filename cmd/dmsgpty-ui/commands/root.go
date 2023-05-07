@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
+	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/spf13/cobra"
-	cc "github.com/ivanpirog/coloredcobra"
 
 	"github.com/skycoin/dmsg/pkg/dmsgpty"
 )
@@ -73,22 +73,23 @@ var RootCmd = &cobra.Command{
 // Execute executes the root command.
 func Execute() {
 	cc.Init(&cc.Config{
-	RootCmd:       RootCmd,
-	Headings:      cc.HiBlue + cc.Bold, //+ cc.Underline,
-	Commands:      cc.HiBlue + cc.Bold,
-	CmdShortDescr: cc.HiBlue,
-	Example:       cc.HiBlue + cc.Italic,
-	ExecName:      cc.HiBlue + cc.Bold,
-	Flags:         cc.HiBlue + cc.Bold,
-	//FlagsDataType: cc.HiBlue,
-	FlagsDescr:      cc.HiBlue,
-	NoExtraNewlines: true,
-	NoBottomNewline: true,
-})
+		RootCmd:       RootCmd,
+		Headings:      cc.HiBlue + cc.Bold, //+ cc.Underline,
+		Commands:      cc.HiBlue + cc.Bold,
+		CmdShortDescr: cc.HiBlue,
+		Example:       cc.HiBlue + cc.Italic,
+		ExecName:      cc.HiBlue + cc.Bold,
+		Flags:         cc.HiBlue + cc.Bold,
+		//FlagsDataType: cc.HiBlue,
+		FlagsDescr:      cc.HiBlue,
+		NoExtraNewlines: true,
+		NoBottomNewline: true,
+	})
 	if err := RootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }
+
 const help = "Usage:\r\n" +
 	"  {{.UseLine}}{{if .HasAvailableSubCommands}}{{end}} {{if gt (len .Aliases) 0}}\r\n\r\n" +
 	"{{.NameAndAliases}}{{end}}{{if .HasAvailableSubCommands}}\r\n\r\n" +
