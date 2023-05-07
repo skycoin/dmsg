@@ -9,6 +9,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.8-0.20220103230436-7dbe9a0bd10f
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/google/go-cmp v0.5.7 // indirect
+	github.com/ivanpirog/coloredcobra v1.0.1
 	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.11.0 // indirect
 	github.com/pires/go-proxyproto v0.6.2

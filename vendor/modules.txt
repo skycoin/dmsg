@@ -16,6 +16,8 @@ github.com/creack/pty
 github.com/davecgh/go-spew/spew
 # github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f
 github.com/dgryski/go-rendezvous
+# github.com/fatih/color v1.13.0
+github.com/fatih/color
 # github.com/go-chi/chi/v5 v5.0.8-0.20220103230436-7dbe9a0bd10f
 ## explicit
 github.com/go-chi/chi/v5
@@ -34,6 +36,9 @@ github.com/go-redis/redis/v8/internal/util
 ## explicit
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
+# github.com/ivanpirog/coloredcobra v1.0.1
+## explicit
+github.com/ivanpirog/coloredcobra
 # github.com/json-iterator/go v1.1.12
 ## explicit
 github.com/json-iterator/go
