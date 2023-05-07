@@ -56,35 +56,16 @@ var (
 func init() {
 
 	// Prepare flags with env/config references.
-
-	RootCmd.PersistentFlags().Var(&wl, "wl",
-		"whitelist of the dmsgpty-host")
-
-	RootCmd.PersistentFlags().StringVar(&dmsgDisc, "dmsgdisc", dmsgDisc,
-		"dmsg discovery address")
-
-	RootCmd.PersistentFlags().IntVar(&dmsgSessions, "dmsgsessions", dmsgSessions,
-		"minimum number of dmsg sessions to ensure")
-
-	RootCmd.PersistentFlags().Uint16Var(&dmsgPort, "dmsgport", dmsgPort,
-		"dmsg port for listening for remote hosts")
-
-	RootCmd.PersistentFlags().StringVar(&cliNet, "clinet", cliNet,
-		"network used for listening for cli connections")
-
-	RootCmd.PersistentFlags().StringVar(&cliAddr, "cliaddr", cliAddr,
-		"address used for listening for cli connections")
-
+	RootCmd.PersistentFlags().Var(&wl, "wl", "whitelist of the dmsgpty-host")
+	RootCmd.PersistentFlags().StringVar(&dmsgDisc, "dmsgdisc", dmsgDisc, "dmsg discovery address")
+	RootCmd.PersistentFlags().IntVar(&dmsgSessions, "dmsgsessions", dmsgSessions,	"minimum number of dmsg sessions to ensure")
+	RootCmd.PersistentFlags().Uint16Var(&dmsgPort, "dmsgport", dmsgPort, "dmsg port for listening for remote hosts")
+	RootCmd.PersistentFlags().StringVar(&cliNet, "clinet", cliNet, "network used for listening for cli connections")
+	RootCmd.PersistentFlags().StringVar(&cliAddr, "cliaddr", cliAddr, "address used for listening for cli connections")
 	// Prepare flags without associated env/config references.
-
-	RootCmd.PersistentFlags().StringVar(&envPrefix, "envprefix", envPrefix,
-		"env prefix")
-
-	RootCmd.Flags().BoolVar(&confStdin, "confstdin", confStdin,
-		"config will be read from stdin if set")
-
-	RootCmd.Flags().StringVarP(&confPath, "confpath", "c", confPath,
-		"config path")
+	RootCmd.PersistentFlags().StringVar(&envPrefix, "envprefix", envPrefix, "env prefix")
+	RootCmd.Flags().BoolVar(&confStdin, "confstdin", confStdin,	"config will be read from stdin if set")
+	RootCmd.Flags().StringVarP(&confPath, "confpath", "c", confPath, "config path")
 	var helpflag bool
 	RootCmd.SetUsageTemplate(help)
 	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for "+RootCmd.Use)
