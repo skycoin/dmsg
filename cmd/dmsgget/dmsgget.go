@@ -34,6 +34,7 @@ var (
 	dmsggetOutput string
 	dmsgSk        string
 	dmsggetLog    *logging.Logger
+	dmsggetAgent string
 )
 
 func init() {
@@ -46,6 +47,8 @@ func init() {
 	rootCmd.Flags().StringVarP(&dmsggetOutput, "out", "o", ".", "output filepath")
 	rootCmd.Flags().IntVarP(&dmsggetTries, "try", "t", 1, "download attempts (0 unlimits)")
 	rootCmd.Flags().IntVarP(&dmsggetWait, "wait", "w", 0, "time to wait between fetches")
+	rootCmd.Flags().StringVarP(&dmsggetAgent, "agent", "a", dmsgget+"/"+buildinfo.Version(), "identify as `AGENT`")
+
 	rootCmd.Flags().StringVarP(&dmsgSk, "sk", "s", "", "secret key to use default:\n"+skString)
 	var helpflag bool
 	rootCmd.SetUsageTemplate(help)
