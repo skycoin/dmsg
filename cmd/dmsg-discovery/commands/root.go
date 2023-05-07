@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	cc "github.com/ivanpirog/coloredcobra"
 	proxyproto "github.com/pires/go-proxyproto"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
@@ -19,7 +20,6 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
 	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 	"github.com/spf13/cobra"
-	cc "github.com/ivanpirog/coloredcobra"
 
 	"github.com/skycoin/dmsg/internal/discmetrics"
 	"github.com/skycoin/dmsg/internal/dmsg-discovery/api"
@@ -162,18 +162,18 @@ var RootCmd = &cobra.Command{
 // Execute executes root CLI command.
 func Execute() {
 	cc.Init(&cc.Config{
-	RootCmd:       RootCmd,
-	Headings:      cc.HiBlue + cc.Bold, //+ cc.Underline,
-	Commands:      cc.HiBlue + cc.Bold,
-	CmdShortDescr: cc.HiBlue,
-	Example:       cc.HiBlue + cc.Italic,
-	ExecName:      cc.HiBlue + cc.Bold,
-	Flags:         cc.HiBlue + cc.Bold,
-	//FlagsDataType: cc.HiBlue,
-	FlagsDescr:      cc.HiBlue,
-	NoExtraNewlines: true,
-	NoBottomNewline: true,
-})
+		RootCmd:       RootCmd,
+		Headings:      cc.HiBlue + cc.Bold, //+ cc.Underline,
+		Commands:      cc.HiBlue + cc.Bold,
+		CmdShortDescr: cc.HiBlue,
+		Example:       cc.HiBlue + cc.Italic,
+		ExecName:      cc.HiBlue + cc.Bold,
+		Flags:         cc.HiBlue + cc.Bold,
+		//FlagsDataType: cc.HiBlue,
+		FlagsDescr:      cc.HiBlue,
+		NoExtraNewlines: true,
+		NoBottomNewline: true,
+	})
 	if err := RootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
@@ -248,7 +248,6 @@ func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, dmsg
 		}
 	}
 }
-
 
 func listenAndServe(addr string, handler http.Handler) error {
 	srv := &http.Server{Addr: addr, Handler: handler, ReadTimeout: 3 * time.Second, WriteTimeout: 3 * time.Second, IdleTimeout: 30 * time.Second, ReadHeaderTimeout: 3 * time.Second}

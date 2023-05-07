@@ -7,10 +7,10 @@ import (
 	"log"
 	"os"
 
+	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/spf13/cobra"
-	cc "github.com/ivanpirog/coloredcobra"
 
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsgpty"
@@ -23,10 +23,10 @@ var (
 	defaultConfPath = "config.json"
 	confPath        string
 	// conf to update whitelists
-	conf dmsgpty.Config
+	conf       dmsgpty.Config
 	remoteAddr dmsg.Addr
-	cmdName = dmsgpty.DefaultCmd
-	cmdArgs []string
+	cmdName    = dmsgpty.DefaultCmd
+	cmdArgs    []string
 )
 
 func init() {
@@ -81,22 +81,23 @@ var RootCmd = &cobra.Command{
 // Execute executes the root command.
 func Execute() {
 	cc.Init(&cc.Config{
-	RootCmd:       RootCmd,
-	Headings:      cc.HiBlue + cc.Bold, //+ cc.Underline,
-	Commands:      cc.HiBlue + cc.Bold,
-	CmdShortDescr: cc.HiBlue,
-	Example:       cc.HiBlue + cc.Italic,
-	ExecName:      cc.HiBlue + cc.Bold,
-	Flags:         cc.HiBlue + cc.Bold,
-	//FlagsDataType: cc.HiBlue,
-	FlagsDescr:      cc.HiBlue,
-	NoExtraNewlines: true,
-	NoBottomNewline: true,
-})
+		RootCmd:       RootCmd,
+		Headings:      cc.HiBlue + cc.Bold, //+ cc.Underline,
+		Commands:      cc.HiBlue + cc.Bold,
+		CmdShortDescr: cc.HiBlue,
+		Example:       cc.HiBlue + cc.Italic,
+		ExecName:      cc.HiBlue + cc.Bold,
+		Flags:         cc.HiBlue + cc.Bold,
+		//FlagsDataType: cc.HiBlue,
+		FlagsDescr:      cc.HiBlue,
+		NoExtraNewlines: true,
+		NoBottomNewline: true,
+	})
 	if err := RootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
 }
+
 const help = "Usage:\r\n" +
 	"  {{.UseLine}}{{if .HasAvailableSubCommands}}{{end}} {{if gt (len .Aliases) 0}}\r\n\r\n" +
 	"{{.NameAndAliases}}{{end}}{{if .HasAvailableSubCommands}}\r\n\r\n" +
@@ -107,50 +108,50 @@ const help = "Usage:\r\n" +
 	"Global Flags:\r\n" +
 	"{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}\r\n\r\n"
 
-	// initConfig sources whitelist from config file
-	// by default : it will look for config
-	//
-	// case 1 : config file is new (does not contain a "wl" key)
-	// - create a "wl" key within the config file
-	//
-	// case 2 : config file is old (already contains "wl" key)
-	// - load config file into memory to manipulate whitelists
-	// - writes changes back to config file
-	func initConfig() {
+// initConfig sources whitelist from config file
+// by default : it will look for config
+//
+// case 1 : config file is new (does not contain a "wl" key)
+// - create a "wl" key within the config file
+//
+// case 2 : config file is old (already contains "wl" key)
+// - load config file into memory to manipulate whitelists
+// - writes changes back to config file
+func initConfig() {
 
-		println(confPath)
+	println(confPath)
 
-		if _, err := os.Stat(confPath); err != nil {
-			cli.Log.Fatalf("Config file %s not found.", confPath)
-		}
+	if _, err := os.Stat(confPath); err != nil {
+		cli.Log.Fatalf("Config file %s not found.", confPath)
+	}
 
-		// read file using ioutil
-		file, err := os.ReadFile(confPath) //nolint:gosec
+	// read file using ioutil
+	file, err := os.ReadFile(confPath) //nolint:gosec
+	if err != nil {
+		cli.Log.Fatalln("Unable to read ", confPath, err)
+	}
+
+	// store config.json into conf to manipulate whitelists
+	err = json.Unmarshal(file, &conf)
+	if err != nil {
+		cli.Log.Errorln(err)
+		// ignoring this error
+		b, err := json.MarshalIndent(conf, "", "  ")
 		if err != nil {
-			cli.Log.Fatalln("Unable to read ", confPath, err)
+			cli.Log.Fatalln("Unable to marshal conf")
 		}
 
-		// store config.json into conf to manipulate whitelists
-		err = json.Unmarshal(file, &conf)
+		// write to config.json
+		err = os.WriteFile(confPath, b, 0600)
 		if err != nil {
-			cli.Log.Errorln(err)
-			// ignoring this error
-			b, err := json.MarshalIndent(conf, "", "  ")
-			if err != nil {
-				cli.Log.Fatalln("Unable to marshal conf")
-			}
-
-			// write to config.json
-			err = os.WriteFile(confPath, b, 0600)
-			if err != nil {
-				cli.Log.Fatalln("Unable to write", confPath, err)
-			}
-		}
-		conf.CLIAddr = dmsgpty.ParseWindowsEnv(conf.CLIAddr)
-		if conf.CLIAddr != "" {
-			cli.Addr = conf.CLIAddr
-		}
-		if conf.CLINet != "" {
-			cli.Net = conf.CLINet
+			cli.Log.Fatalln("Unable to write", confPath, err)
 		}
 	}
+	conf.CLIAddr = dmsgpty.ParseWindowsEnv(conf.CLIAddr)
+	if conf.CLIAddr != "" {
+		cli.Addr = conf.CLIAddr
+	}
+	if conf.CLINet != "" {
+		cli.Net = conf.CLINet
+	}
+}
