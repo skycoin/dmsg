@@ -33,12 +33,13 @@ var (
 	dmsggetWait   int
 	dmsggetOutput string
 	dmsgSk        string
+	skString string
 	dmsggetLog    *logging.Logger
-	dmsggetAgent string
+	dmsggetAgent  string
 )
 
 func init() {
-	skString := os.Getenv("DMSGGET_SK")
+	skString = os.Getenv("DMSGGET_SK")
 	if skString == "" {
 		skString = "0000000000000000000000000000000000000000000000000000000000000000"
 	}
@@ -47,7 +48,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&dmsggetOutput, "out", "o", ".", "output filepath")
 	rootCmd.Flags().IntVarP(&dmsggetTries, "try", "t", 1, "download attempts (0 unlimits)")
 	rootCmd.Flags().IntVarP(&dmsggetWait, "wait", "w", 0, "time to wait between fetches")
-	rootCmd.Flags().StringVarP(&dmsggetAgent, "agent", "a", dmsgget+"/"+buildinfo.Version(), "identify as `AGENT`")
+	rootCmd.Flags().StringVarP(&dmsggetAgent, "agent", "a", "dmsgget/"+buildinfo.Version(), "identify as `AGENT`")
 	rootCmd.Flags().StringVarP(&dmsgSk, "sk", "s", "", "secret key to use default:\n"+skString)
 	var helpflag bool
 	rootCmd.SetUsageTemplate(help)
@@ -72,7 +73,7 @@ var rootCmd = &cobra.Command{
 		if dmsgDisc == "" {
 			dmsgDisc = skyenv.DmsgDiscAddr
 		}
-		if dmsgSk = "" {
+		if dmsgSk == "" {
 			dmsgSk = skString
 		}
 	},
