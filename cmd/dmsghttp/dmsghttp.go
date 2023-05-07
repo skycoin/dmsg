@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-
 	"time"
 
 	cc "github.com/ivanpirog/coloredcobra"
@@ -23,11 +22,9 @@ import (
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 )
 
-
-
 var (
-	dmsgDisc      string
-	dmsgSk        string
+	dmsgDisc string
+	dmsgSk   string
 	serveDir string
 	skString string
 	pk, sk   = cipher.GenerateKeyPair()
@@ -50,8 +47,6 @@ func init() {
 	rootCmd.PersistentFlags().MarkHidden("help") //nolint
 }
 
-
-
 func fileServerHandler(w http.ResponseWriter, r *http.Request) {
 	filePath := serveDir + r.URL.Path
 	file, err := os.Open(filePath) //nolint
@@ -64,7 +59,6 @@ func fileServerHandler(w http.ResponseWriter, r *http.Request) {
 	_, filename := path.Split(filePath)
 	http.ServeContent(w, r, filename, time.Time{}, file)
 }
-
 
 var rootCmd = &cobra.Command{
 	Use:   "dmsghttp",
