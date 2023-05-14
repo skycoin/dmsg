@@ -33,23 +33,18 @@ var (
 	dmsggetWait   int
 	dmsggetOutput string
 	dmsgSk        string
-	skString      string
 	dmsggetLog    *logging.Logger
 	dmsggetAgent  string
 )
 
 func init() {
-	skString = os.Getenv("DMSGGET_SK")
-	if skString == "" {
-		skString = "0000000000000000000000000000000000000000000000000000000000000000"
-	}
 	rootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
 	rootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
 	rootCmd.Flags().StringVarP(&dmsggetOutput, "out", "o", ".", "output filepath")
 	rootCmd.Flags().IntVarP(&dmsggetTries, "try", "t", 1, "download attempts (0 unlimits)")
 	rootCmd.Flags().IntVarP(&dmsggetWait, "wait", "w", 0, "time to wait between fetches")
 	rootCmd.Flags().StringVarP(&dmsggetAgent, "agent", "a", "dmsgget/"+buildinfo.Version(), "identify as `AGENT`")
-	rootCmd.Flags().StringVarP(&dmsgSk, "sk", "s", "", "secret key to use default:\n"+skString)
+	rootCmd.Flags().StringVarP(&dmsgSk, "sk", "s", os.Getenv("DMSGGET_SK"), "secret key to use")
 	var helpflag bool
 	rootCmd.SetUsageTemplate(help)
 	rootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for "+rootCmd.Use)
@@ -72,9 +67,6 @@ var rootCmd = &cobra.Command{
 	PreRun: func(cmd *cobra.Command, args []string) {
 		if dmsgDisc == "" {
 			dmsgDisc = skyenv.DmsgDiscAddr
-		}
-		if dmsgSk == "" {
-			dmsgSk = skString
 		}
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
