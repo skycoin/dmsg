@@ -32,7 +32,7 @@ var (
 	dmsggetTries  int
 	dmsggetWait   int
 	dmsggetOutput string
-	dmsgSk        string
+	sk       cipher.SecKey
 	dmsggetLog    *logging.Logger
 	dmsggetAgent  string
 )
@@ -44,7 +44,10 @@ func init() {
 	rootCmd.Flags().IntVarP(&dmsggetTries, "try", "t", 1, "download attempts (0 unlimits)")
 	rootCmd.Flags().IntVarP(&dmsggetWait, "wait", "w", 0, "time to wait between fetches")
 	rootCmd.Flags().StringVarP(&dmsggetAgent, "agent", "a", "dmsgget/"+buildinfo.Version(), "identify as `AGENT`")
-	rootCmd.Flags().StringVarP(&dmsgSk, "sk", "s", os.Getenv("DMSGGET_SK"), "secret key to use")
+	if os.Getenv("DMSGGET_SK") != "" {
+		sk.Set(os.Getenv("DMSGGET_SK"))
+	}
+	rootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 	var helpflag bool
 	rootCmd.SetUsageTemplate(help)
 	rootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for "+rootCmd.Use)

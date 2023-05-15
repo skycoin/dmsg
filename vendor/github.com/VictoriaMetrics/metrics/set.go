@@ -58,9 +58,9 @@ func (s *Set) WritePrometheus(w io.Writer) {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned histogram is safe to use from concurrent goroutines.
 func (s *Set) NewHistogram(name string) *Histogram {
@@ -75,9 +75,9 @@ func (s *Set) NewHistogram(name string) *Histogram {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned histogram is safe to use from concurrent goroutines.
 //
@@ -116,9 +116,9 @@ func (s *Set) GetOrCreateHistogram(name string) *Histogram {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned counter is safe to use from concurrent goroutines.
 func (s *Set) NewCounter(name string) *Counter {
@@ -133,9 +133,9 @@ func (s *Set) NewCounter(name string) *Counter {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned counter is safe to use from concurrent goroutines.
 //
@@ -174,9 +174,9 @@ func (s *Set) GetOrCreateCounter(name string) *Counter {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned FloatCounter is safe to use from concurrent goroutines.
 func (s *Set) NewFloatCounter(name string) *FloatCounter {
@@ -191,9 +191,9 @@ func (s *Set) NewFloatCounter(name string) *FloatCounter {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned FloatCounter is safe to use from concurrent goroutines.
 //
@@ -233,9 +233,9 @@ func (s *Set) GetOrCreateFloatCounter(name string) *FloatCounter {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // f must be safe for concurrent calls.
 //
@@ -257,9 +257,9 @@ func (s *Set) NewGauge(name string, f func() float64) *Gauge {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned gauge is safe to use from concurrent goroutines.
 //
@@ -303,9 +303,9 @@ func (s *Set) GetOrCreateGauge(name string, f func() float64) *Gauge {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned summary is safe to use from concurrent goroutines.
 func (s *Set) NewSummary(name string) *Summary {
@@ -318,9 +318,9 @@ func (s *Set) NewSummary(name string) *Summary {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned summary is safe to use from concurrent goroutines.
 func (s *Set) NewSummaryExt(name string, window time.Duration, quantiles []float64) *Summary {
@@ -347,9 +347,9 @@ func (s *Set) NewSummaryExt(name string, window time.Duration, quantiles []float
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned summary is safe to use from concurrent goroutines.
 //
@@ -365,9 +365,9 @@ func (s *Set) GetOrCreateSummary(name string) *Summary {
 // name must be valid Prometheus-compatible metric with possible labels.
 // For instance,
 //
-//   - foo
-//   - foo{bar="baz"}
-//   - foo{bar="baz",aaa="b"}
+//     * foo
+//     * foo{bar="baz"}
+//     * foo{bar="baz",aaa="b"}
 //
 // The returned summary is safe to use from concurrent goroutines.
 //
