@@ -79,9 +79,9 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := cmdutil.SignalContext(context.Background(), dmsggetLog)
 		defer cancel()
 
-		pk, sk, err := parseKeyPair(dmsgSk)
+		pk, err := sk.PubKey()
 		if err != nil {
-			return fmt.Errorf("failed to parse provided key pair: %w", err)
+			pk, sk = cipher.GenerateKeyPair()
 		}
 
 		u, err := parseURL(args)
