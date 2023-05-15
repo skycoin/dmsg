@@ -4,15 +4,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"log"
-	"net/http"
+	"mime"
 	"net"
+	"net/http"
 	"os"
 	"path"
-	"time"
+	"path/filepath"
 	"strings"
-	"mime"
+	"time"
+
 	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
@@ -31,8 +32,8 @@ var (
 	dmsgSk   string
 	serveDir string
 	dmsgPort uint
-	wl string
-	wlkeys []cipher.PubKey
+	wl       string
+	wlkeys   []cipher.PubKey
 )
 
 func init() {
@@ -50,7 +51,6 @@ func init() {
 	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 	rootCmd.PersistentFlags().MarkHidden("help") //nolint
 }
-
 
 var rootCmd = &cobra.Command{
 	Use:   "dmsghttp",
@@ -76,11 +76,11 @@ var rootCmd = &cobra.Command{
 		defer cancel()
 		pk, err := sk.PubKey()
 		if err != nil {
-			pk, sk  = cipher.GenerateKeyPair()
+			pk, sk = cipher.GenerateKeyPair()
 		}
 		if wl != "" {
 			wlk := strings.Split(wl, ",")
-			for	_, key := range wlk {
+			for _, key := range wlk {
 				var pk1 cipher.PubKey
 				err := pk1.Set(key)
 				if err == nil {
@@ -90,9 +90,9 @@ var rootCmd = &cobra.Command{
 		}
 		if len(wlkeys) > 0 {
 			if len(wlkeys) == 1 {
-				log.Info(fmt.Sprintf("%d key whitelisted",len(wlkeys)))
+				log.Info(fmt.Sprintf("%d key whitelisted", len(wlkeys)))
 			} else {
-				log.Info(fmt.Sprintf("%d keys whitelisted",len(wlkeys)))
+				log.Info(fmt.Sprintf("%d keys whitelisted", len(wlkeys)))
 			}
 		}
 

@@ -32,7 +32,7 @@ var (
 	dmsggetTries  int
 	dmsggetWait   int
 	dmsggetOutput string
-	sk       cipher.SecKey
+	sk            cipher.SecKey
 	dmsggetLog    *logging.Logger
 	dmsggetAgent  string
 )
