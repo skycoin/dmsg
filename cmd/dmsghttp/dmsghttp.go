@@ -29,7 +29,6 @@ import (
 var (
 	sk       cipher.SecKey
 	dmsgDisc string
-	dmsgSk   string
 	serveDir string
 	dmsgPort uint
 	wl       string
@@ -42,7 +41,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&wl, "wl", "w", "", "whitelist keys, comma separated")
 	rootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
 	if os.Getenv("DMSGHTTP_SK") != "" {
-		sk.Set(os.Getenv("DMSGHTTP_SK"))
+		sk.Set(os.Getenv("DMSGHTTP_SK"))//nolint:errcheck
 	}
 	rootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 	var helpflag bool
