@@ -41,7 +41,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&wl, "wl", "w", "", "whitelist keys, comma separated")
 	rootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
 	if os.Getenv("DMSGHTTP_SK") != "" {
-		sk.Set(os.Getenv("DMSGHTTP_SK"))//nolint:errcheck
+		sk.Set(os.Getenv("DMSGHTTP_SK")) //nolint:errcheck
 	}
 	rootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 	var helpflag bool
@@ -185,7 +185,6 @@ func fileServerHandler(w http.ResponseWriter, r *http.Request) {
 	// Log the response status and time taken.
 	elapsed := time.Since(start)
 	log.Printf("[DMSGHTTP] %s %s | %d | %v | %s | %s %s\n", start.Format("2006/01/02 - 15:04:05"), r.RemoteAddr, http.StatusForbidden, elapsed, r.Method, r.Proto, r.URL)
-	return
 }
 
 // Execute executes root CLI command.

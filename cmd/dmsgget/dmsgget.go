@@ -45,7 +45,7 @@ func init() {
 	rootCmd.Flags().IntVarP(&dmsggetWait, "wait", "w", 0, "time to wait between fetches")
 	rootCmd.Flags().StringVarP(&dmsggetAgent, "agent", "a", "dmsgget/"+buildinfo.Version(), "identify as `AGENT`")
 	if os.Getenv("DMSGGET_SK") != "" {
-		sk.Set(os.Getenv("DMSGGET_SK"))//nolint:errcheck
+		sk.Set(os.Getenv("DMSGGET_SK")) //nolint:errcheck
 	}
 	rootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 	var helpflag bool
@@ -136,20 +136,6 @@ var rootCmd = &cobra.Command{
 		return errors.New("all download attempts failed")
 
 	},
-}
-
-func parseKeyPair(skStr string) (pk cipher.PubKey, sk cipher.SecKey, err error) {
-	if skStr == "" {
-		pk, sk = cipher.GenerateKeyPair()
-		return
-	}
-
-	if err = sk.Set(skStr); err != nil {
-		return
-	}
-
-	pk, err = sk.PubKey()
-	return
 }
 
 // URL represents a dmsg http URL.
