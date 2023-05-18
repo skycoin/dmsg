@@ -80,10 +80,10 @@ var rootCmd = &cobra.Command{
 		if wl != "" {
 			wlk := strings.Split(wl, ",")
 			for _, key := range wlk {
-				var pk1 cipher.PubKey
-				err := pk1.Set(key)
+				var pubKey cipher.PubKey
+				err := pubKey.Set(key)
 				if err == nil {
-					wlkeys = append(wlkeys, pk1)
+					wlkeys = append(wlkeys, pubKey)
 				}
 			}
 		}
@@ -151,8 +151,8 @@ func fileServerHandler(w http.ResponseWriter, r *http.Request) {
 	if len(wlkeys) == 0 {
 		whitelisted = true
 	} else {
-		for _, pk2 := range wlkeys {
-			if remotePK == pk2.String() {
+		for _, pubKey := range wlkeys {
+			if remotePK == pubKey.String() {
 				whitelisted = true
 				break
 			}

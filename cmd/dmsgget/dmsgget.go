@@ -5,14 +5,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	cc "github.com/ivanpirog/coloredcobra"
+	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
@@ -22,7 +25,6 @@ import (
 
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
-	"github.com/skycoin/dmsg/pkg/dmsgget"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
 
@@ -35,12 +37,14 @@ var (
 	sk            cipher.SecKey
 	dmsggetLog    *logging.Logger
 	dmsggetAgent  string
+	stdout        bool
 )
 
 func init() {
 	rootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
 	rootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
 	rootCmd.Flags().StringVarP(&dmsggetOutput, "out", "o", ".", "output filepath")
+	rootCmd.Flags().BoolVarP(&stdout, "stdout", "n", false, "output to STDOUT")
 	rootCmd.Flags().IntVarP(&dmsggetTries, "try", "t", 1, "download attempts (0 unlimits)")
 	rootCmd.Flags().IntVarP(&dmsggetWait, "wait", "w", 0, "time to wait between fetches")
 	rootCmd.Flags().StringVarP(&dmsggetAgent, "agent", "a", "dmsgget/"+buildinfo.Version(), "identify as `AGENT`")
@@ -75,6 +79,9 @@ var rootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if dmsggetLog == nil {
 			dmsggetLog = logging.MustGetLogger("dmsgget")
+		}
+		if lvl, err := logging.LevelFromString("panic"); err == nil {
+			logging.SetLevel(lvl)
 		}
 		ctx, cancel := cmdutil.SignalContext(context.Background(), dmsggetLog)
 		defer cancel()
@@ -113,13 +120,25 @@ var rootCmd = &cobra.Command{
 		httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
 
 		for i := 0; i < dmsggetTries; i++ {
-			dmsggetLog.Infof("Download attempt %d/%d ...", i, dmsggetTries)
+			if !stdout {
+				dmsggetLog.Debugf("Download attempt %d/%d ...", i, dmsggetTries)
+			}
 
 			if _, err := file.Seek(0, 0); err != nil {
 				return fmt.Errorf("failed to reset file: %w", err)
 			}
-
-			if err := dmsgget.Download(ctx, dmsggetLog, &httpC, file, u.URL.String(), 0); err != nil {
+			if stdout {
+				if fErr := file.Close(); fErr != nil {
+					dmsggetLog.WithError(fErr).Warn("Failed to close output file.")
+				}
+				if err != nil {
+					if rErr := os.RemoveAll(file.Name()); rErr != nil {
+						dmsggetLog.WithError(rErr).Warn("Failed to remove output file.")
+					}
+				}
+				file = os.Stdout
+			}
+			if err := Download(ctx, dmsggetLog, &httpC, file, u.URL.String(), 0); err != nil {
 				dmsggetLog.WithError(err).Error()
 				select {
 				case <-ctx.Done():
@@ -210,11 +229,13 @@ func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *
 
 	stop = func() {
 		err := dmsgC.Close()
-		dmsggetLog.WithError(err).Info("Disconnected from dmsg network.")
+		dmsggetLog.WithError(err).Debug("Disconnected from dmsg network.")
+		fmt.Printf("\n")
 	}
-
-	dmsggetLog.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsgDisc).
-		Info("Connecting to dmsg network...")
+	if !stdout {
+		dmsggetLog.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsgDisc).
+			Debug("Connecting to dmsg network...")
+	}
 
 	select {
 	case <-ctx.Done():
@@ -222,9 +243,88 @@ func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *
 		return nil, nil, ctx.Err()
 
 	case <-dmsgC.Ready():
-		dmsggetLog.Info("Dmsg network ready.")
+		dmsggetLog.Debug("Dmsg network ready.")
 		return dmsgC, stop, nil
 	}
+}
+
+// Download downloads a file from the given URL into 'w'.
+func Download(ctx context.Context, log logrus.FieldLogger, httpC *http.Client, w io.Writer, urlStr string, maxSize int64) error {
+	req, err := http.NewRequest(http.MethodGet, urlStr, nil)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to formulate HTTP request.")
+	}
+	resp, err := httpC.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to connect to HTTP server: %w", err)
+	}
+	if maxSize > 0 {
+		if resp.ContentLength > maxSize*1024 {
+			return fmt.Errorf("requested file size is more than allowed size: %d KB > %d KB", (resp.ContentLength / 1024), maxSize)
+		}
+	}
+	n, err := CancellableCopy(ctx, w, resp.Body, resp.ContentLength)
+	if err != nil {
+		return fmt.Errorf("download failed at %d/%dB: %w", n, resp.ContentLength, err)
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.WithError(err).Warn("HTTP Response body closed with non-nil error.")
+		}
+	}()
+
+	return nil
+}
+
+type readerFunc func(p []byte) (n int, err error)
+
+func (rf readerFunc) Read(p []byte) (n int, err error) { return rf(p) }
+
+// CancellableCopy will call the Reader and Writer interface multiple time, in order
+// to copy by chunk (avoiding loading the whole file in memory).
+func CancellableCopy(ctx context.Context, w io.Writer, body io.ReadCloser, length int64) (int64, error) {
+
+	n, err := io.Copy(io.MultiWriter(w, &ProgressWriter{Total: length}), readerFunc(func(p []byte) (int, error) {
+
+		// golang non-blocking channel: https://gobyexample.com/non-blocking-channel-operations
+		select {
+
+		// if context has been canceled
+		case <-ctx.Done():
+			// stop process and propagate "Download Canceled" error
+			return 0, errors.New("Download Canceled")
+		default:
+			// otherwise just run default io.Reader implementation
+			return body.Read(p)
+		}
+	}))
+	return n, err
+}
+
+// ProgressWriter prints the progress of a download to stdout.
+type ProgressWriter struct {
+	// atomic requires 64-bit alignment for struct field access
+	Current int64
+	Total   int64
+}
+
+// Write implements io.Writer
+func (pw *ProgressWriter) Write(p []byte) (int, error) {
+	n := len(p)
+
+	current := atomic.AddInt64(&pw.Current, int64(n))
+	total := atomic.LoadInt64(&pw.Total)
+	pc := fmt.Sprintf("%d%%", current*100/total)
+	if !stdout {
+		fmt.Printf("Downloading: %d/%dB (%s)", current, total, pc)
+		if current != total {
+			fmt.Print("\r")
+		} else {
+			fmt.Print("\n")
+		}
+	}
+
+	return n, nil
 }
 
 // Execute executes root CLI command.
