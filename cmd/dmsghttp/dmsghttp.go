@@ -5,9 +5,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"mime"
+	"net"
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
+	"strings"
 	"time"
 
 	cc "github.com/ivanpirog/coloredcobra"
@@ -23,41 +27,28 @@ import (
 )
 
 var (
+	sk       cipher.SecKey
 	dmsgDisc string
-	dmsgSk   string
 	serveDir string
-	skString string
-	pk, sk   = cipher.GenerateKeyPair()
 	dmsgPort uint
+	wl       string
+	wlkeys   []cipher.PubKey
 )
 
 func init() {
-	skString = os.Getenv("DMSGGET_SK")
-	if skString == "" {
-		skString = "0000000000000000000000000000000000000000000000000000000000000000"
-	}
 	rootCmd.Flags().StringVarP(&serveDir, "dir", "d", ".", "local dir to serve via dmsghttp")
 	rootCmd.Flags().UintVarP(&dmsgPort, "port", "p", 80, "dmsg port to serve from")
+	rootCmd.Flags().StringVarP(&wl, "wl", "w", "", "whitelist keys, comma separated")
 	rootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
-	rootCmd.Flags().StringVarP(&dmsgSk, "sk", "s", "", "secret key to use default:\n"+skString)
+	if os.Getenv("DMSGHTTP_SK") != "" {
+		sk.Set(os.Getenv("DMSGHTTP_SK")) //nolint
+	}
+	rootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 	var helpflag bool
 	rootCmd.SetUsageTemplate(help)
 	rootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for "+rootCmd.Use)
 	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 	rootCmd.PersistentFlags().MarkHidden("help") //nolint
-}
-
-func fileServerHandler(w http.ResponseWriter, r *http.Request) {
-	filePath := serveDir + r.URL.Path
-	file, err := os.Open(filePath) //nolint
-	if err != nil {
-		fmt.Printf("%s not found\n", filePath)
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	defer file.Close() //nolint
-	_, filename := path.Split(filePath)
-	http.ServeContent(w, r, filename, time.Time{}, file)
 }
 
 var rootCmd = &cobra.Command{
@@ -76,17 +67,33 @@ var rootCmd = &cobra.Command{
 		if dmsgDisc == "" {
 			dmsgDisc = skyenv.DmsgDiscAddr
 		}
-		if dmsgSk == "" {
-			dmsgSk = skString
-		}
-		//TODO: fix this
-		//pk, _ = dmsgSk.PubKey()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		log := logging.MustGetLogger("dmsghttp")
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
+		pk, err := sk.PubKey()
+		if err != nil {
+			pk, sk = cipher.GenerateKeyPair()
+		}
+		if wl != "" {
+			wlk := strings.Split(wl, ",")
+			for _, key := range wlk {
+				var pk1 cipher.PubKey
+				err := pk1.Set(key)
+				if err == nil {
+					wlkeys = append(wlkeys, pk1)
+				}
+			}
+		}
+		if len(wlkeys) > 0 {
+			if len(wlkeys) == 1 {
+				log.Info(fmt.Sprintf("%d key whitelisted", len(wlkeys)))
+			} else {
+				log.Info(fmt.Sprintf("%d keys whitelisted", len(wlkeys)))
+			}
+		}
 
 		c := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, log), dmsg.DefaultConfig())
 		defer func() {
@@ -127,6 +134,57 @@ var rootCmd = &cobra.Command{
 		log.Fatal(serve.Serve(lis))
 
 	},
+}
+
+func fileServerHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+
+	// Get the remote PK.
+	remotePK, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	// Check if the remote PK is whitelisted.
+	whitelisted := false
+	if len(wlkeys) == 0 {
+		whitelisted = true
+	} else {
+		for _, pk2 := range wlkeys {
+			if remotePK == pk2.String() {
+				whitelisted = true
+				break
+			}
+		}
+	}
+
+	// If the remote PK is whitelisted, serve the file.
+	if whitelisted {
+		filePath := serveDir + r.URL.Path
+		file, err := os.Open(filePath) //nolint
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+		defer file.Close() //nolint
+
+		_, filename := path.Split(filePath)
+		w.Header().Set("Content-Type", mime.TypeByExtension(filepath.Ext(filename)))
+		http.ServeContent(w, r, filename, time.Time{}, file)
+
+		// Log the response status and time taken.
+		elapsed := time.Since(start)
+		log.Printf("[DMSGHTTP] %s %s | %d | %v | %s | %s %s\n", start.Format("2006/01/02 - 15:04:05"), r.RemoteAddr, http.StatusOK, elapsed, r.Method, r.Proto, r.URL)
+		return
+	}
+
+	// Otherwise, return a 403 Forbidden error.
+	http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+
+	// Log the response status and time taken.
+	elapsed := time.Since(start)
+	log.Printf("[DMSGHTTP] %s %s | %d | %v | %s | %s %s\n", start.Format("2006/01/02 - 15:04:05"), r.RemoteAddr, http.StatusForbidden, elapsed, r.Method, r.Proto, r.URL)
 }
 
 // Execute executes root CLI command.

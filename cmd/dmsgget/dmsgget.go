@@ -32,7 +32,7 @@ var (
 	dmsggetTries  int
 	dmsggetWait   int
 	dmsggetOutput string
-	dmsgSk        string
+	sk            cipher.SecKey
 	dmsggetLog    *logging.Logger
 	dmsggetAgent  string
 )
@@ -44,7 +44,10 @@ func init() {
 	rootCmd.Flags().IntVarP(&dmsggetTries, "try", "t", 1, "download attempts (0 unlimits)")
 	rootCmd.Flags().IntVarP(&dmsggetWait, "wait", "w", 0, "time to wait between fetches")
 	rootCmd.Flags().StringVarP(&dmsggetAgent, "agent", "a", "dmsgget/"+buildinfo.Version(), "identify as `AGENT`")
-	rootCmd.Flags().StringVarP(&dmsgSk, "sk", "s", os.Getenv("DMSGGET_SK"), "secret key to use")
+	if os.Getenv("DMSGGET_SK") != "" {
+		sk.Set(os.Getenv("DMSGGET_SK")) //nolint
+	}
+	rootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 	var helpflag bool
 	rootCmd.SetUsageTemplate(help)
 	rootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for "+rootCmd.Use)
@@ -76,9 +79,9 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := cmdutil.SignalContext(context.Background(), dmsggetLog)
 		defer cancel()
 
-		pk, sk, err := parseKeyPair(dmsgSk)
+		pk, err := sk.PubKey()
 		if err != nil {
-			return fmt.Errorf("failed to parse provided key pair: %w", err)
+			pk, sk = cipher.GenerateKeyPair()
 		}
 
 		u, err := parseURL(args)
@@ -133,20 +136,6 @@ var rootCmd = &cobra.Command{
 		return errors.New("all download attempts failed")
 
 	},
-}
-
-func parseKeyPair(skStr string) (pk cipher.PubKey, sk cipher.SecKey, err error) {
-	if skStr == "" {
-		pk, sk = cipher.GenerateKeyPair()
-		return
-	}
-
-	if err = sk.Set(skStr); err != nil {
-		return
-	}
-
-	pk, err = sk.PubKey()
-	return
 }
 
 // URL represents a dmsg http URL.
