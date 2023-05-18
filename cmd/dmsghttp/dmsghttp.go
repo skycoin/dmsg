@@ -83,7 +83,7 @@ var rootCmd = &cobra.Command{
 				var pubKey cipher.PubKey
 				err := pubKey.Set(key)
 				if err == nil {
-					wlkeys = append(wlkeys, pk1)
+					wlkeys = append(wlkeys, pubKey)
 				}
 			}
 		}
