@@ -23,9 +23,9 @@ $ docker run --network="br-dmsg0" --rm --name=redis -d -p 6379:6379 redis:alpine
 ```
 5. Run `dmsg-discovery` and `dmsg-server`
 ```bash
-$ docker run --rm --network="br-dmsg0" --name=dmsg-discovery skycoinpro/dmsg-discovery:test --redis redis://redis:6379
+$ docker run --rm --network="br-dmsg0" --name=dmsg-discovery skycoin/dmsg-discovery:test --redis redis://redis:6379
 # Run dmsg-server with default config (default points to production server)
-$ docker run --network="br-dmsg0" --rm --name=dmsg-server skycoinpro/dmsg-server:test
+$ docker run --network="br-dmsg0" --rm --name=dmsg-server skycoin/dmsg-server:test
 # or run it with your own config
 $ docker run -v <YOUR_CONFIG_PATH>:/etc/dmsg --network="br-dmsg0" --rm --name=dmsg-server \
 	skycoinpro/dmsg-server:test <YOUR_CONFIG_PATH>/<YOUR_CONFIG_FILE_NAME>
