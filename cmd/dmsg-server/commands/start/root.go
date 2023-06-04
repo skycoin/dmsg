@@ -30,7 +30,7 @@ var (
 )
 
 func init() {
-	sf.Init(RootCmd, "dmsg_srv", dmsgserver.DefaultConfigPath)
+	sf.Init(RootCmd, "dmsg_srv", "")
 }
 
 // RootCmd contains commands for dmsg-server
