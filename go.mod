@@ -8,6 +8,7 @@ require (
 	github.com/creack/pty v1.1.15
 	github.com/go-chi/chi/v5 v5.0.8-0.20220103230436-7dbe9a0bd10f
 	github.com/go-redis/redis/v8 v8.11.5
+	github.com/hashicorp/yamux v0.1.1
 	github.com/ivanpirog/coloredcobra v1.0.1
 	github.com/json-iterator/go v1.1.12
 	github.com/pires/go-proxyproto v0.6.2
@@ -15,7 +16,6 @@ require (
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
 	github.com/skycoin/skycoin v0.27.1
 	github.com/skycoin/skywire-utilities v0.0.0-20230314131305-bdd8e27cbd46
-	github.com/skycoin/yamux v0.0.0-20200803175205-571ceb89da9f
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/net v0.7.0
