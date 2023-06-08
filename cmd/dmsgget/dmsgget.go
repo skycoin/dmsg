@@ -38,7 +38,7 @@ var (
 	dmsggetLog    *logging.Logger
 	dmsggetAgent  string
 	stdout        bool
-	logLvl				string
+	logLvl        string
 )
 
 func init() {
@@ -91,11 +91,11 @@ var rootCmd = &cobra.Command{
 		if logLvl == "" {
 			//suppress logging on stdout
 			if stdout {
-			if lvl, err := logging.LevelFromString("panic"); err == nil {
-				logging.SetLevel(lvl)
+				if lvl, err := logging.LevelFromString("panic"); err == nil {
+					logging.SetLevel(lvl)
+				}
 			}
 		}
-	}
 		ctx, cancel := cmdutil.SignalContext(context.Background(), dmsggetLog)
 		defer cancel()
 
