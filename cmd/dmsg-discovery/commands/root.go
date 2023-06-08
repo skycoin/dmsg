@@ -3,6 +3,7 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -43,6 +44,7 @@ var (
 	testEnvironment   bool
 	pk                cipher.PubKey
 	sk                cipher.SecKey
+	dmsgPort          uint16
 )
 
 func init() {
@@ -56,6 +58,7 @@ func init() {
 	RootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
 	RootCmd.Flags().BoolVar(&testEnvironment, "test-environment", false, "distinguished between prod and test environment")
 	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key\n")
+	RootCmd.Flags().Uint16Var(&dmsgPort, "dmsgPort", dmsg.DefaultDmsgHTTPPort, "dmsg port value\r")
 	var helpflag bool
 	RootCmd.SetUsageTemplate(help)
 	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for "+RootCmd.Use)
@@ -101,9 +104,14 @@ var RootCmd = &cobra.Command{
 			m = discmetrics.NewVictoriaMetrics()
 		}
 
+		var dmsgAddr string
+		if !pk.Null() {
+			dmsgAddr = fmt.Sprintf("%s:%d", pk.Hex(), dmsgPort)
+		}
+
 		// we enable metrics middleware if address is passed
 		enableMetrics := sf.MetricsAddr != ""
-		a := api.New(log, db, m, testMode, enableLoadTesting, enableMetrics)
+		a := api.New(log, db, m, testMode, enableLoadTesting, enableMetrics, dmsgAddr)
 
 		var whitelistPKs []string
 		if whitelistKeys != "" {
