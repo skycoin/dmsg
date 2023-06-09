@@ -38,11 +38,13 @@ var (
 	dmsggetLog    *logging.Logger
 	dmsggetAgent  string
 	stdout        bool
+	logLvl        string
 )
 
 func init() {
 	rootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
 	rootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
+	rootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
 	rootCmd.Flags().StringVarP(&dmsggetOutput, "out", "o", ".", "output filepath")
 	rootCmd.Flags().BoolVarP(&stdout, "stdout", "n", false, "output to STDOUT")
 	rootCmd.Flags().IntVarP(&dmsggetTries, "try", "t", 1, "download attempts (0 unlimits)")
@@ -80,8 +82,19 @@ var rootCmd = &cobra.Command{
 		if dmsggetLog == nil {
 			dmsggetLog = logging.MustGetLogger("dmsgget")
 		}
-		if lvl, err := logging.LevelFromString("panic"); err == nil {
-			logging.SetLevel(lvl)
+		if logLvl != "" {
+			if lvl, err := logging.LevelFromString(logLvl); err == nil {
+				logging.SetLevel(lvl)
+			}
+		}
+		//if the log level was not explicitly set but stdout was specified ; suppress all logging except panic
+		if logLvl == "" {
+			//suppress logging on stdout
+			if stdout {
+				if lvl, err := logging.LevelFromString("panic"); err == nil {
+					logging.SetLevel(lvl)
+				}
+			}
 		}
 		ctx, cancel := cmdutil.SignalContext(context.Background(), dmsggetLog)
 		defer cancel()
