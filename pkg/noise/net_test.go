@@ -297,9 +297,10 @@ func TestConn(t *testing.T) {
 			require.Equal(t, writeB, readB)
 		}
 
-		rand.Seed(time.Now().UnixNano())
+		r := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint
+
 		for i := 0; i < 10; i++ {
-			n := rand.Intn(10000000) // nolint:gosec
+			n := r.Intn(10000000) // nolint:gosec
 			t.Run(fmt.Sprintf("%dBytes", n), func(t *testing.T) {
 				do(t, n)
 			})
