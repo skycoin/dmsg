@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-
 	"strings"
 
 	cc "github.com/ivanpirog/coloredcobra"
@@ -27,15 +26,13 @@ import (
 )
 
 var (
-	dmsgDisc      string
-	dmsgSessions  int
-	dmsgpostTries  int
-	dmsgpostWait   int
+	dmsgDisc     string
+	dmsgSessions int
 	dmsgpostData string
-//	dmsgpostHeader string
+	//	dmsgpostHeader string
 	sk            cipher.SecKey
-	dmsgpostLog    *logging.Logger
-	dmsgpostAgent  string
+	dmsgpostLog   *logging.Logger
+	dmsgpostAgent string
 	logLvl        string
 )
 
@@ -44,7 +41,7 @@ func init() {
 	rootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
 	rootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
 	rootCmd.Flags().StringVarP(&dmsgpostData, "data", "d", "", "dmsghttp POST data")
-//	rootCmd.Flags().StringVarP(&dmsgpostHeader, "header", "H", "", "Pass custom header(s) to server")
+	//	rootCmd.Flags().StringVarP(&dmsgpostHeader, "header", "H", "", "Pass custom header(s) to server")
 	rootCmd.Flags().StringVarP(&dmsgpostAgent, "agent", "a", "dmsgpost/"+buildinfo.Version(), "identify as `AGENT`")
 	if os.Getenv("dmsgpost_SK") != "" {
 		sk.Set(os.Getenv("dmsgpost_SK")) //nolint
@@ -116,7 +113,11 @@ var rootCmd = &cobra.Command{
 			dmsgpostLog.WithError(err).Fatal("Failed to execute HTTP request.")
 		}
 
-		defer resp.Body.Close()
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				dmsgpostLog.WithError(err).Fatal("Failed to close response body")
+			}
+		}()
 		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			dmsgpostLog.WithError(err).Fatal("Failed to read respose body.")
@@ -167,7 +168,6 @@ func parseURL(args []string) (*URL, error) {
 	return &out, nil
 }
 
-
 func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
 	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, dmsgpostLog), &dmsg.Config{MinSessions: dmsgSessions})
 	go dmsgC.Serve(context.Background())
@@ -177,8 +177,8 @@ func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *
 		dmsgpostLog.WithError(err).Debug("Disconnected from dmsg network.")
 		fmt.Printf("\n")
 	}
-		dmsgpostLog.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsgDisc).
-			Debug("Connecting to dmsg network...")
+	dmsgpostLog.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsgDisc).
+		Debug("Connecting to dmsg network...")
 
 	select {
 	case <-ctx.Done():
