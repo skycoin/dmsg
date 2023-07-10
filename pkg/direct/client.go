@@ -34,7 +34,7 @@ func NewClient(entries []*disc.Entry, log *logging.Logger) disc.APIClient {
 }
 
 // Entry retrieves an entry associated with the given public key from the entries field of directClient.
-func (c *directClient) Entry(ctx context.Context, pubKey cipher.PubKey) (*disc.Entry, error) {
+func (c *directClient) Entry(_ context.Context, pubKey cipher.PubKey) (*disc.Entry, error) {
 	c.mx.RLock()
 	defer c.mx.RUnlock()
 	for _, entry := range c.entries {
@@ -46,7 +46,7 @@ func (c *directClient) Entry(ctx context.Context, pubKey cipher.PubKey) (*disc.E
 }
 
 // PostEntry adds a new Entry to the entries field of directClient.
-func (c *directClient) PostEntry(ctx context.Context, entry *disc.Entry) error {
+func (c *directClient) PostEntry(_ context.Context, entry *disc.Entry) error {
 	c.mx.Lock()
 	defer c.mx.Unlock()
 	c.entries[entry.Static] = entry
@@ -54,7 +54,7 @@ func (c *directClient) PostEntry(ctx context.Context, entry *disc.Entry) error {
 }
 
 // DelEntry deletes an Entry from the entries field of directClient.
-func (c *directClient) DelEntry(ctx context.Context, entry *disc.Entry) error {
+func (c *directClient) DelEntry(_ context.Context, entry *disc.Entry) error {
 	c.mx.Lock()
 	defer c.mx.Unlock()
 	delete(c.entries, entry.Static)
