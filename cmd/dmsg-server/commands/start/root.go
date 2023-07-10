@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
 	"github.com/spf13/cobra"
 
@@ -49,6 +50,12 @@ var RootCmd = &cobra.Command{
 		if err := sf.ParseConfig(os.Args, true, &conf, configNotFound); err != nil {
 			log.WithError(err).Fatal("parsing config failed, generating default one...")
 		}
+
+		logLvl, _, err := cmdutil.LevelFromString(conf.LogLevel)
+		if err != nil {
+			log.Printf("Failed to set log level: %v", err)
+		}
+		logging.SetLevel(logLvl)
 
 		if conf.HTTPAddress == "" {
 			u, err := url.Parse(conf.LocalAddress)
