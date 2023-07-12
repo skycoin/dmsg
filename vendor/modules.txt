@@ -40,15 +40,9 @@ github.com/go-redis/redis/v8/internal/util
 # github.com/golang/protobuf v1.5.0
 ## explicit; go 1.9
 # github.com/google/go-cmp v0.5.7
-<<<<<<< HEAD
-## explicit
-# github.com/hashicorp/yamux v0.1.1
-## explicit
-=======
 ## explicit; go 1.11
 # github.com/hashicorp/yamux v0.1.1
 ## explicit; go 1.15
->>>>>>> 03740e62d9661c0b328bc8aacb19fbc884408033
 github.com/hashicorp/yamux
 # github.com/inconshreveable/mousetrap v1.0.0
 ## explicit
@@ -102,7 +96,7 @@ github.com/skycoin/skycoin/src/cipher/ripemd160
 github.com/skycoin/skycoin/src/cipher/secp256k1-go
 github.com/skycoin/skycoin/src/cipher/secp256k1-go/secp256k1-go2
 github.com/skycoin/skycoin/src/util/logging
-# github.com/skycoin/skywire-utilities v0.0.0-20230609191923-1e678802e17e
+# github.com/skycoin/skywire-utilities v1.3.11
 ## explicit; go 1.17
 github.com/skycoin/skywire-utilities/pkg/buildinfo
 github.com/skycoin/skywire-utilities/pkg/cipher

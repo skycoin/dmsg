@@ -10,7 +10,6 @@ import (
 	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/pkg/dmsgpty"
@@ -31,14 +30,14 @@ func init() {
 	RootCmd.PersistentFlags().StringArrayVar(&conf.CmdArgs, "arg", conf.CmdArgs, "command arguments to include when initiating pty")
 	var helpflag bool
 	RootCmd.SetUsageTemplate(help)
-	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for "+RootCmd.Use)
+	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for dmsgpty-ui")
 	RootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 	RootCmd.PersistentFlags().MarkHidden("help") //nolint
 }
 
 // RootCmd contains commands to start a dmsgpty-ui server for a dmsgpty-host
 var RootCmd = &cobra.Command{
-	Use:   cmdutil.RootCmdName(),
+	Use:   "ui",
 	Short: "hosts a UI server for a dmsgpty-host",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐┌─┐┌┬┐┬ ┬   ┬ ┬┬
