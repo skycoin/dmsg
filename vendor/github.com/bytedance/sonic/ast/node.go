@@ -82,16 +82,17 @@ func (self *Node) UnmarshalJSON(data []byte) (err error) {
 
 // Type returns json type represented by the node
 // It will be one of belows:
-//    V_NONE   = 0 (empty node)
-//    V_ERROR  = 1 (error node)
-//    V_NULL   = 2 (json value `null`)
-//    V_TRUE   = 3 (json value `true`)
-//    V_FALSE  = 4 (json value `false`)
-//    V_ARRAY  = 5 (json value array)
-//    V_OBJECT = 6 (json value object)
-//    V_STRING = 7 (json value string)
-//    V_NUMBER = 33 (json value number )
-//    V_ANY    = 34 (golang interface{})
+//
+//	V_NONE   = 0 (empty node)
+//	V_ERROR  = 1 (error node)
+//	V_NULL   = 2 (json value `null`)
+//	V_TRUE   = 3 (json value `true`)
+//	V_FALSE  = 4 (json value `false`)
+//	V_ARRAY  = 5 (json value array)
+//	V_OBJECT = 6 (json value object)
+//	V_STRING = 7 (json value string)
+//	V_NUMBER = 33 (json value number )
+//	V_ANY    = 34 (golang interface{})
 func (self Node) Type() int {
 	return int(self.t & _MASK_LAZY & _MASK_RAW)
 }
@@ -1738,8 +1739,9 @@ func NewNull() Node {
 }
 
 // NewBool creates a node of type bool:
-//  If v is true, returns V_TRUE node
-//  If v is false, returns V_FALSE node
+//
+//	If v is true, returns V_TRUE node
+//	If v is false, returns V_FALSE node
 func NewBool(v bool) Node {
 	var t = types.V_FALSE
 	if v {

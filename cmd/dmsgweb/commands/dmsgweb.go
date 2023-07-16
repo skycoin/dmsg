@@ -64,7 +64,7 @@ func init() {
 	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
-	RootCmd.Flags().StringVarP(&dmsggetAgent, "agent", "a", "dmsgget/"+buildinfo.Version(), "identify as `AGENT`")
+	RootCmd.Flags().StringVarP(&dmsggetAgent, "agent", "a", "dmsgweb/"+buildinfo.Version(), "identify as `AGENT`")
 	if os.Getenv("DMSGGET_SK") != "" {
 		sk.Set(os.Getenv("DMSGGET_SK")) //nolint
 	}

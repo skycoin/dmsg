@@ -168,9 +168,8 @@ func UnmarshalString(buf string, val interface{}) error {
 // and returns its representing ast.Node.
 //
 // Each path arg must be integer or string:
-//     - Integer is target index(>=0), means searching current node as array.
-//     - String is target key, means searching current node as object.
-//
+//   - Integer is target index(>=0), means searching current node as array.
+//   - String is target key, means searching current node as object.
 //
 // Note, the api expects the json is well-formed at least,
 // otherwise it may return unexpected result.

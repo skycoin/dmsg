@@ -171,9 +171,10 @@ type compilationUnit struct {
 }
 
 // func name table format:
-//   nameOff[0] -> namePartA namePartB namePartC \x00
-//   nameOff[1] -> namePartA namePartB namePartC \x00
-//  ...
+//
+//	 nameOff[0] -> namePartA namePartB namePartC \x00
+//	 nameOff[1] -> namePartA namePartB namePartC \x00
+//	...
 func makeFuncnameTab(funcs []Func) (tab []byte, offs []int32) {
 	offs = make([]int32, len(funcs))
 	offset := 0
@@ -193,16 +194,18 @@ func makeFuncnameTab(funcs []Func) (tab []byte, offs []int32) {
 }
 
 // CU table format:
-//  cuOffsets[0] -> filetabOffset[0] filetabOffset[1] ... filetabOffset[len(CUs[0].fileNames)-1]
-//  cuOffsets[1] -> filetabOffset[len(CUs[0].fileNames)] ... filetabOffset[len(CUs[0].fileNames) + len(CUs[1].fileNames)-1]
-//  ...
+//
+//	cuOffsets[0] -> filetabOffset[0] filetabOffset[1] ... filetabOffset[len(CUs[0].fileNames)-1]
+//	cuOffsets[1] -> filetabOffset[len(CUs[0].fileNames)] ... filetabOffset[len(CUs[0].fileNames) + len(CUs[1].fileNames)-1]
+//	...
 //
 // file name table format:
-//  filetabOffset[0] -> CUs[0].fileNames[0] \x00
-//  ...
-//  filetabOffset[len(CUs[0]-1)] -> CUs[0].fileNames[len(CUs[0].fileNames)-1] \x00
-//  ...
-//  filetabOffset[SUM(CUs,fileNames)-1] -> CUs[len(CU)-1].fileNames[len(CUs[len(CU)-1].fileNames)-1] \x00
+//
+//	filetabOffset[0] -> CUs[0].fileNames[0] \x00
+//	...
+//	filetabOffset[len(CUs[0]-1)] -> CUs[0].fileNames[len(CUs[0].fileNames)-1] \x00
+//	...
+//	filetabOffset[SUM(CUs,fileNames)-1] -> CUs[len(CU)-1].fileNames[len(CUs[len(CU)-1].fileNames)-1] \x00
 func makeFilenametab(cus []compilationUnit) (cutab []uint32, filetab []byte, cuOffsets []uint32) {
 	cuOffsets = make([]uint32, len(cus))
 	cuOffset := 0
@@ -359,8 +362,10 @@ func makePclntable(size int64, startLocations []uint32, funcs []_func, lastFuncS
 // returns the index in the func table.
 //
 // All text section are divided into buckets sized _BUCKETSIZE(4K):
-//   every bucket is divided into _SUBBUCKETS sized _SUB_BUCKETSIZE(64),
-//   and it has a base idx to plus the offset stored in jth subbucket.
+//
+//	every bucket is divided into _SUBBUCKETS sized _SUB_BUCKETSIZE(64),
+//	and it has a base idx to plus the offset stored in jth subbucket.
+//
 // see findfunc() in runtime/symtab.go
 func writeFindfunctab(out *[]byte, ftab []funcTab) (start int) {
 	start = len(*out)
