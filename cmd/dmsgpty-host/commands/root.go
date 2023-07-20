@@ -68,14 +68,14 @@ func init() {
 	RootCmd.Flags().StringVarP(&confPath, "confpath", "c", confPath, "config path")
 	var helpflag bool
 	RootCmd.SetUsageTemplate(help)
-	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for "+RootCmd.Use)
+	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for dmsgpty-host")
 	RootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 	RootCmd.PersistentFlags().MarkHidden("help") //nolint
 }
 
 // RootCmd contains commands for dmsgpty-host
 var RootCmd = &cobra.Command{
-	Use:   cmdutil.RootCmdName(),
+	Use:   "host",
 	Short: "runs a standalone dmsgpty-host instance",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐┌─┐┌┬┐┬ ┬   ┬ ┬┌─┐┌─┐┌┬┐
