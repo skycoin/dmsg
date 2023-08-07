@@ -2,109 +2,86 @@
 # Make sure to check the documentation at http://goreleaser.com
 
 release:
-  # Repo in which the release will be created.
-  # Default is extracted from the origin remote URL or empty if its private hosted.
-  # Note: it can only be one: either github or gitlab or gitea
   github:
     owner: skycoin
     name: dmsg
 
-  prerelease: true
+  prerelease: false
 
 before:
   hooks:
     - go mod tidy
-builds:
-  - id: dmsg-discovery
-    binary: dmsg-discovery
-    goos:
-      - windows
-    goarch:
-      - amd64
-      - 386
-    env:
-      - CGO_ENABLED=1
-    main: ./cmd/dmsg-discovery/
-    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
-  - id: dmsg-server
-    binary: dmsg-server
-    goos:
-      - windows
-    goarch:
-      - amd64
-      - 386
-    env:
-      - CGO_ENABLED=0
-    main: ./cmd/dmsg-server/
-    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+env:
+  - CGO_ENABLED=0
 
-  - id: dmsgget
-    binary: dmsgget
-    goos:
-      - windows
-    goarch:
-      - amd64
-      - 386
-    env:
-      - CGO_ENABLED=0
-    main: ./cmd/dmsgget/
-    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
-  
-  - id: dmsgpty-ui
-    binary: dmsgpty-ui
-    goos:
-      - windows
-    goarch:
-      - amd64
-      - 386
-    env:
-      - CGO_ENABLED=0
-    main: ./cmd/dmsgpty-ui/
-    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+common_flags: >
+  -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}}
+  -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}}
+  -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
-  - id: dmsgpty-cli
-    binary: dmsgpty-cli
-    goos:
-      - windows
-    goarch:
-      - amd64
-      - 386
-    env:
-      - CGO_ENABLED=0
-    main: ./cmd/dmsgpty-cli/
-    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+common_build: &common_build
+  goos:
+    - windows
+  main: ./cmd/{{ .name }}/
+  ldflags: *common_flags
 
-  - id: dmsgpty-host
-    binary: dmsgpty-host
-    goos:
-      - windows
+targets:
+  - name: dmsg-discovery
+    id: discovery
+    arch: amd64
+
+  - name: dmsg-server
+    id: server
+    arch: amd64
+
+  - name: dmsgget
+    id: get
+    arch: amd64
+
+  - name: dmsgpost
+    id: post
+    arch: amd64
+
+  - name: dmsghttp
+    id: http
+    arch: amd64
+
+  - name: dmsgpty-ui
+    id: ui
+    arch: amd64
+
+  - name: dmsgpty-cli
+    id: cli
+    arch: amd64
+
+  - name: dmsgpty-host
+    id: host
+    arch: amd64
+
+builds: &builds
+  {{ range .Targets }}
+  - id: {{ .id }}-{{ .arch }}
+    binary: {{ .name }}
     goarch:
-      - amd64
-      - 386
-    env:
-      - CGO_ENABLED=0
-    main: ./cmd/dmsgpty-host/
-    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+      - {{ .arch }}
+    <<: *common_build
+  {{ end }}
 
 archives:
   - id: archive
     format: zip
     wrap_in_directory: false
     name_template: 'dmsg-v{{ .Version }}-{{ .Os }}-{{ .Arch }}'
-    builds:
-      - dmsg-discovery
-      - dmsg-server
-      - dmsgget
-      - dmsgpty-cli
-      - dmsgpty-ui
-      - dmsgpty-host
+    builds: *builds
     allow_different_binary_count: true
 
 checksum:
-  name_template: 'checksums.txt'  
+  name_template: 'checksums.txt'
+
 snapshot:
   name_template: "{{ .Tag }}-next"
+
 changelog:
   sort: asc
   filters:

@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/ActiveState/termtest/conpty v0.5.0
 	github.com/VictoriaMetrics/metrics v1.18.1
+	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
 	github.com/creack/pty v1.1.15
 	github.com/go-chi/chi/v5 v5.0.8-0.20220103230436-7dbe9a0bd10f
 	github.com/go-redis/redis/v8 v8.11.5
