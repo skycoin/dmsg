@@ -69,10 +69,11 @@ func init() {
 // RootCmd containsa the root dmsgcurl command
 var RootCmd = &cobra.Command{
 	Short: "dmsgcurl",
+	Use:   "dmsgcurl [OPTIONS] ... [URL]",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐┌─┐┬ ┬┬─┐┬  
 	 │││││└─┐│ ┬│  │ │├┬┘│  
-    ─┴┘┴ ┴└─┘└─┘└─┘└─┘┴└─┴─┘`,
+	─┴┘┴ ┴└─┘└─┘└─┘└─┘┴└─┴─┘`,
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,

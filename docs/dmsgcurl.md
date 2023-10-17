@@ -4,25 +4,27 @@
 
 ```
 $ dmsgcurl --help
+              ┌┬┐┌┬┐┌─┐┌─┐┌─┐┬ ┬┬─┐┬  
+               │││││└─┐│ ┬│  │ │├┬┘│  
+              ─┴┘┴ ┴└─┘└─┘└─┘└─┘┴└─┴─┘
 
-  Skycoin dmsgcurl v0.1.0, wget over dmsg.
-  Usage: dmsgcurl [OPTION]... [URL]
-  
-    -O FILE
-          write documents to FILE (default ".")
-    -U AGENT
-          identify as AGENT (default "dmsgcurl/v0.1.0")
-    -dmsg-disc URL
-          dmsg discovery URL (default "http://dmsgd.skywire.skycoin.com")
-    -dmsg-sessions NUMBER
-          connect to NUMBER of dmsg servers (default 1)
-    -h    
-    -help
-          print this help
-    -t NUMBER
-          set number of retries to NUMBER (0 unlimits) (default 1)
-    -w SECONDS
-          wait SECONDS between retrievals
+      Usage:
+        dmsgcurl [OPTIONS] ... [URL] 
+
+      Flags:
+        -a, --agent AGENT        identify as AGENT (default "dmsgcurl/v1.2.0-184-gdb24d156")
+        -d, --data string        dmsghttp POST data
+        -c, --dmsg-disc string   dmsg discovery url default:
+                                http://dmsgd.skywire.skycoin.com
+        -l, --loglvl string      [ debug | warn | error | fatal | panic | trace | info ]
+        -o, --out string         output filepath (default ".")
+        -e, --sess int           number of dmsg servers to connect to (default 1)
+        -s, --sk cipher.SecKey   a random key is generated if unspecified
+        (default 0000000000000000000000000000000000000000000000000000000000000000)
+        -n, --stdout             output to STDOUT
+        -t, --try int            download attempts (0 unlimits) (default 1)
+        -v, --version            version for dmsgcurl
+        -w, --wait int           time to wait between fetches
 ```
 
 ### Example usage
@@ -63,3 +65,4 @@ $ cat hello.txt
 #   Hello World!
 ```
 
+Note: If you set `-d` or `--data` flag, then curl work as post method (upload), and if not then work as get method (download).
