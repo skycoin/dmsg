@@ -51,8 +51,9 @@ type Server struct {
 
 	maxSessions int
 
-	limitIP   int
-	ipCounter map[string]int
+	limitIP         int
+	ipCounter       map[string]int
+	ipCounterLocker sync.RWMutex
 }
 
 // NewServer creates a new dmsg server entity.
@@ -158,15 +159,20 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 				Debug("Max sessions is reached, but still accepting so clients who delegated us can still listen.")
 		}
 		connIP := strings.Split(conn.RemoteAddr().String(), ":")[0]
+		s.ipCounterLocker.Lock()
 		if s.ipCounter[connIP] >= s.limitIP {
 			log.Warnf("Maximum client per IP for %s reached.", connIP)
+			s.ipCounterLocker.Unlock()
 			continue
 		}
 		s.ipCounter[connIP]++
+		s.ipCounterLocker.Unlock()
 		s.wg.Add(1)
 		go func(conn net.Conn) {
 			defer func() {
+				s.ipCounterLocker.Lock()
 				s.ipCounter[connIP]--
+				s.ipCounterLocker.Unlock()
 				err := recover()
 				if err != nil {
 					log.Warnf("panic in handleSession: %+v", err)
