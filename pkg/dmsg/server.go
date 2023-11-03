@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/skycoin/skywire-utilities/pkg/netutil"
@@ -215,12 +214,12 @@ func (s *Server) Ready() <-chan struct{} {
 }
 
 func (s *Server) handleSession(conn net.Conn) {
-	log := logrus.FieldLogger(s.log.WithField("remote_tcp", conn.RemoteAddr()))
+	log := s.log.WithField("remote_tcp", conn.RemoteAddr())
 
 	dSes, err := makeServerSession(s.m, &s.EntityCommon, conn)
 	if err != nil {
 		if err := conn.Close(); err != nil {
-			log.WithError(err).Debug("On handleSession() failure, close connection resulted in error.")
+			log.WithError(err).Warn("On handleSession() failure, close connection resulted in error.")
 		}
 		return
 	}

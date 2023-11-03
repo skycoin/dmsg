@@ -3,6 +3,7 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	cc "github.com/ivanpirog/coloredcobra"
 	proxyproto "github.com/pires/go-proxyproto"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
@@ -42,6 +44,7 @@ var (
 	testEnvironment   bool
 	pk                cipher.PubKey
 	sk                cipher.SecKey
+	dmsgPort          uint16
 )
 
 func init() {
@@ -54,13 +57,28 @@ func init() {
 	RootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
 	RootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
 	RootCmd.Flags().BoolVar(&testEnvironment, "test-environment", false, "distinguished between prod and test environment")
-	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key")
+	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key\n")
+	RootCmd.Flags().Uint16Var(&dmsgPort, "dmsgPort", dmsg.DefaultDmsgHTTPPort, "dmsg port value\r")
+	var helpflag bool
+	RootCmd.SetUsageTemplate(help)
+	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for dmsg-discovery")
+	RootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
+	RootCmd.PersistentFlags().MarkHidden("help") //nolint
 }
 
 // RootCmd contains commands for dmsg-discovery
 var RootCmd = &cobra.Command{
-	Use:   "dmsg-discovery",
+	Use:   "disc",
 	Short: "Dmsg Discovery Server for skywire",
+	Long: `
+	┌┬┐┌┬┐┌─┐┌─┐  ┌┬┐┬┌─┐┌─┐┌─┐┬  ┬┌─┐┬─┐┬ ┬
+	 │││││└─┐│ ┬───│││└─┐│  │ │└┐┌┘├┤ ├┬┘└┬┘
+	─┴┘┴ ┴└─┘└─┘  ─┴┘┴└─┘└─┘└─┘ └┘ └─┘┴└─ ┴ `,
+	SilenceErrors:         true,
+	SilenceUsage:          true,
+	DisableSuggestions:    true,
+	DisableFlagsInUseLine: true,
+	Version:               buildinfo.Version(),
 	Run: func(_ *cobra.Command, _ []string) {
 		if _, err := buildinfo.Get().WriteTo(os.Stdout); err != nil {
 			log.Printf("Failed to output build info: %v", err)
@@ -86,18 +104,23 @@ var RootCmd = &cobra.Command{
 			m = discmetrics.NewVictoriaMetrics()
 		}
 
+		var dmsgAddr string
+		if !pk.Null() {
+			dmsgAddr = fmt.Sprintf("%s:%d", pk.Hex(), dmsgPort)
+		}
+
 		// we enable metrics middleware if address is passed
 		enableMetrics := sf.MetricsAddr != ""
-		a := api.New(log, db, m, testMode, enableLoadTesting, enableMetrics)
+		a := api.New(log, db, m, testMode, enableLoadTesting, enableMetrics, dmsgAddr)
 
 		var whitelistPKs []string
 		if whitelistKeys != "" {
 			whitelistPKs = strings.Split(whitelistKeys, ",")
 		} else {
 			if testEnvironment {
-				whitelistPKs = strings.Split(skyenv.TestNetworkMonitorPK, ",")
+				whitelistPKs = strings.Split(skyenv.TestNetworkMonitorPKs, ",")
 			} else {
-				whitelistPKs = strings.Split(skyenv.NetworkMonitorPK, ",")
+				whitelistPKs = strings.Split(skyenv.NetworkMonitorPKs, ",")
 			}
 		}
 
@@ -133,7 +156,7 @@ var RootCmd = &cobra.Command{
 			go updateServers(ctx, a, dClient, dmsgDC, log)
 
 			go func() {
-				if err = dmsghttp.ListenAndServe(ctx, pk, sk, a, dClient, dmsg.DefaultDmsgHTTPPort, config, dmsgDC, log); err != nil {
+				if err = dmsghttp.ListenAndServe(ctx, sk, a, dClient, dmsg.DefaultDmsgHTTPPort, dmsgDC, log); err != nil {
 					log.Errorf("dmsghttp.ListenAndServe: %v", err)
 					cancel()
 				}
@@ -143,6 +166,36 @@ var RootCmd = &cobra.Command{
 		<-ctx.Done()
 	},
 }
+
+// Execute executes root CLI command.
+func Execute() {
+	cc.Init(&cc.Config{
+		RootCmd:       RootCmd,
+		Headings:      cc.HiBlue + cc.Bold, //+ cc.Underline,
+		Commands:      cc.HiBlue + cc.Bold,
+		CmdShortDescr: cc.HiBlue,
+		Example:       cc.HiBlue + cc.Italic,
+		ExecName:      cc.HiBlue + cc.Bold,
+		Flags:         cc.HiBlue + cc.Bold,
+		//FlagsDataType: cc.HiBlue,
+		FlagsDescr:      cc.HiBlue,
+		NoExtraNewlines: true,
+		NoBottomNewline: true,
+	})
+	if err := RootCmd.Execute(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+const help = "Usage:\r\n" +
+	"  {{.UseLine}}{{if .HasAvailableSubCommands}}{{end}} {{if gt (len .Aliases) 0}}\r\n\r\n" +
+	"{{.NameAndAliases}}{{end}}{{if .HasAvailableSubCommands}}\r\n\r\n" +
+	"Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand)}}\r\n  " +
+	"{{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}\r\n\r\n" +
+	"Flags:\r\n" +
+	"{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}\r\n\r\n" +
+	"Global Flags:\r\n" +
+	"{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}\r\n\r\n"
 
 func prepareDB(ctx context.Context, log *logging.Logger) store.Storer {
 	dbConf := &store.Config{
@@ -201,13 +254,6 @@ func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, dmsg
 				}
 			}
 		}
-	}
-}
-
-// Execute executes root CLI command.
-func Execute() {
-	if err := RootCmd.Execute(); err != nil {
-		log.Fatal(err)
 	}
 }
 
