@@ -110,6 +110,7 @@ func startDmsgEnv(t *testing.T, nSrvs, maxSessions int) disc.APIClient {
 		conf := dmsg.ServerConfig{
 			MaxSessions:    maxSessions,
 			UpdateInterval: 0,
+			LimitIP:        200,
 		}
 		srv := dmsg.NewServer(pk, sk, dc, &conf, nil)
 		srv.SetLogger(logging.MustGetLogger(fmt.Sprintf("server_%d", i)))
