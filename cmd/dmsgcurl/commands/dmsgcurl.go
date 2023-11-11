@@ -1,4 +1,4 @@
-// Package commands cmd/dmsgget/commands/dmsgget.go
+// Package commands cmd/dmsgcurl/commands/dmsgcurl.go
 package commands
 
 import (
@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -24,51 +25,55 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/pkg/disc"
-	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
 
 var (
-	dmsgDisc      string
-	dmsgSessions  int
-	dmsggetTries  int
-	dmsggetWait   int
-	dmsggetOutput string
-	sk            cipher.SecKey
-	dmsggetLog    *logging.Logger
-	dmsggetAgent  string
-	stdout        bool
-	logLvl        string
+	dmsgDisc     string
+	dmsgSessions int
+	dmsgcurlData string
+	//	dmsgcurlHeader string
+	sk             cipher.SecKey
+	dmsgcurlLog    *logging.Logger
+	dmsgcurlAgent  string
+	logLvl         string
+	dmsgcurlTries  int
+	dmsgcurlWait   int
+	dmsgcurlOutput string
+	stdout         bool
 )
 
 func init() {
-	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
+	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "c", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
-	RootCmd.Flags().StringVarP(&dmsggetOutput, "out", "o", ".", "output filepath")
+	RootCmd.Flags().StringVarP(&dmsgcurlData, "data", "d", "", "dmsghttp POST data")
+	//	RootCmd.Flags().StringVarP(&dmsgcurlHeader, "header", "H", "", "Pass custom header(s) to server")
+	RootCmd.Flags().StringVarP(&dmsgcurlOutput, "out", "o", ".", "output filepath")
 	RootCmd.Flags().BoolVarP(&stdout, "stdout", "n", false, "output to STDOUT")
-	RootCmd.Flags().IntVarP(&dmsggetTries, "try", "t", 1, "download attempts (0 unlimits)")
-	RootCmd.Flags().IntVarP(&dmsggetWait, "wait", "w", 0, "time to wait between fetches")
-	RootCmd.Flags().StringVarP(&dmsggetAgent, "agent", "a", "dmsgget/"+buildinfo.Version(), "identify as `AGENT`")
-	if os.Getenv("DMSGGET_SK") != "" {
-		sk.Set(os.Getenv("DMSGGET_SK")) //nolint
+	RootCmd.Flags().IntVarP(&dmsgcurlTries, "try", "t", 1, "download attempts (0 unlimits)")
+	RootCmd.Flags().IntVarP(&dmsgcurlWait, "wait", "w", 0, "time to wait between fetches")
+	RootCmd.Flags().StringVarP(&dmsgcurlAgent, "agent", "a", "dmsgcurl/"+buildinfo.Version(), "identify as `AGENT`")
+	if os.Getenv("DMSGCURL_SK") != "" {
+		sk.Set(os.Getenv("DMSGCURL_SK")) //nolint
 	}
 	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 	var helpflag bool
 	RootCmd.SetUsageTemplate(help)
-	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for dmsgget")
+	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for dmsgcurl")
 	RootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 	RootCmd.PersistentFlags().MarkHidden("help") //nolint
 }
 
-// RootCmd contains the root command
+// RootCmd containsa the root dmsgcurl command
 var RootCmd = &cobra.Command{
-	Use:   "get",
-	Short: "dmsg wget implementation - wget over dmsg",
+	Short: "dmsgcurl",
+	Use:   "dmsgcurl [OPTIONS] ... [URL]",
 	Long: `
-	┌┬┐┌┬┐┌─┐┌─┐┌─┐┌─┐┌┬┐
-	 │││││└─┐│ ┬│ ┬├┤  │
-	─┴┘┴ ┴└─┘└─┘└─┘└─┘ ┴ `,
+	┌┬┐┌┬┐┌─┐┌─┐┌─┐┬ ┬┬─┐┬  
+	 │││││└─┐│ ┬│  │ │├┬┘│  
+	─┴┘┴ ┴└─┘└─┘└─┘└─┘┴└─┴─┘`,
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
@@ -80,24 +85,16 @@ var RootCmd = &cobra.Command{
 		}
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if dmsggetLog == nil {
-			dmsggetLog = logging.MustGetLogger("dmsgget")
+		if dmsgcurlLog == nil {
+			dmsgcurlLog = logging.MustGetLogger("dmsgcurl")
 		}
 		if logLvl != "" {
 			if lvl, err := logging.LevelFromString(logLvl); err == nil {
 				logging.SetLevel(lvl)
 			}
 		}
-		//if the log level was not explicitly set but stdout was specified ; suppress all logging except panic
-		if logLvl == "" {
-			//suppress logging on stdout
-			if stdout {
-				if lvl, err := logging.LevelFromString("panic"); err == nil {
-					logging.SetLevel(lvl)
-				}
-			}
-		}
-		ctx, cancel := cmdutil.SignalContext(context.Background(), dmsggetLog)
+
+		ctx, cancel := cmdutil.SignalContext(context.Background(), dmsgcurlLog)
 		defer cancel()
 
 		pk, err := sk.PubKey()
@@ -107,67 +104,100 @@ var RootCmd = &cobra.Command{
 
 		u, err := parseURL(args)
 		if err != nil {
-			return fmt.Errorf("failed to parse provided URL: %w", err)
+			dmsgcurlLog.WithError(err).Fatal("failed to parse provided URL")
 		}
-
-		file, err := parseOutputFile(dmsggetOutput, u.URL.Path)
-		if err != nil {
-			return fmt.Errorf("failed to prepare output file: %w", err)
-		}
-		defer func() {
-			if fErr := file.Close(); fErr != nil {
-				dmsggetLog.WithError(fErr).Warn("Failed to close output file.")
-			}
+		if dmsgcurlData != "" {
+			dmsgC, closeDmsg, err := startDmsg(ctx, pk, sk)
 			if err != nil {
-				if rErr := os.RemoveAll(file.Name()); rErr != nil {
-					dmsggetLog.WithError(rErr).Warn("Failed to remove output file.")
+				dmsgcurlLog.WithError(err).Fatal("failed to start dmsg")
+			}
+			defer closeDmsg()
+
+			httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
+
+			req, err := http.NewRequest(http.MethodPost, u.URL.String(), strings.NewReader(dmsgcurlData))
+			if err != nil {
+				dmsgcurlLog.WithError(err).Fatal("Failed to formulate HTTP request.")
+			}
+			req.Header.Set("Content-Type", "text/plain")
+
+			resp, err := httpC.Do(req)
+			if err != nil {
+				dmsgcurlLog.WithError(err).Fatal("Failed to execute HTTP request.")
+			}
+
+			defer func() {
+				if err := resp.Body.Close(); err != nil {
+					dmsgcurlLog.WithError(err).Fatal("Failed to close response body")
 				}
+			}()
+			respBody, err := io.ReadAll(resp.Body)
+			if err != nil {
+				dmsgcurlLog.WithError(err).Fatal("Failed to read respose body.")
 			}
-		}()
+			fmt.Println(string(respBody))
+		} else {
 
-		dmsgC, closeDmsg, err := startDmsg(ctx, pk, sk)
-		if err != nil {
-			return fmt.Errorf("failed to start dmsg: %w", err)
-		}
-		defer closeDmsg()
-
-		httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
-
-		for i := 0; i < dmsggetTries; i++ {
-			if !stdout {
-				dmsggetLog.Debugf("Download attempt %d/%d ...", i, dmsggetTries)
+			file, err := parseOutputFile(dmsgcurlOutput, u.URL.Path)
+			if err != nil {
+				return fmt.Errorf("failed to prepare output file: %w", err)
 			}
-
-			if _, err := file.Seek(0, 0); err != nil {
-				return fmt.Errorf("failed to reset file: %w", err)
-			}
-			if stdout {
+			defer func() {
 				if fErr := file.Close(); fErr != nil {
-					dmsggetLog.WithError(fErr).Warn("Failed to close output file.")
+					dmsgcurlLog.WithError(fErr).Warn("Failed to close output file.")
 				}
 				if err != nil {
 					if rErr := os.RemoveAll(file.Name()); rErr != nil {
-						dmsggetLog.WithError(rErr).Warn("Failed to remove output file.")
+						dmsgcurlLog.WithError(rErr).Warn("Failed to remove output file.")
 					}
 				}
-				file = os.Stdout
+			}()
+
+			dmsgC, closeDmsg, err := startDmsg(ctx, pk, sk)
+			if err != nil {
+				return fmt.Errorf("failed to start dmsg: %w", err)
 			}
-			if err := Download(ctx, dmsggetLog, &httpC, file, u.URL.String(), 0); err != nil {
-				dmsggetLog.WithError(err).Error()
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case <-time.After(time.Duration(dmsggetWait) * time.Second):
-					continue
+			defer closeDmsg()
+
+			httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
+
+			for i := 0; i < dmsgcurlTries; i++ {
+				if !stdout {
+					dmsgcurlLog.Debugf("Download attempt %d/%d ...", i, dmsgcurlTries)
 				}
+
+				if _, err := file.Seek(0, 0); err != nil {
+					return fmt.Errorf("failed to reset file: %w", err)
+				}
+				if stdout {
+					if fErr := file.Close(); fErr != nil {
+						dmsgcurlLog.WithError(fErr).Warn("Failed to close output file.")
+					}
+					if err != nil {
+						if rErr := os.RemoveAll(file.Name()); rErr != nil {
+							dmsgcurlLog.WithError(rErr).Warn("Failed to remove output file.")
+						}
+					}
+					file = os.Stdout
+				}
+				if err := Download(ctx, dmsgcurlLog, &httpC, file, u.URL.String(), 0); err != nil {
+					dmsgcurlLog.WithError(err).Error()
+					select {
+					case <-ctx.Done():
+						return ctx.Err()
+					case <-time.After(time.Duration(dmsgcurlWait) * time.Second):
+						continue
+					}
+				}
+
+				// download successful.
+				return nil
 			}
 
-			// download successful.
-			return nil
+			return errors.New("all download attempts failed")
+
 		}
-
-		return errors.New("all download attempts failed")
-
+		return nil
 	},
 }
 
@@ -238,18 +268,16 @@ func parseOutputFile(name string, urlPath string) (*os.File, error) {
 }
 
 func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
-	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, dmsggetLog), &dmsg.Config{MinSessions: dmsgSessions})
+	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, dmsgcurlLog), &dmsg.Config{MinSessions: dmsgSessions})
 	go dmsgC.Serve(context.Background())
 
 	stop = func() {
 		err := dmsgC.Close()
-		dmsggetLog.WithError(err).Debug("Disconnected from dmsg network.")
+		dmsgcurlLog.WithError(err).Debug("Disconnected from dmsg network.")
 		fmt.Printf("\n")
 	}
-	if !stdout {
-		dmsggetLog.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsgDisc).
-			Debug("Connecting to dmsg network...")
-	}
+	dmsgcurlLog.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsgDisc).
+		Debug("Connecting to dmsg network...")
 
 	select {
 	case <-ctx.Done():
@@ -257,7 +285,7 @@ func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *
 		return nil, nil, ctx.Err()
 
 	case <-dmsgC.Ready():
-		dmsggetLog.Debug("Dmsg network ready.")
+		dmsgcurlLog.Debug("Dmsg network ready.")
 		return dmsgC, stop, nil
 	}
 }

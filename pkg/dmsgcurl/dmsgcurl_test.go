@@ -1,5 +1,5 @@
-// Package dmsgget pkg/dmsgget/dmsgget_test.go
-package dmsgget
+// Package dmsgcurl pkg/dmsgcurl/dmsgcurl_test.go
+package dmsgcurl
 
 import (
 	"context"
@@ -84,7 +84,7 @@ func TestDownload(t *testing.T) {
 }
 
 func makeFile(t *testing.T, data []byte) *os.File {
-	f, err := os.CreateTemp(os.TempDir(), "dmsgget_test_file_*")
+	f, err := os.CreateTemp(os.TempDir(), "dmsgcurl_test_file_*")
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
