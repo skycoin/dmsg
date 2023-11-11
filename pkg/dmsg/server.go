@@ -4,6 +4,7 @@ package dmsg
 import (
 	"context"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 type ServerConfig struct {
 	MaxSessions    int
 	UpdateInterval time.Duration
+	LimitIP        int
 }
 
 // DefaultServerConfig returns the default server config.
@@ -48,6 +50,10 @@ type Server struct {
 	addrDone chan struct{}
 
 	maxSessions int
+
+	limitIP         int
+	ipCounter       map[string]int
+	ipCounterLocker sync.RWMutex
 }
 
 // NewServer creates a new dmsg server entity.
@@ -73,6 +79,8 @@ func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *Serv
 	s.delSessionCallback = func(ctx context.Context) error {
 		return s.updateServerEntry(ctx, s.AdvertisedAddr(), s.maxSessions)
 	}
+	s.ipCounter = make(map[string]int)
+	s.limitIP = conf.LimitIP
 	return s
 }
 
@@ -150,10 +158,21 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 				WithField("remote_tcp", conn.RemoteAddr()).
 				Debug("Max sessions is reached, but still accepting so clients who delegated us can still listen.")
 		}
-
+		connIP := strings.Split(conn.RemoteAddr().String(), ":")[0]
+		s.ipCounterLocker.Lock()
+		if s.ipCounter[connIP] >= s.limitIP {
+			log.Warnf("Maximum client per IP for %s reached.", connIP)
+			s.ipCounterLocker.Unlock()
+			continue
+		}
+		s.ipCounter[connIP]++
+		s.ipCounterLocker.Unlock()
 		s.wg.Add(1)
 		go func(conn net.Conn) {
 			defer func() {
+				s.ipCounterLocker.Lock()
+				s.ipCounter[connIP]--
+				s.ipCounterLocker.Unlock()
 				err := recover()
 				if err != nil {
 					log.Warnf("panic in handleSession: %+v", err)

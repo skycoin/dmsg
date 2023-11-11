@@ -57,7 +57,7 @@ func NewMock() Storer {
 }
 
 // Entry implements Storer Entry method for MockStore
-func (ms *MockStore) Entry(ctx context.Context, staticPubKey cipher.PubKey) (*disc.Entry, error) {
+func (ms *MockStore) Entry(_ context.Context, staticPubKey cipher.PubKey) (*disc.Entry, error) {
 	payload, ok := ms.entry(staticPubKey.Hex())
 	if !ok {
 		return nil, disc.ErrKeyNotFound
@@ -80,7 +80,7 @@ func (ms *MockStore) Entry(ctx context.Context, staticPubKey cipher.PubKey) (*di
 }
 
 // SetEntry implements Storer SetEntry method for MockStore
-func (ms *MockStore) SetEntry(ctx context.Context, entry *disc.Entry, timeout time.Duration) error {
+func (ms *MockStore) SetEntry(_ context.Context, entry *disc.Entry, _ time.Duration) error {
 	payload, err := json.Marshal(entry)
 	if err != nil {
 		return disc.ErrUnexpected
@@ -96,13 +96,13 @@ func (ms *MockStore) SetEntry(ctx context.Context, entry *disc.Entry, timeout ti
 }
 
 // DelEntry implements Storer DelEntry method for MockStore
-func (ms *MockStore) DelEntry(ctx context.Context, staticPubKey cipher.PubKey) error {
+func (ms *MockStore) DelEntry(_ context.Context, staticPubKey cipher.PubKey) error {
 	ms.delEntry(staticPubKey.Hex())
 	return nil
 }
 
 // RemoveOldServerEntries implements Storer RemoveOldServerEntries method for MockStore
-func (ms *MockStore) RemoveOldServerEntries(ctx context.Context) error {
+func (ms *MockStore) RemoveOldServerEntries(_ context.Context) error {
 	return nil
 }
 
@@ -113,7 +113,7 @@ func (ms *MockStore) Clear() {
 }
 
 // AvailableServers implements Storer AvailableServers method for MockStore
-func (ms *MockStore) AvailableServers(ctx context.Context, maxCount int) ([]*disc.Entry, error) {
+func (ms *MockStore) AvailableServers(_ context.Context, _ int) ([]*disc.Entry, error) {
 	entries := make([]*disc.Entry, 0)
 
 	ms.serversLock.RLock()
@@ -135,7 +135,7 @@ func (ms *MockStore) AvailableServers(ctx context.Context, maxCount int) ([]*dis
 }
 
 // AllServers implements Storer AllServers method for MockStore
-func (ms *MockStore) AllServers(ctx context.Context) ([]*disc.Entry, error) {
+func (ms *MockStore) AllServers(_ context.Context) ([]*disc.Entry, error) {
 	entries := make([]*disc.Entry, 0)
 
 	ms.serversLock.RLock()
@@ -157,7 +157,7 @@ func (ms *MockStore) AllServers(ctx context.Context) ([]*disc.Entry, error) {
 }
 
 // CountEntries implements Storer CountEntries method for MockStore
-func (ms *MockStore) CountEntries(ctx context.Context) (int64, int64, error) {
+func (ms *MockStore) CountEntries(_ context.Context) (int64, int64, error) {
 	var numberOfServers int64
 	var numberOfClients int64
 	ms.serversLock.RLock()
@@ -198,7 +198,7 @@ func arrayFromMap(m map[string][]byte) [][]byte {
 }
 
 // AllEntries implements Storer CountEntries method for MockStore
-func (ms *MockStore) AllEntries(ctx context.Context) ([]string, error) {
+func (ms *MockStore) AllEntries(_ context.Context) ([]string, error) {
 	entries := []string{}
 
 	ms.mLock.RLock()

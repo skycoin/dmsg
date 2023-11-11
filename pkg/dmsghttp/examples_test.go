@@ -33,6 +33,7 @@ func ExampleMakeHTTPTransport() {
 	srvConf := dmsg.ServerConfig{
 		MaxSessions:    maxSessions,
 		UpdateInterval: 0,
+		LimitIP:        200,
 	}
 	srv := dmsg.NewServer(srvPK, srvSK, dc, &srvConf, nil)
 	defer func() {
