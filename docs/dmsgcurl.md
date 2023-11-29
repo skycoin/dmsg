@@ -35,10 +35,11 @@ First, lets create a folder where we will host files to serve over `dmsg` and cr
 
 ```shell script
 // Create serving folder.
-$ mkdir /tmp/dmsghttp -p
+$ mkdir /tmp/dmsghttp/inner -p
 
-// Create file.
+// Create files.
 $ echo 'Hello World!' > /tmp/dmsghttp/hello.txt
+$ echo 'Hello World!, Inner!' > /tmp/dmsghttp/inner/inner-hello.txt
 ```
 
 Next, let's serve this over `http` via `dmsg` as transport. We have an example exec for this located within `/example/dmsgcurl/dmsg-example-http-server`.
@@ -59,10 +60,16 @@ Now we can use `dmsgcurl` to download the hosted file. Open a new terminal and r
 ```shell script
 # Replace '038dde2d050803db59e2ad19e5a6db0f58f8419709fc65041c48b0cb209bb7a851' with the generated PK.
 $ dmsgcurl dmsg://038dde2d050803db59e2ad19e5a6db0f58f8419709fc65041c48b0cb209bb7a851:80/hello.txt
+$ dmsgcurl dmsg://038dde2d050803db59e2ad19e5a6db0f58f8419709fc65041c48b0cb209bb7a851:80/inner/inner-hello.txt --fullpath
+$ dmsgcurl dmsg://038dde2d050803db59e2ad19e5a6db0f58f8419709fc65041c48b0cb209bb7a851:80/inner/inner-hello.txt
 
 # Check downloaded file.
 $ cat hello.txt
 #   Hello World!
+$ cat inner/inner-hello.txt
+#   Hello World!, Inner!
+$ cat inner-hello.txt
+#   Hello World!, Inner!
 ```
 
 Note: If you set `-d` or `--data` flag, then curl work as post method (upload), and if not then work as get method (download).
