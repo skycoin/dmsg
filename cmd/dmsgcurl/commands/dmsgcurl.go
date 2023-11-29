@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"net/url"
@@ -42,6 +43,7 @@ var (
 	dmsgcurlWait   int
 	dmsgcurlOutput string
 	stdout         bool
+	fullpath       bool
 )
 
 func init() {
@@ -51,6 +53,7 @@ func init() {
 	RootCmd.Flags().StringVarP(&dmsgcurlData, "data", "d", "", "dmsghttp POST data")
 	//	RootCmd.Flags().StringVarP(&dmsgcurlHeader, "header", "H", "", "Pass custom header(s) to server")
 	RootCmd.Flags().StringVarP(&dmsgcurlOutput, "out", "o", ".", "output filepath")
+	RootCmd.Flags().BoolVar(&fullpath, "fullpath", false, "download in fullpath or file name only")
 	RootCmd.Flags().BoolVarP(&stdout, "stdout", "n", false, "output to STDOUT")
 	RootCmd.Flags().IntVarP(&dmsgcurlTries, "try", "t", 1, "download attempts (0 unlimits)")
 	RootCmd.Flags().IntVarP(&dmsgcurlWait, "wait", "w", 0, "time to wait between fetches")
@@ -138,7 +141,7 @@ var RootCmd = &cobra.Command{
 			fmt.Println(string(respBody))
 		} else {
 
-			file, err := parseOutputFile(dmsgcurlOutput, u.URL.Path)
+			file, err := parseOutputFile(dmsgcurlOutput, u.URL.Path, fullpath)
 			if err != nil {
 				return fmt.Errorf("failed to prepare output file: %w", err)
 			}
@@ -243,7 +246,7 @@ func parseURL(args []string) (*URL, error) {
 	return &out, nil
 }
 
-func parseOutputFile(name string, urlPath string) (*os.File, error) {
+func parseOutputFile(name string, urlPath string, fullpath bool) (*os.File, error) {
 	stat, statErr := os.Stat(name)
 	if statErr != nil {
 		if os.IsNotExist(statErr) {
@@ -256,8 +259,15 @@ func parseOutputFile(name string, urlPath string) (*os.File, error) {
 		return nil, statErr
 	}
 
+	urlSlice := strings.Split(urlPath, "/")
+	fileName := urlSlice[len(urlSlice)-1]
+
 	if stat.IsDir() {
-		f, err := os.Create(filepath.Join(name, urlPath)) //nolint
+		if fullpath {
+			os.Mkdir(strings.Replace(urlPath, fileName, "", 1)[1:], fs.ModePerm) //nolint
+			fileName = urlPath
+		}
+		f, err := os.Create(filepath.Join(name, fileName)) //nolint
 		if err != nil {
 			return nil, err
 		}
