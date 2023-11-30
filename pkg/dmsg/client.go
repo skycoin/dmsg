@@ -472,7 +472,7 @@ func (ce *Client) AllEntries(ctx context.Context) (entries []string, err error) 
 	return entries, err
 }
 
-// ConnectedServersPK return all dmsg-servers keys
+// ConnectedServersPK return all connected dmsg-servers keys
 func (ce *Client) ConnectedServersPK() []string {
 	sessions := ce.allClientSessions(ce.porter)
 	addrs := make([]string, len(sessions))
