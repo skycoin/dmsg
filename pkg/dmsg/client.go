@@ -472,6 +472,16 @@ func (ce *Client) AllEntries(ctx context.Context) (entries []string, err error) 
 	return entries, err
 }
 
+// ConnectedServersPK return all dmsg-servers keys
+func (ce *Client) ConnectedServersPK() []string {
+	sessions := ce.allClientSessions(ce.porter)
+	addrs := make([]string, len(sessions))
+	for i, s := range sessions {
+		addrs[i] = s.RemotePK().String()
+	}
+	return addrs
+}
+
 // ConnectionsSummary associates connected clients, and the servers that connect such clients.
 // Key: Client PK, Value: Slice of Server PKs
 type ConnectionsSummary map[cipher.PubKey][]cipher.PubKey
