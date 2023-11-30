@@ -1,6 +1,8 @@
 module github.com/skycoin/dmsg
 
-go 1.18
+go 1.21
+
+toolchain go1.21.3
 
 require (
 	github.com/ActiveState/termtest/conpty v0.5.0
@@ -15,7 +17,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
 	github.com/skycoin/skycoin v0.27.1
-	github.com/skycoin/skywire-utilities v0.0.0-20231120175000-12be4345eb26
+	github.com/skycoin/skywire-utilities v0.0.0-20231130191352-a30043b15bb3
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/net v0.7.0
