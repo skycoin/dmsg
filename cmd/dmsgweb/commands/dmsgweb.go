@@ -9,9 +9,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
-	"regexp"
 
 	"github.com/armon/go-socks5"
 	"golang.org/x/net/proxy"
@@ -49,7 +49,7 @@ func (r *customResolver) Resolve(ctx context.Context, name string) (context.Cont
 
 var (
 	httpC              http.Client
-	httpClient              *http.Client
+	httpClient         *http.Client
 	dmsgDisc           string
 	dmsgSessions       int
 	filterDomainSuffix string
@@ -118,19 +118,19 @@ var RootCmd = &cobra.Command{
 		}
 
 		if addProxy != "" {
-		// Configure SOCKS5 proxy dialer
-		dialer, err := proxy.SOCKS5("tcp", addProxy, nil, proxy.Direct)
-		if err != nil {
-			log.Fatalf("Error creating SOCKS5 dialer: %v", err)
+			// Configure SOCKS5 proxy dialer
+			dialer, err := proxy.SOCKS5("tcp", addProxy, nil, proxy.Direct)
+			if err != nil {
+				log.Fatalf("Error creating SOCKS5 dialer: %v", err)
+			}
+			// Configure custom HTTP transport with SOCKS5 proxy
+			// Configure HTTP client with custom transport
+			httpClient = &http.Client{
+				Transport: &http.Transport{
+					Dial: dialer.Dial,
+				},
+			}
 		}
-		// Configure custom HTTP transport with SOCKS5 proxy
-		// Configure HTTP client with custom transport
-		httpClient = &http.Client{
-			Transport: &http.Transport{
-				Dial: dialer.Dial,
-			},
-		}
-	}
 
 		dmsgC, closeDmsg, err := startDmsg(ctx, pk, sk)
 		if err != nil {
@@ -149,21 +149,21 @@ var RootCmd = &cobra.Command{
 					return nil, err
 				}
 
-				regexPattern := `\`+filterDomainSuffix+`.dmsg(:[0-9]+)?$`
-				match, _ := regexp.MatchString(regexPattern, host)
+				regexPattern := `\` + filterDomainSuffix + `.dmsg(:[0-9]+)?$`
+				match, _ := regexp.MatchString(regexPattern, host) //nolint:errcheck
 				if match {
 					// Change the address to redirect to port 8080 on localhost
 					addr = "localhost:" + webPort
-					} else {
-						if addProxy != "" {
-							// Fallback to another SOCKS5 proxy
-							dialer, err := proxy.SOCKS5("tcp", addProxy, nil, proxy.Direct)
-							if err != nil {
-								return nil, err
-							}
-							return dialer.Dial(network, addr)
+				} else {
+					if addProxy != "" {
+						// Fallback to another SOCKS5 proxy
+						dialer, err := proxy.SOCKS5("tcp", addProxy, nil, proxy.Direct)
+						if err != nil {
+							return nil, err
 						}
+						return dialer.Dial(network, addr)
 					}
+				}
 				fmt.Println(addr)
 				return net.Dial(network, addr)
 			},
@@ -197,9 +197,9 @@ var RootCmd = &cobra.Command{
 			var dmsgp string
 			if len(hostParts) > 1 {
 				dmsgp = hostParts[1]
-				} else {
-					dmsgp = "80"
-				}
+			} else {
+				dmsgp = "80"
+			}
 			urlStr := fmt.Sprintf("dmsg://%s:%s%s", hostParts[0], dmsgp, c.Param("path"))
 
 			maxSize := int64(0)
