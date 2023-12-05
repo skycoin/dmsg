@@ -55,7 +55,7 @@ var (
 	logLvl             string
 	webPort            string
 	proxyPort          string
-	addProxy          string
+	addProxy           string
 )
 
 func init() {
