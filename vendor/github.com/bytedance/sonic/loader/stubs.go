@@ -17,8 +17,8 @@
 package loader
 
 import (
-	"sync"
-	_ "unsafe"
+    `sync`
+    _ `unsafe`
 )
 
 //go:linkname lastmoduledatap runtime.lastmoduledatap
@@ -28,11 +28,13 @@ var lastmoduledatap *moduledata
 var moduledataMux sync.Mutex
 
 func registerModule(mod *moduledata) {
-	moduledataMux.Lock()
-	lastmoduledatap.next = mod
-	lastmoduledatap = mod
-	moduledataMux.Unlock()
+    moduledataMux.Lock()
+    lastmoduledatap.next = mod
+    lastmoduledatap = mod
+    moduledataMux.Unlock()
 }
 
 //go:linkname moduledataverify1 runtime.moduledataverify1
 func moduledataverify1(_ *moduledata)
+
+

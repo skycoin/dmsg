@@ -1,4 +1,3 @@
-//go:build amd64 && go1.15 && !go1.21
 // +build amd64,go1.15,!go1.21
 
 /*
@@ -15,12 +14,12 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 * See the License for the specific language governing permissions and
 * limitations under the License.
- */
+*/
 
 package decoder
 
 import (
-	"github.com/bytedance/sonic/internal/decoder"
+    `github.com/bytedance/sonic/internal/decoder`
 )
 
 // Decoder is the decoder context object
@@ -32,12 +31,12 @@ type MismatchTypeError = decoder.MismatchTypeError
 type Options = decoder.Options
 
 const (
-	OptionUseInt64         Options = decoder.OptionUseInt64
-	OptionUseNumber        Options = decoder.OptionUseNumber
-	OptionUseUnicodeErrors Options = decoder.OptionUseUnicodeErrors
-	OptionDisableUnknown   Options = decoder.OptionDisableUnknown
-	OptionCopyString       Options = decoder.OptionCopyString
-	OptionValidateString   Options = decoder.OptionValidateString
+    OptionUseInt64         Options = decoder.OptionUseInt64
+    OptionUseNumber        Options = decoder.OptionUseNumber
+    OptionUseUnicodeErrors Options = decoder.OptionUseUnicodeErrors
+    OptionDisableUnknown   Options = decoder.OptionDisableUnknown
+    OptionCopyString       Options = decoder.OptionCopyString
+    OptionValidateString   Options = decoder.OptionValidateString
 )
 
 // StreamDecoder is the decoder context object for streaming input.
@@ -46,22 +45,22 @@ type StreamDecoder = decoder.StreamDecoder
 type SyntaxError = decoder.SyntaxError
 
 var (
-	// NewDecoder creates a new decoder instance.
-	NewDecoder = decoder.NewDecoder
+    // NewDecoder creates a new decoder instance.
+    NewDecoder = decoder.NewDecoder
 
-	// NewStreamDecoder adapts to encoding/json.NewDecoder API.
-	//
-	// NewStreamDecoder returns a new decoder that reads from r.
-	NewStreamDecoder = decoder.NewStreamDecoder
+    // NewStreamDecoder adapts to encoding/json.NewDecoder API.
+    //
+    // NewStreamDecoder returns a new decoder that reads from r.
+    NewStreamDecoder = decoder.NewStreamDecoder
 
-	// Pretouch compiles vt ahead-of-time to avoid JIT compilation on-the-fly, in
-	// order to reduce the first-hit latency.
-	//
-	// Opts are the compile options, for example, "option.WithCompileRecursiveDepth" is
-	// a compile option to set the depth of recursive compile for the nested struct type.
-	Pretouch = decoder.Pretouch
-
-	// Skip skips only one json value, and returns first non-blank character position and its ending position if it is valid.
-	// Otherwise, returns negative error code using start and invalid character position using end
-	Skip = decoder.Skip
+    // Pretouch compiles vt ahead-of-time to avoid JIT compilation on-the-fly, in
+    // order to reduce the first-hit latency.
+    //
+    // Opts are the compile options, for example, "option.WithCompileRecursiveDepth" is
+    // a compile option to set the depth of recursive compile for the nested struct type.
+    Pretouch = decoder.Pretouch
+    
+    // Skip skips only one json value, and returns first non-blank character position and its ending position if it is valid.
+    // Otherwise, returns negative error code using start and invalid character position using end
+    Skip = decoder.Skip
 )

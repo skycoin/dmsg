@@ -19,9 +19,9 @@
 package avx2
 
 import (
-	"unsafe"
+    `unsafe`
 
-	"github.com/bytedance/sonic/internal/native/types"
+    `github.com/bytedance/sonic/internal/native/types`
 )
 
 //go:nosplit
@@ -132,4 +132,4 @@ func __validate_utf8(s *string, p *int, m *types.StateMachine) (ret int)
 //go:nosplit
 //go:noescape
 //goland:noinspection GoUnusedParameter
-func __validate_utf8_fast(s *string) (ret int)
+func __validate_utf8_fast(s *string)  (ret int)
