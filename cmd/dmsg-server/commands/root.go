@@ -13,19 +13,20 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(
+	RootCmd.AddCommand(
 		config.RootCmd,
 		start.RootCmd,
 	)
-	rootCmd.SetUsageTemplate(help)
+	RootCmd.SetUsageTemplate(help)
 	var helpflag bool
-	rootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for "+rootCmd.Use)
-	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
-	rootCmd.PersistentFlags().MarkHidden("help") //nolint
+	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for dmsg-server")
+	RootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
+	RootCmd.PersistentFlags().MarkHidden("help") //nolint
 }
 
-var rootCmd = &cobra.Command{
-	Use:   "dmsg-server",
+// RootCmd contains the root dmsg-server command
+var RootCmd = &cobra.Command{
+	Use:   "server",
 	Short: "Command Line Interface for DMSG-Server",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐   ┌─┐┌─┐┬─┐┬  ┬┌─┐┬─┐
@@ -41,7 +42,7 @@ var rootCmd = &cobra.Command{
 // Execute executes root CLI command.
 func Execute() {
 	cc.Init(&cc.Config{
-		RootCmd:       rootCmd,
+		RootCmd:       RootCmd,
 		Headings:      cc.HiBlue + cc.Bold, //+ cc.Underline,
 		Commands:      cc.HiBlue + cc.Bold,
 		CmdShortDescr: cc.HiBlue,
@@ -53,7 +54,7 @@ func Execute() {
 		NoExtraNewlines: true,
 		NoBottomNewline: true,
 	})
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		log.Fatal("Failed to execute command: ", err)
 	}
 }

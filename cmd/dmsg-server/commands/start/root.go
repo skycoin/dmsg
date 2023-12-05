@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
 	"github.com/spf13/cobra"
 
@@ -26,11 +27,13 @@ import (
 )
 
 var (
-	sf cmdutil.ServiceFlags
+	sf      cmdutil.ServiceFlags
+	limitIP int
 )
 
 func init() {
-	sf.Init(RootCmd, "dmsg_srv", "")
+	sf.Init(RootCmd, "dmsg_srv", dmsgserver.DefaultConfigPath)
+	RootCmd.Flags().IntVar(&limitIP, "limit-ip", 15, "set limitation of IPs want connect to specific dmsg-server, default value is 15")
 }
 
 // RootCmd contains commands for dmsg-server
@@ -49,6 +52,12 @@ var RootCmd = &cobra.Command{
 		if err := sf.ParseConfig(os.Args, true, &conf, configNotFound); err != nil {
 			log.WithError(err).Fatal("parsing config failed, generating default one...")
 		}
+
+		logLvl, _, err := cmdutil.LevelFromString(conf.LogLevel)
+		if err != nil {
+			log.Printf("Failed to set log level: %v", err)
+		}
+		logging.SetLevel(logLvl)
 
 		if conf.HTTPAddress == "" {
 			u, err := url.Parse(conf.LocalAddress)
@@ -83,6 +92,7 @@ var RootCmd = &cobra.Command{
 		srvConf := dmsg.ServerConfig{
 			MaxSessions:    conf.MaxSessions,
 			UpdateInterval: conf.UpdateInterval,
+			LimitIP:        limitIP,
 		}
 		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery, &http.Client{}, log), &srvConf, m)
 		srv.SetLogger(log)

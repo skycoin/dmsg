@@ -27,7 +27,7 @@ The connection between a `dmsg.Client` and `dmsg.Server` is called a `dmsg.Sessi
 
 ## Dmsg tools and libraries
 
-- [`dmsgget`](./docs/dmsgget.md) - Simplified `wget` over `dmsg`.
+- [`dmsgcurl`](./docs/dmsgcurl.md) - Simplified `curl` over `dmsg`.
 - [`dmsgpty`](./docs/dmsgpty.md) - Simplified `SSH` over `dmsg`.
 ## Additional resources
 - [`dmsg` examples.](./examples)

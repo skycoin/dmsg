@@ -39,8 +39,8 @@ builds:
     main: ./cmd/dmsg-server/
     ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
-  - id: dmsgget
-    binary: dmsgget
+  - id: dmsgcurl
+    binary: dmsgcurl
     goos:
       - windows
     goarch:
@@ -48,7 +48,7 @@ builds:
       - 386
     env:
       - CGO_ENABLED=0
-    main: ./cmd/dmsgget/
+    main: ./cmd/dmsgcurl/
     ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
   
   - id: dmsgpty-ui
@@ -95,7 +95,7 @@ archives:
     builds:
       - dmsg-discovery
       - dmsg-server
-      - dmsgget
+      - dmsgcurl
       - dmsgpty-cli
       - dmsgpty-ui
       - dmsgpty-host
