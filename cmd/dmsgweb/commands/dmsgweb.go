@@ -11,8 +11,11 @@ import (
 	"os"
 	"strings"
 	"time"
+	"regexp"
 
 	"github.com/armon/go-socks5"
+	"golang.org/x/net/proxy"
+
 	"github.com/gin-gonic/gin"
 	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
@@ -46,12 +49,12 @@ func (r *customResolver) Resolve(ctx context.Context, name string) (context.Cont
 
 var (
 	httpC              http.Client
+	httpClient              *http.Client
 	dmsgDisc           string
 	dmsgSessions       int
 	filterDomainSuffix string
 	sk                 cipher.SecKey
-	dmsggetLog         *logging.Logger
-	dmsggetAgent       string
+	dmsgWebLog         *logging.Logger
 	logLvl             string
 	webPort            string
 	proxyPort          string
@@ -61,12 +64,11 @@ var (
 func init() {
 	RootCmd.Flags().StringVarP(&filterDomainSuffix, "filter", "f", ".dmsg", "domain suffix to filter")
 	RootCmd.Flags().StringVarP(&proxyPort, "socks", "q", "4445", "port to serve the socks5 proxy")
-	RootCmd.Flags().StringVarP(&addProxy, "proxy", "r", "", "configure additional socks5 proxy for dmsgweb")
+	RootCmd.Flags().StringVarP(&addProxy, "proxy", "r", "", "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)")
 	RootCmd.Flags().StringVarP(&webPort, "port", "p", "8080", "port to serve the web application")
 	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
-	RootCmd.Flags().StringVarP(&dmsggetAgent, "agent", "a", "dmsgweb/"+buildinfo.Version(), "identify as `AGENT`")
 	if os.Getenv("DMSGGET_SK") != "" {
 		sk.Set(os.Getenv("DMSGGET_SK")) //nolint
 	}
@@ -92,8 +94,8 @@ var RootCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
 	Run: func(cmd *cobra.Command, _ []string) {
-		if dmsggetLog == nil {
-			dmsggetLog = logging.MustGetLogger("dmsgweb")
+		if dmsgWebLog == nil {
+			dmsgWebLog = logging.MustGetLogger("dmsgweb")
 		}
 		if logLvl != "" {
 			if lvl, err := logging.LevelFromString(logLvl); err == nil {
@@ -102,12 +104,12 @@ var RootCmd = &cobra.Command{
 		}
 
 		if filterDomainSuffix == "" {
-			dmsggetLog.Fatal("domain suffix to filter cannot be an empty string")
+			dmsgWebLog.Fatal("domain suffix to filter cannot be an empty string")
 		}
 		if dmsgDisc == "" {
 			dmsgDisc = skyenv.DmsgDiscAddr
 		}
-		ctx, cancel := cmdutil.SignalContext(context.Background(), dmsggetLog)
+		ctx, cancel := cmdutil.SignalContext(context.Background(), dmsgWebLog)
 		defer cancel()
 
 		pk, err := sk.PubKey()
@@ -115,9 +117,24 @@ var RootCmd = &cobra.Command{
 			pk, sk = cipher.GenerateKeyPair()
 		}
 
+		if addProxy != "" {
+		// Configure SOCKS5 proxy dialer
+		dialer, err := proxy.SOCKS5("tcp", addProxy, nil, proxy.Direct)
+		if err != nil {
+			log.Fatalf("Error creating SOCKS5 dialer: %v", err)
+		}
+		// Configure custom HTTP transport with SOCKS5 proxy
+		// Configure HTTP client with custom transport
+		httpClient = &http.Client{
+			Transport: &http.Transport{
+				Dial: dialer.Dial,
+			},
+		}
+	}
+
 		dmsgC, closeDmsg, err := startDmsg(ctx, pk, sk)
 		if err != nil {
-			dmsggetLog.WithError(err).Fatal("failed to start dmsg")
+			dmsgWebLog.WithError(err).Fatal("failed to start dmsg")
 		}
 		defer closeDmsg()
 
@@ -132,11 +149,21 @@ var RootCmd = &cobra.Command{
 					return nil, err
 				}
 
-				if strings.HasSuffix(host, ".dmsg") {
+				regexPattern := `\`+filterDomainSuffix+`.dmsg(:[0-9]+)?$`
+				match, _ := regexp.MatchString(regexPattern, host)
+				if match {
 					// Change the address to redirect to port 8080 on localhost
 					addr = "localhost:" + webPort
-				}
-
+					} else {
+						if addProxy != "" {
+							// Fallback to another SOCKS5 proxy
+							dialer, err := proxy.SOCKS5("tcp", addProxy, nil, proxy.Direct)
+							if err != nil {
+								return nil, err
+							}
+							return dialer.Dial(network, addr)
+						}
+					}
 				fmt.Println(addr)
 				return net.Dial(network, addr)
 			},
@@ -166,7 +193,15 @@ var RootCmd = &cobra.Command{
 
 		r.Any("/*path", func(c *gin.Context) {
 			fmt.Println(c.Request.Host)
-			urlStr := "dmsg://" + strings.TrimRight(strings.TrimRight(c.Request.Host, "dmsg"), ".") + ":80" + c.Param("path")
+			hostParts := strings.Split(c.Request.Host, ":")
+			var dmsgp string
+			if len(hostParts) > 1 {
+				dmsgp = hostParts[1]
+				} else {
+					dmsgp = "80"
+				}
+			urlStr := fmt.Sprintf("dmsg://%s:%s%s", hostParts[0], dmsgp, c.Param("path"))
+
 			maxSize := int64(0)
 
 			fmt.Println(urlStr)
@@ -197,15 +232,15 @@ var RootCmd = &cobra.Command{
 }
 
 func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
-	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, dmsggetLog), &dmsg.Config{MinSessions: dmsgSessions})
+	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, httpClient, dmsgWebLog), &dmsg.Config{MinSessions: dmsgSessions})
 	go dmsgC.Serve(context.Background())
 
 	stop = func() {
 		err := dmsgC.Close()
-		dmsggetLog.WithError(err).Debug("Disconnected from dmsg network.")
+		dmsgWebLog.WithError(err).Debug("Disconnected from dmsg network.")
 		fmt.Printf("\n")
 	}
-	dmsggetLog.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsgDisc).
+	dmsgWebLog.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsgDisc).
 		Debug("Connecting to dmsg network...")
 
 	select {
@@ -214,7 +249,7 @@ func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *
 		return nil, nil, ctx.Err()
 
 	case <-dmsgC.Ready():
-		dmsggetLog.Debug("Dmsg network ready.")
+		dmsgWebLog.Debug("Dmsg network ready.")
 		return dmsgC, stop, nil
 	}
 }
