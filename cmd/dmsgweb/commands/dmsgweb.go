@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"sync"
 
 	"github.com/armon/go-socks5"
 	"golang.org/x/net/proxy"
@@ -29,7 +30,7 @@ import (
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
-
+var wg sync.WaitGroup
 type customResolver struct{}
 
 func (r *customResolver) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
@@ -49,7 +50,7 @@ func (r *customResolver) Resolve(ctx context.Context, name string) (context.Cont
 
 var (
 	httpC              http.Client
-	httpClient         *http.Client
+	httpClient         http.Client
 	dmsgDisc           string
 	dmsgSessions       int
 	filterDomainSuffix string
@@ -125,7 +126,7 @@ var RootCmd = &cobra.Command{
 			}
 			// Configure custom HTTP transport with SOCKS5 proxy
 			// Configure HTTP client with custom transport
-			httpClient = &http.Client{
+			httpClient = http.Client{
 				Transport: &http.Transport{
 					Dial: dialer.Dial,
 				},
@@ -164,7 +165,7 @@ var RootCmd = &cobra.Command{
 						return dialer.Dial(network, addr)
 					}
 				}
-				fmt.Println(addr)
+				dmsgWebLog.Debug("Dialing address:", addr)
 				return net.Dial(network, addr)
 			},
 		}
@@ -177,12 +178,17 @@ var RootCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Failed to create SOCKS5 server: %v", err)
 		}
+		wg.Add(2)
 
 		go func() {
+			defer wg.Done()
+			dmsgWebLog.Debug("Serving SOCKS5 proxy on "+socksAddr)
 			err := server.ListenAndServe("tcp", socksAddr)
 			if err != nil {
 				log.Fatalf("Failed to start SOCKS5 server: %v", err)
 			}
+			dmsgWebLog.Debug("Stopped serving SOCKS5 proxy on "+socksAddr)
+
 		}()
 
 		r := gin.New()
@@ -192,7 +198,7 @@ var RootCmd = &cobra.Command{
 		r.Use(loggingMiddleware())
 
 		r.Any("/*path", func(c *gin.Context) {
-			fmt.Println(c.Request.Host)
+			dmsgWebLog.Debug("c.Request.Host:", c.Request.Host)
 			hostParts := strings.Split(c.Request.Host, ":")
 			var dmsgp string
 			if len(hostParts) > 1 {
@@ -227,32 +233,48 @@ var RootCmd = &cobra.Command{
 			c.Status(http.StatusOK)
 			io.Copy(c.Writer, resp.Body) //nolint
 		})
-		r.Run(":" + webPort) //nolint
+		go func() {
+			defer wg.Done()
+			dmsgWebLog.Debug("Serving http on "+webPort)
+			r.Run(":" + webPort) //nolint
+			dmsgWebLog.Debug("Stopped serving http on "+webPort)
+		}()
+		wg.Wait()
+		<-ctx.Done()
+		cancel()
+		closeDmsg()
 	},
 }
 
 func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
-	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, httpClient, dmsgWebLog), &dmsg.Config{MinSessions: dmsgSessions})
-	go dmsgC.Serve(context.Background())
+	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &httpClient, dmsgWebLog), &dmsg.Config{MinSessions: dmsgSessions})
+
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		select {
+		case <-ctx.Done():
+			dmsgC.Close()
+			dmsgWebLog.WithError(ctx.Err()).Debug("Disconnected from dmsg network due to context cancellation.")
+			os.Exit(0)
+		case <-dmsgC.Ready():
+			dmsgWebLog.Debug("Dmsg network ready.")
+		}
+	}()
 
 	stop = func() {
 		err := dmsgC.Close()
 		dmsgWebLog.WithError(err).Debug("Disconnected from dmsg network.")
 		fmt.Printf("\n")
 	}
+
 	dmsgWebLog.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsgDisc).
 		Debug("Connecting to dmsg network...")
 
-	select {
-	case <-ctx.Done():
-		stop()
-		return nil, nil, ctx.Err()
-
-	case <-dmsgC.Ready():
-		dmsgWebLog.Debug("Dmsg network ready.")
-		return dmsgC, stop, nil
-	}
+	return dmsgC, stop, nil
 }
+
 
 func loggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
