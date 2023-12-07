@@ -35,8 +35,9 @@ type customResolver struct{}
 
 func (r *customResolver) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
 	// Handle custom name resolution for .dmsg domains
-	if strings.HasSuffix(name, filterDomainSuffix) {
-		// Resolve .dmsg domains to the desired IP address
+	regexPattern := `\` + filterDomainSuffix + `(:[0-9]+)?$`
+	match, _ := regexp.MatchString(regexPattern, name) //nolint:errcheck
+	if match {
 		ip := net.ParseIP("127.0.0.1") // Replace with your desired IP address
 		if ip == nil {
 			return ctx, nil, fmt.Errorf("failed to parse IP address for .dmsg domain")
@@ -63,6 +64,7 @@ var (
 )
 
 func init() {
+	RootCmd.AddCommand(genKeysCmd)
 	RootCmd.Flags().StringVarP(&filterDomainSuffix, "filter", "f", ".dmsg", "domain suffix to filter")
 	RootCmd.Flags().StringVarP(&proxyPort, "socks", "q", "4445", "port to serve the socks5 proxy")
 	RootCmd.Flags().StringVarP(&addProxy, "proxy", "r", "", "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)")
@@ -81,10 +83,20 @@ func init() {
 	RootCmd.PersistentFlags().MarkHidden("help") //nolint
 }
 
+var genKeysCmd = &cobra.Command{
+	Use:   "gen-keys",
+	Short: "generate public / secret keypair",
+	Run: func(cmd *cobra.Command, args []string) {
+		pk, sk := cipher.GenerateKeyPair()
+		fmt.Println(pk)
+		fmt.Println(sk)
+	},
+}
+
 // RootCmd contains the root command for dmsgweb
 var RootCmd = &cobra.Command{
 	Use:   "dmsgweb",
-	Short: "access websites over dmsg",
+	Short: "access dmsg websites",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐┬ ┬┌─┐┌┐
 	 │││││└─┐│ ┬│││├┤ ├┴┐
@@ -150,7 +162,7 @@ var RootCmd = &cobra.Command{
 					return nil, err
 				}
 
-				regexPattern := `\` + filterDomainSuffix + `.dmsg(:[0-9]+)?$`
+				regexPattern := `\` + filterDomainSuffix + `(:[0-9]+)?$`
 				match, _ := regexp.MatchString(regexPattern, host) //nolint:errcheck
 				if match {
 					// Change the address to redirect to port 8080 on localhost
