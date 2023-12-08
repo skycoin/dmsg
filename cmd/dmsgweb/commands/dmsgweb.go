@@ -11,8 +11,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"time"
 	"sync"
+	"time"
 
 	"github.com/armon/go-socks5"
 	"golang.org/x/net/proxy"
@@ -30,21 +30,33 @@ import (
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
-var wg sync.WaitGroup
+
+// RootCmd contains commands that interact with the config of local skywire-visor
+var genKeysCmd = &cobra.Command{
+	Use:   "gen-keys",
+	Short: "generate public / secret keypair",
+	Run: func(cmd *cobra.Command, args []string) {
+		pk, sk := cipher.GenerateKeyPair()
+		fmt.Println(pk)
+		fmt.Println(sk)
+	},
+}
+
 type customResolver struct{}
 
 func (r *customResolver) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
 	// Handle custom name resolution for .dmsg domains
-	regexPattern := `\` + filterDomainSuffix + `(:[0-9]+)?$`
+	regexPattern := `\.` + filterDomainSuffix + `(:[0-9]+)?$`
 	match, _ := regexp.MatchString(regexPattern, name) //nolint:errcheck
 	if match {
-		ip := net.ParseIP("127.0.0.1") // Replace with your desired IP address
+		ip := net.ParseIP("127.0.0.1")
 		if ip == nil {
-			return ctx, nil, fmt.Errorf("failed to parse IP address for .dmsg domain")
+			return ctx, nil, fmt.Errorf("failed to parse IP address")
 		}
+		// Modify the context to include the desired port
+		ctx = context.WithValue(ctx, "port", webPort)
 		return ctx, ip, nil
 	}
-
 	// Use default name resolution for other domains
 	return ctx, nil, nil
 }
@@ -61,6 +73,7 @@ var (
 	webPort            string
 	proxyPort          string
 	addProxy           string
+	wg                 sync.WaitGroup
 )
 
 func init() {
@@ -83,20 +96,10 @@ func init() {
 	RootCmd.PersistentFlags().MarkHidden("help") //nolint
 }
 
-var genKeysCmd = &cobra.Command{
-	Use:   "gen-keys",
-	Short: "generate public / secret keypair",
-	Run: func(cmd *cobra.Command, args []string) {
-		pk, sk := cipher.GenerateKeyPair()
-		fmt.Println(pk)
-		fmt.Println(sk)
-	},
-}
-
 // RootCmd contains the root command for dmsgweb
 var RootCmd = &cobra.Command{
 	Use:   "dmsgweb",
-	Short: "access dmsg websites",
+	Short: "access websites over dmsg",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐┬ ┬┌─┐┌┐
 	 │││││└─┐│ ┬│││├┤ ├┴┐
@@ -165,8 +168,12 @@ var RootCmd = &cobra.Command{
 				regexPattern := `\` + filterDomainSuffix + `(:[0-9]+)?$`
 				match, _ := regexp.MatchString(regexPattern, host) //nolint:errcheck
 				if match {
-					// Change the address to redirect to port 8080 on localhost
-					addr = "localhost:" + webPort
+					dmsgWebLog.Debug("Filtering dmsg domain")
+					port, ok := ctx.Value("port").(string)
+					if !ok {
+						port = webPort
+					}
+					addr = "localhost:" + port
 				} else {
 					if addProxy != "" {
 						// Fallback to another SOCKS5 proxy
@@ -190,17 +197,16 @@ var RootCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Failed to create SOCKS5 server: %v", err)
 		}
-		wg.Add(2)
 
+		wg.Add(1)
 		go func() {
-			defer wg.Done()
-			dmsgWebLog.Debug("Serving SOCKS5 proxy on "+socksAddr)
+			dmsgWebLog.Debug("Serving SOCKS5 proxy on " + socksAddr)
 			err := server.ListenAndServe("tcp", socksAddr)
 			if err != nil {
 				log.Fatalf("Failed to start SOCKS5 server: %v", err)
 			}
-			dmsgWebLog.Debug("Stopped serving SOCKS5 proxy on "+socksAddr)
-
+			dmsgWebLog.Debug("Stopped serving SOCKS5 proxy on " + socksAddr)
+			wg.Done()
 		}()
 
 		r := gin.New()
@@ -218,11 +224,11 @@ var RootCmd = &cobra.Command{
 			} else {
 				dmsgp = "80"
 			}
-			urlStr := fmt.Sprintf("dmsg://%s:%s%s", hostParts[0], dmsgp, c.Param("path"))
+			urlStr := fmt.Sprintf("dmsg://%s:%s%s", strings.TrimRight(hostParts[0], filterDomainSuffix), dmsgp, c.Param("path"))
 
-			maxSize := int64(0)
+			maxSize := int64(1024)
 
-			fmt.Println(urlStr)
+			dmsgWebLog.Debug("url string to fetch over dmsg: ", urlStr)
 			req, err := http.NewRequest(http.MethodGet, urlStr, nil)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to create HTTP request")
@@ -245,11 +251,12 @@ var RootCmd = &cobra.Command{
 			c.Status(http.StatusOK)
 			io.Copy(c.Writer, resp.Body) //nolint
 		})
+		wg.Add(1)
 		go func() {
-			defer wg.Done()
-			dmsgWebLog.Debug("Serving http on "+webPort)
+			dmsgWebLog.Debug("Serving http on " + webPort)
 			r.Run(":" + webPort) //nolint
-			dmsgWebLog.Debug("Stopped serving http on "+webPort)
+			dmsgWebLog.Debug("Stopped serving http on " + webPort)
+			wg.Done()
 		}()
 		wg.Wait()
 		<-ctx.Done()
@@ -259,34 +266,28 @@ var RootCmd = &cobra.Command{
 }
 
 func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
-	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &httpClient, dmsgWebLog), &dmsg.Config{MinSessions: dmsgSessions})
-
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-		select {
-		case <-ctx.Done():
-			dmsgC.Close()
-			dmsgWebLog.WithError(ctx.Err()).Debug("Disconnected from dmsg network due to context cancellation.")
-			os.Exit(0)
-		case <-dmsgC.Ready():
-			dmsgWebLog.Debug("Dmsg network ready.")
-		}
-	}()
+	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, dmsgWebLog), &dmsg.Config{MinSessions: dmsgSessions})
+	go dmsgC.Serve(context.Background())
 
 	stop = func() {
 		err := dmsgC.Close()
 		dmsgWebLog.WithError(err).Debug("Disconnected from dmsg network.")
 		fmt.Printf("\n")
 	}
-
 	dmsgWebLog.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsgDisc).
 		Debug("Connecting to dmsg network...")
 
-	return dmsgC, stop, nil
-}
+	select {
+	case <-ctx.Done():
+		stop()
+		os.Exit(0) //this should not be necessary
+		return nil, nil, ctx.Err()
 
+	case <-dmsgC.Ready():
+		dmsgWebLog.Debug("Dmsg network ready.")
+		return dmsgC, stop, nil
+	}
+}
 
 func loggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
