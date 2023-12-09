@@ -143,8 +143,10 @@ var RootCmd = &cobra.Command{
 			}
 			fmt.Println(string(respBody))
 		} else {
-
-			file, err := parseOutputFile(dmsgcurlOutput, u.URL.Path, fullpath)
+			file := os.Stdout
+			if !stdout {
+				file, err = parseOutputFile(dmsgcurlOutput, u.URL.Path, fullpath)
+			}
 			if err != nil {
 				return fmt.Errorf("failed to prepare output file: %w", err)
 			}
@@ -170,21 +172,9 @@ var RootCmd = &cobra.Command{
 			for i := 0; i < dmsgcurlTries; i++ {
 				if !stdout {
 					dmsgcurlLog.Debugf("Download attempt %d/%d ...", i, dmsgcurlTries)
-				}
-
-				if _, err := file.Seek(0, 0); err != nil {
-					return fmt.Errorf("failed to reset file: %w", err)
-				}
-				if stdout {
-					if fErr := file.Close(); fErr != nil {
-						dmsgcurlLog.WithError(fErr).Warn("Failed to close output file.")
+					if _, err := file.Seek(0, 0); err != nil {
+						return fmt.Errorf("failed to reset file: %w", err)
 					}
-					if err != nil {
-						if rErr := os.RemoveAll(file.Name()); rErr != nil {
-							dmsgcurlLog.WithError(rErr).Warn("Failed to remove output file.")
-						}
-					}
-					file = os.Stdout
 				}
 				if err := Download(ctx, dmsgcurlLog, &httpC, file, u.URL.String(), 0); err != nil {
 					dmsgcurlLog.WithError(err).Error()
