@@ -13,8 +13,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/armon/go-socks5"
+	"os/signal"
+    "syscall"
+	"github.com/confiant-inc/go-socks5"
 	"golang.org/x/net/proxy"
 
 	"github.com/gin-gonic/gin"
@@ -110,6 +111,12 @@ var RootCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
 	Run: func(cmd *cobra.Command, _ []string) {
+		c := make(chan os.Signal)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+		go func() {
+			<-c
+			os.Exit(1)
+			}()
 		if dmsgWebLog == nil {
 			dmsgWebLog = logging.MustGetLogger("dmsgweb")
 		}
@@ -164,11 +171,9 @@ var RootCmd = &cobra.Command{
 				if err != nil {
 					return nil, err
 				}
-
 				regexPattern := `\` + filterDomainSuffix + `(:[0-9]+)?$`
 				match, _ := regexp.MatchString(regexPattern, host) //nolint:errcheck
 				if match {
-					dmsgWebLog.Debug("Filtering dmsg domain")
 					port, ok := ctx.Value("port").(string)
 					if !ok {
 						port = webPort
@@ -205,8 +210,8 @@ var RootCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("Failed to start SOCKS5 server: %v", err)
 			}
+			defer server.Close()
 			dmsgWebLog.Debug("Stopped serving SOCKS5 proxy on " + socksAddr)
-			wg.Done()
 		}()
 
 		r := gin.New()
@@ -216,7 +221,6 @@ var RootCmd = &cobra.Command{
 		r.Use(loggingMiddleware())
 
 		r.Any("/*path", func(c *gin.Context) {
-			dmsgWebLog.Debug("c.Request.Host:", c.Request.Host)
 			hostParts := strings.Split(c.Request.Host, ":")
 			var dmsgp string
 			if len(hostParts) > 1 {
@@ -228,7 +232,6 @@ var RootCmd = &cobra.Command{
 
 			maxSize := int64(1024)
 
-			dmsgWebLog.Debug("url string to fetch over dmsg: ", urlStr)
 			req, err := http.NewRequest(http.MethodGet, urlStr, nil)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to create HTTP request")
@@ -259,7 +262,8 @@ var RootCmd = &cobra.Command{
 			wg.Done()
 		}()
 		wg.Wait()
-		<-ctx.Done()
+		os.Exit(0) //this should not be necessary
+//		<-ctx.Done()
 		cancel()
 		closeDmsg()
 	},
@@ -280,7 +284,7 @@ func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *
 	select {
 	case <-ctx.Done():
 		stop()
-		os.Exit(0) //this should not be necessary
+		os.Exit(0)
 		return nil, nil, ctx.Err()
 
 	case <-dmsgC.Ready():
