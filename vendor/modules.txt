@@ -8,9 +8,6 @@ github.com/Azure/go-ansiterm/winterm
 # github.com/VictoriaMetrics/metrics v1.18.1
 ## explicit; go 1.12
 github.com/VictoriaMetrics/metrics
-# github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
-## explicit
-github.com/armon/go-socks5
 # github.com/bytedance/sonic v1.9.1
 ## explicit; go 1.15
 github.com/bytedance/sonic
@@ -40,6 +37,9 @@ github.com/cespare/xxhash/v2
 # github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311
 ## explicit; go 1.15
 github.com/chenzhuoyu/base64x
+# github.com/confiant-inc/go-socks5 v0.0.0-20210816151940-c1124825b1d6
+## explicit
+github.com/confiant-inc/go-socks5
 # github.com/creack/pty v1.1.15
 ## explicit; go 1.13
 github.com/creack/pty
