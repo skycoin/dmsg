@@ -111,7 +111,7 @@ var RootCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
 	Run: func(cmd *cobra.Command, _ []string) {
-		c := make(chan os.Signal)
+		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM) //nolint
 		go func() {
 			<-c
