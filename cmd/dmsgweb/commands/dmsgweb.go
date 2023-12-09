@@ -9,15 +9,14 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
-	"os/signal"
-    "syscall"
-	"github.com/confiant-inc/go-socks5"
-	"golang.org/x/net/proxy"
 
+	"github.com/confiant-inc/go-socks5"
 	"github.com/gin-gonic/gin"
 	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
@@ -26,6 +25,7 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/proxy"
 
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
@@ -116,7 +116,7 @@ var RootCmd = &cobra.Command{
 		go func() {
 			<-c
 			os.Exit(1)
-			}()
+		}()
 		if dmsgWebLog == nil {
 			dmsgWebLog = logging.MustGetLogger("dmsgweb")
 		}
@@ -263,7 +263,7 @@ var RootCmd = &cobra.Command{
 		}()
 		wg.Wait()
 		os.Exit(0) //this should not be necessary
-//		<-ctx.Done()
+		//		<-ctx.Done()
 		cancel()
 		closeDmsg()
 	},
