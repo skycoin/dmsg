@@ -92,7 +92,7 @@ var RootCmd = &cobra.Command{
 			dmsgcurlLog = logging.MustGetLogger("dmsgcurl")
 		}
 		if stdout {
-			logLvl = "panic"
+			logLvl = "fatal"
 		}
 		if logLvl != "" {
 			if lvl, err := logging.LevelFromString(logLvl); err == nil {
