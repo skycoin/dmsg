@@ -112,7 +112,7 @@ var RootCmd = &cobra.Command{
 	Version:               buildinfo.Version(),
 	Run: func(cmd *cobra.Command, _ []string) {
 		c := make(chan os.Signal)
-		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM) //nolint
 		go func() {
 			<-c
 			os.Exit(1)
