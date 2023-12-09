@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -42,19 +41,15 @@ var (
 	dmsgcurlTries  int
 	dmsgcurlWait   int
 	dmsgcurlOutput string
-	stdout         bool
-	fullpath       bool
 )
 
 func init() {
 	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "c", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
-	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
+	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "fatal", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
 	RootCmd.Flags().StringVarP(&dmsgcurlData, "data", "d", "", "dmsghttp POST data")
 	//	RootCmd.Flags().StringVarP(&dmsgcurlHeader, "header", "H", "", "Pass custom header(s) to server")
-	RootCmd.Flags().StringVarP(&dmsgcurlOutput, "out", "o", ".", "output filepath")
-	RootCmd.Flags().BoolVar(&fullpath, "fullpath", false, "download in fullpath or file name only")
-	RootCmd.Flags().BoolVarP(&stdout, "stdout", "n", false, "output to STDOUT")
+	RootCmd.Flags().StringVarP(&dmsgcurlOutput, "out", "o", "", "output filepath")
 	RootCmd.Flags().IntVarP(&dmsgcurlTries, "try", "t", 1, "download attempts (0 unlimits)")
 	RootCmd.Flags().IntVarP(&dmsgcurlWait, "wait", "w", 0, "time to wait between fetches")
 	RootCmd.Flags().StringVarP(&dmsgcurlAgent, "agent", "a", "dmsgcurl/"+buildinfo.Version(), "identify as `AGENT`")
@@ -90,9 +85,6 @@ var RootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if dmsgcurlLog == nil {
 			dmsgcurlLog = logging.MustGetLogger("dmsgcurl")
-		}
-		if stdout {
-			logLvl = "fatal"
 		}
 		if logLvl != "" {
 			if lvl, err := logging.LevelFromString(logLvl); err == nil {
@@ -144,8 +136,8 @@ var RootCmd = &cobra.Command{
 			fmt.Println(string(respBody))
 		} else {
 			file := os.Stdout
-			if !stdout {
-				file, err = parseOutputFile(dmsgcurlOutput, u.URL.Path, fullpath)
+			if dmsgcurlOutput != "" {
+				file, err = parseOutputFile(dmsgcurlOutput)
 			}
 			if err != nil {
 				return fmt.Errorf("failed to prepare output file: %w", err)
@@ -170,7 +162,7 @@ var RootCmd = &cobra.Command{
 			httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
 
 			for i := 0; i < dmsgcurlTries; i++ {
-				if !stdout {
+				if dmsgcurlOutput != "" {
 					dmsgcurlLog.Debugf("Download attempt %d/%d ...", i, dmsgcurlTries)
 					if _, err := file.Seek(0, 0); err != nil {
 						return fmt.Errorf("failed to reset file: %w", err)
@@ -239,11 +231,11 @@ func parseURL(args []string) (*URL, error) {
 	return &out, nil
 }
 
-func parseOutputFile(name string, urlPath string, fullpath bool) (*os.File, error) {
-	stat, statErr := os.Stat(name)
+func parseOutputFile(output string) (*os.File, error) {
+	stat, statErr := os.Stat(output)
 	if statErr != nil {
 		if os.IsNotExist(statErr) {
-			f, err := os.Create(name) //nolint
+			f, err := os.Create(output) //nolint
 			if err != nil {
 				return nil, err
 			}
@@ -252,15 +244,12 @@ func parseOutputFile(name string, urlPath string, fullpath bool) (*os.File, erro
 		return nil, statErr
 	}
 
-	urlSlice := strings.Split(urlPath, "/")
+	urlSlice := strings.Split(output, "/")
 	fileName := urlSlice[len(urlSlice)-1]
 
 	if stat.IsDir() {
-		if fullpath {
-			os.Mkdir(strings.Replace(urlPath, fileName, "", 1)[1:], fs.ModePerm) //nolint
-			fileName = urlPath
-		}
-		f, err := os.Create(filepath.Join(name, fileName)) //nolint
+		os.Mkdir(strings.Replace(output, fileName, "", 1)[1:], fs.ModePerm) //nolint
+		f, err := os.Create(output)                                         //nolint
 		if err != nil {
 			return nil, err
 		}
@@ -360,7 +349,7 @@ func (pw *ProgressWriter) Write(p []byte) (int, error) {
 	current := atomic.AddInt64(&pw.Current, int64(n))
 	total := atomic.LoadInt64(&pw.Total)
 	pc := fmt.Sprintf("%d%%", current*100/total)
-	if !stdout {
+	if dmsgcurlOutput != "" {
 		fmt.Printf("Downloading: %d/%dB (%s)", current, total, pc)
 		if current != total {
 			fmt.Print("\r")
