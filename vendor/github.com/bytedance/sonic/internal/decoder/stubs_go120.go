@@ -1,3 +1,4 @@
+//go:build go1.20
 // +build go1.20
 
 /*
@@ -19,12 +20,12 @@
 package decoder
 
 import (
-    `unsafe`
-    `reflect`
+	"reflect"
+	"unsafe"
 
-    _ `github.com/chenzhuoyu/base64x`
+	_ "github.com/chenzhuoyu/base64x"
 
-    `github.com/bytedance/sonic/internal/rt`
+	"github.com/bytedance/sonic/internal/rt"
 )
 
 //go:linkname _subr__b64decode github.com/chenzhuoyu/base64x._subr__b64decode
@@ -34,7 +35,7 @@ var _subr__b64decode uintptr
 const _max_map_element_size uintptr = 128
 
 func mapfast(vt reflect.Type) bool {
-    return vt.Elem().Size() <= _max_map_element_size
+	return vt.Elem().Size() <= _max_map_element_size
 }
 
 //go:nosplit
