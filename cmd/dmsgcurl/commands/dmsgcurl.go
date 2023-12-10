@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -41,6 +42,7 @@ var (
 	dmsgcurlTries  int
 	dmsgcurlWait   int
 	dmsgcurlOutput string
+	replace        bool
 )
 
 func init() {
@@ -50,6 +52,7 @@ func init() {
 	RootCmd.Flags().StringVarP(&dmsgcurlData, "data", "d", "", "dmsghttp POST data")
 	//	RootCmd.Flags().StringVarP(&dmsgcurlHeader, "header", "H", "", "Pass custom header(s) to server")
 	RootCmd.Flags().StringVarP(&dmsgcurlOutput, "out", "o", "", "output filepath")
+	RootCmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace exist file with new downloaded")
 	RootCmd.Flags().IntVarP(&dmsgcurlTries, "try", "t", 1, "download attempts (0 unlimits)")
 	RootCmd.Flags().IntVarP(&dmsgcurlWait, "wait", "w", 0, "time to wait between fetches")
 	RootCmd.Flags().StringVarP(&dmsgcurlAgent, "agent", "a", "dmsgcurl/"+buildinfo.Version(), "identify as `AGENT`")
@@ -137,7 +140,7 @@ var RootCmd = &cobra.Command{
 		} else {
 			file := os.Stdout
 			if dmsgcurlOutput != "" {
-				file, err = parseOutputFile(dmsgcurlOutput)
+				file, err = parseOutputFile(dmsgcurlOutput, replace)
 			}
 			if err != nil {
 				return fmt.Errorf("failed to prepare output file: %w", err)
@@ -231,10 +234,13 @@ func parseURL(args []string) (*URL, error) {
 	return &out, nil
 }
 
-func parseOutputFile(output string) (*os.File, error) {
-	stat, statErr := os.Stat(output)
+func parseOutputFile(output string, replace bool) (*os.File, error) {
+	_, statErr := os.Stat(output)
 	if statErr != nil {
 		if os.IsNotExist(statErr) {
+			if err := os.MkdirAll(filepath.Dir(output), fs.ModePerm); err != nil {
+				return nil, err
+			}
 			f, err := os.Create(output) //nolint
 			if err != nil {
 				return nil, err
@@ -243,19 +249,9 @@ func parseOutputFile(output string) (*os.File, error) {
 		}
 		return nil, statErr
 	}
-
-	urlSlice := strings.Split(output, "/")
-	fileName := urlSlice[len(urlSlice)-1]
-
-	if stat.IsDir() {
-		os.Mkdir(strings.Replace(output, fileName, "", 1)[1:], fs.ModePerm) //nolint
-		f, err := os.Create(output)                                         //nolint
-		if err != nil {
-			return nil, err
-		}
-		return f, nil
+	if replace {
+		return os.OpenFile(filepath.Clean(output), os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	}
-
 	return nil, os.ErrExist
 }
 
