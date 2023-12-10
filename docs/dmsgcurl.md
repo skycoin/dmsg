@@ -17,11 +17,11 @@ $ dmsgcurl --help
         -c, --dmsg-disc string   dmsg discovery url default:
                                 http://dmsgd.skywire.skycoin.com
         -l, --loglvl string      [ debug | warn | error | fatal | panic | trace | info ]
-        -o, --out string         output filepath (default ".")
+        -o, --out string         output filepath
+        -r, --replace bool       if be true then downloaded exist file will replace by new downloaded    
         -e, --sess int           number of dmsg servers to connect to (default 1)
         -s, --sk cipher.SecKey   a random key is generated if unspecified
         (default 0000000000000000000000000000000000000000000000000000000000000000)
-        -n, --stdout             output to STDOUT
         -t, --try int            download attempts (0 unlimits) (default 1)
         -v, --version            version for dmsgcurl
         -w, --wait int           time to wait between fetches
