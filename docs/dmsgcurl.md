@@ -59,14 +59,13 @@ Now we can use `dmsgcurl` to download the hosted file. Open a new terminal and r
 
 ```shell script
 # Replace '038dde2d050803db59e2ad19e5a6db0f58f8419709fc65041c48b0cb209bb7a851' with the generated PK.
-$ dmsgcurl dmsg://038dde2d050803db59e2ad19e5a6db0f58f8419709fc65041c48b0cb209bb7a851:80/hello.txt
-$ dmsgcurl dmsg://038dde2d050803db59e2ad19e5a6db0f58f8419709fc65041c48b0cb209bb7a851:80/inner/inner-hello.txt --fullpath
-$ dmsgcurl dmsg://038dde2d050803db59e2ad19e5a6db0f58f8419709fc65041c48b0cb209bb7a851:80/inner/inner-hello.txt
+$ dmsgcurl dmsg://038dde2d050803db59e2ad19e5a6db0f58f8419709fc65041c48b0cb209bb7a851:80/hello.txt # Output be here as stdout
+$ dmsgcurl dmsg://038dde2d050803db59e2ad19e5a6db0f58f8419709fc65041c48b0cb209bb7a851:80/hello.txt -o downloadedFile/hello.txt
+$ dmsgcurl dmsg://038dde2d050803db59e2ad19e5a6db0f58f8419709fc65041c48b0cb209bb7a851:80/inner/inner-hello.txt # Output be here as stdout
+$ dmsgcurl dmsg://038dde2d050803db59e2ad19e5a6db0f58f8419709fc65041c48b0cb209bb7a851:80/inner/inner-hello.txt -o inner-hello.txt
 
 # Check downloaded file.
-$ cat hello.txt
-#   Hello World!
-$ cat inner/inner-hello.txt
+$ cat downloadedFile/hello.txt
 #   Hello World!, Inner!
 $ cat inner-hello.txt
 #   Hello World!, Inner!
