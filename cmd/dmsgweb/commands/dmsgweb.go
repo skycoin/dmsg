@@ -161,6 +161,13 @@ var RootCmd = &cobra.Command{
 		}
 		defer closeDmsg()
 
+		go func() {
+			<-ctx.Done()
+			cancel()
+			closeDmsg()
+			os.Exit(0) //this should not be necessary
+		}()
+
 		httpC = http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
 
 		// Create a SOCKS5 server with custom name resolution
@@ -262,10 +269,6 @@ var RootCmd = &cobra.Command{
 			wg.Done()
 		}()
 		wg.Wait()
-		os.Exit(0) //this should not be necessary
-		//		<-ctx.Done()
-		cancel()
-		closeDmsg()
 	},
 }
 
