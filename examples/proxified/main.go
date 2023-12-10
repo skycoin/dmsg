@@ -3,15 +3,17 @@ package main
 import (
 	"context"
 
-	"time"
 	"net/http"
-	"github.com/skycoin/skywire-utilities/pkg/skyenv"
+	"time"
+
 	"github.com/skycoin/skywire-utilities/pkg/logging"
+	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"golang.org/x/net/proxy"
+
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
-	"golang.org/x/net/proxy"
 )
 
 func main() {

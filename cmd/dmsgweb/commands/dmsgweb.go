@@ -64,7 +64,6 @@ func (r *customResolver) Resolve(ctx context.Context, name string) (context.Cont
 
 var (
 	httpC              http.Client
-	httpClient         http.Client
 	dmsgDisc           string
 	dmsgSessions       int
 	filterDomainSuffix string
@@ -138,21 +137,6 @@ var RootCmd = &cobra.Command{
 		pk, err := sk.PubKey()
 		if err != nil {
 			pk, sk = cipher.GenerateKeyPair()
-		}
-
-		if addProxy != "" {
-			// Configure SOCKS5 proxy dialer
-			dialer, err := proxy.SOCKS5("tcp", addProxy, nil, proxy.Direct)
-			if err != nil {
-				log.Fatalf("Error creating SOCKS5 dialer: %v", err)
-			}
-			// Configure custom HTTP transport with SOCKS5 proxy
-			// Configure HTTP client with custom transport
-			httpClient = http.Client{
-				Transport: &http.Transport{
-					Dial: dialer.Dial,
-				},
-			}
 		}
 
 		dmsgC, closeDmsg, err := startDmsg(ctx, pk, sk)

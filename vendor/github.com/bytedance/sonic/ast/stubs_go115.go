@@ -1,3 +1,4 @@
+//go:build !go1.20
 // +build !go1.20
 
 /*
@@ -19,10 +20,10 @@
 package ast
 
 import (
-    `unsafe`
-    `unicode/utf8`
+	"unicode/utf8"
+	"unsafe"
 
-    `github.com/bytedance/sonic/internal/rt`
+	"github.com/bytedance/sonic/internal/rt"
 )
 
 //go:noescape
@@ -40,15 +41,15 @@ func growslice(et *rt.GoType, old rt.GoSlice, cap int) rt.GoSlice
 
 //go:nosplit
 func mem2ptr(s []byte) unsafe.Pointer {
-    return (*rt.GoSlice)(unsafe.Pointer(&s)).Ptr
+	return (*rt.GoSlice)(unsafe.Pointer(&s)).Ptr
 }
 
 var (
-    //go:linkname safeSet encoding/json.safeSet
-    safeSet [utf8.RuneSelf]bool
+	//go:linkname safeSet encoding/json.safeSet
+	safeSet [utf8.RuneSelf]bool
 
-    //go:linkname hex encoding/json.hex
-    hex string
+	//go:linkname hex encoding/json.hex
+	hex string
 )
 
 //go:linkname unquoteBytes encoding/json.unquoteBytes
