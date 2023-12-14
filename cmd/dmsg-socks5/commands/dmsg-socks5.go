@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	socks5 "github.com/armon/go-socks5"
+	socks5 "github.com/confiant-inc/go-socks5"
 	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/logging"

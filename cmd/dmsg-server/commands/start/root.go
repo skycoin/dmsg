@@ -27,11 +27,13 @@ import (
 )
 
 var (
-	sf cmdutil.ServiceFlags
+	sf      cmdutil.ServiceFlags
+	limitIP int
 )
 
 func init() {
-	sf.Init(RootCmd, "dmsg_srv", "")
+	sf.Init(RootCmd, "dmsg_srv", dmsgserver.DefaultConfigPath)
+	RootCmd.Flags().IntVar(&limitIP, "limit-ip", 15, "set limitation of IPs want connect to specific dmsg-server, default value is 15")
 }
 
 // RootCmd contains commands for dmsg-server
@@ -90,6 +92,7 @@ var RootCmd = &cobra.Command{
 		srvConf := dmsg.ServerConfig{
 			MaxSessions:    conf.MaxSessions,
 			UpdateInterval: conf.UpdateInterval,
+			LimitIP:        limitIP,
 		}
 		srv := dmsg.NewServer(conf.PubKey, conf.SecKey, disc.NewHTTP(conf.Discovery, &http.Client{}, log), &srvConf, m)
 		srv.SetLogger(log)

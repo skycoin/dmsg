@@ -9,9 +9,8 @@ import (
 
 	dmsgdisc "github.com/skycoin/dmsg/cmd/dmsg-discovery/commands"
 	dmsgserver "github.com/skycoin/dmsg/cmd/dmsg-server/commands"
-	dmsgget "github.com/skycoin/dmsg/cmd/dmsgget/commands"
+	dmsgcurl "github.com/skycoin/dmsg/cmd/dmsgcurl/commands"
 	dmsghttp "github.com/skycoin/dmsg/cmd/dmsghttp/commands"
-	dmsgpost "github.com/skycoin/dmsg/cmd/dmsgpost/commands"
 	dmsgptycli "github.com/skycoin/dmsg/cmd/dmsgpty-cli/commands"
 	dmsgptyhost "github.com/skycoin/dmsg/cmd/dmsgpty-host/commands"
 	dmsgptyui "github.com/skycoin/dmsg/cmd/dmsgpty-ui/commands"
@@ -27,9 +26,8 @@ func init() {
 		dmsgptyCmd,
 		dmsgdisc.RootCmd,
 		dmsgserver.RootCmd,
-		dmsgget.RootCmd,
 		dmsghttp.RootCmd,
-		dmsgpost.RootCmd,
+		dmsgcurl.RootCmd,
 	)
 	var helpflag bool
 	RootCmd.SetUsageTemplate(help)

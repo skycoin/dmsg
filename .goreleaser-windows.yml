@@ -15,10 +15,29 @@ before:
 env:
   - CGO_ENABLED=0
 
-common_flags: >
-  -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}}
-  -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}}
-  -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+  - id: dmsgcurl
+    binary: dmsgcurl
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - 386
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/dmsgcurl/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
+  - id: dmsgpty-ui
+    binary: dmsgpty-ui
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - 386
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/dmsgpty-ui/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
 common_build: &common_build
   goos:
@@ -68,12 +87,30 @@ builds: &builds
     <<: *common_build
   {{ end }}
 
+  - id: dmsgweb
+    binary: dmsgweb
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - 386
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/dmsgweb/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
 archives:
   - id: archive
     format: zip
     wrap_in_directory: false
     name_template: 'dmsg-v{{ .Version }}-{{ .Os }}-{{ .Arch }}'
-    builds: *builds
+    builds:
+      - dmsg-discovery
+      - dmsg-server
+      - dmsgcurl
+      - dmsgpty-cli
+      - dmsgpty-ui
+      - dmsgpty-host
     allow_different_binary_count: true
 
 checksum:

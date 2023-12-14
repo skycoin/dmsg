@@ -20,11 +20,17 @@ common_flags: >
   -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}}
   -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
-common_build: &common_build
-  goos:
-    - darwin
-  main: ./cmd/{{ .name }}/
-  ldflags: *common_flags
+  - id: dmsgcurl
+    binary: dmsgcurl
+    goos:
+      - darwin
+    goarch:
+      - arm64
+      - amd64
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/dmsgcurl/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
 targets:
   - name: dmsg-discovery
@@ -68,12 +74,31 @@ builds: &builds
     <<: *common_build
   {{ end }}
 
+  - id: dmsgweb
+    binary: dmsgweb
+    goos:
+      - darwin
+    goarch:
+      - arm64
+      - amd64
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/dmsgweb/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
 archives:
   - id: archive
     format: tar.gz
     wrap_in_directory: false
     name_template: 'dmsg-v{{ .Version }}-{{ .Os }}-{{ .Arch }}'
-    builds: *builds
+    builds:
+      - dmsg-discovery
+      - dmsg-server
+      - dmsgpty-ui
+      - dmsgpty-host
+      - dmsgcurl
+      - dmsgpty-cli
+      - dmsgweb
     allow_different_binary_count: true
 
 checksum:
