@@ -45,12 +45,14 @@ var (
 	pk                cipher.PubKey
 	sk                cipher.SecKey
 	dmsgPort          uint16
+	authPassphrase    string
 )
 
 func init() {
 	sf.Init(RootCmd, "dmsg_disc", "")
 
 	RootCmd.Flags().StringVarP(&addr, "addr", "a", ":9090", "address to bind to")
+	RootCmd.Flags().StringVar(&authPassphrase, "auth", "", "auth passphrase as simple auth for official dmsg servers registration")
 	RootCmd.Flags().StringVar(&redisURL, "redis", store.DefaultURL, "connections string for a redis store")
 	RootCmd.Flags().StringVar(&whitelistKeys, "whitelist-keys", "", "list of whitelisted keys of network monitor used for deregistration")
 	RootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
@@ -111,7 +113,7 @@ var RootCmd = &cobra.Command{
 
 		// we enable metrics middleware if address is passed
 		enableMetrics := sf.MetricsAddr != ""
-		a := api.New(log, db, m, testMode, enableLoadTesting, enableMetrics, dmsgAddr)
+		a := api.New(log, db, m, testMode, enableLoadTesting, enableMetrics, dmsgAddr, authPassphrase)
 
 		var whitelistPKs []string
 		if whitelistKeys != "" {

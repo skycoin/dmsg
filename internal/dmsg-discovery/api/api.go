@@ -22,6 +22,7 @@ import (
 	"github.com/skycoin/dmsg/internal/discmetrics"
 	"github.com/skycoin/dmsg/internal/dmsg-discovery/store"
 	"github.com/skycoin/dmsg/pkg/disc"
+	"github.com/skycoin/dmsg/pkg/dmsg"
 )
 
 var log = logging.MustGetLogger("dmsg-discovery")
@@ -44,10 +45,11 @@ type API struct {
 	enableLoadTesting           bool
 	dmsgAddr                    string
 	DmsgServers                 []string
+	authPassphrase              string
 }
 
 // New returns a new API object, which can be started as a server
-func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMode, enableLoadTesting, enableMetrics bool, dmsgAddr string) *API {
+func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMode, enableLoadTesting, enableMetrics bool, dmsgAddr, authPassphrase string) *API {
 	if log != nil {
 		log = logging.MustGetLogger("dmsg_disc")
 	}
@@ -67,6 +69,7 @@ func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMod
 		reqsInFlightCountMiddleware: metricsutil.NewRequestsInFlightCountMiddleware(),
 		dmsgAddr:                    dmsgAddr,
 		DmsgServers:                 []string{},
+		authPassphrase:              authPassphrase,
 	}
 
 	r.Use(middleware.RequestID)
@@ -251,7 +254,6 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 		if timeout := r.URL.Query().Get("timeout"); timeout == "true" {
 			entryTimeout = store.DefaultTimeout
 		}
-
 		entry := new(disc.Entry)
 		if err := json.NewDecoder(r.Body).Decode(entry); err != nil {
 			a.handleError(w, r, disc.ErrUnexpected)
@@ -284,6 +286,14 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 			if err := entry.VerifySignature(); err != nil {
 				a.handleError(w, r, disc.ErrUnauthorized)
 				return
+			}
+		}
+
+		if entry.Server != nil {
+			if entry.Server.ServerType == a.authPassphrase {
+				entry.Server.ServerType = dmsg.DefaultOfficialDmsgServerType
+			} else {
+				entry.Server.ServerType = dmsg.DefaultCommunityDmsgServerType
 			}
 		}
 
