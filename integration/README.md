@@ -20,7 +20,7 @@
     ```
 5. Start `dmsg-server`.
     ```bash
-    $ ./bin/dmsg-server ./integration/configs/dmsgserver1.json
+    $ ./bin/dmsg-server start ./integration/configs/dmsgserver1.json
     ```
 
 ## Put dmsg-server under load
