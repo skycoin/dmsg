@@ -46,6 +46,7 @@ type API struct {
 	dmsgAddr                    string
 	DmsgServers                 []string
 	authPassphrase              string
+	OfficialServers             map[string]bool
 }
 
 // New returns a new API object, which can be started as a server
@@ -70,6 +71,7 @@ func New(log logrus.FieldLogger, db store.Storer, m discmetrics.Metrics, testMod
 		dmsgAddr:                    dmsgAddr,
 		DmsgServers:                 []string{},
 		authPassphrase:              authPassphrase,
+		OfficialServers:             make(map[string]bool),
 	}
 
 	r.Use(middleware.RequestID)
@@ -290,7 +292,7 @@ func (a *API) setEntry() func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if entry.Server != nil {
-			if entry.Server.ServerType == a.authPassphrase {
+			if entry.Server.ServerType == a.authPassphrase || a.OfficialServers[entry.Static.Hex()] {
 				entry.Server.ServerType = dmsg.DefaultOfficialDmsgServerType
 			} else {
 				entry.Server.ServerType = dmsg.DefaultCommunityDmsgServerType
