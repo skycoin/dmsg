@@ -10,6 +10,7 @@ updates may be generated with scripts/changelog.sh <PR#lowest> <PR#highest>
 
 ### Added
 - add `--auth` flag as simple authentication logic for recognize official dmsg servers
+- add `--official-server` flag for fetch dmsg servers list as official
 - add `serverType` in dmsg server entries for showing type of it, as `official` or `community`
 
 ## 1.3.14
