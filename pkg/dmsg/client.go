@@ -175,7 +175,7 @@ func (ce *Client) Serve(ctx context.Context) {
 					entries = entries[ind : ind+1]
 				}
 			}
-		} else if ctx.Value("setupNode").(bool) {
+		} else if ctx.Value("setupNode") != nil {
 			entries, err = ce.discoverServers(cancellabelCtx, true)
 			if err != nil {
 				ce.log.WithError(err).Warn("Failed to discover dmsg servers.")
