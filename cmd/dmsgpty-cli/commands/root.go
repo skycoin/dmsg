@@ -65,41 +65,41 @@ var RootCmd = &cobra.Command{
 		// case 2 : config file is old (already contains "wl" key)
 		// - load config file into memory to manipulate whitelists
 		// - writes changes back to config file
-			println(confPath)
+		println(confPath)
 
-			if _, err := os.Stat(confPath); err != nil {
-				cli.Log.Fatalf("Config file %s not found.", confPath)
-			}
+		if _, err := os.Stat(confPath); err != nil {
+			cli.Log.Fatalf("Config file %s not found.", confPath)
+		}
 
-			// read file using ioutil
-			file, err := os.ReadFile(confPath) //nolint:gosec
+		// read file using ioutil
+		file, err := os.ReadFile(confPath) //nolint:gosec
+		if err != nil {
+			cli.Log.Fatalln("Unable to read ", confPath, err)
+		}
+
+		// store config.json into conf to manipulate whitelists
+		err = json.Unmarshal(file, &conf)
+		if err != nil {
+			cli.Log.Errorln(err)
+			// ignoring this error
+			b, err := json.MarshalIndent(conf, "", "  ")
 			if err != nil {
-				cli.Log.Fatalln("Unable to read ", confPath, err)
+				cli.Log.Fatalln("Unable to marshal conf")
 			}
 
-			// store config.json into conf to manipulate whitelists
-			err = json.Unmarshal(file, &conf)
+			// write to config.json
+			err = os.WriteFile(confPath, b, 0600)
 			if err != nil {
-				cli.Log.Errorln(err)
-				// ignoring this error
-				b, err := json.MarshalIndent(conf, "", "  ")
-				if err != nil {
-					cli.Log.Fatalln("Unable to marshal conf")
-				}
-
-				// write to config.json
-				err = os.WriteFile(confPath, b, 0600)
-				if err != nil {
-					cli.Log.Fatalln("Unable to write", confPath, err)
-				}
+				cli.Log.Fatalln("Unable to write", confPath, err)
 			}
-			conf.CLIAddr = dmsgpty.ParseWindowsEnv(conf.CLIAddr)
-			if conf.CLIAddr != "" {
-				cli.Addr = conf.CLIAddr
-			}
-			if conf.CLINet != "" {
-				cli.Net = conf.CLINet
-			}
+		}
+		conf.CLIAddr = dmsgpty.ParseWindowsEnv(conf.CLIAddr)
+		if conf.CLIAddr != "" {
+			cli.Addr = conf.CLIAddr
+		}
+		if conf.CLINet != "" {
+			cli.Net = conf.CLINet
+		}
 		if remoteAddr.Port == 0 {
 			remoteAddr.Port = dmsgpty.DefaultPort
 		}
