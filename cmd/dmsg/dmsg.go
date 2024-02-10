@@ -63,7 +63,7 @@ var dmsgptyCmd = &cobra.Command{
 	┌─┐┌┬┐┬ ┬
 	├─┘ │ └┬┘
 	┴   ┴  ┴
-  `+"DMSG pseudoterminal (pty)",
+  ` + "DMSG pseudoterminal (pty)",
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
