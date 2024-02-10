@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/spf13/cobra"
@@ -23,26 +22,22 @@ var (
 )
 
 func init() {
-	RootCmd.PersistentFlags().StringVar(&hostNet, "hnet", hostNet, "dmsgpty host network name")
-	RootCmd.PersistentFlags().StringVar(&hostAddr, "haddr", hostAddr, "dmsgpty host network address")
-	RootCmd.PersistentFlags().StringVar(&addr, "addr", addr, "network address to serve UI on")
-	RootCmd.PersistentFlags().StringVar(&conf.CmdName, "cmd", conf.CmdName, "command to run when initiating pty")
-	RootCmd.PersistentFlags().StringArrayVar(&conf.CmdArgs, "arg", conf.CmdArgs, "command arguments to include when initiating pty")
-	var helpflag bool
-	RootCmd.SetUsageTemplate(help)
-	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for dmsgpty-ui")
-	RootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
-	RootCmd.PersistentFlags().MarkHidden("help") //nolint
+	RootCmd.Flags().StringVar(&hostNet, "hnet", hostNet, "dmsgpty host network name")
+	RootCmd.Flags().StringVar(&hostAddr, "haddr", hostAddr, "dmsgpty host network address")
+	RootCmd.Flags().StringVar(&addr, "addr", addr, "network address to serve UI on")
+	RootCmd.Flags().StringVar(&conf.CmdName, "cmd", conf.CmdName, "command to run when initiating pty")
+	RootCmd.Flags().StringArrayVar(&conf.CmdArgs, "arg", conf.CmdArgs, "command arguments to include when initiating pty")
 }
 
 // RootCmd contains commands to start a dmsgpty-ui server for a dmsgpty-host
 var RootCmd = &cobra.Command{
 	Use:   "ui",
-	Short: "hosts a UI server for a dmsgpty-host",
+	Short: "DMSG pseudoterminal GUI",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐┌─┐┌┬┐┬ ┬   ┬ ┬┬
 	 │││││└─┐│ ┬├─┘ │ └┬┘───│ ││
-	─┴┘┴ ┴└─┘└─┘┴   ┴  ┴    └─┘┴`,
+	─┴┘┴ ┴└─┘└─┘┴   ┴  ┴    └─┘┴
+  ` + "DMSG pseudoterminal GUI",
 	Run: func(cmd *cobra.Command, args []string) {
 		if _, err := buildinfo.Get().WriteTo(log.Writer()); err != nil {
 			log.Printf("Failed to output build info: %v", err)
@@ -71,19 +66,6 @@ var RootCmd = &cobra.Command{
 
 // Execute executes the root command.
 func Execute() {
-	cc.Init(&cc.Config{
-		RootCmd:       RootCmd,
-		Headings:      cc.HiBlue + cc.Bold, //+ cc.Underline,
-		Commands:      cc.HiBlue + cc.Bold,
-		CmdShortDescr: cc.HiBlue,
-		Example:       cc.HiBlue + cc.Italic,
-		ExecName:      cc.HiBlue + cc.Bold,
-		Flags:         cc.HiBlue + cc.Bold,
-		//FlagsDataType: cc.HiBlue,
-		FlagsDescr:      cc.HiBlue,
-		NoExtraNewlines: true,
-		NoBottomNewline: true,
-	})
 	if err := RootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}

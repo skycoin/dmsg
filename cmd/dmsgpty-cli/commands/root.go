@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 
-	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/spf13/cobra"
@@ -36,21 +35,17 @@ func init() {
 	RootCmd.Flags().Var(&remoteAddr, "addr", "remote dmsg address of format 'pk:port'\n If unspecified, the pty will start locally\n")
 	RootCmd.Flags().StringVarP(&cmdName, "cmd", "c", cmdName, "name of command to run\n")
 	RootCmd.Flags().StringSliceVarP(&cmdArgs, "args", "a", cmdArgs, "command arguments")
-	var helpflag bool
-	RootCmd.SetUsageTemplate(help)
-	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for dmsgpty-cli")
-	RootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
-	RootCmd.PersistentFlags().MarkHidden("help") //nolint
 }
 
 // RootCmd contains commands for dmsgpty-cli; which interacts with the dmsgpty-host instance (i.e. skywire-visor)
 var RootCmd = &cobra.Command{
 	Use:   "cli",
-	Short: "Run commands over dmsg",
+	Short: "DMSG pseudoterminal command line interface",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐┌─┐┌┬┐┬ ┬   ┌─┐┬  ┬
 	 │││││└─┐│ ┬├─┘ │ └┬┘───│  │  │
-	─┴┘┴ ┴└─┘└─┘┴   ┴  ┴    └─┘┴─┘┴`,
+	─┴┘┴ ┴└─┘└─┘┴   ┴  ┴    └─┘┴─┘┴
+  ` + "DMSG pseudoterminal command line interface",
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
@@ -123,30 +118,7 @@ var RootCmd = &cobra.Command{
 
 // Execute executes the root command.
 func Execute() {
-	cc.Init(&cc.Config{
-		RootCmd:       RootCmd,
-		Headings:      cc.HiBlue + cc.Bold, //+ cc.Underline,
-		Commands:      cc.HiBlue + cc.Bold,
-		CmdShortDescr: cc.HiBlue,
-		Example:       cc.HiBlue + cc.Italic,
-		ExecName:      cc.HiBlue + cc.Bold,
-		Flags:         cc.HiBlue + cc.Bold,
-		//FlagsDataType: cc.HiBlue,
-		FlagsDescr:      cc.HiBlue,
-		NoExtraNewlines: true,
-		NoBottomNewline: true,
-	})
 	if err := RootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
 }
-
-const help = "Usage:\r\n" +
-	"  {{.UseLine}}{{if .HasAvailableSubCommands}}{{end}} {{if gt (len .Aliases) 0}}\r\n\r\n" +
-	"{{.NameAndAliases}}{{end}}{{if .HasAvailableSubCommands}}\r\n\r\n" +
-	"Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand)}}\r\n  " +
-	"{{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}\r\n\r\n" +
-	"Flags:\r\n" +
-	"{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}\r\n\r\n" +
-	"Global Flags:\r\n" +
-	"{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}\r\n\r\n"

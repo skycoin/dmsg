@@ -14,6 +14,7 @@ import (
 	dmsgptycli "github.com/skycoin/dmsg/cmd/dmsgpty-cli/commands"
 	dmsgptyhost "github.com/skycoin/dmsg/cmd/dmsgpty-host/commands"
 	dmsgptyui "github.com/skycoin/dmsg/cmd/dmsgpty-ui/commands"
+	dmsgweb "github.com/skycoin/dmsg/cmd/dmsgweb/commands"
 )
 
 func init() {
@@ -22,12 +23,14 @@ func init() {
 		dmsgptyhost.RootCmd,
 		dmsgptyui.RootCmd,
 	)
+	dmsgcurl.RootCmd.Use = "curl [OPTIONS] ... [URL]"
 	RootCmd.AddCommand(
 		dmsgptyCmd,
 		dmsgdisc.RootCmd,
 		dmsgserver.RootCmd,
 		dmsghttp.RootCmd,
 		dmsgcurl.RootCmd,
+		dmsgweb.RootCmd,
 	)
 	var helpflag bool
 	RootCmd.SetUsageTemplate(help)
@@ -41,11 +44,12 @@ func init() {
 // RootCmd contains all binaries which may be separately compiled as subcommands
 var RootCmd = &cobra.Command{
 	Use:   "dmsg",
-	Short: "Dmsg services & utilities",
+	Short: "DMSG services & utilities",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐
 	 │││││└─┐│ ┬
-	─┴┘┴ ┴└─┘└─┘ `,
+	─┴┘┴ ┴└─┘└─┘
+  ` + "DMSG services & utilities",
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
@@ -54,11 +58,12 @@ var RootCmd = &cobra.Command{
 
 var dmsgptyCmd = &cobra.Command{
 	Use:   "pty",
-	Short: "Dmsg pseudoterminal (pty)",
+	Short: "DMSG pseudoterminal (pty)",
 	Long: `
 	┌─┐┌┬┐┬ ┬
 	├─┘ │ └┬┘
-	┴   ┴  ┴ `,
+	┴   ┴  ┴
+  `+"DMSG pseudoterminal (pty)",
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
