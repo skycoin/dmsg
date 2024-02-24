@@ -4,6 +4,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -30,6 +31,12 @@ var (
 	dmsgPort  uint16
 )
 
+// Execute executes root CLI command.
+func Execute() {
+	if err := RootCmd.Execute(); err != nil {
+		log.Fatal("Failed to execute command: ", err)
+	}
+}
 func init() {
 	RootCmd.AddCommand(
 		serveCmd,

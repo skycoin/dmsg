@@ -30,7 +30,7 @@ func main() {
 		NoExtraNewlines: true,
 		NoBottomNewline: true,
 	})
-	commands.RootCmd.Execute()
+	commands.Execute()
 }
 
 const help = "Usage:\r\n" +
