@@ -72,7 +72,7 @@ var (
 	webPort            string
 	proxyPort          string
 	addProxy           string
-	resolveDmsgAddr           string
+	resolveDmsgAddr    string
 	wg                 sync.WaitGroup
 )
 
@@ -151,58 +151,58 @@ var RootCmd = &cobra.Command{
 
 		httpC = http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
 
-if resolveDmsgAddr == "" {
-		// Create a SOCKS5 server with custom name resolution
-		conf := &socks5.Config{
-			Resolver: &customResolver{},
-			Dial: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				host, _, err := net.SplitHostPort(addr)
-				if err != nil {
-					return nil, err
-				}
-				regexPattern := `\` + filterDomainSuffix + `(:[0-9]+)?$`
-				match, _ := regexp.MatchString(regexPattern, host) //nolint:errcheck
-				if match {
-					port, ok := ctx.Value("port").(string)
-					if !ok {
-						port = webPort
+		if resolveDmsgAddr == "" {
+			// Create a SOCKS5 server with custom name resolution
+			conf := &socks5.Config{
+				Resolver: &customResolver{},
+				Dial: func(ctx context.Context, network, addr string) (net.Conn, error) {
+					host, _, err := net.SplitHostPort(addr)
+					if err != nil {
+						return nil, err
 					}
-					addr = "localhost:" + port
-				} else {
-					if addProxy != "" {
-						// Fallback to another SOCKS5 proxy
-						dialer, err := proxy.SOCKS5("tcp", addProxy, nil, proxy.Direct)
-						if err != nil {
-							return nil, err
+					regexPattern := `\` + filterDomainSuffix + `(:[0-9]+)?$`
+					match, _ := regexp.MatchString(regexPattern, host) //nolint:errcheck
+					if match {
+						port, ok := ctx.Value("port").(string)
+						if !ok {
+							port = webPort
 						}
-						return dialer.Dial(network, addr)
+						addr = "localhost:" + port
+					} else {
+						if addProxy != "" {
+							// Fallback to another SOCKS5 proxy
+							dialer, err := proxy.SOCKS5("tcp", addProxy, nil, proxy.Direct)
+							if err != nil {
+								return nil, err
+							}
+							return dialer.Dial(network, addr)
+						}
 					}
-				}
-				dmsgWebLog.Debug("Dialing address:", addr)
-				return net.Dial(network, addr)
-			},
-		}
-
-		// Start the SOCKS5 server
-		socksAddr := "127.0.0.1:" + proxyPort
-		log.Printf("SOCKS5 proxy server started on %s", socksAddr)
-
-		server, err := socks5.New(conf)
-		if err != nil {
-			log.Fatalf("Failed to create SOCKS5 server: %v", err)
-		}
-
-		wg.Add(1)
-		go func() {
-			dmsgWebLog.Debug("Serving SOCKS5 proxy on " + socksAddr)
-			err := server.ListenAndServe("tcp", socksAddr)
-			if err != nil {
-				log.Fatalf("Failed to start SOCKS5 server: %v", err)
+					dmsgWebLog.Debug("Dialing address:", addr)
+					return net.Dial(network, addr)
+				},
 			}
-			defer server.Close()
-			dmsgWebLog.Debug("Stopped serving SOCKS5 proxy on " + socksAddr)
-		}()
-}
+
+			// Start the SOCKS5 server
+			socksAddr := "127.0.0.1:" + proxyPort
+			log.Printf("SOCKS5 proxy server started on %s", socksAddr)
+
+			server, err := socks5.New(conf)
+			if err != nil {
+				log.Fatalf("Failed to create SOCKS5 server: %v", err)
+			}
+
+			wg.Add(1)
+			go func() {
+				dmsgWebLog.Debug("Serving SOCKS5 proxy on " + socksAddr)
+				err := server.ListenAndServe("tcp", socksAddr)
+				if err != nil {
+					log.Fatalf("Failed to start SOCKS5 server: %v", err)
+				}
+				defer server.Close()
+				dmsgWebLog.Debug("Stopped serving SOCKS5 proxy on " + socksAddr)
+			}()
+		}
 		r := gin.New()
 
 		r.Use(gin.Recovery())
@@ -213,17 +213,17 @@ if resolveDmsgAddr == "" {
 			var urlStr string
 			if resolveDmsgAddr != "" {
 				urlStr = fmt.Sprintf("dmsg://%s%s", resolveDmsgAddr, c.Param("path"))
-				} else {
-
-			hostParts := strings.Split(c.Request.Host, ":")
-			var dmsgp string
-			if len(hostParts) > 1 {
-				dmsgp = hostParts[1]
 			} else {
-				dmsgp = "80"
+
+				hostParts := strings.Split(c.Request.Host, ":")
+				var dmsgp string
+				if len(hostParts) > 1 {
+					dmsgp = hostParts[1]
+				} else {
+					dmsgp = "80"
+				}
+				urlStr = fmt.Sprintf("dmsg://%s:%s%s", strings.TrimRight(hostParts[0], filterDomainSuffix), dmsgp, c.Param("path"))
 			}
-			urlStr = fmt.Sprintf("dmsg://%s:%s%s", strings.TrimRight(hostParts[0], filterDomainSuffix), dmsgp, c.Param("path"))
-		}
 
 			maxSize := int64(1024)
 
