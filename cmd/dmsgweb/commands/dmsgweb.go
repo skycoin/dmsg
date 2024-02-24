@@ -72,6 +72,7 @@ var (
 	webPort            string
 	proxyPort          string
 	addProxy           string
+	resolveDmsgAddr           string
 	wg                 sync.WaitGroup
 )
 
@@ -81,6 +82,7 @@ func init() {
 	RootCmd.Flags().StringVarP(&proxyPort, "socks", "q", "4445", "port to serve the socks5 proxy")
 	RootCmd.Flags().StringVarP(&addProxy, "proxy", "r", "", "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)")
 	RootCmd.Flags().StringVarP(&webPort, "port", "p", "8080", "port to serve the web application")
+	RootCmd.Flags().StringVarP(&resolveDmsgAddr, "resolve", "t", "", "resolve the specified dmsg address:port on the local port & disable proxy")
 	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
@@ -149,6 +151,7 @@ var RootCmd = &cobra.Command{
 
 		httpC = http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
 
+if resolveDmsgAddr == "" {
 		// Create a SOCKS5 server with custom name resolution
 		conf := &socks5.Config{
 			Resolver: &customResolver{},
@@ -199,7 +202,7 @@ var RootCmd = &cobra.Command{
 			defer server.Close()
 			dmsgWebLog.Debug("Stopped serving SOCKS5 proxy on " + socksAddr)
 		}()
-
+}
 		r := gin.New()
 
 		r.Use(gin.Recovery())
@@ -207,6 +210,11 @@ var RootCmd = &cobra.Command{
 		r.Use(loggingMiddleware())
 
 		r.Any("/*path", func(c *gin.Context) {
+			var urlStr string
+			if resolveDmsgAddr != "" {
+				urlStr = fmt.Sprintf("dmsg://%s%s", resolveDmsgAddr, c.Param("path"))
+				} else {
+
 			hostParts := strings.Split(c.Request.Host, ":")
 			var dmsgp string
 			if len(hostParts) > 1 {
@@ -214,7 +222,8 @@ var RootCmd = &cobra.Command{
 			} else {
 				dmsgp = "80"
 			}
-			urlStr := fmt.Sprintf("dmsg://%s:%s%s", strings.TrimRight(hostParts[0], filterDomainSuffix), dmsgp, c.Param("path"))
+			urlStr = fmt.Sprintf("dmsg://%s:%s%s", strings.TrimRight(hostParts[0], filterDomainSuffix), dmsgp, c.Param("path"))
+		}
 
 			maxSize := int64(1024)
 
