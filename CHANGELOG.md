@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 updates may be generated with scripts/changelog.sh <PR#lowest> <PR#highest>
 
+## 1.3.17
+
+### Added
+- add `--auth` flag as simple authentication logic for recognize official dmsg servers
+- add `--official-server` flag for fetch dmsg servers list as official
+- add `serverType` in dmsg server entries for showing type of it, as `official` or `community`
+
 ## 1.3.14
 
 ### Added
