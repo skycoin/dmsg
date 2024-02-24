@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"net/url"
@@ -15,7 +16,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
@@ -41,17 +41,17 @@ var (
 	dmsgcurlTries  int
 	dmsgcurlWait   int
 	dmsgcurlOutput string
-	stdout         bool
+	replace        bool
 )
 
 func init() {
 	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "c", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
-	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
+	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "fatal", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
 	RootCmd.Flags().StringVarP(&dmsgcurlData, "data", "d", "", "dmsghttp POST data")
 	//	RootCmd.Flags().StringVarP(&dmsgcurlHeader, "header", "H", "", "Pass custom header(s) to server")
-	RootCmd.Flags().StringVarP(&dmsgcurlOutput, "out", "o", ".", "output filepath")
-	RootCmd.Flags().BoolVarP(&stdout, "stdout", "n", false, "output to STDOUT")
+	RootCmd.Flags().StringVarP(&dmsgcurlOutput, "out", "o", "", "output filepath")
+	RootCmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace exist file with new downloaded")
 	RootCmd.Flags().IntVarP(&dmsgcurlTries, "try", "t", 1, "download attempts (0 unlimits)")
 	RootCmd.Flags().IntVarP(&dmsgcurlWait, "wait", "w", 0, "time to wait between fetches")
 	RootCmd.Flags().StringVarP(&dmsgcurlAgent, "agent", "a", "dmsgcurl/"+buildinfo.Version(), "identify as `AGENT`")
@@ -59,21 +59,17 @@ func init() {
 		sk.Set(os.Getenv("DMSGCURL_SK")) //nolint
 	}
 	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
-	var helpflag bool
-	RootCmd.SetUsageTemplate(help)
-	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for dmsgcurl")
-	RootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
-	RootCmd.PersistentFlags().MarkHidden("help") //nolint
 }
 
 // RootCmd containsa the root dmsgcurl command
 var RootCmd = &cobra.Command{
-	Short: "dmsgcurl",
+	Short: "DMSG curl utility",
 	Use:   "dmsgcurl [OPTIONS] ... [URL]",
 	Long: `
-	┌┬┐┌┬┐┌─┐┌─┐┌─┐┬ ┬┬─┐┬  
-	 │││││└─┐│ ┬│  │ │├┬┘│  
-	─┴┘┴ ┴└─┘└─┘└─┘└─┘┴└─┴─┘`,
+	┌┬┐┌┬┐┌─┐┌─┐┌─┐┬ ┬┬─┐┬
+	 │││││└─┐│ ┬│  │ │├┬┘│
+	─┴┘┴ ┴└─┘└─┘└─┘└─┘┴└─┴─┘
+  ` + "DMSG curl utility",
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
@@ -137,8 +133,10 @@ var RootCmd = &cobra.Command{
 			}
 			fmt.Println(string(respBody))
 		} else {
-
-			file, err := parseOutputFile(dmsgcurlOutput, u.URL.Path)
+			file := os.Stdout
+			if dmsgcurlOutput != "" {
+				file, err = parseOutputFile(dmsgcurlOutput, replace)
+			}
 			if err != nil {
 				return fmt.Errorf("failed to prepare output file: %w", err)
 			}
@@ -162,23 +160,11 @@ var RootCmd = &cobra.Command{
 			httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
 
 			for i := 0; i < dmsgcurlTries; i++ {
-				if !stdout {
+				if dmsgcurlOutput != "" {
 					dmsgcurlLog.Debugf("Download attempt %d/%d ...", i, dmsgcurlTries)
-				}
-
-				if _, err := file.Seek(0, 0); err != nil {
-					return fmt.Errorf("failed to reset file: %w", err)
-				}
-				if stdout {
-					if fErr := file.Close(); fErr != nil {
-						dmsgcurlLog.WithError(fErr).Warn("Failed to close output file.")
+					if _, err := file.Seek(0, 0); err != nil {
+						return fmt.Errorf("failed to reset file: %w", err)
 					}
-					if err != nil {
-						if rErr := os.RemoveAll(file.Name()); rErr != nil {
-							dmsgcurlLog.WithError(rErr).Warn("Failed to remove output file.")
-						}
-					}
-					file = os.Stdout
 				}
 				if err := Download(ctx, dmsgcurlLog, &httpC, file, u.URL.String(), 0); err != nil {
 					dmsgcurlLog.WithError(err).Error()
@@ -243,11 +229,14 @@ func parseURL(args []string) (*URL, error) {
 	return &out, nil
 }
 
-func parseOutputFile(name string, urlPath string) (*os.File, error) {
-	stat, statErr := os.Stat(name)
+func parseOutputFile(output string, replace bool) (*os.File, error) {
+	_, statErr := os.Stat(output)
 	if statErr != nil {
 		if os.IsNotExist(statErr) {
-			f, err := os.Create(name) //nolint
+			if err := os.MkdirAll(filepath.Dir(output), fs.ModePerm); err != nil {
+				return nil, err
+			}
+			f, err := os.Create(output) //nolint
 			if err != nil {
 				return nil, err
 			}
@@ -255,15 +244,9 @@ func parseOutputFile(name string, urlPath string) (*os.File, error) {
 		}
 		return nil, statErr
 	}
-
-	if stat.IsDir() {
-		f, err := os.Create(filepath.Join(name, urlPath)) //nolint
-		if err != nil {
-			return nil, err
-		}
-		return f, nil
+	if replace {
+		return os.OpenFile(filepath.Clean(output), os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	}
-
 	return nil, os.ErrExist
 }
 
@@ -357,7 +340,7 @@ func (pw *ProgressWriter) Write(p []byte) (int, error) {
 	current := atomic.AddInt64(&pw.Current, int64(n))
 	total := atomic.LoadInt64(&pw.Total)
 	pc := fmt.Sprintf("%d%%", current*100/total)
-	if !stdout {
+	if dmsgcurlOutput != "" {
 		fmt.Printf("Downloading: %d/%dB (%s)", current, total, pc)
 		if current != total {
 			fmt.Print("\r")
@@ -371,30 +354,7 @@ func (pw *ProgressWriter) Write(p []byte) (int, error) {
 
 // Execute executes root CLI command.
 func Execute() {
-	cc.Init(&cc.Config{
-		RootCmd:       RootCmd,
-		Headings:      cc.HiBlue + cc.Bold, //+ cc.Underline,
-		Commands:      cc.HiBlue + cc.Bold,
-		CmdShortDescr: cc.HiBlue,
-		Example:       cc.HiBlue + cc.Italic,
-		ExecName:      cc.HiBlue + cc.Bold,
-		Flags:         cc.HiBlue + cc.Bold,
-		//FlagsDataType: cc.HiBlue,
-		FlagsDescr:      cc.HiBlue,
-		NoExtraNewlines: true,
-		NoBottomNewline: true,
-	})
 	if err := RootCmd.Execute(); err != nil {
 		log.Fatal("Failed to execute command: ", err)
 	}
 }
-
-const help = "Usage:\r\n" +
-	"  {{.UseLine}}{{if .HasAvailableSubCommands}}{{end}} {{if gt (len .Aliases) 0}}\r\n\r\n" +
-	"{{.NameAndAliases}}{{end}}{{if .HasAvailableSubCommands}}\r\n\r\n" +
-	"Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand)}}\r\n  " +
-	"{{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}\r\n\r\n" +
-	"Flags:\r\n" +
-	"{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}\r\n\r\n" +
-	"Global Flags:\r\n" +
-	"{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}\r\n\r\n"

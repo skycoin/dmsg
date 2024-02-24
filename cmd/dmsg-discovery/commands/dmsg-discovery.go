@@ -3,6 +3,7 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -11,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	cc "github.com/ivanpirog/coloredcobra"
 	proxyproto "github.com/pires/go-proxyproto"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
@@ -45,12 +45,16 @@ var (
 	pk                cipher.PubKey
 	sk                cipher.SecKey
 	dmsgPort          uint16
+	authPassphrase    string
+	officialServers   string
 )
 
 func init() {
 	sf.Init(RootCmd, "dmsg_disc", "")
 
 	RootCmd.Flags().StringVarP(&addr, "addr", "a", ":9090", "address to bind to")
+	RootCmd.Flags().StringVar(&authPassphrase, "auth", "", "auth passphrase as simple auth for official dmsg servers registration")
+	RootCmd.Flags().StringVar(&officialServers, "official-servers", "", "list of official dmsg servers keys separated by comma")
 	RootCmd.Flags().StringVar(&redisURL, "redis", store.DefaultURL, "connections string for a redis store")
 	RootCmd.Flags().StringVar(&whitelistKeys, "whitelist-keys", "", "list of whitelisted keys of network monitor used for deregistration")
 	RootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
@@ -59,21 +63,18 @@ func init() {
 	RootCmd.Flags().BoolVar(&testEnvironment, "test-environment", false, "distinguished between prod and test environment")
 	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key\n")
 	RootCmd.Flags().Uint16Var(&dmsgPort, "dmsgPort", dmsg.DefaultDmsgHTTPPort, "dmsg port value\r")
-	var helpflag bool
-	RootCmd.SetUsageTemplate(help)
-	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for dmsg-discovery")
-	RootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
-	RootCmd.PersistentFlags().MarkHidden("help") //nolint
+
 }
 
 // RootCmd contains commands for dmsg-discovery
 var RootCmd = &cobra.Command{
 	Use:   "disc",
-	Short: "Dmsg Discovery Server for skywire",
+	Short: "DMSG Discovery Server",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐  ┌┬┐┬┌─┐┌─┐┌─┐┬  ┬┌─┐┬─┐┬ ┬
 	 │││││└─┐│ ┬───│││└─┐│  │ │└┐┌┘├┤ ├┬┘└┬┘
-	─┴┘┴ ┴└─┘└─┘  ─┴┘┴└─┘└─┘└─┘ └┘ └─┘┴└─ ┴ `,
+	─┴┘┴ ┴└─┘└─┘  ─┴┘┴└─┘└─┘└─┘ └┘ └─┘┴└─ ┴
+  ` + "DMSG Discovery Server",
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
@@ -111,7 +112,7 @@ var RootCmd = &cobra.Command{
 
 		// we enable metrics middleware if address is passed
 		enableMetrics := sf.MetricsAddr != ""
-		a := api.New(log, db, m, testMode, enableLoadTesting, enableMetrics, dmsgAddr)
+		a := api.New(log, db, m, testMode, enableLoadTesting, enableMetrics, dmsgAddr, authPassphrase)
 
 		var whitelistPKs []string
 		if whitelistKeys != "" {
@@ -126,6 +127,11 @@ var RootCmd = &cobra.Command{
 
 		for _, v := range whitelistPKs {
 			api.WhitelistPKs.Set(v)
+		}
+
+		a.OfficialServers, err = fetchOfficialDmsgServers(officialServers)
+		if err != nil {
+			log.Info(err)
 		}
 
 		go a.RunBackgroundTasks(ctx, log)
@@ -153,6 +159,13 @@ var RootCmd = &cobra.Command{
 
 			defer closeDmsgDC()
 
+			go func() {
+				for {
+					a.DmsgServers = dmsgDC.ConnectedServersPK()
+					time.Sleep(time.Second)
+				}
+			}()
+
 			go updateServers(ctx, a, dClient, dmsgDC, log)
 
 			go func() {
@@ -169,33 +182,10 @@ var RootCmd = &cobra.Command{
 
 // Execute executes root CLI command.
 func Execute() {
-	cc.Init(&cc.Config{
-		RootCmd:       RootCmd,
-		Headings:      cc.HiBlue + cc.Bold, //+ cc.Underline,
-		Commands:      cc.HiBlue + cc.Bold,
-		CmdShortDescr: cc.HiBlue,
-		Example:       cc.HiBlue + cc.Italic,
-		ExecName:      cc.HiBlue + cc.Bold,
-		Flags:         cc.HiBlue + cc.Bold,
-		//FlagsDataType: cc.HiBlue,
-		FlagsDescr:      cc.HiBlue,
-		NoExtraNewlines: true,
-		NoBottomNewline: true,
-	})
 	if err := RootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
 }
-
-const help = "Usage:\r\n" +
-	"  {{.UseLine}}{{if .HasAvailableSubCommands}}{{end}} {{if gt (len .Aliases) 0}}\r\n\r\n" +
-	"{{.NameAndAliases}}{{end}}{{if .HasAvailableSubCommands}}\r\n\r\n" +
-	"Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand)}}\r\n  " +
-	"{{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}\r\n\r\n" +
-	"Flags:\r\n" +
-	"{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}\r\n\r\n" +
-	"Global Flags:\r\n" +
-	"{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}\r\n\r\n"
 
 func prepareDB(ctx context.Context, log *logging.Logger) store.Storer {
 	dbConf := &store.Config{
@@ -269,4 +259,16 @@ func listenAndServe(addr string, handler http.Handler) error {
 	proxyListener := &proxyproto.Listener{Listener: ln}
 	defer proxyListener.Close() // nolint:errcheck
 	return srv.Serve(proxyListener)
+}
+
+func fetchOfficialDmsgServers(officialServers string) (map[string]bool, error) {
+	dmsgServers := make(map[string]bool)
+	if officialServers != "" {
+		dmsgServersList := strings.Split(officialServers, ",")
+		for _, v := range dmsgServersList {
+			dmsgServers[v] = true
+		}
+		return dmsgServers, nil
+	}
+	return dmsgServers, errors.New("no official dmsg server list passed by --official-server flag")
 }

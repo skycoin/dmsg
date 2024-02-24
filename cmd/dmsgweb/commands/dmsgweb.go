@@ -18,7 +18,6 @@ import (
 
 	"github.com/confiant-inc/go-socks5"
 	"github.com/gin-gonic/gin"
-	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
@@ -64,7 +63,6 @@ func (r *customResolver) Resolve(ctx context.Context, name string) (context.Cont
 
 var (
 	httpC              http.Client
-	httpClient         http.Client
 	dmsgDisc           string
 	dmsgSessions       int
 	filterDomainSuffix string
@@ -90,21 +88,17 @@ func init() {
 		sk.Set(os.Getenv("DMSGGET_SK")) //nolint
 	}
 	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
-	var helpflag bool
-	RootCmd.SetUsageTemplate(help)
-	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for dmsgweb")
-	RootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
-	RootCmd.PersistentFlags().MarkHidden("help") //nolint
 }
 
 // RootCmd contains the root command for dmsgweb
 var RootCmd = &cobra.Command{
-	Use:   "dmsgweb",
-	Short: "access websites over dmsg",
+	Use:   "web",
+	Short: "DMSG resolving proxy & browser client",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐┬ ┬┌─┐┌┐
 	 │││││└─┐│ ┬│││├┤ ├┴┐
-	─┴┘┴ ┴└─┘└─┘└┴┘└─┘└─┘`,
+	─┴┘┴ ┴└─┘└─┘└┴┘└─┘└─┘
+  ` + "DMSG resolving proxy & browser client - access websites over dmsg",
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
@@ -140,26 +134,18 @@ var RootCmd = &cobra.Command{
 			pk, sk = cipher.GenerateKeyPair()
 		}
 
-		if addProxy != "" {
-			// Configure SOCKS5 proxy dialer
-			dialer, err := proxy.SOCKS5("tcp", addProxy, nil, proxy.Direct)
-			if err != nil {
-				log.Fatalf("Error creating SOCKS5 dialer: %v", err)
-			}
-			// Configure custom HTTP transport with SOCKS5 proxy
-			// Configure HTTP client with custom transport
-			httpClient = http.Client{
-				Transport: &http.Transport{
-					Dial: dialer.Dial,
-				},
-			}
-		}
-
 		dmsgC, closeDmsg, err := startDmsg(ctx, pk, sk)
 		if err != nil {
 			dmsgWebLog.WithError(err).Fatal("failed to start dmsg")
 		}
 		defer closeDmsg()
+
+		go func() {
+			<-ctx.Done()
+			cancel()
+			closeDmsg()
+			os.Exit(0) //this should not be necessary
+		}()
 
 		httpC = http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
 
@@ -262,10 +248,6 @@ var RootCmd = &cobra.Command{
 			wg.Done()
 		}()
 		wg.Wait()
-		os.Exit(0) //this should not be necessary
-		//		<-ctx.Done()
-		cancel()
-		closeDmsg()
 	},
 }
 
@@ -376,30 +358,7 @@ const (
 
 // Execute executes root CLI command.
 func Execute() {
-	cc.Init(&cc.Config{
-		RootCmd:       RootCmd,
-		Headings:      cc.HiBlue + cc.Bold, //+ cc.Underline,
-		Commands:      cc.HiBlue + cc.Bold,
-		CmdShortDescr: cc.HiBlue,
-		Example:       cc.HiBlue + cc.Italic,
-		ExecName:      cc.HiBlue + cc.Bold,
-		Flags:         cc.HiBlue + cc.Bold,
-		//FlagsDataType: cc.HiBlue,
-		FlagsDescr:      cc.HiBlue,
-		NoExtraNewlines: true,
-		NoBottomNewline: true,
-	})
 	if err := RootCmd.Execute(); err != nil {
 		log.Fatal("Failed to execute command: ", err)
 	}
 }
-
-const help = "Usage:\r\n" +
-	"  {{.UseLine}}{{if .HasAvailableSubCommands}}{{end}} {{if gt (len .Aliases) 0}}\r\n\r\n" +
-	"{{.NameAndAliases}}{{end}}{{if .HasAvailableSubCommands}}\r\n\r\n" +
-	"Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand)}}\r\n  " +
-	"{{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}\r\n\r\n" +
-	"Flags:\r\n" +
-	"{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}\r\n\r\n" +
-	"Global Flags:\r\n" +
-	"{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}\r\n\r\n"
