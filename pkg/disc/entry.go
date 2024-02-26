@@ -115,6 +115,9 @@ type Entry struct {
 	// Contains the instance's client meta if it's to be advertised as a DMSG Client.
 	Client *Client `json:"client,omitempty"`
 
+	// ClientType the instance's client_type meta if it's to be advertised as a DMSG Client.
+	ClientType string `json:"client_type,omitempty"`
+
 	// Contains the instance's server meta if it's to be advertised as a DMSG Server.
 	Server *Server `json:"server,omitempty"`
 
@@ -131,6 +134,7 @@ func (e *Entry) String() string {
 	res += fmt.Sprintf("\tsignature: %s\n", e.Signature)
 
 	if e.Client != nil {
+		res += fmt.Sprintf("\tclient type: %s\n", e.ClientType)
 		indentedStr := strings.Replace(e.Client.String(), "\n\t", "\n\t\t\t", -1)
 		res += fmt.Sprintf("\tentry is registered as client. Related info: \n\t\t%s\n", indentedStr)
 	}
