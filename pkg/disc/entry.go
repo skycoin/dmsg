@@ -134,7 +134,6 @@ func (e *Entry) String() string {
 	res += fmt.Sprintf("\tsignature: %s\n", e.Signature)
 
 	if e.Client != nil {
-		res += fmt.Sprintf("\tclient type: %s\n", e.ClientType)
 		indentedStr := strings.Replace(e.Client.String(), "\n\t", "\n\t\t\t", -1)
 		res += fmt.Sprintf("\tentry is registered as client. Related info: \n\t\t%s\n", indentedStr)
 	}
