@@ -3,12 +3,16 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/spf13/cobra"
 
 	dmsgdisc "github.com/skycoin/dmsg/cmd/dmsg-discovery/commands"
 	dmsgserver "github.com/skycoin/dmsg/cmd/dmsg-server/commands"
+	dmsgsocks "github.com/skycoin/dmsg/cmd/dmsg-socks5/commands"
 	dmsgcurl "github.com/skycoin/dmsg/cmd/dmsgcurl/commands"
 	dmsghttp "github.com/skycoin/dmsg/cmd/dmsghttp/commands"
 	dmsgptycli "github.com/skycoin/dmsg/cmd/dmsgpty-cli/commands"
@@ -23,7 +27,6 @@ func init() {
 		dmsgptyhost.RootCmd,
 		dmsgptyui.RootCmd,
 	)
-	dmsgcurl.RootCmd.Use = "curl [OPTIONS] ... [URL]"
 	RootCmd.AddCommand(
 		dmsgptyCmd,
 		dmsgdisc.RootCmd,
@@ -31,7 +34,18 @@ func init() {
 		dmsghttp.RootCmd,
 		dmsgcurl.RootCmd,
 		dmsgweb.RootCmd,
+		dmsgsocks.RootCmd,
 	)
+	dmsgdisc.RootCmd.Use = "disc"
+	dmsgserver.RootCmd.Use = "server"
+	dmsghttp.RootCmd.Use = "http"
+	dmsgcurl.RootCmd.Use = "curl"
+	dmsgweb.RootCmd.Use = "web"
+	dmsgsocks.RootCmd.Use = "socks"
+	dmsgptycli.RootCmd.Use = "cli"
+	dmsgptyhost.RootCmd.Use = "host"
+	dmsgptyui.RootCmd.Use = "ui"
+
 	var helpflag bool
 	RootCmd.SetUsageTemplate(help)
 	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for dmsg")
@@ -43,13 +57,15 @@ func init() {
 
 // RootCmd contains all binaries which may be separately compiled as subcommands
 var RootCmd = &cobra.Command{
-	Use:   "dmsg",
+	Use: func() string {
+		return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
+	}(),
 	Short: "DMSG services & utilities",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐
 	 │││││└─┐│ ┬
 	─┴┘┴ ┴└─┘└─┘
-  ` + "DMSG services & utilities",
+DMSG services & utilities`,
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
@@ -63,7 +79,7 @@ var dmsgptyCmd = &cobra.Command{
 	┌─┐┌┬┐┬ ┬
 	├─┘ │ └┬┘
 	┴   ┴  ┴
-  ` + "DMSG pseudoterminal (pty)",
+DMSG pseudoterminal (pty)`,
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
