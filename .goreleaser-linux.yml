@@ -381,6 +381,110 @@ builds:
     main: ./cmd/dmsgweb/
     ldflags: -s -w -linkmode external -extldflags '-static' -buildid= -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
+  - id: dmsghttp-amd64
+    binary: dmsghttp
+    goos:
+      - linux
+    goarch:
+      - amd64
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/dmsg/dmsg/musl-data/x86_64-linux-musl-cross/bin/x86_64-linux-musl-gcc
+    main: ./cmd/dmsghttp/
+    ldflags: -s -w -linkmode external -extldflags '-static' -buildid= -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
+  - id: dmsghttp-arm64
+    binary: dmsghttp
+    goos:
+      - linux
+    goarch:
+      - arm64
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/dmsg/dmsg/musl-data/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc
+    main: ./cmd/dmsghttp/
+    ldflags: -s -w -linkmode external -extldflags '-static' -buildid= -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
+  - id: dmsghttp-arm
+    binary: dmsghttp
+    goos:
+      - linux
+    goarch:
+      - arm
+    goarm:
+      - 6
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/dmsg/dmsg/musl-data/arm-linux-musleabi-cross/bin/arm-linux-musleabi-gcc
+    main: ./cmd/dmsghttp/
+    ldflags: -s -w -linkmode external -extldflags '-static' -buildid= -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
+  - id: dmsghttp-armhf
+    binary: dmsghttp
+    goos:
+      - linux
+    goarch:
+      - arm
+    goarm:
+      - 7
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/dmsg/dmsg/musl-data/arm-linux-musleabihf-cross/bin/arm-linux-musleabihf-gcc
+    main: ./cmd/dmsghttp/
+    ldflags: -s -w -linkmode external -extldflags '-static' -buildid= -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
+  - id: dmsg-socks5-amd64
+    binary: dmsg-socks5
+    goos:
+      - linux
+    goarch:
+      - amd64
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/dmsg/dmsg/musl-data/x86_64-linux-musl-cross/bin/x86_64-linux-musl-gcc
+    main: ./cmd/dmsg-socks5/
+    ldflags: -s -w -linkmode external -extldflags '-static' -buildid= -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
+  - id: dmsg-socks5-arm64
+    binary: dmsg-socks5
+    goos:
+      - linux
+    goarch:
+      - arm64
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/dmsg/dmsg/musl-data/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc
+    main: ./cmd/dmsg-socks5/
+    ldflags: -s -w -linkmode external -extldflags '-static' -buildid= -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
+  - id: dmsg-socks5-arm
+    binary: dmsg-socks5
+    goos:
+      - linux
+    goarch:
+      - arm
+    goarm:
+      - 6
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/dmsg/dmsg/musl-data/arm-linux-musleabi-cross/bin/arm-linux-musleabi-gcc
+    main: ./cmd/dmsg-socks5/
+    ldflags: -s -w -linkmode external -extldflags '-static' -buildid= -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
+  - id: dmsg-socks5-armhf
+    binary: dmsg-socks5
+    goos:
+      - linux
+    goarch:
+      - arm
+    goarm:
+      - 7
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/dmsg/dmsg/musl-data/arm-linux-musleabihf-cross/bin/arm-linux-musleabihf-gcc
+    main: ./cmd/dmsg-socks5/
+    ldflags: -s -w -linkmode external -extldflags '-static' -buildid= -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
 archives:
   - id: amd64
     format: tar.gz
@@ -394,6 +498,8 @@ archives:
       - dmsgcurl-amd64
       - dmsgpty-host-amd64
       - dmsgweb-amd64
+      - dmsghttp-amd64
+      - dmsg-socks5-amd64
 
   - id: arm64
     format: tar.gz
@@ -407,6 +513,8 @@ archives:
       - dmsgcurl-arm64
       - dmsgpty-host-arm64
       - dmsgweb-arm64
+      - dmsghttp-arm64
+      - dmsg-socks5-arm64
 
   - id: arm
     format: tar.gz
@@ -420,6 +528,8 @@ archives:
       - dmsgcurl-arm
       - dmsgpty-host-arm
       - dmsgweb-arm
+      - dmsghttp-arm
+      - dmsg-socks5-arm
 
   - id: armhf
     format: tar.gz
@@ -433,6 +543,8 @@ archives:
       - dmsgcurl-armhf
       - dmsgpty-host-armhf
       - dmsgweb-armhf
+      - dmsghttp-armhf
+      - dmsg-socks5-armhf
 
 checksum:
   name_template: 'checksums.txt'
