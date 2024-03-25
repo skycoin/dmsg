@@ -100,6 +100,30 @@ builds:
     main: ./cmd/dmsgweb/
     ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
+  - id: dmsghttp
+    binary: dmsghttp
+    goos:
+      - darwin
+    goarch:
+      - arm64
+      - amd64
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/dmsghttp/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
+  - id: dmsg-socks5
+    binary: dmsg-socks5
+    goos:
+      - darwin
+    goarch:
+      - arm64
+      - amd64
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/dmsg-socks5/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
 archives:
   - id: archive
     format: tar.gz
@@ -113,6 +137,8 @@ archives:
       - dmsgcurl
       - dmsgpty-cli
       - dmsgweb
+      - dmsghttp
+      - dmsg-socks5
     allow_different_binary_count: true
 
 checksum:
