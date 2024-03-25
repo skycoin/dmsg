@@ -2,18 +2,42 @@
 # Make sure to check the documentation at http://goreleaser.com
 
 release:
+  # Repo in which the release will be created.
+  # Default is extracted from the origin remote URL or empty if its private hosted.
+  # Note: it can only be one: either github or gitlab or gitea
   github:
     owner: skycoin
     name: dmsg
 
-  prerelease: false
+  prerelease: true
 
 before:
   hooks:
     - go mod tidy
+builds:
+  - id: dmsg-discovery
+    binary: dmsg-discovery
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - 386
+    env:
+      - CGO_ENABLED=1
+    main: ./cmd/dmsg-discovery/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
-env:
-  - CGO_ENABLED=0
+  - id: dmsg-server
+    binary: dmsg-server
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - 386
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/dmsg-server/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
   - id: dmsgcurl
     binary: dmsgcurl
@@ -26,7 +50,7 @@ env:
       - CGO_ENABLED=0
     main: ./cmd/dmsgcurl/
     ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
-
+  
   - id: dmsgpty-ui
     binary: dmsgpty-ui
     goos:
@@ -39,53 +63,29 @@ env:
     main: ./cmd/dmsgpty-ui/
     ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
-common_build: &common_build
-  goos:
-    - windows
-  main: ./cmd/{{ .name }}/
-  ldflags: *common_flags
-
-targets:
-  - name: dmsg-discovery
-    id: discovery
-    arch: amd64
-
-  - name: dmsg-server
-    id: server
-    arch: amd64
-
-  - name: dmsgget
-    id: get
-    arch: amd64
-
-  - name: dmsgpost
-    id: post
-    arch: amd64
-
-  - name: dmsghttp
-    id: http
-    arch: amd64
-
-  - name: dmsgpty-ui
-    id: ui
-    arch: amd64
-
-  - name: dmsgpty-cli
-    id: cli
-    arch: amd64
-
-  - name: dmsgpty-host
-    id: host
-    arch: amd64
-
-builds: &builds
-  {{ range .Targets }}
-  - id: {{ .id }}-{{ .arch }}
-    binary: {{ .name }}
+  - id: dmsgpty-cli
+    binary: dmsgpty-cli
+    goos:
+      - windows
     goarch:
-      - {{ .arch }}
-    <<: *common_build
-  {{ end }}
+      - amd64
+      - 386
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/dmsgpty-cli/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
+
+  - id: dmsgpty-host
+    binary: dmsgpty-host
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - 386
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/dmsgpty-host/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
   - id: dmsgweb
     binary: dmsgweb
@@ -114,11 +114,9 @@ archives:
     allow_different_binary_count: true
 
 checksum:
-  name_template: 'checksums.txt'
-
+  name_template: 'checksums.txt'  
 snapshot:
   name_template: "{{ .Tag }}-next"
-
 changelog:
   sort: asc
   filters:
