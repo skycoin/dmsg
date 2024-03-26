@@ -132,7 +132,7 @@ github-release-darwin:
 	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} --clobber ./checksums.txt
 
 github-release-windows:
-	.\goreleaser\goreleaser.exe --clean  --config .goreleaser-windows.yml --skip-publish
+	.\goreleaser\goreleaser.exe --rm-dist  --config .goreleaser-windows.yml --skip-publish
 	$(eval GITHUB_TAG=$(shell powershell git describe --abbrev=0 --tags))
 	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-windows-amd64.zip
 	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-windows-386.zip
