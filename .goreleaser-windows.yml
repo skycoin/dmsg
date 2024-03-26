@@ -99,8 +99,8 @@ builds:
     main: ./cmd/dmsgweb/
     ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
   
-  - id: dmsgptyhttp
-    binary: dmsgptyhttp
+  - id: dmsghttp
+    binary: dmsghttp
     goos:
       - windows
     goarch:
@@ -108,7 +108,7 @@ builds:
       - 386
     env:
       - CGO_ENABLED=0
-    main: ./cmd/dmsgptyhttp/
+    main: ./cmd/dmsghttp/
     ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}}
 
   - id: dmsg-socks5
