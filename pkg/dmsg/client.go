@@ -60,7 +60,7 @@ func (c *Config) Ensure() {
 func DefaultConfig() *Config {
 	conf := &Config{
 		MinSessions:    DefaultMinSessions,
-		UpdateInterval: DefaultUpdateInterval,
+		UpdateInterval: DefaultUpdateInterval * 5,
 	}
 	return conf
 }
