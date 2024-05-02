@@ -153,6 +153,8 @@ func (ce *Client) Serve(ctx context.Context) {
 		}
 	}(cancellabelCtx)
 
+	updateEntryLoopOnce := new(sync.Once)
+
 	for {
 		if isClosed(ce.done) {
 			return
@@ -253,6 +255,10 @@ func (ce *Client) Serve(ctx context.Context) {
 				ce.serveWait()
 			}
 		}
+
+		// Only start the update entry loop once we have at least one session established.
+		updateEntryLoopOnce.Do(func() { go ce.updateClientEntryLoop(cancellabelCtx, ce.done, ce.conf.ClientType) })
+
 		// We dial all servers and wait for error or done signal.
 		select {
 		case <-ce.done:
