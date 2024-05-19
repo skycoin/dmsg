@@ -20,14 +20,15 @@ package goobj
 
 import (
 	"bytes"
-	"github.com/twitchyliquid64/golang-asm/bio"
 	"crypto/sha1"
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/twitchyliquid64/golang-asm/unsafeheader"
 	"io"
 	"unsafe"
+
+	"github.com/twitchyliquid64/golang-asm/bio"
+	"github.com/twitchyliquid64/golang-asm/unsafeheader"
 )
 
 // New object file format.

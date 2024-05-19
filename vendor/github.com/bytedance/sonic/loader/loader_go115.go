@@ -20,9 +20,9 @@
 package loader
 
 import (
-    `github.com/bytedance/sonic/internal/loader`
+	"github.com/bytedance/sonic/internal/loader"
 )
 
 func (self Loader) LoadOne(text []byte, funcName string, frameSize int, argSize int, argStackmap []bool, localStackmap []bool) Function {
-    return Function(loader.Loader(text).Load(funcName, frameSize, argSize, argStackmap, localStackmap))
+	return Function(loader.Loader(text).Load(funcName, frameSize, argSize, argStackmap, localStackmap))
 }
