@@ -17,14 +17,14 @@
 package ast
 
 type Searcher struct {
-    parser Parser
+	parser Parser
 }
 
 func NewSearcher(str string) *Searcher {
-    return &Searcher{
-        parser: Parser{
-            s:      str,
-            noLazy: false,
-        },
-    }
+	return &Searcher{
+		parser: Parser{
+			s:      str,
+			noLazy: false,
+		},
+	}
 }

@@ -67,7 +67,7 @@ var (
 	addProxy           string
 	resolveDmsgAddr    string
 	wg                 sync.WaitGroup
-	isEnvs bool
+	isEnvs             bool
 )
 
 const envname = "DMSGWEB"
@@ -478,7 +478,6 @@ func scriptExecUint(s string) uint {
 	}
 	return uint(0)
 }
-
 
 const envfileLinux = `
 #########################################################################

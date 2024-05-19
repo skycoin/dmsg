@@ -17,30 +17,30 @@
 package decoder
 
 import (
-    `encoding`
-    `encoding/json`
-    `unsafe`
+	"encoding"
+	"encoding/json"
+	"unsafe"
 
-    `github.com/bytedance/sonic/internal/native`
-    `github.com/bytedance/sonic/internal/rt`
+	"github.com/bytedance/sonic/internal/native"
+	"github.com/bytedance/sonic/internal/rt"
 )
 
 func decodeTypedPointer(s string, i int, vt *rt.GoType, vp unsafe.Pointer, sb *_Stack, fv uint64) (int, error) {
-    if fn, err := findOrCompile(vt); err != nil {
-        return 0, err
-    } else {
-        rt.MoreStack(_FP_size + _VD_size + native.MaxFrameSize)
-        rt.StopProf()
-        ret, err := fn(s, i, vp, sb, fv, "", nil)
-        rt.StartProf()
-        return ret, err
-    }
+	if fn, err := findOrCompile(vt); err != nil {
+		return 0, err
+	} else {
+		rt.MoreStack(_FP_size + _VD_size + native.MaxFrameSize)
+		rt.StopProf()
+		ret, err := fn(s, i, vp, sb, fv, "", nil)
+		rt.StartProf()
+		return ret, err
+	}
 }
 
 func decodeJsonUnmarshaler(vv interface{}, s string) error {
-    return vv.(json.Unmarshaler).UnmarshalJSON(rt.Str2Mem(s))
+	return vv.(json.Unmarshaler).UnmarshalJSON(rt.Str2Mem(s))
 }
 
 func decodeTextUnmarshaler(vv interface{}, s string) error {
-    return vv.(encoding.TextUnmarshaler).UnmarshalText(rt.Str2Mem(s))
+	return vv.(encoding.TextUnmarshaler).UnmarshalText(rt.Str2Mem(s))
 }
