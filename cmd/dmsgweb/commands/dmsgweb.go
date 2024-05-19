@@ -67,6 +67,7 @@ var (
 	addProxy           string
 	resolveDmsgAddr    string
 	wg                 sync.WaitGroup
+	isEnvs bool
 )
 
 const envname = "DMSGWEB"
@@ -90,6 +91,8 @@ func init() {
 		sk.Set(scriptExecString("${DMSGWEB_SK}")) //nolint
 	}
 	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
+	RootCmd.Flags().BoolVarP(&isEnvs, "envs", "z", false, "show example .conf file")
+
 }
 
 // RootCmd contains the root command for dmsgweb
@@ -117,6 +120,15 @@ dmsgweb env file detected: ` + envfile
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
 	Run: func(cmd *cobra.Command, _ []string) {
+		if isEnvs {
+			if runtime.GOOS == "windows" {
+				envfile = envfileWindows
+			} else {
+				envfile = envfileLinux
+			}
+			fmt.Println(envfile)
+			os.Exit(0)
+		}
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM) //nolint
 		go func() {
@@ -466,3 +478,55 @@ func scriptExecUint(s string) uint {
 	}
 	return uint(0)
 }
+
+
+const envfileLinux = `
+#########################################################################
+#	DMSGWEB CONFIG TEMPLATE
+#		Defaults shown
+#		Uncomment to change default value
+#########################################################################
+
+#--	Set port for proxy interface
+#PROXYPORT=4445
+
+#--	Configure additional proxy for dmsgvlc to use
+#ADDPROXY='127.0.0.1:1080'
+
+#--	Web Interface Port
+#WEBPORT=8080
+
+#--	Resove a specific PK to the web port (also disables proxy)
+#RESOLVEPK=''
+
+#--	Number of dmsg servers to connect to (0 unlimits)
+#DMSGSESSIONS=1
+
+#--	Set secret key
+#DMSGWEB_SK=''
+`
+const envfileWindows = `
+#########################################################################
+#	DMSGWEB CONFIG TEMPLATE
+#		Defaults shown
+#		Uncomment to change default value
+#########################################################################
+
+#--	Set port for proxy interface
+#$PROXYPORT=4445
+
+#--	Configure additional proxy for dmsgvlc to use
+#$ADDPROXY='127.0.0.1:1080'
+
+#--	Web Interface Port
+#$WEBPORT=8080
+
+#--	Resove a specific PK to the web port (also disables proxy)
+#$RESOLVEPK=''
+
+#--	Number of dmsg servers to connect to (0 unlimits)
+#$DMSGSESSIONS=1
+
+#--	Set secret key
+#$DMSGWEB_SK=''
+`
