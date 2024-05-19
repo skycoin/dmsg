@@ -47,7 +47,7 @@ func (r *customResolver) Resolve(ctx context.Context, name string) (context.Cont
 			return ctx, nil, fmt.Errorf("failed to parse IP address")
 		}
 		// Modify the context to include the desired port
-		ctx = context.WithValue(ctx, "port", webPort) //nolint
+		ctx = context.WithValue(ctx, "port", strconv.Itoa(webPort)) //nolint
 		return ctx, ip, nil
 	}
 	// Use default name resolution for other domains
@@ -62,8 +62,8 @@ var (
 	sk                 cipher.SecKey
 	dmsgWebLog         *logging.Logger
 	logLvl             string
-	webPort            string
-	proxyPort          string
+	webPort            int
+	proxyPort          uint
 	addProxy           string
 	resolveDmsgAddr    string
 	wg                 sync.WaitGroup
@@ -76,9 +76,9 @@ var envfile = os.Getenv(envname)
 func init() {
 
 	RootCmd.Flags().StringVarP(&filterDomainSuffix, "filter", "f", ".dmsg", "domain suffix to filter")
-	RootCmd.Flags().StringVarP(&proxyPort, "socks", "q", scriptExecUint("${PROXYPORT:-4445}"), "port to serve the socks5 proxy")
+	RootCmd.Flags().UintVarP(&proxyPort, "socks", "q", scriptExecUint("${PROXYPORT:-4445}"), "port to serve the socks5 proxy")
 	RootCmd.Flags().StringVarP(&addProxy, "proxy", "r", scriptExecString("${ADDPROXY}"), "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)")
-	RootCmd.Flags().StringVarP(&webPort, "port", "p", scriptExecUint("${WEBPORT:-8080}"), "port to serve the web application")
+	RootCmd.Flags().IntVarP(&webPort, "port", "p", scriptExecInt("${WEBPORT:-8080}"), "port to serve the web application")
 	RootCmd.Flags().StringVarP(&resolveDmsgAddr, "resolve", "t", scriptExecString("${RESOLVEPK}"), "resolve the specified dmsg address:port on the local port & disable proxy")
 	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", skyenv.DmsgDiscAddr, "dmsg discovery url")
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", scriptExecInt("${DMSGSESSIONS:-1}"), "number of dmsg servers to connect to")
@@ -89,7 +89,6 @@ func init() {
 	if scriptExecString("${DMSGWEB_SK}") != "" {
 		sk.Set(scriptExecString("${DMSGWEB_SK}")) //nolint
 	}
-	pk, _ = sk.PubKey()
 	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 }
 
@@ -176,7 +175,7 @@ dmsgweb env file detected: ` + envfile
 					if match {
 						port, ok := ctx.Value("port").(string)
 						if !ok {
-							port = webPort
+							port = strconv.Itoa(webPort)
 						}
 						addr = "localhost:" + port
 					} else {
@@ -195,7 +194,7 @@ dmsgweb env file detected: ` + envfile
 			}
 
 			// Start the SOCKS5 server
-			socksAddr := "127.0.0.1:" + proxyPort
+			socksAddr := fmt.Sprintf("127.0.0.1:%v", proxyPort)
 			log.Printf("SOCKS5 proxy server started on %s", socksAddr)
 
 			server, err := socks5.New(conf)
@@ -251,9 +250,9 @@ dmsgweb env file detected: ` + envfile
 		})
 		wg.Add(1)
 		go func() {
-			dmsgWebLog.Debug("Serving http on " + webPort)
-			r.Run(":" + webPort) //nolint
-			dmsgWebLog.Debug("Stopped serving http on " + webPort)
+			dmsgWebLog.Debug(fmt.Sprintf("Serving http on: http://127.0.0.1:%v", webPort))
+			r.Run(":" + strconv.Itoa(webPort)) //nolint
+			dmsgWebLog.Debug(fmt.Sprintf("Stopped serving http on: http://127.0.0.1:%v", webPort))
 			wg.Done()
 		}()
 		wg.Wait()

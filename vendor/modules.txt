@@ -8,6 +8,9 @@ github.com/Azure/go-ansiterm/winterm
 # github.com/VictoriaMetrics/metrics v1.18.1
 ## explicit; go 1.12
 github.com/VictoriaMetrics/metrics
+# github.com/bitfield/script v0.22.1
+## explicit; go 1.18
+github.com/bitfield/script
 # github.com/bytedance/sonic v1.9.1
 ## explicit; go 1.15
 github.com/bytedance/sonic
@@ -40,7 +43,7 @@ github.com/chenzhuoyu/base64x
 # github.com/confiant-inc/go-socks5 v0.0.0-20210816151940-c1124825b1d6
 ## explicit
 github.com/confiant-inc/go-socks5
-# github.com/creack/pty v1.1.15
+# github.com/creack/pty v1.1.18
 ## explicit; go 1.13
 github.com/creack/pty
 # github.com/davecgh/go-spew v1.1.1
@@ -103,14 +106,18 @@ github.com/goccy/go-json/internal/encoder/vm_color_indent
 github.com/goccy/go-json/internal/encoder/vm_indent
 github.com/goccy/go-json/internal/errors
 github.com/goccy/go-json/internal/runtime
-# github.com/google/go-cmp v0.5.7
-## explicit; go 1.11
 # github.com/hashicorp/yamux v0.1.1
 ## explicit; go 1.15
 github.com/hashicorp/yamux
 # github.com/inconshreveable/mousetrap v1.0.0
 ## explicit
 github.com/inconshreveable/mousetrap
+# github.com/itchyny/gojq v0.12.13
+## explicit; go 1.18
+github.com/itchyny/gojq
+# github.com/itchyny/timefmt-go v0.1.5
+## explicit; go 1.17
+github.com/itchyny/timefmt-go
 # github.com/ivanpirog/coloredcobra v1.0.1
 ## explicit; go 1.15
 github.com/ivanpirog/coloredcobra
@@ -123,8 +130,6 @@ github.com/klauspost/compress/flate
 # github.com/klauspost/cpuid/v2 v2.2.4
 ## explicit; go 1.15
 github.com/klauspost/cpuid/v2
-# github.com/kr/pretty v0.3.0
-## explicit; go 1.12
 # github.com/leodido/go-urn v1.2.4
 ## explicit; go 1.16
 github.com/leodido/go-urn
@@ -156,8 +161,6 @@ github.com/pires/go-proxyproto
 # github.com/pmezard/go-difflib v1.0.0
 ## explicit
 github.com/pmezard/go-difflib/difflib
-# github.com/rogpeppe/go-internal v1.8.0
-## explicit; go 1.11
 # github.com/sirupsen/logrus v1.8.1
 ## explicit; go 1.13
 github.com/sirupsen/logrus
@@ -250,7 +253,7 @@ golang.org/x/net/idna
 golang.org/x/net/internal/socks
 golang.org/x/net/nettest
 golang.org/x/net/proxy
-# golang.org/x/sys v0.8.0
+# golang.org/x/sys v0.10.0
 ## explicit; go 1.17
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
@@ -290,6 +293,13 @@ google.golang.org/protobuf/runtime/protoiface
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
+# mvdan.cc/sh/v3 v3.7.0
+## explicit; go 1.19
+mvdan.cc/sh/v3/expand
+mvdan.cc/sh/v3/fileutil
+mvdan.cc/sh/v3/pattern
+mvdan.cc/sh/v3/shell
+mvdan.cc/sh/v3/syntax
 # nhooyr.io/websocket v1.8.2
 ## explicit; go 1.13
 nhooyr.io/websocket
