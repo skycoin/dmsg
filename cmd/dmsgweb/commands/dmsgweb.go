@@ -12,11 +12,14 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/bitfield/script"
 	"github.com/confiant-inc/go-socks5"
 	"github.com/gin-gonic/gin"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
@@ -31,17 +34,6 @@ import (
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
-
-// RootCmd contains commands that interact with the config of local skywire-visor
-var genKeysCmd = &cobra.Command{
-	Use:   "gen-keys",
-	Short: "generate public / secret keypair",
-	Run: func(cmd *cobra.Command, args []string) {
-		pk, sk := cipher.GenerateKeyPair()
-		fmt.Println(pk)
-		fmt.Println(sk)
-	},
-}
 
 type customResolver struct{}
 
@@ -77,19 +69,27 @@ var (
 	wg                 sync.WaitGroup
 )
 
+const envname = "DMSGWEB"
+
+var envfile = os.Getenv(envname)
+
 func init() {
-	RootCmd.AddCommand(genKeysCmd)
+
 	RootCmd.Flags().StringVarP(&filterDomainSuffix, "filter", "f", ".dmsg", "domain suffix to filter")
-	RootCmd.Flags().StringVarP(&proxyPort, "socks", "q", "4445", "port to serve the socks5 proxy")
-	RootCmd.Flags().StringVarP(&addProxy, "proxy", "r", "", "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)")
-	RootCmd.Flags().StringVarP(&webPort, "port", "p", "8080", "port to serve the web application")
-	RootCmd.Flags().StringVarP(&resolveDmsgAddr, "resolve", "t", "", "resolve the specified dmsg address:port on the local port & disable proxy")
-	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
-	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
+	RootCmd.Flags().StringVarP(&proxyPort, "socks", "q", scriptExecUint("${PROXYPORT:-4445}"), "port to serve the socks5 proxy")
+	RootCmd.Flags().StringVarP(&addProxy, "proxy", "r", scriptExecString("${ADDPROXY}"), "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)")
+	RootCmd.Flags().StringVarP(&webPort, "port", "p", scriptExecUint("${WEBPORT:-8080}"), "port to serve the web application")
+	RootCmd.Flags().StringVarP(&resolveDmsgAddr, "resolve", "t", scriptExecString("${RESOLVEPK}"), "resolve the specified dmsg address:port on the local port & disable proxy")
+	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", skyenv.DmsgDiscAddr, "dmsg discovery url")
+	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", scriptExecInt("${DMSGSESSIONS:-1}"), "number of dmsg servers to connect to")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
-	if os.Getenv("DMSGGET_SK") != "" {
-		sk.Set(os.Getenv("DMSGGET_SK")) //nolint
+	if os.Getenv("DMSGWEB_SK") != "" {
+		sk.Set(os.Getenv("DMSGWEB_SK")) //nolint
 	}
+	if scriptExecString("${DMSGWEB_SK}") != "" {
+		sk.Set(scriptExecString("${DMSGWEB_SK}")) //nolint
+	}
+	pk, _ = sk.PubKey()
 	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 }
 
@@ -103,7 +103,15 @@ var RootCmd = &cobra.Command{
 	┌┬┐┌┬┐┌─┐┌─┐┬ ┬┌─┐┌┐
 	 │││││└─┐│ ┬│││├┤ ├┴┐
 	─┴┘┴ ┴└─┘└─┘└┴┘└─┘└─┘
-DMSG resolving proxy & browser client - access websites over dmsg`,
+DMSG resolving proxy & browser client - access websites over dmsg` + func() string {
+		if _, err := os.Stat(envfile); err == nil {
+			return `
+dmsgweb env file detected: ` + envfile
+		}
+		return `
+.conf file may also be specified with
+` + envname + `=/path/to/dmsgweb.conf skywire dmsg web`
+	}(),
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
@@ -227,28 +235,17 @@ DMSG resolving proxy & browser client - access websites over dmsg`,
 				}
 				urlStr = fmt.Sprintf("dmsg://%s:%s%s", strings.TrimRight(hostParts[0], filterDomainSuffix), dmsgp, c.Param("path"))
 			}
-
-			maxSize := int64(1024)
-
 			req, err := http.NewRequest(http.MethodGet, urlStr, nil)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to create HTTP request")
 				return
 			}
-
 			resp, err := httpC.Do(req)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to connect to HTTP server")
 				return
 			}
 			defer resp.Body.Close() //nolint
-
-			if maxSize > 0 {
-				if resp.ContentLength > maxSize*1024 {
-					c.String(http.StatusRequestEntityTooLarge, "Requested file size exceeds the allowed limit")
-					return
-				}
-			}
 			c.Status(http.StatusOK)
 			io.Copy(c.Writer, resp.Body) //nolint
 		})
@@ -304,7 +301,7 @@ func loggingMiddleware() gin.HandlerFunc {
 		methodColor := getMethodColor(method)
 		// Print the logging in a custom format which includes the publickeyfrom c.Request.RemoteAddr ex.:
 		// [DMSGHTTP] 2023/05/18 - 19:43:15 | 200 |    10.80885ms |                 | 02b5ee5333aa6b7f5fc623b7d5f35f505cb7f974e98a70751cf41962f84c8c4637:49153 | GET      /node-info.json
-		fmt.Printf("[DMSGHTTP] %s |%s %3d %s| %13v | %15s | %72s |%s %-7s %s %s\n",
+		fmt.Printf("[DMSGWEB] %s |%s %3d %s| %13v | %15s | %72s |%s %-7s %s %s\n",
 			time.Now().Format("2006/01/02 - 15:04:05"),
 			statusCodeBackgroundColor,
 			statusCode,
@@ -373,4 +370,100 @@ func Execute() {
 	if err := RootCmd.Execute(); err != nil {
 		log.Fatal("Failed to execute command: ", err)
 	}
+}
+
+func scriptExecString(s string) string {
+	if runtime.GOOS == "windows" {
+		var variable, defaultvalue string
+		if strings.Contains(s, ":-") {
+			parts := strings.SplitN(s, ":-", 2)
+			variable = parts[0] + "}"
+			defaultvalue = strings.TrimRight(parts[1], "}")
+		} else {
+			variable = s
+			defaultvalue = ""
+		}
+		out, err := script.Exec(fmt.Sprintf(`powershell -c '$SKYENV = "%s"; if ($SKYENV -ne "" -and (Test-Path $SKYENV)) { . $SKYENV }; echo %s"`, envfile, variable)).String()
+		if err == nil {
+			if (out == "") || (out == variable) {
+				return defaultvalue
+			}
+			return strings.TrimRight(out, "\n")
+		}
+		return defaultvalue
+	}
+	z, err := script.Exec(fmt.Sprintf(`sh -c 'SKYENV=%s ; if [[ $SKYENV != "" ]] && [[ -f $SKYENV ]] ; then source $SKYENV ; fi ; printf "%s"'`, envfile, s)).String()
+	if err == nil {
+		return strings.TrimSpace(z)
+	}
+	return ""
+}
+
+func scriptExecInt(s string) int {
+	if runtime.GOOS == "windows" {
+		var variable string
+		if strings.Contains(s, ":-") {
+			parts := strings.SplitN(s, ":-", 2)
+			variable = parts[0] + "}"
+		} else {
+			variable = s
+		}
+		out, err := script.Exec(fmt.Sprintf(`powershell -c '$SKYENV = "%s"; if ($SKYENV -ne "" -and (Test-Path $SKYENV)) { . $SKYENV }; echo %s"`, envfile, variable)).String()
+		if err == nil {
+			if (out == "") || (out == variable) {
+				return 0
+			}
+			i, err := strconv.Atoi(strings.TrimSpace(strings.TrimRight(out, "\n")))
+			if err == nil {
+				return i
+			}
+			return 0
+		}
+		return 0
+	}
+	z, err := script.Exec(fmt.Sprintf(`sh -c 'SKYENV=%s ; if [[ $SKYENV != "" ]] && [[ -f $SKYENV ]] ; then source $SKYENV ; fi ; printf "%s"'`, envfile, s)).String()
+	if err == nil {
+		if z == "" {
+			return 0
+		}
+		i, err := strconv.Atoi(z)
+		if err == nil {
+			return i
+		}
+	}
+	return 0
+}
+func scriptExecUint(s string) uint {
+	if runtime.GOOS == "windows" {
+		var variable string
+		if strings.Contains(s, ":-") {
+			parts := strings.SplitN(s, ":-", 2)
+			variable = parts[0] + "}"
+		} else {
+			variable = s
+		}
+		out, err := script.Exec(fmt.Sprintf(`powershell -c '$SKYENV = "%s"; if ($SKYENV -ne "" -and (Test-Path $SKYENV)) { . $SKYENV }; echo %s"`, envfile, variable)).String()
+		if err == nil {
+			if (out == "") || (out == variable) {
+				return 0
+			}
+			i, err := strconv.Atoi(strings.TrimSpace(strings.TrimRight(out, "\n")))
+			if err == nil {
+				return uint(i)
+			}
+			return 0
+		}
+		return 0
+	}
+	z, err := script.Exec(fmt.Sprintf(`sh -c 'SKYENV=%s ; if [[ $SKYENV != "" ]] && [[ -f $SKYENV ]] ; then source $SKYENV ; fi ; printf "%s"'`, envfile, s)).String()
+	if err == nil {
+		if z == "" {
+			return 0
+		}
+		i, err := strconv.Atoi(z)
+		if err == nil {
+			return uint(i)
+		}
+	}
+	return uint(0)
 }
