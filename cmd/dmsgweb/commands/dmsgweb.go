@@ -49,7 +49,7 @@ func (r *customResolver) Resolve(ctx context.Context, name string) (context.Cont
 			return ctx, nil, fmt.Errorf("failed to parse IP address")
 		}
 		// Modify the context to include the desired port
-		ctx = context.WithValue(ctx, "port", fmt.Sprintf("%v",webPort)) //nolint
+		ctx = context.WithValue(ctx, "port", fmt.Sprintf("%v", webPort)) //nolint
 		return ctx, ip, nil
 	}
 	// Use default name resolution for other domains
@@ -74,6 +74,7 @@ var (
 )
 
 const dmsgwebenvname = "DMSGWEB"
+
 var dmsgwebconffile = os.Getenv(dmsgwebenvname)
 
 func init() {
@@ -81,16 +82,16 @@ func init() {
 	RootCmd.Flags().StringVarP(&filterDomainSuffix, "filter", "f", ".dmsg", "domain suffix to filter")
 	RootCmd.Flags().UintVarP(&proxyPort, "socks", "q", scriptExecUint("${PROXYPORT:-4445}", dmsgwebconffile), "port to serve the socks5 proxy")
 	RootCmd.Flags().StringVarP(&addProxy, "proxy", "r", scriptExecString("${ADDPROXY}", dmsgwebconffile), "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)")
-	RootCmd.Flags().UintVarP(&webPort, "port", "p", scriptExecUint("${WEBPORT:-8080}",dmsgwebconffile), "port to serve the web application")
-	RootCmd.Flags().StringVarP(&resolveDmsgAddr, "resolve", "t", scriptExecString("${RESOLVEPK}",dmsgwebconffile), "resolve the specified dmsg address:port on the local port & disable proxy")
+	RootCmd.Flags().UintVarP(&webPort, "port", "p", scriptExecUint("${WEBPORT:-8080}", dmsgwebconffile), "port to serve the web application")
+	RootCmd.Flags().StringVarP(&resolveDmsgAddr, "resolve", "t", scriptExecString("${RESOLVEPK}", dmsgwebconffile), "resolve the specified dmsg address:port on the local port & disable proxy")
 	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", skyenv.DmsgDiscAddr, "dmsg discovery url")
-	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", scriptExecInt("${DMSGSESSIONS:-1}",dmsgwebconffile), "number of dmsg servers to connect to")
+	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebconffile), "number of dmsg servers to connect to")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
 	if os.Getenv("DMSGWEB_SK") != "" {
 		sk.Set(os.Getenv("DMSGWEB_SK")) //nolint
 	}
-	if scriptExecString("${DMSGWEB_SK}",dmsgwebconffile) != "" {
-		sk.Set(scriptExecString("${DMSGWEB_SK}",dmsgwebconffile)) //nolint
+	if scriptExecString("${DMSGWEB_SK}", dmsgwebconffile) != "" {
+		sk.Set(scriptExecString("${DMSGWEB_SK}", dmsgwebconffile)) //nolint
 	}
 	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 	RootCmd.Flags().BoolVarP(&isEnvs, "envs", "z", false, "show example .conf file")
@@ -195,7 +196,7 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 					if match {
 						port, ok := ctx.Value("port").(string)
 						if !ok {
-							port = fmt.Sprintf("%v",webPort)
+							port = fmt.Sprintf("%v", webPort)
 						}
 						addr = "localhost:" + port
 					} else {
@@ -296,7 +297,7 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 		wg.Add(1)
 		go func() {
 			dmsgWebLog.Debug(fmt.Sprintf("Serving http on: http://127.0.0.1:%v", webPort))
-			r.Run(":" + fmt.Sprintf("%v",webPort)) //nolint
+			r.Run(":" + fmt.Sprintf("%v", webPort)) //nolint
 			dmsgWebLog.Debug(fmt.Sprintf("Stopped serving http on: http://127.0.0.1:%v", webPort))
 			wg.Done()
 		}()
@@ -304,23 +305,21 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 	},
 }
 
-
-
 var (
-	startTime = time.Now()
-	runTime   time.Duration
-	dmsgPort uint
-	dmsgSess int
-	wl       string
-	wlkeys   []cipher.PubKey
-	localPort uint
+	startTime  = time.Now()
+	runTime    time.Duration
+	dmsgPort   uint
+	dmsgSess   int
+	wl         string
+	wlkeys     []cipher.PubKey
+	localPort  uint
 	websrvPort uint
-	err error
+	err        error
 )
 
 const dmsgwebsrvenvname = "DMSGWEBSRV"
-var dmsgwebsrvconffile = os.Getenv(dmsgwebsrvenvname)
 
+var dmsgwebsrvconffile = os.Getenv(dmsgwebsrvenvname)
 
 func init() {
 	RootCmd.AddCommand(srvCmd)
@@ -330,8 +329,12 @@ func init() {
 	srvCmd.Flags().StringVarP(&wl, "wl", "w", scriptExecArray("${WHITELISTPKS[@]}", dmsgwebsrvconffile), "whitelisted keys for dmsg authenticated routes\r")
 	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", skyenv.DmsgDiscAddr, "dmsg discovery url")
 	srvCmd.Flags().IntVarP(&dmsgSess, "dsess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebsrvconffile), "dmsg sessions")
-	if os.Getenv("DMSGWEBSRV_SK") != "" {		sk.Set(os.Getenv("DMSGWEBSRV_SK")) } //nolint
-	if scriptExecString("${DMSGWEBSRV_SK}", dmsgwebsrvconffile) != "" {		sk.Set(scriptExecString("${DMSGWEBSRV_SK}", dmsgwebsrvconffile)) } //nolint
+	if os.Getenv("DMSGWEBSRV_SK") != "" {
+		sk.Set(os.Getenv("DMSGWEBSRV_SK"))
+	} //nolint
+	if scriptExecString("${DMSGWEBSRV_SK}", dmsgwebsrvconffile) != "" {
+		sk.Set(scriptExecString("${DMSGWEBSRV_SK}", dmsgwebsrvconffile))
+	} //nolint
 	pk, _ = sk.PubKey()
 	srvCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 	srvCmd.Flags().BoolVarP(&isEnvs, "envs", "z", false, "show example .conf file")
@@ -339,19 +342,18 @@ func init() {
 	srvCmd.CompletionOptions.DisableDefaultCmd = true
 }
 
-
 var srvCmd = &cobra.Command{
 	Use:   "srv",
 	Short: "serve http from local port over dmsg",
 	Long: `DMSG web server - serve http interface from local port over dmsg` + func() string {
-			if _, err := os.Stat(dmsgwebsrvconffile); err == nil {
-				return `
+		if _, err := os.Stat(dmsgwebsrvconffile); err == nil {
+			return `
 	dmsgvlcenv file detected: ` + dmsgwebsrvconffile
-			}
-			return `dmsg streaming media with vlc
+		}
+		return `dmsg streaming media with vlc
 
 	.conf file may also be specified with
-	`+dmsgwebsrvenvname+`=/path/to/dmsgwebsrv.conf skywire dmsg web srv`
+	` + dmsgwebsrvenvname + `=/path/to/dmsgwebsrv.conf skywire dmsg web srv`
 	}(),
 	Run: func(_ *cobra.Command, _ []string) {
 		if isEnvs {
@@ -371,7 +373,6 @@ var srvCmd = &cobra.Command{
 		}
 		Server()
 	},
-
 }
 
 func Server() {
@@ -430,7 +431,6 @@ func Server() {
 		}
 	}()
 
-
 	r1 := gin.New()
 	r1.Use(gin.Recovery())
 	r1.Use(loggingMiddleware())
@@ -440,26 +440,24 @@ func Server() {
 		authRoute.Use(whitelistAuth(wlkeys))
 	}
 	authRoute.Any("/*path", func(c *gin.Context) {
-	    targetURL, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%v%s?%s", localPort, c.Request.URL.Path, c.Request.URL.RawQuery))
-	    proxy := httputil.ReverseProxy{
-	        Director: func(req *http.Request) {
-	            req.URL = targetURL
-	            req.Host = targetURL.Host
-	            req.Method = c.Request.Method
-	        },
-	        Transport: &http.Transport{},
-	    }
-	    proxy.ServeHTTP(c.Writer, c.Request)
+		targetURL, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%v%s?%s", localPort, c.Request.URL.Path, c.Request.URL.RawQuery))
+		proxy := httputil.ReverseProxy{
+			Director: func(req *http.Request) {
+				req.URL = targetURL
+				req.Host = targetURL.Host
+				req.Method = c.Request.Method
+			},
+			Transport: &http.Transport{},
+		}
+		proxy.ServeHTTP(c.Writer, c.Request)
 	})
 
-
-
-serve := &http.Server{
-	Handler:           &GinHandler{Router: r1},
-	ReadHeaderTimeout: 5 * time.Second,
-	ReadTimeout:  10 * time.Second,
-	WriteTimeout: 10 * time.Second,
-}
+	serve := &http.Server{
+		Handler:           &GinHandler{Router: r1},
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+	}
 
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
@@ -480,7 +478,6 @@ serve := &http.Server{
 
 	wg.Wait()
 }
-
 
 func whitelistAuth(whitelistedPKs []cipher.PubKey) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -513,15 +510,13 @@ func whitelistAuth(whitelistedPKs []cipher.PubKey) gin.HandlerFunc {
 	}
 }
 
-
 type GinHandler struct {
-Router *gin.Engine
+	Router *gin.Engine
 }
 
 func (h *GinHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-h.Router.ServeHTTP(w, r)
+	h.Router.ServeHTTP(w, r)
 }
-
 
 func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
 	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, dmsgWebLog), &dmsg.Config{MinSessions: dmsgSessions})
