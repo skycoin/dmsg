@@ -236,7 +236,7 @@ dmsgweb env file detected: ` + envfile
 			if resolveDmsgAddr != "" {
 				urlStr = fmt.Sprintf("dmsg://%s%s", resolveDmsgAddr, c.Param("path"))
 				if c.Request.URL.RawQuery != "" {
-					urlStr += fmt.Sprintf("%s?%s", urlStr,c.Request.URL.RawQuery)
+					urlStr = fmt.Sprintf("%s?%s", urlStr, c.Request.URL.RawQuery)
 				}
 			} else {
 
@@ -249,7 +249,7 @@ dmsgweb env file detected: ` + envfile
 				}
 				urlStr = fmt.Sprintf("dmsg://%s:%s%s", strings.TrimRight(hostParts[0], filterDomainSuffix), dmsgp, c.Param("path"))
 				if c.Request.URL.RawQuery != "" {
-					urlStr += fmt.Sprintf("%s?%s", urlStr,c.Request.URL.RawQuery)
+					urlStr = fmt.Sprintf("%s?%s", urlStr, c.Request.URL.RawQuery)
 				}
 			}
 			req, err := http.NewRequest(http.MethodGet, urlStr, nil)
