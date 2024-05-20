@@ -2,14 +2,12 @@ package main
 
 import (
 	"context"
-
 	"net/http"
 	"time"
 
+	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/skycoin/skywire-utilities/pkg/skyenv"
-
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"golang.org/x/net/proxy"
 
 	"github.com/skycoin/dmsg/pkg/disc"
