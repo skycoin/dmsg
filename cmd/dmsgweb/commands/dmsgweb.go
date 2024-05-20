@@ -271,7 +271,7 @@ dmsgweb env file detected: ` + envfile
 				fmt.Printf("Error: %v\n", err)
 				return
 			}
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint
 
 			for header, values := range resp.Header {
 				for _, value := range values {
