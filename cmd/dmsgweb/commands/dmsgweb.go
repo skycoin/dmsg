@@ -234,7 +234,7 @@ dmsgweb env file detected: ` + envfile
 		r.Any("/*path", func(c *gin.Context) {
 			var urlStr string
 			if resolveDmsgAddr != "" {
-				urlStr = fmt.Sprintf("dmsg://%s%s", resolveDmsgAddr, c.Param("path"))
+				urlStr = fmt.Sprintf("dmsg://%s%s%s", resolveDmsgAddr, c.Param("path"),c.Request.URL.RawQuery)
 			} else {
 
 				hostParts := strings.Split(c.Request.Host, ":")
@@ -244,7 +244,7 @@ dmsgweb env file detected: ` + envfile
 				} else {
 					dmsgp = "80"
 				}
-				urlStr = fmt.Sprintf("dmsg://%s:%s%s", strings.TrimRight(hostParts[0], filterDomainSuffix), dmsgp, c.Param("path"))
+				urlStr = fmt.Sprintf("dmsg://%s:%s%s%s", strings.TrimRight(hostParts[0], filterDomainSuffix), dmsgp, c.Param("path"),c.Request.URL.RawQuery)
 			}
 			req, err := http.NewRequest(http.MethodGet, urlStr, nil)
 			if err != nil {
