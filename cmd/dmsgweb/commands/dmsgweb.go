@@ -232,40 +232,63 @@ dmsgweb env file detected: ` + envfile
 		r.Use(loggingMiddleware())
 
 		r.Any("/*path", func(c *gin.Context) {
-			var urlStr string
-			if resolveDmsgAddr != "" {
-				urlStr = fmt.Sprintf("dmsg://%s%s", resolveDmsgAddr, c.Param("path"))
-				if c.Request.URL.RawQuery != "" {
-					urlStr = fmt.Sprintf("%s?%s", urlStr, c.Request.URL.RawQuery)
-				}
-			} else {
+        var urlStr string
+        if resolveDmsgAddr != "" {
+            urlStr = fmt.Sprintf("dmsg://%s%s", resolveDmsgAddr, c.Param("path"))
+            if c.Request.URL.RawQuery != "" {
+                urlStr = fmt.Sprintf("%s?%s", urlStr, c.Request.URL.RawQuery)
+            }
+        } else {
+            hostParts := strings.Split(c.Request.Host, ":")
+            var dmsgp string
+            if len(hostParts) > 1 {
+                dmsgp = hostParts[1]
+            } else {
+                dmsgp = "80"
+            }
+            urlStr = fmt.Sprintf("dmsg://%s:%s%s", strings.TrimRight(hostParts[0], filterDomainSuffix), dmsgp, c.Param("path"))
+            if c.Request.URL.RawQuery != "" {
+                urlStr = fmt.Sprintf("%s?%s", urlStr, c.Request.URL.RawQuery)
+            }
+        }
 
-				hostParts := strings.Split(c.Request.Host, ":")
-				var dmsgp string
-				if len(hostParts) > 1 {
-					dmsgp = hostParts[1]
-				} else {
-					dmsgp = "80"
-				}
-				urlStr = fmt.Sprintf("dmsg://%s:%s%s", strings.TrimRight(hostParts[0], filterDomainSuffix), dmsgp, c.Param("path"))
-				if c.Request.URL.RawQuery != "" {
-					urlStr = fmt.Sprintf("%s?%s", urlStr, c.Request.URL.RawQuery)
-				}
-			}
-			req, err := http.NewRequest(http.MethodGet, urlStr, nil)
-			if err != nil {
-				c.String(http.StatusInternalServerError, "Failed to create HTTP request")
-				return
-			}
-			resp, err := httpC.Do(req)
-			if err != nil {
-				c.String(http.StatusInternalServerError, "Failed to connect to HTTP server")
-				return
-			}
-			defer resp.Body.Close() //nolint
-			c.Status(http.StatusOK)
-			io.Copy(c.Writer, resp.Body) //nolint
-		})
+        // Create a new request using the original method and body
+        req, err := http.NewRequest(c.Request.Method, urlStr, c.Request.Body)
+        if err != nil {
+            c.String(http.StatusInternalServerError, "Failed to create HTTP request")
+            return
+        }
+
+        // Copy headers from the original request
+        for header, values := range c.Request.Header {
+            for _, value := range values {
+                req.Header.Add(header, value)
+            }
+        }
+
+        // Perform the request
+        resp, err := httpC.Do(req)
+        if err != nil {
+            c.String(http.StatusInternalServerError, "Failed to connect to HTTP server")
+            return
+        }
+        defer resp.Body.Close()
+
+        // Copy response headers
+        for header, values := range resp.Header {
+            for _, value := range values {
+                c.Writer.Header().Add(header, value)
+            }
+        }
+
+        // Set the status code from the proxied response
+        c.Status(resp.StatusCode)
+
+        // Copy the response body
+        if _, err := io.Copy(c.Writer, resp.Body); err != nil {
+            c.String(http.StatusInternalServerError, "Failed to copy response body")
+        }
+    })
 		wg.Add(1)
 		go func() {
 			dmsgWebLog.Debug(fmt.Sprintf("Serving http on: http://127.0.0.1:%v", webPort))
