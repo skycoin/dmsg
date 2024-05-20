@@ -348,10 +348,9 @@ var srvCmd = &cobra.Command{
 	Long: `DMSG web server - serve http interface from local port over dmsg` + func() string {
 		if _, err := os.Stat(dmsgwebsrvconffile); err == nil {
 			return `
-	dmsgvlcenv file detected: ` + dmsgwebsrvconffile
+	dmsenv file detected: ` + dmsgwebsrvconffile
 		}
-		return `dmsg streaming media with vlc
-
+		return `
 	.conf file may also be specified with
 	` + dmsgwebsrvenvname + `=/path/to/dmsgwebsrv.conf skywire dmsg web srv`
 	}(),
@@ -376,7 +375,7 @@ var srvCmd = &cobra.Command{
 }
 
 func Server() {
-	log := logging.MustGetLogger("dmsgvlc")
+	log := logging.MustGetLogger("dmsgwebsrv")
 
 	ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 
