@@ -126,9 +126,9 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 		if isEnvs {
 			envfile := envfileLinux
 			if runtime.GOOS == "windows" {
-				envfileslice, _ := script.Echo(envfile).Slice()
-				for i, _ := range envfileslice {
-					efs, _ := script.Echo(envfileslice[i]).Reject("##").Reject("#-").Reject("# ").Replace("#", "#$").String()
+				envfileslice, _ := script.Echo(envfile).Slice() //nolint
+				for i := range envfileslice {
+					efs, _ := script.Echo(envfileslice[i]).Reject("##").Reject("#-").Reject("# ").Replace("#", "#$").String() //nolint
 					if efs != "" && efs != "\n" {
 						envfileslice[i] = strings.ReplaceAll(efs, "\n", "")
 					}
@@ -306,8 +306,6 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 }
 
 var (
-	startTime  = time.Now()
-	runTime    time.Duration
 	dmsgPort   uint
 	dmsgSess   int
 	wl         string
@@ -330,12 +328,12 @@ func init() {
 	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", skyenv.DmsgDiscAddr, "dmsg discovery url")
 	srvCmd.Flags().IntVarP(&dmsgSess, "dsess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebsrvconffile), "dmsg sessions")
 	if os.Getenv("DMSGWEBSRV_SK") != "" {
-		sk.Set(os.Getenv("DMSGWEBSRV_SK"))
-	} //nolint
+		sk.Set(os.Getenv("DMSGWEBSRV_SK")) //nolint
+	}
 	if scriptExecString("${DMSGWEBSRV_SK}", dmsgwebsrvconffile) != "" {
-		sk.Set(scriptExecString("${DMSGWEBSRV_SK}", dmsgwebsrvconffile))
-	} //nolint
-	pk, _ = sk.PubKey()
+		sk.Set(scriptExecString("${DMSGWEBSRV_SK}", dmsgwebsrvconffile)) //nolint
+	}
+	pk, _ = sk.PubKey() //nolint
 	srvCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 	srvCmd.Flags().BoolVarP(&isEnvs, "envs", "z", false, "show example .conf file")
 
@@ -356,11 +354,11 @@ var srvCmd = &cobra.Command{
 	}(),
 	Run: func(_ *cobra.Command, _ []string) {
 		if isEnvs {
-			envfile := envfileLinux
+			envfile := srvenvfileLinux
 			if runtime.GOOS == "windows" {
-				envfileslice, _ := script.Echo(envfile).Slice()
-				for i, _ := range envfileslice {
-					efs, _ := script.Echo(envfileslice[i]).Reject("##").Reject("#-").Reject("# ").Replace("#", "#$").String()
+				envfileslice, _ := script.Echo(envfile).Slice() //nolint
+				for i := range envfileslice {
+					efs, _ := script.Echo(envfileslice[i]).Reject("##").Reject("#-").Reject("# ").Replace("#", "#$").String() //nolint
 					if efs != "" && efs != "\n" {
 						envfileslice[i] = strings.ReplaceAll(efs, "\n", "")
 					}
@@ -370,11 +368,11 @@ var srvCmd = &cobra.Command{
 			fmt.Println(envfile)
 			os.Exit(0)
 		}
-		Server()
+		server()
 	},
 }
 
-func Server() {
+func server() {
 	log := logging.MustGetLogger("dmsgwebsrv")
 
 	ctx, cancel := cmdutil.SignalContext(context.Background(), log)
@@ -439,7 +437,7 @@ func Server() {
 		authRoute.Use(whitelistAuth(wlkeys))
 	}
 	authRoute.Any("/*path", func(c *gin.Context) {
-		targetURL, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%v%s?%s", localPort, c.Request.URL.Path, c.Request.URL.RawQuery))
+		targetURL, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%v%s?%s", localPort, c.Request.URL.Path, c.Request.URL.RawQuery)) //nolint
 		proxy := httputil.ReverseProxy{
 			Director: func(req *http.Request) {
 				req.URL = targetURL
@@ -452,7 +450,7 @@ func Server() {
 	})
 
 	serve := &http.Server{
-		Handler:           &GinHandler{Router: r1},
+		Handler:           &ginHandler{Router: r1},
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
@@ -471,7 +469,7 @@ func Server() {
 	wg.Add(1)
 	go func() {
 		fmt.Printf("listening on http://127.0.0.1:%d using gin router\n", websrvPort)
-		r1.Run(fmt.Sprintf(":%d", websrvPort))
+		r1.Run(fmt.Sprintf(":%d", websrvPort)) //nolint
 		wg.Done()
 	}()
 
@@ -483,7 +481,7 @@ func whitelistAuth(whitelistedPKs []cipher.PubKey) gin.HandlerFunc {
 		remotePK, _, err := net.SplitHostPort(c.Request.RemoteAddr)
 		if err != nil {
 			c.Writer.WriteHeader(http.StatusInternalServerError)
-			c.Writer.Write([]byte("500 Internal Server Error"))
+			c.Writer.Write([]byte("500 Internal Server Error")) //nolint
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
@@ -502,18 +500,18 @@ func whitelistAuth(whitelistedPKs []cipher.PubKey) gin.HandlerFunc {
 			c.Next()
 		} else {
 			c.Writer.WriteHeader(http.StatusUnauthorized)
-			c.Writer.Write([]byte("401 Unauthorized"))
+			c.Writer.Write([]byte("401 Unauthorized")) //nolint
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 	}
 }
 
-type GinHandler struct {
+type ginHandler struct {
 	Router *gin.Engine
 }
 
-func (h *GinHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *ginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Router.ServeHTTP(w, r)
 }
 
