@@ -311,7 +311,6 @@ var (
 	wl         string
 	wlkeys     []cipher.PubKey
 	localPort  uint
-	websrvPort uint
 	err        error
 )
 
@@ -322,7 +321,6 @@ var dmsgwebsrvconffile = os.Getenv(dmsgwebsrvenvname)
 func init() {
 	RootCmd.AddCommand(srvCmd)
 	srvCmd.Flags().UintVarP(&localPort, "lport", "l", scriptExecUint("${LOCALPORT:-8086}", dmsgwebsrvconffile), "local application http interface port")
-	srvCmd.Flags().UintVarP(&websrvPort, "port", "p", scriptExecUint("${WEBPORT:-8081}", dmsgwebsrvconffile), "port to serve")
 	srvCmd.Flags().UintVarP(&dmsgPort, "dport", "d", scriptExecUint("${DMSGPORT:-80}", dmsgwebsrvconffile), "dmsg port to serve")
 	srvCmd.Flags().StringVarP(&wl, "wl", "w", scriptExecArray("${WHITELISTPKS[@]}", dmsgwebsrvconffile), "whitelisted keys for dmsg authenticated routes\r")
 	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", skyenv.DmsgDiscAddr, "dmsg discovery url")
@@ -463,13 +461,6 @@ func server() {
 		if err := serve.Serve(lis); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Serve1: %v", err)
 		}
-		wg.Done()
-	}()
-
-	wg.Add(1)
-	go func() {
-		fmt.Printf("listening on http://127.0.0.1:%d using gin router\n", websrvPort)
-		r1.Run(fmt.Sprintf(":%d", websrvPort)) //nolint
 		wg.Done()
 	}()
 
@@ -782,9 +773,6 @@ const srvenvfileLinux = `
 
 #--	DMSG port to serve
 #DMSGPORT=80
-
-#--	Port for this application to serve http
-#WEBPORT=8081
 
 #--	Local Port to serve over dmsg
 LOCALPORT=8086
