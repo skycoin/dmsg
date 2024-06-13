@@ -27,6 +27,8 @@ var (
 	httpC              http.Client
 	dmsgDisc           string
 	dmsgSessions       int
+	dmsgAddr					[]string
+	dialPK cipher.PubKey
 	filterDomainSuffix string
 	sk                 cipher.SecKey
 	pk                 cipher.PubKey
@@ -44,6 +46,7 @@ var (
 	wlkeys             []cipher.PubKey
 	localPort          []uint
 	err                error
+	rawTCP bool
 )
 
 // Execute executes root CLI command.

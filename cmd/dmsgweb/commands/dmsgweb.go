@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"runtime"
 	"strings"
 	"syscall"
@@ -28,6 +29,8 @@ import (
 	"golang.org/x/net/proxy"
 
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
+	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
+
 )
 
 type customResolver struct{}
@@ -62,6 +65,8 @@ func init() {
 	RootCmd.Flags().StringVarP(&resolveDmsgAddr, "resolve", "t", scriptExecString("${RESOLVEPK}", dmsgwebconffile), "resolve the specified dmsg address:port on the local port & disable proxy")
 	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", skyenv.DmsgDiscAddr, "dmsg discovery url")
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebconffile), "number of dmsg servers to connect to")
+	RootCmd.Flags().BoolVarP(&rawTCP, "raw-tcp", "c", false, "proxy local application as raw TCP") // New flag
+
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
 	if os.Getenv("DMSGWEB_SK") != "" {
 		sk.Set(os.Getenv("DMSGWEB_SK")) //nolint
@@ -114,6 +119,7 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 			fmt.Println(envfile)
 			os.Exit(0)
 		}
+
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM) //nolint
 		go func() {
@@ -142,7 +148,12 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 		if err != nil {
 			pk, sk = cipher.GenerateKeyPair()
 		}
-
+		dmsgWebLog.Info("dmsg client pk: %v", pk.String())
+		dmsgAddr = strings.Split(resolveDmsgAddr, ":")
+		err = dialPK.Set(dmsgAddr[0])
+		if err != nil {
+			log.Fatalf("failed to parse dmsg <address>:<port> : %v", err)
+		}
 		dmsgC, closeDmsg, err := startDmsg(ctx, pk, sk)
 		if err != nil {
 			dmsgWebLog.WithError(err).Fatal("failed to start dmsg")
@@ -210,75 +221,146 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 				dmsgWebLog.Debug("Stopped serving SOCKS5 proxy on " + socksAddr)
 			}()
 		}
-		r := gin.New()
 
-		r.Use(gin.Recovery())
-
-		r.Use(loggingMiddleware())
-
-		r.Any("/*path", func(c *gin.Context) {
-			var urlStr string
-			if resolveDmsgAddr != "" {
-				urlStr = fmt.Sprintf("dmsg://%s%s", resolveDmsgAddr, c.Param("path"))
-				if c.Request.URL.RawQuery != "" {
-					urlStr = fmt.Sprintf("%s?%s", urlStr, c.Request.URL.RawQuery)
-				}
-			} else {
-				hostParts := strings.Split(c.Request.Host, ":")
-				var dmsgp string
-				if len(hostParts) > 1 {
-					dmsgp = hostParts[1]
-				} else {
-					dmsgp = "80"
-				}
-				urlStr = fmt.Sprintf("dmsg://%s:%s%s", strings.TrimRight(hostParts[0], filterDomainSuffix), dmsgp, c.Param("path"))
-				if c.Request.URL.RawQuery != "" {
-					urlStr = fmt.Sprintf("%s?%s", urlStr, c.Request.URL.RawQuery)
-				}
-			}
-
-			fmt.Printf("Proxying request: %s %s\n", c.Request.Method, urlStr)
-			req, err := http.NewRequest(c.Request.Method, urlStr, c.Request.Body)
-			if err != nil {
-				c.String(http.StatusInternalServerError, "Failed to create HTTP request")
-				return
-			}
-
-			for header, values := range c.Request.Header {
-				for _, value := range values {
-					req.Header.Add(header, value)
-				}
-			}
-
-			resp, err := httpC.Do(req)
-			if err != nil {
-				c.String(http.StatusInternalServerError, "Failed to connect to HTTP server")
-				fmt.Printf("Error: %v\n", err)
-				return
-			}
-			defer resp.Body.Close() //nolint
-
-			for header, values := range resp.Header {
-				for _, value := range values {
-					c.Writer.Header().Add(header, value)
-				}
-			}
-
-			c.Status(resp.StatusCode)
-			if _, err := io.Copy(c.Writer, resp.Body); err != nil {
-				c.String(http.StatusInternalServerError, "Failed to copy response body")
-				fmt.Printf("Error copying response body: %v\n", err)
-			}
-		})
-		wg.Add(1)
-		go func() {
-			dmsgWebLog.Debug(fmt.Sprintf("Serving http on: http://127.0.0.1:%v", webPort))
-			r.Run(":" + fmt.Sprintf("%v", webPort)) //nolint
-			dmsgWebLog.Debug(fmt.Sprintf("Stopped serving http on: http://127.0.0.1:%v", webPort))
-			wg.Done()
-		}()
+		if !rawTCP {
+			proxyHTTPConn(localPort[0], dmsgWebLog)
+		} else {
+			proxyTCPConn(localPort[0], dmsgC, dmsgWebLog)
+		}
 		wg.Wait()
 	},
+}
+func proxyHTTPConn(localPort uint, log *logging.Logger) {
+	r := gin.New()
+
+	r.Use(gin.Recovery())
+
+	r.Use(loggingMiddleware())
+
+	r.Any("/*path", func(c *gin.Context) {
+		var urlStr string
+		if resolveDmsgAddr != "" {
+			urlStr = fmt.Sprintf("dmsg://%s%s", resolveDmsgAddr, c.Param("path"))
+			if c.Request.URL.RawQuery != "" {
+				urlStr = fmt.Sprintf("%s?%s", urlStr, c.Request.URL.RawQuery)
+			}
+		} else {
+			hostParts := strings.Split(c.Request.Host, ":")
+			var dmsgp string
+			if len(hostParts) > 1 {
+				dmsgp = hostParts[1]
+			} else {
+				dmsgp = "80"
+			}
+			urlStr = fmt.Sprintf("dmsg://%s:%s%s", strings.TrimRight(hostParts[0], filterDomainSuffix), dmsgp, c.Param("path"))
+			if c.Request.URL.RawQuery != "" {
+				urlStr = fmt.Sprintf("%s?%s", urlStr, c.Request.URL.RawQuery)
+			}
+		}
+
+		fmt.Printf("Proxying request: %s %s\n", c.Request.Method, urlStr)
+		req, err := http.NewRequest(c.Request.Method, urlStr, c.Request.Body)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to create HTTP request")
+			return
+		}
+
+		for header, values := range c.Request.Header {
+			for _, value := range values {
+				req.Header.Add(header, value)
+			}
+		}
+
+		resp, err := httpC.Do(req)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to connect to HTTP server")
+			fmt.Printf("Error: %v\n", err)
+			return
+		}
+		defer resp.Body.Close() //nolint
+
+		for header, values := range resp.Header {
+			for _, value := range values {
+				c.Writer.Header().Add(header, value)
+			}
+		}
+
+		c.Status(resp.StatusCode)
+		if _, err := io.Copy(c.Writer, resp.Body); err != nil {
+			c.String(http.StatusInternalServerError, "Failed to copy response body")
+			fmt.Printf("Error copying response body: %v\n", err)
+		}
+	})
+	wg.Add(1)
+	go func() {
+		dmsgWebLog.Debug(fmt.Sprintf("Serving http on: http://127.0.0.1:%v", webPort))
+		r.Run(":" + fmt.Sprintf("%v", webPort)) //nolint
+		dmsgWebLog.Debug(fmt.Sprintf("Stopped serving http on: http://127.0.0.1:%v", webPort))
+		wg.Done()
+	}()
+}
+func proxyTCPConn(webPort uint, dmsgC *dmsg.Client, log *logging.Logger) {
+	// Start listening on the specified local port
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", webPort))
+	if err != nil {
+		log.Fatalf("Failed to start TCP listener on port %d: %v", webPort, err)
+	}
+	defer listener.Close()
+	log.Printf("Serving TCP on 127.0.0.1:%d", webPort)
+
+	// Accept incoming TCP connections and proxy them
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf("Failed to accept connection: %v", err)
+			continue
+		}
+
+		wg.Add(1)
+		go func(conn net.Conn) {
+			defer wg.Done()
+			defer conn.Close()
+
+			var dialPort uint64
+			if len(dmsgAddr) > 1 {
+				dialPort, err = strconv.ParseUint(dmsgAddr[1], 10, 64)
+				if err != nil {
+					log.Fatalf("Failed to parse dmsg port: %v", err)
+					return
+				}
+			} else {
+				dialPort = uint64(80)
+			}
+
+			// Dial the dmsg address using the dmsg client
+			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK, Port: uint16(dialPort)})
+			if err != nil {
+				log.Printf("Failed to dial dmsg address %s: %v", resolveDmsgAddr, err)
+				return
+			}
+			defer dmsgConn.Close()
+
+			// Proxy data from TCP connection to dmsg connection
+			go func() {
+				_, err := io.Copy(dmsgConn, conn)
+				if err != nil {
+					log.Printf("Error copying data to dmsg server: %v", err)
+				}
+				// Close dmsgConn after copying is done
+				dmsgConn.Close()
+			}()
+
+			// Proxy data from dmsg connection to TCP connection
+			go func() {
+				_, err := io.Copy(conn, dmsgConn)
+				if err != nil {
+					log.Printf("Error copying data from dmsg server: %v", err)
+				}
+				// Close conn after copying is done
+				conn.Close()
+			}()
+		}(conn)
+	}
 }
 
 const envfileLinux = `
