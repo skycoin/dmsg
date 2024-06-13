@@ -181,7 +181,7 @@ func server() {
 					ReadTimeout:       10 * time.Second,
 					WriteTimeout:      10 * time.Second,
 				}
-				log.Printf("Serving on local port %v with DMSG listener %s", localPort, lis.Addr().String())
+				log.Printf("Serving on dmsg port %v with DMSG listener %s", localPort, lis.Addr().String())
 				if err := serve.Serve(lis); err != nil && err != http.ErrServerClosed {
 					log.Fatalf("Serve: %v", err)
 				}
@@ -199,10 +199,10 @@ const srvenvfileLinux = `
 #########################################################################
 
 #--	DMSG port to serve
-#DMSGPORT=80
+#DMSGPORT=('80')
 
 #--	Local Port to serve over dmsg
-LOCALPORT=8086
+LOCALPORT=('8086')
 
 #--	Number of dmsg servers to connect to (0 unlimits)
 #DMSGSESSIONS=1
