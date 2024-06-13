@@ -133,21 +133,21 @@ func server() {
 	var listN []net.Listener
 
 	for _, dport := range dmsgPort {
-	    lis, err := dmsgC.Listen(uint16(dport))
-	    if err != nil {
-	        log.Fatalf("Error listening on port %d: %v", dport, err)
-	    }
+		lis, err := dmsgC.Listen(uint16(dport))
+		if err != nil {
+			log.Fatalf("Error listening on port %d: %v", dport, err)
+		}
 
-	    listN = append(listN, lis)
+		listN = append(listN, lis)
 
-	    dport := dport
-	    go func(l net.Listener, port uint) {
-	        <-ctx.Done()
-	        if err := l.Close(); err != nil {
-	            log.Printf("Error closing listener on port %d: %v", port, err)
-	            log.WithError(err).Error()
-	        }
-	    }(lis, dport)
+		dport := dport
+		go func(l net.Listener, port uint) {
+			<-ctx.Done()
+			if err := l.Close(); err != nil {
+				log.Printf("Error closing listener on port %d: %v", port, err)
+				log.WithError(err).Error()
+			}
+		}(lis, dport)
 	}
 
 	wg := new(sync.WaitGroup)
