@@ -32,8 +32,8 @@ var dmsgwebsrvconffile = os.Getenv(dmsgwebsrvenvname)
 
 func init() {
 	RootCmd.AddCommand(srvCmd)
-	srvCmd.Flags().UintSliceVarP(&localPort, "lport", "l", scriptExecUintSlice("${LOCALPORT[@]:-8086}", dmsgwebsrvconffile), "local application http interface port")
-	srvCmd.Flags().UintSliceVarP(&dmsgPort, "dport", "d", scriptExecUintSlice("${DMSGPORT[@]:-80}", dmsgwebsrvconffile), "dmsg port to serve")
+	srvCmd.Flags().UintSliceVarP(&localPort, "lport", "l", scriptExecUintSlice("${LOCALPORT[@]:-8086}", dmsgwebsrvconffile), "local application http interface port(s)")
+	srvCmd.Flags().UintSliceVarP(&dmsgPort, "dport", "d", scriptExecUintSlice("${DMSGPORT[@]:-80}", dmsgwebsrvconffile), "dmsg port(s) to serve")
 	srvCmd.Flags().StringVarP(&wl, "wl", "w", scriptExecArray("${WHITELISTPKS[@]}", dmsgwebsrvconffile), "whitelisted keys for dmsg authenticated routes\r")
 	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", skyenv.DmsgDiscAddr, "dmsg discovery url")
 	srvCmd.Flags().IntVarP(&dmsgSess, "dsess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebsrvconffile), "dmsg sessions")
@@ -84,6 +84,9 @@ var srvCmd = &cobra.Command{
 
 func server() {
 	log := logging.MustGetLogger("dmsgwebsrv")
+	if len(localPort) != len(dmsgPort) {
+		log.Fatal(fmt.Sprintf("the same number of local ports as dmsg ports must be specified ; local ports: %v ; dmsg ports: %v", len(localPort), len(dmsgPort)))
+	}
 
 	ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 
