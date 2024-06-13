@@ -26,6 +26,7 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
+
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
 
@@ -279,8 +280,6 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 		wg.Wait()
 	},
 }
-
-
 
 const envfileLinux = `
 #########################################################################

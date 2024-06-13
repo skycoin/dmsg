@@ -23,7 +23,6 @@ import (
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 )
 
-
 var (
 	httpC              http.Client
 	dmsgDisc           string
@@ -39,12 +38,12 @@ var (
 	resolveDmsgAddr    string
 	wg                 sync.WaitGroup
 	isEnvs             bool
-	dmsgPort   []uint
-	dmsgSess   int
-	wl         string
-	wlkeys     []cipher.PubKey
-	localPort  []uint
-	err        error
+	dmsgPort           []uint
+	dmsgSess           int
+	wl                 string
+	wlkeys             []cipher.PubKey
+	localPort          []uint
+	err                error
 )
 
 // Execute executes root CLI command.
@@ -226,9 +225,6 @@ func scriptExecUint(s, envfile string) uint {
 	return uint(0)
 }
 
-
-
-
 func whitelistAuth(whitelistedPKs []cipher.PubKey) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		remotePK, _, err := net.SplitHostPort(c.Request.RemoteAddr)
@@ -267,7 +263,6 @@ type ginHandler struct {
 func (h *ginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Router.ServeHTTP(w, r)
 }
-
 
 func loggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {

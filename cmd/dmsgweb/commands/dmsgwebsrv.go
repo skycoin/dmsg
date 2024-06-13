@@ -149,46 +149,46 @@ func server() {
 		}(lis)
 	}
 
-		wg := new(sync.WaitGroup)
+	wg := new(sync.WaitGroup)
 
-		for i, lpt := range localPort {
-			wg.Add(1)
-			go func(localPort uint, lis net.Listener) {
-				defer wg.Done()
-				r1 := gin.New()
-				r1.Use(gin.Recovery())
-				r1.Use(loggingMiddleware())
+	for i, lpt := range localPort {
+		wg.Add(1)
+		go func(localPort uint, lis net.Listener) {
+			defer wg.Done()
+			r1 := gin.New()
+			r1.Use(gin.Recovery())
+			r1.Use(loggingMiddleware())
 
-				authRoute := r1.Group("/")
-				if len(wlkeys) > 0 {
-					authRoute.Use(whitelistAuth(wlkeys))
+			authRoute := r1.Group("/")
+			if len(wlkeys) > 0 {
+				authRoute.Use(whitelistAuth(wlkeys))
+			}
+			authRoute.Any("/*path", func(c *gin.Context) {
+				targetURL, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%v%s?%s", localPort, c.Request.URL.Path, c.Request.URL.RawQuery)) //nolint
+				proxy := httputil.ReverseProxy{
+					Director: func(req *http.Request) {
+						req.URL = targetURL
+						req.Host = targetURL.Host
+						req.Method = c.Request.Method
+					},
+					Transport: &http.Transport{},
 				}
-				authRoute.Any("/*path", func(c *gin.Context) {
-					targetURL, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%v%s?%s", localPort, c.Request.URL.Path, c.Request.URL.RawQuery)) //nolint
-					proxy := httputil.ReverseProxy{
-						Director: func(req *http.Request) {
-							req.URL = targetURL
-							req.Host = targetURL.Host
-							req.Method = c.Request.Method
-						},
-						Transport: &http.Transport{},
-					}
-					proxy.ServeHTTP(c.Writer, c.Request)
-				})
-				serve := &http.Server{
-					Handler:           &ginHandler{Router: r1},
-					ReadHeaderTimeout: 5 * time.Second,
-					ReadTimeout:       10 * time.Second,
-					WriteTimeout:      10 * time.Second,
-				}
-				log.Printf("Serving on dmsg port %v with DMSG listener %s", localPort, lis.Addr().String())
-				if err := serve.Serve(lis); err != nil && err != http.ErrServerClosed {
-					log.Fatalf("Serve: %v", err)
-				}
-			}(lpt, listN[i])
-		}
+				proxy.ServeHTTP(c.Writer, c.Request)
+			})
+			serve := &http.Server{
+				Handler:           &ginHandler{Router: r1},
+				ReadHeaderTimeout: 5 * time.Second,
+				ReadTimeout:       10 * time.Second,
+				WriteTimeout:      10 * time.Second,
+			}
+			log.Printf("Serving on dmsg port %v with DMSG listener %s", localPort, lis.Addr().String())
+			if err := serve.Serve(lis); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Serve: %v", err)
+			}
+		}(lpt, listN[i])
+	}
 
-		wg.Wait()
+	wg.Wait()
 }
 
 const srvenvfileLinux = `
