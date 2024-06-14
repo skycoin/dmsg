@@ -226,19 +226,20 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 		}
 
 		if rawTCP {
-			proxyTCPConn(dmsgC, dmsgWebLog)
+			proxyTCPConn()
 		}
-		//			if rawUDP {
-		//				proxyUDPConn(dmsgC, dmsgWebLog)
-		//	}
+		if rawUDP {
+			log.Fatalf("handling raw udp not yet implemented")
+//			proxyUDPConn()
+		}
 		if !rawTCP && !rawUDP {
-			proxyHTTPConn(dmsgWebLog)
+			proxyHTTPConn()
 		}
 		wg.Wait()
 	},
 }
 
-func proxyHTTPConn(log *logging.Logger) {
+func proxyHTTPConn() {
 	r := gin.New()
 
 	r.Use(gin.Recovery())
@@ -307,7 +308,7 @@ func proxyHTTPConn(log *logging.Logger) {
 		wg.Done()
 	}()
 }
-func proxyTCPConn(dmsgC *dmsg.Client, log *logging.Logger) {
+func proxyTCPConn() {
 	// Start listening on the specified local port
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", webPort))
 	if err != nil {
