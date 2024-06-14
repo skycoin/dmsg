@@ -226,19 +226,19 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 		}
 
 		if rawTCP {
-			proxyTCPConn(localPort[0], dmsgC, dmsgWebLog)
+			proxyTCPConn(dmsgC, dmsgWebLog)
 		}
 		//			if rawUDP {
-		//				proxyUDPConn(localPort[0], dmsgC, dmsgWebLog)
+		//				proxyUDPConn(dmsgC, dmsgWebLog)
 		//	}
 		if !rawTCP && !rawUDP {
-			proxyHTTPConn(localPort[0], dmsgWebLog)
+			proxyHTTPConn(dmsgWebLog)
 		}
 		wg.Wait()
 	},
 }
 
-func proxyHTTPConn(localPort uint, log *logging.Logger) {
+func proxyHTTPConn(log *logging.Logger) {
 	r := gin.New()
 
 	r.Use(gin.Recovery())
@@ -307,13 +307,13 @@ func proxyHTTPConn(localPort uint, log *logging.Logger) {
 		wg.Done()
 	}()
 }
-func proxyTCPConn(webPort uint, dmsgC *dmsg.Client, log *logging.Logger) {
+func proxyTCPConn(dmsgC *dmsg.Client, log *logging.Logger) {
 	// Start listening on the specified local port
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", webPort))
 	if err != nil {
 		log.Fatalf("Failed to start TCP listener on port %d: %v", webPort, err)
 	}
-	defer listener.Close()
+	defer listener.Close() //nolint
 	log.Printf("Serving TCP on 127.0.0.1:%d", webPort)
 
 	// Accept incoming TCP connections and proxy them
@@ -327,7 +327,7 @@ func proxyTCPConn(webPort uint, dmsgC *dmsg.Client, log *logging.Logger) {
 		wg.Add(1)
 		go func(conn net.Conn) {
 			defer wg.Done()
-			defer conn.Close()
+			defer conn.Close() //nolint
 
 			var dialPort uint64
 			if len(dmsgAddr) > 1 {
@@ -346,7 +346,7 @@ func proxyTCPConn(webPort uint, dmsgC *dmsg.Client, log *logging.Logger) {
 				log.Printf("Failed to dial dmsg address %s: %v", resolveDmsgAddr, err)
 				return
 			}
-			defer dmsgConn.Close()
+			defer dmsgConn.Close() //nolint
 
 			// Proxy data from TCP connection to dmsg connection
 			go func() {
@@ -355,7 +355,7 @@ func proxyTCPConn(webPort uint, dmsgC *dmsg.Client, log *logging.Logger) {
 					log.Printf("Error copying data to dmsg server: %v", err)
 				}
 				// Close dmsgConn after copying is done
-				dmsgConn.Close()
+				dmsgConn.Close() //nolint
 			}()
 
 			// Proxy data from dmsg connection to TCP connection
@@ -365,7 +365,7 @@ func proxyTCPConn(webPort uint, dmsgC *dmsg.Client, log *logging.Logger) {
 					log.Printf("Error copying data from dmsg server: %v", err)
 				}
 				// Close conn after copying is done
-				conn.Close()
+				conn.Close() //nolint
 			}()
 		}(conn)
 	}

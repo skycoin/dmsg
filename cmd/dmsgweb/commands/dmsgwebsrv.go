@@ -227,14 +227,14 @@ func proxyTCPConnections(localPort uint, lis net.Listener, log *logging.Logger) 
 }
 
 func handleTCPConnection(dmsgConn net.Conn, localPort uint, log *logging.Logger) {
-	defer dmsgConn.Close()
+	defer dmsgConn.Close() //nolint
 
 	localConn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", localPort))
 	if err != nil {
 		log.Printf("Error connecting to local port %d: %v", localPort, err)
 		return
 	}
-	defer localConn.Close()
+	defer localConn.Close() //nolint
 
 	copyConn := func(dst net.Conn, src net.Conn) {
 		_, err := io.Copy(dst, src)
