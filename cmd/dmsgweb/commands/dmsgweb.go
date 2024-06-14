@@ -12,8 +12,8 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -28,9 +28,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
 
-	"github.com/skycoin/dmsg/pkg/dmsghttp"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
-
+	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
 
 type customResolver struct{}
@@ -65,7 +64,8 @@ func init() {
 	RootCmd.Flags().StringVarP(&resolveDmsgAddr, "resolve", "t", scriptExecString("${RESOLVEPK}", dmsgwebconffile), "resolve the specified dmsg address:port on the local port & disable proxy")
 	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", skyenv.DmsgDiscAddr, "dmsg discovery url")
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebconffile), "number of dmsg servers to connect to")
-	RootCmd.Flags().BoolVarP(&rawTCP, "raw-tcp", "c", false, "proxy local application as raw TCP") // New flag
+	RootCmd.Flags().BoolVarP(&rawTCP, "rt", "c", false, "proxy local port as raw TCP") // New flag
+	RootCmd.Flags().BoolVarP(&rawUDP, "ru", "u", false, "proxy local port as raw UDP") // New flag
 
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
 	if os.Getenv("DMSGWEB_SK") != "" {
@@ -133,6 +133,9 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 			if lvl, err := logging.LevelFromString(logLvl); err == nil {
 				logging.SetLevel(lvl)
 			}
+		}
+		if rawTCP && rawUDP {
+			log.Fatal("must specify either --rt or --ru flags not both")
 		}
 
 		if filterDomainSuffix == "" {
@@ -222,14 +225,19 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 			}()
 		}
 
-		if !rawTCP {
-			proxyHTTPConn(localPort[0], dmsgWebLog)
-		} else {
+		if rawTCP {
 			proxyTCPConn(localPort[0], dmsgC, dmsgWebLog)
+		}
+		//			if rawUDP {
+		//				proxyUDPConn(localPort[0], dmsgC, dmsgWebLog)
+		//	}
+		if !rawTCP && !rawUDP {
+			proxyHTTPConn(localPort[0], dmsgWebLog)
 		}
 		wg.Wait()
 	},
 }
+
 func proxyHTTPConn(localPort uint, log *logging.Logger) {
 	r := gin.New()
 
@@ -363,6 +371,57 @@ func proxyTCPConn(webPort uint, dmsgC *dmsg.Client, log *logging.Logger) {
 	}
 }
 
+/*
+	func proxyUDPConn(webPort uint, dmsgC *dmsg.Client, log *logging.Logger) {
+		// Resolve the dmsg address
+		var dialPort uint64
+		if len(dmsgAddr) > 1 {
+			dialPort, _ = strconv.ParseUint(dmsgAddr[1], 10, 64)
+		} else {
+			dialPort = 80
+		}
+
+		// Listen for incoming UDP packets on the specified port
+		addr := fmt.Sprintf(":%d", webPort)
+		conn, err := net.ListenPacket("udp", addr)
+		if err != nil {
+			log.Fatalf("Failed to listen on UDP port %d: %v", webPort, err)
+		}
+		defer conn.Close()
+		log.Printf("Serving UDP on 127.0.0.1:%d", webPort)
+
+		// Buffer to hold incoming UDP data
+		buffer := make([]byte, 65535) // Maximum UDP packet size
+
+		for {
+			// Read UDP packet from the connection
+			n, addr, err := conn.ReadFrom(buffer)
+			if err != nil {
+				log.Printf("Error reading UDP packet: %v", err)
+				continue
+			}
+
+			// Destination dmsg address
+			dmsgAddr := dmsg.Addr{PK: dialPK, Port: uint16(dialPort)}
+
+			// Dial dmsg connection
+			dmsgConn, err := dmsgC.DialPacketConn(context.Background(), dmsgAddr)
+			if err != nil {
+				log.Printf("Failed to dial dmsg address %s: %v", dmsgAddr.String(), err)
+				continue
+			}
+
+			// Write UDP packet to dmsg connection
+			_, err = dmsgConn.WriteTo(buffer[:n], addr)
+			if err != nil {
+				log.Printf("Error writing UDP packet to dmsg server: %v", err)
+			}
+
+			// Close dmsg connection
+			dmsgConn.Close()
+		}
+	}
+*/
 const envfileLinux = `
 #########################################################################
 #--	DMSGWEB CONFIG TEMPLATE

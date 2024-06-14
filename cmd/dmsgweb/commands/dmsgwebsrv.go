@@ -38,7 +38,9 @@ func init() {
 	srvCmd.Flags().StringVarP(&wl, "wl", "w", scriptExecArray("${WHITELISTPKS[@]}", dmsgwebsrvconffile), "whitelisted keys for dmsg authenticated routes\r")
 	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", skyenv.DmsgDiscAddr, "dmsg discovery url")
 	srvCmd.Flags().IntVarP(&dmsgSess, "dsess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebsrvconffile), "dmsg sessions")
-	srvCmd.Flags().BoolVarP(&rawTCP, "raw-tcp", "c", false, "proxy local application as raw TCP") // New flag
+	srvCmd.Flags().BoolVarP(&rawTCP, "rt", "c", false, "proxy local port as raw TCP") // New flag
+	srvCmd.Flags().BoolVarP(&rawUDP, "ru", "u", false, "proxy local port as raw UDP") // New flag
+
 	if os.Getenv("DMSGWEBSRV_SK") != "" {
 		sk.Set(os.Getenv("DMSGWEBSRV_SK")) //nolint
 	}
@@ -80,6 +82,7 @@ var srvCmd = &cobra.Command{
 			fmt.Println(envfile)
 			os.Exit(0)
 		}
+
 		server()
 	},
 }
@@ -88,6 +91,9 @@ func server() {
 	log := logging.MustGetLogger("dmsgwebsrv")
 	if len(localPort) != len(dmsgPort) {
 		log.Fatal(fmt.Sprintf("the same number of local ports as dmsg ports must be specified ; local ports: %v ; dmsg ports: %v", len(localPort), len(dmsgPort)))
+	}
+	if rawTCP && rawUDP {
+		log.Fatal("must specify either --rt or --ru flags not both")
 	}
 
 	ctx, cancel := cmdutil.SignalContext(context.Background(), log)
@@ -162,7 +168,11 @@ func server() {
 			defer wg.Done()
 			if rawTCP {
 				proxyTCPConnections(localPort, lis, log)
-			} else {
+			}
+			//			if rawUDP {
+			//				handleUDPConnection(localPort, lis, log)
+			//			}
+			if !rawTCP && !rawUDP {
 				proxyHTTPConnections(localPort, lis, log)
 			}
 		}(lpt, listN[i])
@@ -236,6 +246,51 @@ func handleTCPConnection(dmsgConn net.Conn, localPort uint, log *logging.Logger)
 	go copyConn(dmsgConn, localConn)
 	go copyConn(localConn, dmsgConn)
 }
+
+/*
+func handleUDPConnection(localPort uint, conn net.PacketConn, dmsgC *dmsg.Client, log *logging.Logger) {
+	buffer := make([]byte, 65535)
+
+	for {
+		n, addr, err := conn.ReadFrom(buffer)
+		if err != nil {
+			log.Printf("Error reading UDP packet: %v", err)
+			continue
+		}
+
+		err = dmsgC.SendUDP(buffer[:n], localPort, addr)
+		if err != nil {
+			log.Printf("Error sending UDP packet via dmsg client: %v", err)
+			continue
+		}
+
+		responseBuffer := make([]byte, 65535)
+		n, _, err = dmsgC.ReceiveUDP(responseBuffer)
+		if err != nil {
+			log.Printf("Error receiving UDP response from dmsg client: %v", err)
+			continue
+		}
+
+		_, err = conn.WriteTo(responseBuffer[:n], addr)
+		if err != nil {
+			log.Printf("Error sending UDP response to client: %v", err)
+			continue
+		}
+	}
+}
+
+func proxyUDPConnections(conn net.PacketConn, data []byte, addr net.Addr, webPort uint, log *logging.Logger) {
+	for {
+		conn, err := lis.Accept()
+		if err != nil {
+			log.Printf("Error accepting connection: %v", err)
+			return
+		}
+
+		go handleUDPConnection(conn, localPort, log)
+	}
+}
+*/
 
 const srvenvfileLinux = `
 #########################################################################
