@@ -230,7 +230,7 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 		}
 		if rawUDP {
 			log.Fatalf("handling raw udp not yet implemented")
-//			proxyUDPConn()
+			//			proxyUDPConn()
 		}
 		if !rawTCP && !rawUDP {
 			proxyHTTPConn()
