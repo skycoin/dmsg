@@ -35,17 +35,15 @@ func init() {
 	RootCmd.AddCommand(srvCmd)
 	srvCmd.Flags().UintSliceVarP(&localPort, "lport", "l", scriptExecUintSlice("${LOCALPORT[@]:-8086}", dmsgwebsrvconffile), "local application http interface port(s)")
 	srvCmd.Flags().UintSliceVarP(&dmsgPort, "dport", "d", scriptExecUintSlice("${DMSGPORT[@]:-80}", dmsgwebsrvconffile), "dmsg port(s) to serve")
-	srvCmd.Flags().StringVarP(&wl, "wl", "w", scriptExecArray("${WHITELISTPKS[@]}", dmsgwebsrvconffile), "whitelisted keys for dmsg authenticated routes\r")
+	srvCmd.Flags().StringSliceVarP(&wl, "wl", "w", scriptExecStringSlice("${WHITELISTPKS[@]}", dmsgwebsrvconffile), "whitelisted keys for dmsg authenticated routes\r")
 	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", skyenv.DmsgDiscAddr, "dmsg discovery url")
 	srvCmd.Flags().IntVarP(&dmsgSess, "dsess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebsrvconffile), "dmsg sessions")
-	srvCmd.Flags().BoolVarP(&rawTCP, "rt", "c", false, "proxy local port as raw TCP") // New flag
-	srvCmd.Flags().BoolVarP(&rawUDP, "ru", "u", false, "proxy local port as raw UDP") // New flag
-
-	if os.Getenv("DMSGWEBSRV_SK") != "" {
-		sk.Set(os.Getenv("DMSGWEBSRV_SK")) //nolint
+	srvCmd.Flags().BoolSliceVarP(&rawTCP, "rt", "c", scriptExecBoolSlice("${RAWTCP[@]:-false}", dmsgwebsrvconffile), "proxy local port as raw TCP")
+	if os.Getenv("DMSGWEBSRVSK") != "" {
+		sk.Set(os.Getenv("DMSGWEBSRVSK")) //nolint
 	}
-	if scriptExecString("${DMSGWEBSRV_SK}", dmsgwebsrvconffile) != "" {
-		sk.Set(scriptExecString("${DMSGWEBSRV_SK}", dmsgwebsrvconffile)) //nolint
+	if scriptExecString("${DMSGWEBSRVSK}", dmsgwebsrvconffile) != "" {
+		sk.Set(scriptExecString("${DMSGWEBSRVSK}", dmsgwebsrvconffile)) //nolint
 	}
 	pk, _ = sk.PubKey() //nolint
 	srvCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
@@ -92,8 +90,21 @@ func server() {
 	if len(localPort) != len(dmsgPort) {
 		log.Fatal(fmt.Sprintf("the same number of local ports as dmsg ports must be specified ; local ports: %v ; dmsg ports: %v", len(localPort), len(dmsgPort)))
 	}
-	if rawTCP && rawUDP {
-		log.Fatal("must specify either --rt or --ru flags not both")
+
+	seenLocalPort := make(map[uint]bool)
+	for _, item := range localPort {
+		if seenLocalPort[item] {
+			log.Fatal("-lport --l flag cannot contain duplicates")
+		}
+		seenLocalPort[item] = true
+	}
+
+	seenDmsgPort := make(map[uint]bool)
+	for _, item := range dmsgPort {
+		if seenDmsgPort[item] {
+			log.Fatal("-dport --d flag cannot contain duplicates")
+		}
+		seenDmsgPort[item] = true
 	}
 
 	ctx, cancel := cmdutil.SignalContext(context.Background(), log)
@@ -105,9 +116,8 @@ func server() {
 	}
 	log.Infof("dmsg client pk: %v", pk.String())
 
-	if wl != "" {
-		wlk := strings.Split(wl, ",")
-		for _, key := range wlk {
+	if len(wl) > 0 {
+		for _, key := range wl {
 			var pk0 cipher.PubKey
 			err := pk0.Set(key)
 			if err == nil {
@@ -164,18 +174,14 @@ func server() {
 
 	for i, lpt := range localPort {
 		wg.Add(1)
-		go func(localPort uint, lis net.Listener) {
+		go func(localPort uint, rtcp bool, lis net.Listener) {
 			defer wg.Done()
-			if rawTCP {
+			if rtcp {
 				proxyTCPConnections(localPort, lis, log)
-			}
-			//			if rawUDP {
-			//				handleUDPConnection(localPort, lis, log)
-			//			}
-			if !rawTCP && !rawUDP {
+			} else {
 				proxyHTTPConnections(localPort, lis, log)
 			}
-		}(lpt, listN[i])
+		}(lpt, rawTCP[i], listN[i])
 	}
 
 	wg.Wait()
@@ -247,73 +253,29 @@ func handleTCPConnection(dmsgConn net.Conn, localPort uint, log *logging.Logger)
 	go copyConn(localConn, dmsgConn)
 }
 
-/*
-func handleUDPConnection(localPort uint, conn net.PacketConn, dmsgC *dmsg.Client, log *logging.Logger) {
-	buffer := make([]byte, 65535)
-
-	for {
-		n, addr, err := conn.ReadFrom(buffer)
-		if err != nil {
-			log.Printf("Error reading UDP packet: %v", err)
-			continue
-		}
-
-		err = dmsgC.SendUDP(buffer[:n], localPort, addr)
-		if err != nil {
-			log.Printf("Error sending UDP packet via dmsg client: %v", err)
-			continue
-		}
-
-		responseBuffer := make([]byte, 65535)
-		n, _, err = dmsgC.ReceiveUDP(responseBuffer)
-		if err != nil {
-			log.Printf("Error receiving UDP response from dmsg client: %v", err)
-			continue
-		}
-
-		_, err = conn.WriteTo(responseBuffer[:n], addr)
-		if err != nil {
-			log.Printf("Error sending UDP response to client: %v", err)
-			continue
-		}
-	}
-}
-
-func proxyUDPConnections(conn net.PacketConn, data []byte, addr net.Addr, webPort uint, log *logging.Logger) {
-	for {
-		conn, err := lis.Accept()
-		if err != nil {
-			log.Printf("Error accepting connection: %v", err)
-			return
-		}
-
-		go handleUDPConnection(conn, localPort, log)
-	}
-}
-*/
-
 const srvenvfileLinux = `
 #########################################################################
 #--	DMSGWEB SRV CONFIG TEMPLATE
 #--		Defaults shown
 #--		Uncomment to change default value
+#--		LOCALPORT and DMSGPORT must contain the same number of elements
 #########################################################################
 
 #--	DMSG port to serve
 #DMSGPORT=('80')
 
 #--	Local Port to serve over dmsg
-LOCALPORT=('8086')
+#LOCALPORT=('8086')
 
 #--	Number of dmsg servers to connect to (0 unlimits)
 #DMSGSESSIONS=1
 
 #--	Set secret key
-#DMSGWEBSRV_SK=''
+#DMSGWEBSRVSK=''
 
 #--	Whitelisted keys to access the web interface
 #WHITELISTPKS=('')
 
 #-- Proxy as raw TCP
-#RAW_TCP=false
+#RAWTCP=('false')
 `

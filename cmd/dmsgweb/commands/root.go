@@ -29,26 +29,26 @@ var (
 	dmsgDisc           string
 	dmsgSessions       int
 	dmsgAddr           []string
-	dialPK             cipher.PubKey
+	dialPK             []cipher.PubKey
 	filterDomainSuffix string
 	sk                 cipher.SecKey
 	pk                 cipher.PubKey
 	dmsgWebLog         *logging.Logger
 	logLvl             string
-	webPort            uint
+	webPort            []uint
 	proxyPort          uint
 	addProxy           string
-	resolveDmsgAddr    string
+	resolveDmsgAddr    []string
 	wg                 sync.WaitGroup
 	isEnvs             bool
 	dmsgPort           []uint
+	dmsgPorts          []uint
 	dmsgSess           int
-	wl                 string
+	wl                 []string
 	wlkeys             []cipher.PubKey
 	localPort          []uint
 	err                error
-	rawTCP             bool
-	rawUDP             bool
+	rawTCP             []bool
 )
 
 // Execute executes root CLI command.
@@ -109,7 +109,30 @@ func scriptExecString(s, envfile string) string {
 	return ""
 }
 
-func scriptExecArray(s, envfile string) string {
+/*
+	func scriptExecArray(s, envfile string) string {
+		if runtime.GOOS == "windows" {
+			variable := s
+			if strings.Contains(variable, "[@]}") {
+				variable = strings.TrimRight(variable, "[@]}")
+				variable = strings.TrimRight(variable, "{")
+			}
+			out, err := script.Exec(fmt.Sprintf(`powershell -c '$SKYENV = "%s"; if ($SKYENV -ne "" -and (Test-Path $SKYENV)) { . $SKYENV }; foreach ($item in %s) { Write-Host $item }'`, envfile, variable)).Slice()
+			if err == nil {
+				if len(out) != 0 {
+					return ""
+				}
+				return strings.Join(out, ",")
+			}
+		}
+		y, err := script.Exec(fmt.Sprintf(`bash -c 'SKYENV=%s ; if [[ $SKYENV != "" ]] && [[ -f $SKYENV ]] ; then source $SKYENV ; fi ; for _i in %s ; do echo "$_i" ; done'`, envfile, s)).Slice()
+		if err == nil {
+			return strings.Join(y, ",")
+		}
+		return ""
+	}
+*/
+func scriptExecStringSlice(s, envfile string) []string {
 	if runtime.GOOS == "windows" {
 		variable := s
 		if strings.Contains(variable, "[@]}") {
@@ -118,17 +141,43 @@ func scriptExecArray(s, envfile string) string {
 		}
 		out, err := script.Exec(fmt.Sprintf(`powershell -c '$SKYENV = "%s"; if ($SKYENV -ne "" -and (Test-Path $SKYENV)) { . $SKYENV }; foreach ($item in %s) { Write-Host $item }'`, envfile, variable)).Slice()
 		if err == nil {
-			if len(out) != 0 {
-				return ""
-			}
-			return strings.Join(out, ",")
+			return out
 		}
 	}
 	y, err := script.Exec(fmt.Sprintf(`bash -c 'SKYENV=%s ; if [[ $SKYENV != "" ]] && [[ -f $SKYENV ]] ; then source $SKYENV ; fi ; for _i in %s ; do echo "$_i" ; done'`, envfile, s)).Slice()
 	if err == nil {
-		return strings.Join(y, ",")
+		return y
 	}
-	return ""
+	return []string{}
+}
+
+func scriptExecBoolSlice(s, envfile string) []bool {
+	var result []bool
+
+	if runtime.GOOS == "windows" {
+		variable := s
+		if strings.Contains(variable, "[@]}") {
+			variable = strings.TrimRight(variable, "[@]}")
+			variable = strings.TrimRight(variable, "{")
+		}
+		out, err := script.Exec(fmt.Sprintf(`powershell -c '$SKYENV = "%s"; if ($SKYENV -ne "" -and (Test-Path $SKYENV)) { . $SKYENV }; foreach ($item in %s) { Write-Host $item }'`, envfile, variable)).Slice()
+		if err == nil {
+			for _, item := range out {
+				result = append(result, item != "")
+			}
+			return result
+		}
+	} else {
+		y, err := script.Exec(fmt.Sprintf(`bash -c 'SKYENV=%s ; if [[ $SKYENV != "" ]] && [[ -f $SKYENV ]] ; then source $SKYENV ; fi ; for _i in %s ; do echo "$_i" ; done'`, envfile, s)).Slice()
+		if err == nil {
+			for _, item := range y {
+				result = append(result, item != "")
+			}
+			return result
+		}
+	}
+
+	return result
 }
 
 func scriptExecUintSlice(s, envfile string) []uint {
