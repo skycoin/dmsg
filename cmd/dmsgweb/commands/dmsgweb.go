@@ -272,7 +272,7 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 				proxyHTTPConn(-1)
 			}
 		} else {
-			for i, _ := range resolveDmsgAddr {
+			for i := range resolveDmsgAddr {
 				if rawTCP[i] {
 					proxyTCPConn(i)
 				} else {
