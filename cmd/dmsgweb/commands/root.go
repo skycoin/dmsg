@@ -1,4 +1,4 @@
-// Package commands cmd/dmsgweb/commands/dmsgweb.go
+// Package commands cmd/dmsgweb/commands/root.go
 package commands
 
 import (
