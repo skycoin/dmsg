@@ -87,7 +87,7 @@ install-linters-windows: ## Install linters on windows
 	${OPTS} go install github.com/incu6us/goimports-reviser@latest
 
 format: ## Formats the code. Must have goimports and goimports-reviser installed (use make install-linters).
-	${OPTS} goimports -local ${DMSG_REPO} -w .
+	${OPTS} goimports -w -local ${DMSG_REPO} ./pkg ./cmd ./internal ./examples
 	find . -type f -name '*.go' -not -path "./.git/*" -not -path "./vendor/*"  -exec goimports-reviser -project-name ${DMSG_REPO} {} \;
 
 
