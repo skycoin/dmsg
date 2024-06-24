@@ -1,4 +1,3 @@
-//go:build go1.15 && !go1.17
 // +build go1.15,!go1.17
 
 /*
@@ -20,11 +19,11 @@
 package encoder
 
 import (
-	"unsafe"
+    `unsafe`
 
-	_ "github.com/chenzhuoyu/base64x"
+    _ `github.com/chenzhuoyu/base64x`
 
-	"github.com/bytedance/sonic/internal/rt"
+    `github.com/bytedance/sonic/internal/rt`
 )
 
 //go:linkname _subr__b64encode github.com/chenzhuoyu/base64x._subr__b64encode

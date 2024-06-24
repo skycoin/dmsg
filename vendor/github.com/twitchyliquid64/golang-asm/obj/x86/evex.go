@@ -5,11 +5,10 @@
 package x86
 
 import (
+	"github.com/twitchyliquid64/golang-asm/obj"
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/twitchyliquid64/golang-asm/obj"
 )
 
 // evexBits stores EVEX prefix info that is used during instruction encoding.

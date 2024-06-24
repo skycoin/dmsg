@@ -2,7 +2,7 @@
 package base64x
 
 import (
-	"unsafe"
+    `unsafe`
 )
 
 //go:nosplit
