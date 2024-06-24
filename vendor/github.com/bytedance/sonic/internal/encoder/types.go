@@ -17,31 +17,31 @@
 package encoder
 
 import (
-	"encoding"
-	"encoding/json"
-	"reflect"
+    `encoding`
+    `encoding/json`
+    `reflect`
 )
 
 var (
-	byteType                 = reflect.TypeOf(byte(0))
-	jsonNumberType           = reflect.TypeOf(json.Number(""))
-	jsonUnsupportedValueType = reflect.TypeOf(new(json.UnsupportedValueError))
+    byteType                 = reflect.TypeOf(byte(0))
+    jsonNumberType           = reflect.TypeOf(json.Number(""))
+    jsonUnsupportedValueType = reflect.TypeOf(new(json.UnsupportedValueError))
 )
 
 var (
-	errorType                 = reflect.TypeOf((*error)(nil)).Elem()
-	jsonMarshalerType         = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
-	encodingTextMarshalerType = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
+    errorType                 = reflect.TypeOf((*error)(nil)).Elem()
+    jsonMarshalerType         = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
+    encodingTextMarshalerType = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
 )
 
 func isSimpleByte(vt reflect.Type) bool {
-	if vt.Kind() != byteType.Kind() {
-		return false
-	} else {
-		return !isEitherMarshaler(vt) && !isEitherMarshaler(reflect.PtrTo(vt))
-	}
+    if vt.Kind() != byteType.Kind() {
+        return false
+    } else {
+        return !isEitherMarshaler(vt) && !isEitherMarshaler(reflect.PtrTo(vt))
+    }
 }
 
 func isEitherMarshaler(vt reflect.Type) bool {
-	return vt.Implements(jsonMarshalerType) || vt.Implements(encodingTextMarshalerType)
+    return vt.Implements(jsonMarshalerType) || vt.Implements(encodingTextMarshalerType)
 }

@@ -8,6 +8,10 @@ package obj
 
 import (
 	"bytes"
+	"github.com/twitchyliquid64/golang-asm/bio"
+	"github.com/twitchyliquid64/golang-asm/goobj"
+	"github.com/twitchyliquid64/golang-asm/objabi"
+	"github.com/twitchyliquid64/golang-asm/sys"
 	"crypto/sha1"
 	"encoding/binary"
 	"fmt"
@@ -15,11 +19,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"github.com/twitchyliquid64/golang-asm/bio"
-	"github.com/twitchyliquid64/golang-asm/goobj"
-	"github.com/twitchyliquid64/golang-asm/objabi"
-	"github.com/twitchyliquid64/golang-asm/sys"
 )
 
 // Entry point of writing new object file.
