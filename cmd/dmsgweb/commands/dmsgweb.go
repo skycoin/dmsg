@@ -179,13 +179,17 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 		}
 		dmsgWebLog.Info("dmsg client pk: %v", pk.String())
 
+		dialPK = make(map[int]cipher.PubKey)
+		dmsgPorts = make(map[int]uint)
 		if len(resolveDmsgAddr) > 0 {
 			for i, dmsgaddr := range resolveDmsgAddr {
 				dmsgAddr = strings.Split(dmsgaddr, ":")
-				err = dialPK[i].Set(dmsgAddr[0])
+				var pk cipher.PubKey
+				err := pk.Set(dmsgAddr[0])
 				if err != nil {
 					log.Fatalf("failed to parse dmsg <address>:<port> : %v", err)
 				}
+				dialPK[i] = pk
 				if len(dmsgAddr) > 1 {
 					dport, err := strconv.ParseUint(dmsgAddr[1], 10, 64)
 					if err != nil {
@@ -267,14 +271,14 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 
 		if len(resolveDmsgAddr) == 0 && len(webPort) == 1 {
 			if rawTCP[0] {
-				proxyTCPConn(-1)
+				proxyTCPConn(-1, dmsgC)
 			} else {
 				proxyHTTPConn(-1)
 			}
 		} else {
 			for i := range resolveDmsgAddr {
 				if rawTCP[i] {
-					proxyTCPConn(i)
+					proxyTCPConn(i, dmsgC)
 				} else {
 					proxyHTTPConn(i)
 				}
@@ -346,14 +350,16 @@ func proxyHTTPConn(n int) {
 		}
 	})
 	wg.Add(1)
-	go func() {
-		dmsgWebLog.Debug(fmt.Sprintf("Serving http on: http://127.0.0.1:%v", webPort))
-		r.Run(":" + fmt.Sprintf("%v", webPort)) //nolint
-		dmsgWebLog.Debug(fmt.Sprintf("Stopped serving http on: http://127.0.0.1:%v", webPort))
-		wg.Done()
-	}()
+	for i := range webPort {
+		go func(i int) {
+			dmsgWebLog.Debug(fmt.Sprintf("Serving http on: http://127.0.0.1:%v", webPort[i]))
+			r.Run(":" + fmt.Sprintf("%v", webPort[i])) //nolint
+			dmsgWebLog.Debug(fmt.Sprintf("Stopped serving http on: http://127.0.0.1:%v", webPort[i]))
+			wg.Done()
+		}(i)
+	}
 }
-func proxyTCPConn(n int) {
+func proxyTCPConn(n int, dmsgC *dmsg.Client) {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", webPort[n]))
 	if err != nil {
 		log.Fatalf("Failed to start TCP listener on port %d: %v", webPort[n], err)

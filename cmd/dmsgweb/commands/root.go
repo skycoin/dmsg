@@ -25,11 +25,10 @@ import (
 
 var (
 	httpC              http.Client
-	dmsgC              *dmsg.Client
 	dmsgDisc           string
 	dmsgSessions       int
 	dmsgAddr           []string
-	dialPK             []cipher.PubKey
+	dialPK             map[int]cipher.PubKey
 	filterDomainSuffix string
 	sk                 cipher.SecKey
 	pk                 cipher.PubKey
@@ -42,7 +41,7 @@ var (
 	wg                 sync.WaitGroup
 	isEnvs             bool
 	dmsgPort           []uint
-	dmsgPorts          []uint
+	dmsgPorts          map[int]uint
 	dmsgSess           int
 	wl                 []string
 	wlkeys             []cipher.PubKey
