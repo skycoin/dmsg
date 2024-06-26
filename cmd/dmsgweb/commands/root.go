@@ -28,7 +28,7 @@ var (
 	dmsgDisc           string
 	dmsgSessions       int
 	dmsgAddr           []string
-	dialPK             map[int]cipher.PubKey
+	dialPK             []cipher.PubKey
 	filterDomainSuffix string
 	sk                 cipher.SecKey
 	pk                 cipher.PubKey
@@ -41,7 +41,7 @@ var (
 	wg                 sync.WaitGroup
 	isEnvs             bool
 	dmsgPort           []uint
-	dmsgPorts          map[int]uint
+	dmsgPorts          []uint
 	dmsgSess           int
 	wl                 []string
 	wlkeys             []cipher.PubKey

@@ -179,25 +179,25 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 		}
 		dmsgWebLog.Info("dmsg client pk: %v", pk.String())
 
-		dialPK = make(map[int]cipher.PubKey)
-		dmsgPorts = make(map[int]uint)
+		dialPK = make([]cipher.PubKey, dmsgSessions)
+		dmsgPorts = make([]uint, dmsgSessions)
 		if len(resolveDmsgAddr) > 0 {
-			for i, dmsgaddr := range resolveDmsgAddr {
+			for _, dmsgaddr := range resolveDmsgAddr {
 				dmsgAddr = strings.Split(dmsgaddr, ":")
 				var pk cipher.PubKey
 				err := pk.Set(dmsgAddr[0])
 				if err != nil {
 					log.Fatalf("failed to parse dmsg <address>:<port> : %v", err)
 				}
-				dialPK[i] = pk
+				dialPK = append(dialPK, pk)
 				if len(dmsgAddr) > 1 {
 					dport, err := strconv.ParseUint(dmsgAddr[1], 10, 64)
 					if err != nil {
 						log.Fatalf("Failed to parse dmsg port: %v", err)
 					}
-					dmsgPorts[i] = uint(dport)
+					dmsgPorts = append(dmsgPorts, uint(dport))
 				} else {
-					dmsgPorts[i] = uint(80)
+					dmsgPorts = append(dmsgPorts, uint(80))
 				}
 			}
 		}
