@@ -201,11 +201,11 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 				}
 			}
 		}
-		dmsgC, closeDmsg, err := startDmsg(ctx, pk, sk)
+		dmsgC, closeDmsg, err = startDmsg(ctx, pk, sk)
 		if err != nil {
 			dmsgWebLog.WithError(err).Fatal("failed to start dmsg")
 		}
-		//		defer closeDmsg()
+		defer closeDmsg()
 
 		go func() {
 			<-ctx.Done()
@@ -378,56 +378,45 @@ func proxyTCPConn(n int) {
 	if err != nil {
 		dmsgWebLog.Fatalf("Failed to start TCP listener on port %v: %v", thiswebport, err)
 	}
+	defer listener.Close() //nolint
 	log.Printf("Serving TCP on 127.0.0.1:%v", thiswebport)
 
-	go func() {
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				if opErr, ok := err.(*net.OpError); ok && opErr.Err.Error() == "use of closed network connection" {
-					log.Printf("Listener on port %v closed", thiswebport)
-					return
-				}
-				log.Printf("Failed to accept connection: %v", err)
-				continue
-			}
-			wg.Add(1)
-			go func(conn net.Conn, n int) {
-				defer wg.Done()
-				defer conn.Close() //nolint
-
-				dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: uint16(dmsgPorts[n])})
-				if err != nil {
-					log.Printf("Failed to dial dmsg address %v:%v %v", dialPK[n].String(), dmsgPorts[n], err)
-					return
-				}
-				defer dmsgConn.Close() //nolint
-
-				go func() {
-					_, err := io.Copy(dmsgConn, conn)
-					if err != nil {
-						log.Printf("Error copying data to dmsg server: %v", err)
-					}
-					dmsgConn.Close() //nolint
-				}()
-
-				go func() {
-					_, err := io.Copy(conn, dmsgConn)
-					if err != nil {
-						log.Printf("Error copying data from dmsg server: %v", err)
-					}
-					conn.Close() //nolint
-				}()
-			}(conn, n)
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf("Failed to accept connection: %v", err)
+			continue
 		}
-	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		<-context.Background().Done()
-		listener.Close()
-	}()
+		wg.Add(1)
+		go func(conn net.Conn, n int, dmsgC *dmsg.Client) {
+			defer wg.Done()
+			defer conn.Close() //nolint
+
+			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: uint16(dmsgPorts[n])})
+			if err != nil {
+				log.Printf("Failed to dial dmsg address %v:%v %v", dialPK[n].String(), dmsgPorts[n], err)
+				return
+			}
+			defer dmsgConn.Close() //nolint
+
+			go func() {
+				_, err := io.Copy(dmsgConn, conn)
+				if err != nil {
+					log.Printf("Error copying data to dmsg client: %v", err)
+				}
+				dmsgConn.Close() //nolint
+			}()
+
+			go func() {
+				_, err := io.Copy(conn, dmsgConn)
+				if err != nil {
+					log.Printf("Error copying data from dmsg client: %v", err)
+				}
+				conn.Close() //nolint
+			}()
+		}(conn, n, dmsgC)
+	}
 }
 
 const envfileLinux = `
