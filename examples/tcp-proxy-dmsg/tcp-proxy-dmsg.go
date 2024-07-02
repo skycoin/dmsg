@@ -9,19 +9,16 @@ import (
 	"os"
 	"sync"
 
+	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/skycoin/skywire-utilities/pkg/skyenv"
-	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
-
 )
-
-
 
 func main() {
 	cc.Init(&cc.Config{
@@ -48,8 +45,6 @@ const help = "Usage:\r\n" +
 	"{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}\r\n\r\n" +
 	"Global Flags:\r\n" +
 	"{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}\r\n\r\n"
-
-
 
 var (
 	httpC              http.Client
@@ -78,9 +73,8 @@ var (
 	localPort          uint
 	err                error
 	rawTCP             []bool
-	RootCmd = srvCmd
+	RootCmd            = srvCmd
 )
-
 
 func init() {
 	srvCmd.Flags().UintVarP(&localPort, "lport", "l", 8086, "local application http interface port(s)")
@@ -96,10 +90,11 @@ func init() {
 	srvCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 	srvCmd.PersistentFlags().MarkHidden("help") //nolint
 }
+
 var srvCmd = &cobra.Command{
 	Use:   "srv",
 	Short: "serve raw TCP from local port over dmsg",
-	Long: `DMSG web server - serve http or raw TCP interface from local port over dmsg`,
+	Long:  `DMSG web server - serve http or raw TCP interface from local port over dmsg`,
 	Run: func(_ *cobra.Command, _ []string) {
 		server()
 	},
@@ -116,7 +111,6 @@ func server() {
 		pk, sk = cipher.GenerateKeyPair()
 	}
 	log.Infof("dmsg client pk: %v", pk.String())
-
 
 	dmsgC := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, log), dmsg.DefaultConfig())
 	defer func() {
@@ -140,7 +134,6 @@ func server() {
 		log.Fatalf("Error listening on port %d: %v", dmsgPort, err)
 	}
 
-
 	go func(l net.Listener, port uint) {
 		<-ctx.Done()
 		if err := l.Close(); err != nil {
@@ -148,7 +141,6 @@ func server() {
 			log.WithError(err).Error()
 		}
 	}(lis, dmsgPort)
-
 
 	wg := new(sync.WaitGroup)
 
