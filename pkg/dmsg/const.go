@@ -3,8 +3,8 @@ package dmsg
 
 import (
 	"time"
-	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 
+	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 )
 
 // Constants.

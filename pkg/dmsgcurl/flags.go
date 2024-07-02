@@ -6,7 +6,6 @@ import (
 
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/skyenv"
-
 )
 
 // ExecName contains the execution name.
