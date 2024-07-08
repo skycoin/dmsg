@@ -27,6 +27,50 @@ func makeClientSession(entity *EntityCommon, porter *netutil.Porter, conn net.Co
 	return cSes, nil
 }
 
+// DialServerForIP attempts to dial a stream to the server for the IP address of the client.
+func (cs *ClientSession) DialServerForIP(dst Addr) (myIP net.IP, err error) {
+	log := cs.log.
+		WithField("func", "ClientSession.DialServerForIP").
+		WithField("dst_addr", cs.rPK)
+
+	dStr, err := newInitiatingStream(cs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Close stream on failure.
+	defer func() {
+		if err != nil {
+			log.WithError(err).
+				WithField("close_error", dStr.Close()).
+				Debug("Stream closed on failure.")
+		}
+	}()
+
+	// Prepare deadline.
+	if err = dStr.SetDeadline(time.Now().Add(HandshakeTimeout)); err != nil {
+		return nil, err
+	}
+
+	// Do stream handshake.
+	req, err := dStr.writeIPRequest(dst)
+	if err != nil {
+		return nil, err
+	}
+
+	myIP, err = dStr.readIPResponse(req)
+	if err != nil {
+		return nil, err
+	}
+
+	err = dStr.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return myIP, err
+}
+
 // DialStream attempts to dial a stream to a remote client via the dmsg server that this session is connected to.
 func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream, err error) {
 	log := cs.log.

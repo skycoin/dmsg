@@ -366,6 +366,30 @@ func (ce *Client) DialStream(ctx context.Context, addr Addr) (*Stream, error) {
 	return nil, ErrCannotConnectToDelegated
 }
 
+// DialServerForIP dails to dmsg servers for public IP of the client.
+func (ce *Client) DialServerForIP(ctx context.Context) (myIP net.IP, err error) {
+
+	cancellabelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	entries, err := ce.discoverServers(cancellabelCtx, true)
+
+	for _, entry := range entries {
+		if dSes, ok := ce.clientSession(ce.porter, entry.Static); ok {
+			ip, err := dSes.DialServerForIP(Addr{PK: dSes.RemotePK(), Port: 1})
+			if err != nil {
+				ce.log.WithError(err).WithField("server_pk", entry.Static).Warn("Failed to dial server for IP.")
+				continue
+			}
+			if netutil.IsPublicIP(ip) {
+				return ip, nil
+			}
+		}
+	}
+
+	return nil, ErrCannotConnectToDelegated
+}
+
 // Session obtains an established session.
 func (ce *Client) Session(pk cipher.PubKey) (ClientSession, bool) {
 	return ce.clientSession(ce.porter, pk)
