@@ -100,7 +100,7 @@ func (ss *ServerSession) serveStream(log logrus.FieldLogger, yStr *yamux.Stream)
 
 	log.Debug("Read stream request from initiating side.")
 	if req.IPinfo && req.DstAddr.PK == ss.entity.LocalPK() {
-		log.Debug("Recieved IP stream request.")
+		log.Debug("Received IP stream request.")
 
 		ip, err := addrToIP(yStr.RemoteAddr())
 		if err != nil {
