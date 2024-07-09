@@ -367,18 +367,26 @@ func (ce *Client) DialStream(ctx context.Context, addr Addr) (*Stream, error) {
 }
 
 // DialServerForIP dails to dmsg servers for public IP of the client.
-func (ce *Client) DialServerForIP(ctx context.Context) (myIP net.IP, err error) {
+func (ce *Client) DialServerForIP(ctx context.Context, servers []cipher.PubKey) (myIP net.IP, err error) {
 
 	cancellabelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	entries, err := ce.discoverServers(cancellabelCtx, true)
+	if servers == nil {
+		entries, err := ce.discoverServers(cancellabelCtx, true)
+		if err != nil {
+			return nil, err
+		}
+		for _, entry := range entries {
+			servers = append(servers, entry.Static)
+		}
+	}
 
-	for _, entry := range entries {
-		if dSes, ok := ce.clientSession(ce.porter, entry.Static); ok {
+	for _, server := range servers {
+		if dSes, ok := ce.clientSession(ce.porter, server); ok {
 			ip, err := dSes.DialServerForIP(Addr{PK: dSes.RemotePK(), Port: 1})
 			if err != nil {
-				ce.log.WithError(err).WithField("server_pk", entry.Static).Warn("Failed to dial server for IP.")
+				ce.log.WithError(err).WithField("server_pk", server).Warn("Failed to dial server for IP.")
 				continue
 			}
 			if netutil.IsPublicIP(ip) {

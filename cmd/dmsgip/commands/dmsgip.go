@@ -22,9 +22,10 @@ import (
 )
 
 var (
-	dmsgDisc string
-	sk       cipher.SecKey
-	logLvl   string
+	dmsgDisc    string
+	sk          cipher.SecKey
+	logLvl      string
+	dmsgServers []string
 )
 
 func init() {
@@ -33,6 +34,7 @@ func init() {
 	if os.Getenv("DMSGIP_SK") != "" {
 		sk.Set(os.Getenv("DMSGIP_SK")) //nolint
 	}
+	RootCmd.Flags().StringSliceVarP(&dmsgServers, "srv", "d", []string{}, "dmsg server public keys\n\r")
 	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 }
 
@@ -66,6 +68,15 @@ DMSG ip utility`,
 			}
 		}
 
+		var srvs []cipher.PubKey
+		for _, srv := range dmsgServers {
+			var pk cipher.PubKey
+			if err := pk.Set(srv); err != nil {
+				return fmt.Errorf("failed to parse server public key: %w", err)
+			}
+			srvs = append(srvs, pk)
+		}
+
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
 
@@ -80,7 +91,7 @@ DMSG ip utility`,
 		}
 		defer closeDmsg()
 
-		ip, err := dmsgC.DialServerForIP(ctx)
+		ip, err := dmsgC.DialServerForIP(ctx, srvs)
 		if err != nil {
 			return fmt.Errorf("failed to start dmsg: %w", err)
 		}
