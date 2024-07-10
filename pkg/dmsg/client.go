@@ -391,6 +391,16 @@ func (ce *Client) LookupIP(ctx context.Context, servers []cipher.PubKey) (myIP n
 				ce.log.WithError(err).WithField("server_pk", srvPK).Warn("Failed to dial server for IP.")
 				continue
 			}
+
+			// If the client is test client then ignore Public IP check
+			if ce.conf.ClientType == "test" {
+				return ip, nil
+			}
+
+			// Check if the IP is public
+			if !netutil.IsPublicIP(ip) {
+				return nil, errors.New("received non-public IP address from dmsg server")
+			}
 			return ip, nil
 		}
 	}
@@ -411,6 +421,16 @@ func (ce *Client) LookupIP(ctx context.Context, servers []cipher.PubKey) (myIP n
 		err = dSes.Close()
 		if err != nil {
 			ce.log.WithError(err).WithField("server_pk", srvPK).Warn("Failed to close session")
+		}
+
+		// If the client is test client then ignore Public IP check
+		if ce.conf.ClientType == "test" {
+			return ip, nil
+		}
+
+		// Check if the IP is public
+		if !netutil.IsPublicIP(ip) {
+			return nil, errors.New("received non-public IP address from dmsg server")
 		}
 		return ip, nil
 	}
