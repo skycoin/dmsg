@@ -15,6 +15,7 @@ import (
 	dmsgsocks "github.com/skycoin/dmsg/cmd/dmsg-socks5/commands"
 	dmsgcurl "github.com/skycoin/dmsg/cmd/dmsgcurl/commands"
 	dmsghttp "github.com/skycoin/dmsg/cmd/dmsghttp/commands"
+	dmsgip "github.com/skycoin/dmsg/cmd/dmsgip/commands"
 	dmsgptycli "github.com/skycoin/dmsg/cmd/dmsgpty-cli/commands"
 	dmsgptyhost "github.com/skycoin/dmsg/cmd/dmsgpty-host/commands"
 	dmsgptyui "github.com/skycoin/dmsg/cmd/dmsgpty-ui/commands"
@@ -35,6 +36,7 @@ func init() {
 		dmsgcurl.RootCmd,
 		dmsgweb.RootCmd,
 		dmsgsocks.RootCmd,
+		dmsgip.RootCmd,
 	)
 	dmsgdisc.RootCmd.Use = "disc"
 	dmsgserver.RootCmd.Use = "server"
@@ -45,6 +47,7 @@ func init() {
 	dmsgptycli.RootCmd.Use = "cli"
 	dmsgptyhost.RootCmd.Use = "host"
 	dmsgptyui.RootCmd.Use = "ui"
+	dmsgip.RootCmd.Use = "ip"
 
 	var helpflag bool
 	RootCmd.SetUsageTemplate(help)
