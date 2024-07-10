@@ -27,10 +27,10 @@ func makeClientSession(entity *EntityCommon, porter *netutil.Porter, conn net.Co
 	return cSes, nil
 }
 
-// DialServerForIP attempts to dial a stream to the server for the IP address of the client.
-func (cs *ClientSession) DialServerForIP(dst Addr) (myIP net.IP, err error) {
+// LookupIP attempts to dial a stream to the server for the IP address of the client.
+func (cs *ClientSession) LookupIP(dst Addr) (myIP net.IP, err error) {
 	log := cs.log.
-		WithField("func", "ClientSession.DialServerForIP").
+		WithField("func", "ClientSession.LookupIP").
 		WithField("dst_addr", cs.rPK)
 
 	dStr, err := newInitiatingStream(cs)

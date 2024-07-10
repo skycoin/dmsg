@@ -366,8 +366,8 @@ func (ce *Client) DialStream(ctx context.Context, addr Addr) (*Stream, error) {
 	return nil, ErrCannotConnectToDelegated
 }
 
-// DialServerForIP dails to dmsg servers for public IP of the client.
-func (ce *Client) DialServerForIP(ctx context.Context, servers []cipher.PubKey) (myIP net.IP, err error) {
+// LookupIP dails to dmsg servers for public IP of the client.
+func (ce *Client) LookupIP(ctx context.Context, servers []cipher.PubKey) (myIP net.IP, err error) {
 
 	cancellabelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -386,7 +386,7 @@ func (ce *Client) DialServerForIP(ctx context.Context, servers []cipher.PubKey) 
 	// See if we are already connected to a delegated server.
 	for _, srvPK := range servers {
 		if dSes, ok := ce.clientSession(ce.porter, srvPK); ok {
-			ip, err := dSes.DialServerForIP(Addr{PK: dSes.RemotePK(), Port: 1})
+			ip, err := dSes.LookupIP(Addr{PK: dSes.RemotePK(), Port: 1})
 			if err != nil {
 				ce.log.WithError(err).WithField("server_pk", srvPK).Warn("Failed to dial server for IP.")
 				continue
@@ -403,7 +403,7 @@ func (ce *Client) DialServerForIP(ctx context.Context, servers []cipher.PubKey) 
 		if err != nil {
 			continue
 		}
-		ip, err := dSes.DialServerForIP(Addr{PK: dSes.RemotePK(), Port: 1})
+		ip, err := dSes.LookupIP(Addr{PK: dSes.RemotePK(), Port: 1})
 		if err != nil {
 			ce.log.WithError(err).WithField("server_pk", srvPK).Warn("Failed to dial server for IP.")
 			continue

@@ -91,7 +91,7 @@ DMSG ip utility`,
 		}
 		defer closeDmsg()
 
-		ip, err := dmsgC.DialServerForIP(ctx, srvs)
+		ip, err := dmsgC.LookupIP(ctx, srvs)
 		if err != nil {
 			return fmt.Errorf("failed to start dmsg: %w", err)
 		}
