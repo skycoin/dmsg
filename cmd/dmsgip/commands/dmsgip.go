@@ -87,13 +87,13 @@ DMSG ip utility`,
 
 		dmsgC, closeDmsg, err := startDmsg(ctx, log, pk, sk)
 		if err != nil {
-			return fmt.Errorf("failed to start dmsg: %w", err)
+			log.WithError(err).Error("failed to start dmsg")
 		}
 		defer closeDmsg()
 
 		ip, err := dmsgC.LookupIP(ctx, srvs)
 		if err != nil {
-			return fmt.Errorf("failed to start dmsg: %w", err)
+			log.WithError(err).Error("failed to lookup IP")
 		}
 
 		fmt.Printf("%v\n", ip)
