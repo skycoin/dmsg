@@ -96,13 +96,14 @@ DMSG ip utility`,
 			return fmt.Errorf("failed to start dmsg: %w", err)
 		}
 
-		fmt.Print(ip)
+		fmt.Printf("%v\n", ip)
+		fmt.Print("\n")
 		return nil
 	},
 }
 
 func startDmsg(ctx context.Context, log *logging.Logger, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
-	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, log), &dmsg.Config{})
+	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, log), &dmsg.Config{MinSessions: dmsg.DefaultMinSessions})
 	go dmsgC.Serve(context.Background())
 
 	stop = func() {
