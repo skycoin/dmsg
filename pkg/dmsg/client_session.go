@@ -27,6 +27,48 @@ func makeClientSession(entity *EntityCommon, porter *netutil.Porter, conn net.Co
 	return cSes, nil
 }
 
+// DialStream attempts to dial a stream to a remote client via the dmsg server that this session is connected to.
+func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream, err error) {
+	log := cs.log.
+		WithField("func", "ClientSession.DialStream").
+		WithField("dst_addr", dst)
+
+	if dStr, err = newInitiatingStream(cs); err != nil {
+		return nil, err
+	}
+
+	// Close stream on failure.
+	defer func() {
+		if err != nil {
+			log.WithError(err).
+				WithField("close_error", dStr.Close()).
+				Debug("Stream closed on failure.")
+		}
+	}()
+
+	// Prepare deadline.
+	if err = dStr.SetDeadline(time.Now().Add(HandshakeTimeout)); err != nil {
+		return nil, err
+	}
+
+	// Do stream handshake.
+	req, err := dStr.writeRequest(dst)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := dStr.readResponse(req); err != nil {
+		return nil, err
+	}
+
+	// Clear deadline.
+	if err = dStr.SetDeadline(time.Time{}); err != nil {
+		return nil, err
+	}
+
+	return dStr, err
+}
+
 // LookupIP attempts to dial a stream to the server for the IP address of the client.
 func (cs *ClientSession) LookupIP(dst Addr) (myIP net.IP, err error) {
 	log := cs.log.
@@ -73,48 +115,6 @@ func (cs *ClientSession) LookupIP(dst Addr) (myIP net.IP, err error) {
 	}
 
 	return myIP, err
-}
-
-// DialStream attempts to dial a stream to a remote client via the dmsg server that this session is connected to.
-func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream, err error) {
-	log := cs.log.
-		WithField("func", "ClientSession.DialStream").
-		WithField("dst_addr", dst)
-
-	if dStr, err = newInitiatingStream(cs); err != nil {
-		return nil, err
-	}
-
-	// Close stream on failure.
-	defer func() {
-		if err != nil {
-			log.WithError(err).
-				WithField("close_error", dStr.Close()).
-				Debug("Stream closed on failure.")
-		}
-	}()
-
-	// Prepare deadline.
-	if err = dStr.SetDeadline(time.Now().Add(HandshakeTimeout)); err != nil {
-		return nil, err
-	}
-
-	// Do stream handshake.
-	req, err := dStr.writeRequest(dst)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := dStr.readResponse(req); err != nil {
-		return nil, err
-	}
-
-	// Clear deadline.
-	if err = dStr.SetDeadline(time.Time{}); err != nil {
-		return nil, err
-	}
-
-	return dStr, err
 }
 
 // serve accepts incoming streams from remote clients.
