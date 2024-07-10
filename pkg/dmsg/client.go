@@ -382,17 +382,37 @@ func (ce *Client) DialServerForIP(ctx context.Context, servers []cipher.PubKey) 
 		}
 	}
 
-	for _, server := range servers {
-		if dSes, ok := ce.clientSession(ce.porter, server); ok {
+	// Range client's delegated servers.
+	// See if we are already connected to a delegated server.
+	for _, srvPK := range servers {
+		if dSes, ok := ce.clientSession(ce.porter, srvPK); ok {
 			ip, err := dSes.DialServerForIP(Addr{PK: dSes.RemotePK(), Port: 1})
 			if err != nil {
-				ce.log.WithError(err).WithField("server_pk", server).Warn("Failed to dial server for IP.")
+				ce.log.WithError(err).WithField("server_pk", srvPK).Warn("Failed to dial server for IP.")
 				continue
 			}
-			if netutil.IsPublicIP(ip) {
-				return ip, nil
-			}
+			return ip, nil
 		}
+	}
+
+	// Range client's delegated servers.
+	// Attempt to connect to a delegated server.
+	// And Close it after getting the IP.
+	for _, srvPK := range servers {
+		dSes, err := ce.EnsureAndObtainSession(ctx, srvPK)
+		if err != nil {
+			continue
+		}
+		ip, err := dSes.DialServerForIP(Addr{PK: dSes.RemotePK(), Port: 1})
+		if err != nil {
+			ce.log.WithError(err).WithField("server_pk", srvPK).Warn("Failed to dial server for IP.")
+			continue
+		}
+		err = dSes.Close()
+		if err != nil {
+			ce.log.WithError(err).WithField("server_pk", srvPK).Warn("Failed to close session")
+		}
+		return ip, nil
 	}
 
 	return nil, ErrCannotConnectToDelegated
@@ -435,7 +455,6 @@ func (ce *Client) EnsureAndObtainSession(ctx context.Context, srvPK cipher.PubKe
 	if err != nil {
 		return ClientSession{}, err
 	}
-
 	return ce.dialSession(ctx, srvEntry)
 }
 
