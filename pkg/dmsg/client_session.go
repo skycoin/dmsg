@@ -68,6 +68,10 @@ func (cs *ClientSession) DialServerForIP(dst Addr) (myIP net.IP, err error) {
 		return nil, err
 	}
 
+	if !netutil.IsPublicIP(myIP) {
+		return nil, errors.New("received non-public IP address from dmsg server")
+	}
+
 	return myIP, err
 }
 
