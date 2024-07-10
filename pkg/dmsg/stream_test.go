@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -253,7 +254,12 @@ func TestLookupIP(t *testing.T) {
 		srvs := []cipher.PubKey{pkSrvA}
 		ip, err := dmsgC.LookupIP(context.Background(), srvs)
 		require.NoError(t, err)
-		require.Equal(t, net.ParseIP("::1"), ip)
+
+		if runtime.GOOS == "windows" {
+			require.Equal(t, net.ParseIP("127.0.0.1"), ip)
+		} else {
+			require.Equal(t, net.ParseIP("::1"), ip)
+		}
 
 		// Ensure all entities are deregistered in discovery before continuing.
 		time.Sleep(time.Second * 2)
@@ -277,7 +283,12 @@ func TestLookupIP(t *testing.T) {
 		srvs := []cipher.PubKey{pkSrvB}
 		ip, err := dmsgC.LookupIP(context.Background(), srvs)
 		require.NoError(t, err)
-		require.Equal(t, net.ParseIP("::1"), ip)
+
+		if runtime.GOOS == "windows" {
+			require.Equal(t, net.ParseIP("127.0.0.1"), ip)
+		} else {
+			require.Equal(t, net.ParseIP("::1"), ip)
+		}
 
 		// Ensure all entities are deregistered in discovery before continuing.
 		time.Sleep(time.Second * 2)
