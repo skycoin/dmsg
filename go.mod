@@ -2,8 +2,6 @@ module github.com/skycoin/dmsg
 
 go 1.21
 
-toolchain go1.21.12
-
 require (
 	github.com/ActiveState/termtest/conpty v0.5.0
 	github.com/VictoriaMetrics/metrics v1.18.1
