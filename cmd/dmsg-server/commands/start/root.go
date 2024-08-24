@@ -34,7 +34,7 @@ var (
 
 func init() {
 	sf.Init(RootCmd, "dmsg_srv", dmsgserver.DefaultConfigPath)
-	RootCmd.Flags().IntVar(&limitIP, "limit-ip", 15, "set limitation of IPs want connect to specific dmsg-server, default value is 15")
+	RootCmd.Flags().IntVar(&limitIP, "limit-ip", 0, "set limitation of IPs want connect to specific dmsg-server, default value is 15")
 	RootCmd.Flags().StringVar(&authPassphrase, "auth", "", "auth passphrase as simple auth for official dmsg servers registration")
 }
 
