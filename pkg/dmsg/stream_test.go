@@ -31,7 +31,6 @@ func TestStream(t *testing.T) {
 	srvConf := &ServerConfig{
 		MaxSessions:    maxSessions,
 		UpdateInterval: 0,
-		LimitIP:        200,
 	}
 	srv := NewServer(pkSrv, skSrv, dc, srvConf, nil)
 	srv.SetLogger(logging.MustGetLogger("server"))
@@ -221,7 +220,6 @@ func TestLookupIP(t *testing.T) {
 	srvConf := &ServerConfig{
 		MaxSessions:    maxSessions,
 		UpdateInterval: 0,
-		LimitIP:        200,
 	}
 	srv := NewServer(pkSrvA, skSrvB, dc, srvConf, nil)
 	srv.SetLogger(logging.MustGetLogger("server"))
