@@ -163,14 +163,16 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 				Debug("Max sessions is reached, but still accepting so clients who delegated us can still listen.")
 		}
 		connIP := strings.Split(conn.RemoteAddr().String(), ":")[0]
-		s.ipCounterLocker.Lock()
-		if s.ipCounter[connIP] >= s.limitIP {
-			log.Warnf("Maximum client per IP for %s reached.", connIP)
+		if s.limitIP != 0 {
+			s.ipCounterLocker.Lock()
+			if s.ipCounter[connIP] >= s.limitIP {
+				log.Warnf("Maximum client per IP for %s reached.", connIP)
+				s.ipCounterLocker.Unlock()
+				continue
+			}
+			s.ipCounter[connIP]++
 			s.ipCounterLocker.Unlock()
-			continue
 		}
-		s.ipCounter[connIP]++
-		s.ipCounterLocker.Unlock()
 		s.wg.Add(1)
 		go func(conn net.Conn) {
 			defer func() {
