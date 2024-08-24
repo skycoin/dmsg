@@ -2,7 +2,7 @@ module github.com/skycoin/dmsg
 
 go 1.21
 
-toolchain go1.21.4
+toolchain go1.21.12
 
 require (
 	github.com/ActiveState/termtest/conpty v0.5.0
