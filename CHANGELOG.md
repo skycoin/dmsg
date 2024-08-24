@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 updates may be generated with scripts/changelog.sh <PR#lowest> <PR#highest>
 
+## 1.3.25
+
+### Changed
+- remove `--limit-ip` flag from dsmg servers
+
 ## 1.3.17
 
 ### Added
