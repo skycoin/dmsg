@@ -123,7 +123,7 @@ github-release: github-prepare-release
 	goreleaser --clean --config .goreleaser-linux.yml --release-notes releaseChangelog.md
 
 github-release-darwin:
-	goreleaser --clean  --config .goreleaser-darwin.yml --skip-publish
+	goreleaser --clean  --config .goreleaser-darwin.yml  --skip=publish
 	$(eval GITHUB_TAG=$(shell git describe --abbrev=0 --tags))
 	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-darwin-amd64.tar.gz
 	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-darwin-arm64.tar.gz
@@ -132,7 +132,7 @@ github-release-darwin:
 	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} --clobber ./checksums.txt
 
 github-release-windows:
-	.\goreleaser\goreleaser.exe --rm-dist  --config .goreleaser-windows.yml --skip-publish
+	.\goreleaser\goreleaser.exe --rm-dist  --config .goreleaser-windows.yml --skip=publish
 	$(eval GITHUB_TAG=$(shell powershell git describe --abbrev=0 --tags))
 	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-windows-amd64.zip
 	gh release upload --repo skycoin/dmsg ${GITHUB_TAG} ./dist/dmsg-${GITHUB_TAG}-windows-386.zip
