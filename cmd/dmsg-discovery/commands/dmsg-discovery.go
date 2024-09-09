@@ -218,10 +218,6 @@ func getServers(ctx context.Context, a *api.API, log logrus.FieldLogger, dmsgSer
 		if err != nil {
 			log.WithError(err).Fatal("Error getting dmsg-servers.")
 		}
-		if len(servers) > 0 {
-			return servers
-		}
-		log.Warn("No dmsg-servers found, trying again in 1 minute.")
 		// filtered dmsg servers by their type
 		if dmsgServerType != "" {
 			var filteredServers []*disc.Entry
@@ -232,6 +228,10 @@ func getServers(ctx context.Context, a *api.API, log logrus.FieldLogger, dmsgSer
 			}
 			servers = filteredServers
 		}
+		if len(servers) > 0 {
+			return servers
+		}
+		log.Warn("No dmsg-servers found, trying again in 1 minute.")
 		select {
 		case <-ctx.Done():
 			return []*disc.Entry{}
