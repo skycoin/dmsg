@@ -48,6 +48,7 @@ var (
 	dmsgPort          uint16
 	authPassphrase    string
 	officialServers   string
+	dmsgServerType    string
 )
 
 func init() {
@@ -64,7 +65,7 @@ func init() {
 	RootCmd.Flags().BoolVar(&testEnvironment, "test-environment", false, "distinguished between prod and test environment")
 	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key\n")
 	RootCmd.Flags().Uint16Var(&dmsgPort, "dmsgPort", dmsg.DefaultDmsgHTTPPort, "dmsg port value")
-
+	RootCmd.Flags().StringVar(&dmsgServerType, "dmsg-server-type", "", "type of dmsg server on dmsghttp handler")
 }
 
 // RootCmd contains commands for dmsg-discovery
@@ -151,8 +152,9 @@ skywire dmsg disc --sk $(tail -n1 dmsgd-config.json)`,
 		if !pk.Null() {
 			servers := getServers(ctx, a, log)
 			config := &dmsg.Config{
-				MinSessions:    0, // listen on all available servers
-				UpdateInterval: dmsg.DefaultUpdateInterval,
+				MinSessions:          0, // listen on all available servers
+				UpdateInterval:       dmsg.DefaultUpdateInterval,
+				ConnectedServersType: dmsgServerType,
 			}
 			var keys cipher.PubKeys
 			keys = append(keys, pk)
