@@ -150,7 +150,7 @@ skywire dmsg disc --sk $(tail -n1 dmsgd-config.json)`,
 			}
 		}()
 		if !pk.Null() {
-			servers := getServers(ctx, a, log, dmsgServerType)
+			servers := getServers(ctx, a, dmsgServerType, log)
 			config := &dmsg.Config{
 				MinSessions:          0, // listen on all available servers
 				UpdateInterval:       dmsg.DefaultUpdateInterval,
@@ -174,7 +174,7 @@ skywire dmsg disc --sk $(tail -n1 dmsgd-config.json)`,
 				}
 			}()
 
-			go updateServers(ctx, a, dClient, dmsgDC, log, dmsgServerType)
+			go updateServers(ctx, a, dClient, dmsgDC, dmsgServerType, log)
 
 			go func() {
 				if err = dmsghttp.ListenAndServe(ctx, sk, a, dClient, dmsg.DefaultDmsgHTTPPort, dmsgDC, log); err != nil {
@@ -210,7 +210,7 @@ func prepareDB(ctx context.Context, log *logging.Logger) store.Storer {
 	return db
 }
 
-func getServers(ctx context.Context, a *api.API, log logrus.FieldLogger, dmsgServerType string) (servers []*disc.Entry) {
+func getServers(ctx context.Context, a *api.API, dmsgServerType string, log logrus.FieldLogger) (servers []*disc.Entry) {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	for {
@@ -236,12 +236,12 @@ func getServers(ctx context.Context, a *api.API, log logrus.FieldLogger, dmsgSer
 		case <-ctx.Done():
 			return []*disc.Entry{}
 		case <-ticker.C:
-			getServers(ctx, a, log, dmsgServerType)
+			getServers(ctx, a, dmsgServerType, log)
 		}
 	}
 }
 
-func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, dmsgC *dmsg.Client, log logrus.FieldLogger, dmsgServerType string) {
+func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, dmsgC *dmsg.Client, dmsgServerType string, log logrus.FieldLogger) {
 	ticker := time.NewTicker(time.Minute * 10)
 	defer ticker.Stop()
 	for {
