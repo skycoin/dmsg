@@ -48,6 +48,7 @@ var (
 	dmsgPort          uint16
 	authPassphrase    string
 	officialServers   string
+	dmsgServerType    string
 )
 
 func init() {
@@ -64,7 +65,7 @@ func init() {
 	RootCmd.Flags().BoolVar(&testEnvironment, "test-environment", false, "distinguished between prod and test environment")
 	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key\n")
 	RootCmd.Flags().Uint16Var(&dmsgPort, "dmsgPort", dmsg.DefaultDmsgHTTPPort, "dmsg port value")
-
+	RootCmd.Flags().StringVar(&dmsgServerType, "dmsg-server-type", "", "type of dmsg server on dmsghttp handler")
 }
 
 // RootCmd contains commands for dmsg-discovery
@@ -149,10 +150,11 @@ skywire dmsg disc --sk $(tail -n1 dmsgd-config.json)`,
 			}
 		}()
 		if !pk.Null() {
-			servers := getServers(ctx, a, log)
+			servers := getServers(ctx, a, log, dmsgServerType)
 			config := &dmsg.Config{
-				MinSessions:    0, // listen on all available servers
-				UpdateInterval: dmsg.DefaultUpdateInterval,
+				MinSessions:          0, // listen on all available servers
+				UpdateInterval:       dmsg.DefaultUpdateInterval,
+				ConnectedServersType: dmsgServerType,
 			}
 			var keys cipher.PubKeys
 			keys = append(keys, pk)
@@ -172,7 +174,7 @@ skywire dmsg disc --sk $(tail -n1 dmsgd-config.json)`,
 				}
 			}()
 
-			go updateServers(ctx, a, dClient, dmsgDC, log)
+			go updateServers(ctx, a, dClient, dmsgDC, log, dmsgServerType)
 
 			go func() {
 				if err = dmsghttp.ListenAndServe(ctx, sk, a, dClient, dmsg.DefaultDmsgHTTPPort, dmsgDC, log); err != nil {
@@ -208,13 +210,23 @@ func prepareDB(ctx context.Context, log *logging.Logger) store.Storer {
 	return db
 }
 
-func getServers(ctx context.Context, a *api.API, log logrus.FieldLogger) (servers []*disc.Entry) {
+func getServers(ctx context.Context, a *api.API, log logrus.FieldLogger, dmsgServerType string) (servers []*disc.Entry) {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	for {
 		servers, err := a.AllServers(ctx, log)
 		if err != nil {
 			log.WithError(err).Fatal("Error getting dmsg-servers.")
+		}
+		// filtered dmsg servers by their type
+		if dmsgServerType != "" {
+			var filteredServers []*disc.Entry
+			for _, server := range servers {
+				if server.Server.ServerType == dmsgServerType {
+					filteredServers = append(filteredServers, server)
+				}
+			}
+			servers = filteredServers
 		}
 		if len(servers) > 0 {
 			return servers
@@ -224,12 +236,12 @@ func getServers(ctx context.Context, a *api.API, log logrus.FieldLogger) (server
 		case <-ctx.Done():
 			return []*disc.Entry{}
 		case <-ticker.C:
-			getServers(ctx, a, log)
+			getServers(ctx, a, log, dmsgServerType)
 		}
 	}
 }
 
-func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, dmsgC *dmsg.Client, log logrus.FieldLogger) {
+func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, dmsgC *dmsg.Client, log logrus.FieldLogger, dmsgServerType string) {
 	ticker := time.NewTicker(time.Minute * 10)
 	defer ticker.Stop()
 	for {
@@ -241,6 +253,16 @@ func updateServers(ctx context.Context, a *api.API, dClient disc.APIClient, dmsg
 			if err != nil {
 				log.WithError(err).Error("Error getting dmsg-servers.")
 				break
+			}
+			// filtered dmsg servers by their type
+			if dmsgServerType != "" {
+				var filteredServers []*disc.Entry
+				for _, server := range servers {
+					if server.Server.ServerType == dmsgServerType {
+						filteredServers = append(filteredServers, server)
+					}
+				}
+				servers = filteredServers
 			}
 			for _, server := range servers {
 				dClient.PostEntry(ctx, server) //nolint
