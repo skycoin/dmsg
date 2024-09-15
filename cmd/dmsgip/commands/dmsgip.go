@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
@@ -34,7 +33,7 @@ var (
 func init() {
 	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "c", skyenv.DmsgDiscAddr, "dmsg discovery url\n")
 	RootCmd.Flags().StringVarP(&proxyAddr, "proxy", "p", "", "connect to dmsg via proxy (i.e. '127.0.0.1:1080')")
-	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "fatal", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
+	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "fatal", "[debug|warn|error|fatal|panic|trace|info]\033[0m")
 	if os.Getenv("DMSGIP_SK") != "" {
 		sk.Set(os.Getenv("DMSGIP_SK")) //nolint
 	}
@@ -42,23 +41,22 @@ func init() {
 	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 }
 
-// RootCmd containsa the root dmsgcurl command
+// RootCmd contains the root dmsgcurl command
 var RootCmd = &cobra.Command{
 	Use: func() string {
 		return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
 	}(),
-	Short: "DMSG ip utility",
+	Short: "DMSG IP utility",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐ ┬┌─┐
 	 │││││└─┐│ ┬ │├─┘
 	─┴┘┴ ┴└─┘└─┘ ┴┴
-DMSG ip utility`,
+	DMSG IP utility`,
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
 	DisableFlagsInUseLine: true,
-	Version:               buildinfo.Version(),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		log := logging.MustGetLogger("dmsgip")
 
 		if logLvl != "" {
@@ -76,17 +74,20 @@ DMSG ip utility`,
 			srvs = append(srvs, pk)
 		}
 
-		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
-		defer cancel()
-
 		pk, err := sk.PubKey()
 		if err != nil {
 			pk, sk = cipher.GenerateKeyPair()
 		}
 
+		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+		defer cancel()
+
 		httpClient = &http.Client{}
+		var dialer proxy.Dialer = proxy.Direct // Default dialer is direct connection
+
 		if proxyAddr != "" {
-			dialer, err := proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
+			// Use SOCKS5 proxy dialer if specified
+			dialer, err = proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
 			if err != nil {
 				log.Fatalf("Error creating SOCKS5 dialer: %v", err)
 			}
@@ -96,10 +97,12 @@ DMSG ip utility`,
 			httpClient = &http.Client{
 				Transport: transport,
 			}
+			ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
 		}
 
+		// Create DMSG client
 		dmsgC := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, httpClient, log), &dmsg.Config{MinSessions: dmsg.DefaultMinSessions})
-		go dmsgC.Serve(context.Background())
+		go dmsgC.Serve(ctx) // Pass the context here
 
 		stop := func() {
 			err := dmsgC.Close()
@@ -120,6 +123,7 @@ DMSG ip utility`,
 			log.Debug("Dmsg network ready.")
 		}
 
+		// Perform IP lookup using the context with the proxy dialer
 		ip, err := dmsgC.LookupIP(ctx, srvs)
 		if err != nil {
 			log.WithError(err).Error("failed to lookup IP")
