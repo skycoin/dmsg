@@ -58,11 +58,6 @@ DMSG ip utility`,
 	DisableSuggestions:    true,
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
-	PreRun: func(cmd *cobra.Command, args []string) {
-		if dmsgDisc == "" {
-			dmsgDisc = skyenv.DmsgDiscAddr
-		}
-	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		log := logging.MustGetLogger("dmsgip")
 
