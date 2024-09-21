@@ -3,6 +3,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"mime"
@@ -14,11 +15,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/skycoin/skywire"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
-	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/pkg/disc"
@@ -35,10 +36,17 @@ var (
 )
 
 func init() {
+	var envServices skywire.EnvServices
+	var services skywire.Services
+	if err := json.Unmarshal([]byte(skywire.ServicesJSON), &envServices); err == nil {
+		if err := json.Unmarshal(envServices.Prod, &services); err == nil {
+			dmsgDisc = services.DmsgDiscovery
+		}
+	}
 	RootCmd.Flags().StringVarP(&serveDir, "dir", "d", ".", "local dir to serve via dmsghttp")
 	RootCmd.Flags().UintVarP(&dmsgPort, "port", "p", 80, "dmsg port to serve from")
 	RootCmd.Flags().StringVarP(&wl, "wl", "w", "", "whitelist keys, comma separated")
-	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", "", "dmsg discovery url default:\n"+skyenv.DmsgDiscAddr)
+	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", dmsgDisc, "dmsg discovery url")
 	if os.Getenv("DMSGHTTP_SK") != "" {
 		sk.Set(os.Getenv("DMSGHTTP_SK")) //nolint
 	}
@@ -62,14 +70,12 @@ DMSG http file server`,
 	DisableSuggestions:    true,
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
-	PreRun: func(cmd *cobra.Command, args []string) {
-		if dmsgDisc == "" {
-			dmsgDisc = skyenv.DmsgDiscAddr
-		}
-	},
+
 	Run: func(cmd *cobra.Command, args []string) {
 		log := logging.MustGetLogger("dmsghttp")
-
+		if dmsgDisc == "" {
+			log.Fatal("Dmsg Discovery URL not specified")
+		}
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
 		pk, err := sk.PubKey()
