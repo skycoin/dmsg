@@ -2,15 +2,14 @@
 package dmsg
 
 import (
-	"time"
 	"encoding/json"
+	"time"
+
 	"github.com/skycoin/skywire"
 )
 
 // Constants.
 const (
-
-
 	DefaultMinSessions = 1
 
 	DefaultUpdateInterval = time.Minute

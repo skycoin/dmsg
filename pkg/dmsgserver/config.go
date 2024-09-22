@@ -8,6 +8,7 @@ import (
 
 	"github.com/skycoin/skycoin/src/util/logging"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
+
 	"github.com/skycoin/dmsg/pkg/dmsg"
 )
 
@@ -19,7 +20,8 @@ const (
 	DefaultConfigPath = "config.json"
 	// DefaultDiscoverURLTest default URL for discovery in test env
 )
-var defaultDiscoveryURL  = dmsg.DmsgDiscAddr(false)
+
+var defaultDiscoveryURL = dmsg.DmsgDiscAddr(false)
 var DefaultDiscoverURLTest = dmsg.DmsgDiscAddr(true)
 
 // Config is structure of config file

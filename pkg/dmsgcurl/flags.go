@@ -2,10 +2,8 @@
 package dmsgcurl
 
 import (
-	"flag"
 	"encoding/json"
-
-
+	"flag"
 
 	"github.com/skycoin/skywire"
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
