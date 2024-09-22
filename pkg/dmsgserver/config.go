@@ -19,13 +19,12 @@ const (
 
 	// DefaultConfigPath default path of config file
 	DefaultConfigPath = "config.json"
-
 )
 
-var defaultDiscoveryURL = dmsg.DmsgDiscAddr(false)
+var defaultDiscoveryURL = dmsg.DiscAddr(false)
 
 // DefaultDiscoverURLTest default URL for discovery in test env
-var DefaultDiscoverURLTest = dmsg.DmsgDiscAddr(true)
+var DefaultDiscoverURLTest = dmsg.DiscAddr(true)
 
 // Config is structure of config file
 type Config struct {

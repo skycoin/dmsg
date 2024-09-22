@@ -37,7 +37,7 @@ func init() {
 	RootCmd.Flags().StringVarP(&serveDir, "dir", "d", ".", "local dir to serve via dmsghttp")
 	RootCmd.Flags().UintVarP(&dmsgPort, "port", "p", 80, "dmsg port to serve from")
 	RootCmd.Flags().StringVarP(&wl, "wl", "w", "", "whitelist keys, comma separated")
-	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", dmsg.DmsgDiscAddr(false), "dmsg discovery url")
+	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", dmsg.DiscAddr(false), "dmsg discovery url")
 	if os.Getenv("DMSGHTTP_SK") != "" {
 		sk.Set(os.Getenv("DMSGHTTP_SK")) //nolint
 	}

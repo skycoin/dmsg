@@ -22,11 +22,11 @@ const (
 	DefaultCommunityDmsgServerType = "community"
 )
 
-// DmsgDiscAddr returns the address of the dmsg discovery
-func DmsgDiscAddr(testenv bool) string {
-		if testenv {
-			return skywire.Prod.DmsgDiscovery
+// DiscAddr returns the address of the dmsg discovery
+func DiscAddr(testenv bool) string {
+	if testenv {
+		return skywire.Prod.DmsgDiscovery
 
-		}
-		return skywire.Test.DmsgDiscovery
+	}
+	return skywire.Test.DmsgDiscovery
 }
