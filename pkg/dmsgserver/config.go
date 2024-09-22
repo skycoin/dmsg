@@ -16,12 +16,15 @@ const (
 	defaultPublicAddress = "127.0.0.1:8081"
 	defaultLocalAddress  = ":8081"
 	defaultHTTPAddress   = ":8082"
+
 	// DefaultConfigPath default path of config file
 	DefaultConfigPath = "config.json"
-	// DefaultDiscoverURLTest default URL for discovery in test env
+
 )
 
 var defaultDiscoveryURL = dmsg.DmsgDiscAddr(false)
+
+// DefaultDiscoverURLTest default URL for discovery in test env
 var DefaultDiscoverURLTest = dmsg.DmsgDiscAddr(true)
 
 // Config is structure of config file

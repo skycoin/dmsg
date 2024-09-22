@@ -2,7 +2,6 @@
 package dmsg
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/skycoin/skywire"
@@ -23,19 +22,11 @@ const (
 	DefaultCommunityDmsgServerType = "community"
 )
 
+// DmsgDiscAddr returns the address of the dmsg discovery
 func DmsgDiscAddr(testenv bool) string {
-	var envServices skywire.EnvServices
-	var services skywire.Services
-	if err := json.Unmarshal([]byte(skywire.ServicesJSON), &envServices); err == nil {
 		if testenv {
-			if err := json.Unmarshal(envServices.Prod, &services); err == nil {
-				return services.DmsgDiscovery
-			}
-		} else {
-			if err := json.Unmarshal(envServices.Test, &services); err == nil {
-				return services.DmsgDiscovery
-			}
+			return skywire.Prod.DmsgDiscovery
+
 		}
-	}
-	return ""
+		return skywire.Test.DmsgDiscovery
 }
