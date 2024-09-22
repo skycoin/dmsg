@@ -20,7 +20,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
 	github.com/skycoin/skycoin v0.27.1
-	github.com/skycoin/skywire v0.0.0-00010101000000-000000000000
+	github.com/skycoin/skywire v1.3.26-0.20240922162315-789cef41c9a1
 	github.com/skycoin/skywire-utilities v1.3.25
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.9.0
@@ -73,7 +73,8 @@ require (
 )
 
 // Uncomment for tests with alternate branches of 'skywire-utilities'
-replace github.com/skycoin/skywire => ../skywire
+//replace github.com/skycoin/skywire => ../skywire
+//replace github.com/skycoin/skywire => github.com/skycoin/skywire <commit-hash>
 
 // replace github.com/skycoin/skywire-utilities => ../skywire-utilities
 // replace github.com/skycoin/skywire-utilities => github.com/skycoin/skywire-utilities
