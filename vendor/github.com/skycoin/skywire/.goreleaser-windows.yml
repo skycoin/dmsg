@@ -1,0 +1,53 @@
+# This is an example goreleaser.yaml file with some sane defaults.
+# Make sure to check the documentation at http://goreleaser.com
+
+release:
+  # Repo in which the release will be created.
+  # Default is extracted from the origin remote URL or empty if its private hosted.
+  # Note: it can only be one: either github or gitlab or gitea
+  github:
+    owner: skycoin
+    name: skywire
+
+  #prerelease: true
+
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - id: skywire
+    binary: skywire
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - 386
+      - arm64
+    env:
+      - CGO_ENABLED=1
+    main: ./cmd/skywire/
+    ldflags: -s -w -X github.com/skycoin/skywire-utilities/pkg/buildinfo.version=v{{.Version}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.commit={{.ShortCommit}} -X github.com/skycoin/skywire-utilities/pkg/buildinfo.date={{.Date}} -X github.com/skycoin/skywire/pkg/visor.BuildTag={{.Os}}
+
+
+archives:
+  - id: archive
+    format: zip
+    wrap_in_directory: false
+    name_template: 'skywire-v{{ .Version }}-{{ .Os }}-{{ .Arch }}'
+    files:
+      - dmsghttp-config.json
+      - services-config.json
+    builds:
+      - skywire
+    allow_different_binary_count: true
+
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
