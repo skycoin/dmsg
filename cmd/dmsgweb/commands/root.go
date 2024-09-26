@@ -26,6 +26,7 @@ import (
 var (
 	httpC              http.Client
 	dmsgC              *dmsg.Client
+	closeDmsg          func()
 	dmsgDisc           string
 	dmsgSessions       int
 	dmsgAddr           []string

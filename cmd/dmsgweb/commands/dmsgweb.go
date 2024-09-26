@@ -181,7 +181,7 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 		dmsgWebLog.Info("dmsg client pk: ", pk.String())
 		if len(resolveDmsgAddr) > 0 {
 			dialPK = make([]cipher.PubKey, len(resolveDmsgAddr))
-			dmsgPorts = make([]uint, dmsgSessions)
+			dmsgPorts = make([]uint, len(resolveDmsgAddr))
 			for i, dmsgaddr := range resolveDmsgAddr {
 				dmsgWebLog.Info("dmsg address to dial: ", dmsgaddr)
 				dmsgAddr = strings.Split(dmsgaddr, ":")
@@ -202,8 +202,7 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 				}
 			}
 		}
-		dmsgWebLog.Info("test")
-		dmsgC, closeDmsg, err := startDmsg(ctx, pk, sk)
+		dmsgC, closeDmsg, err = startDmsg(ctx, pk, sk)
 		if err != nil {
 			dmsgWebLog.WithError(err).Fatal("failed to start dmsg")
 		}
@@ -273,15 +272,19 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 
 		if len(resolveDmsgAddr) == 0 && len(webPort) == 1 {
 			if rawTCP[0] {
+				dmsgWebLog.Debug("proxyTCPConn(-1)")
 				proxyTCPConn(-1)
 			} else {
+				dmsgWebLog.Debug("proxyHTTPConn(-1)")
 				proxyHTTPConn(-1)
 			}
 		} else {
 			for i := range resolveDmsgAddr {
 				if rawTCP[i] {
+					dmsgWebLog.Debug("proxyTCPConn(" + fmt.Sprintf("%v", i) + ")")
 					proxyTCPConn(i)
 				} else {
+					dmsgWebLog.Debug("proxyHTTPConn(" + fmt.Sprintf("%v", i) + ")")
 					proxyHTTPConn(i)
 				}
 			}
@@ -387,7 +390,7 @@ func proxyTCPConn(n int) {
 		}
 
 		wg.Add(1)
-		go func(conn net.Conn, n int) {
+		go func(conn net.Conn, n int, dmsgC *dmsg.Client) {
 			defer wg.Done()
 			defer conn.Close() //nolint
 
@@ -401,7 +404,7 @@ func proxyTCPConn(n int) {
 			go func() {
 				_, err := io.Copy(dmsgConn, conn)
 				if err != nil {
-					log.Printf("Error copying data to dmsg server: %v", err)
+					log.Printf("Error copying data to dmsg client: %v", err)
 				}
 				dmsgConn.Close() //nolint
 			}()
@@ -409,11 +412,11 @@ func proxyTCPConn(n int) {
 			go func() {
 				_, err := io.Copy(conn, dmsgConn)
 				if err != nil {
-					log.Printf("Error copying data from dmsg server: %v", err)
+					log.Printf("Error copying data from dmsg client: %v", err)
 				}
 				conn.Close() //nolint
 			}()
-		}(conn, n)
+		}(conn, n, dmsgC)
 	}
 }
 
