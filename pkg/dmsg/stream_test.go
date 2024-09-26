@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 
@@ -29,7 +31,6 @@ func TestStream(t *testing.T) {
 	srvConf := &ServerConfig{
 		MaxSessions:    maxSessions,
 		UpdateInterval: 0,
-		LimitIP:        200,
 	}
 	srv := NewServer(pkSrv, skSrv, dc, srvConf, nil)
 	srv.SetLogger(logging.MustGetLogger("server"))
@@ -205,6 +206,98 @@ func TestStream(t *testing.T) {
 	// Closing logic.
 	require.NoError(t, clientB.Close())
 	require.NoError(t, clientA.Close())
+	require.NoError(t, srv.Close())
+	require.NoError(t, <-chSrv)
+}
+
+func TestLookupIP(t *testing.T) {
+	// Prepare mock discovery.
+	dc := disc.NewMock(0)
+	const maxSessions = 10
+
+	// Prepare dmsg server A.
+	pkSrvA, skSrvB := GenKeyPair(t, "server_A")
+	srvConf := &ServerConfig{
+		MaxSessions:    maxSessions,
+		UpdateInterval: 0,
+	}
+	srv := NewServer(pkSrvA, skSrvB, dc, srvConf, nil)
+	srv.SetLogger(logging.MustGetLogger("server"))
+	lisSrv, err := net.Listen("tcp", "")
+	require.NoError(t, err)
+
+	// Serve dmsg server.
+	chSrv := make(chan error, 1)
+	go func() { chSrv <- srv.Serve(lisSrv, "") }() //nolint:errcheck
+
+	// Prepare and serve dmsg client A.
+	pkA, skA := GenKeyPair(t, "client A")
+
+	clientConfig := &Config{
+		MinSessions:    DefaultMinSessions,
+		UpdateInterval: DefaultUpdateInterval * 5,
+		ClientType:     "test",
+	}
+
+	dmsgC := NewClient(pkA, skA, dc, clientConfig)
+	go dmsgC.Serve(context.Background())
+	t.Cleanup(func() { assert.NoError(t, dmsgC.Close()) })
+	<-dmsgC.Ready()
+
+	t.Run("test_connected_server", func(t *testing.T) {
+		// Ensure all entities are registered in discovery before continuing.
+		time.Sleep(time.Second * 2)
+
+		// Lookup IP.
+		srvs := []cipher.PubKey{pkSrvA}
+		ip, err := dmsgC.LookupIP(context.Background(), srvs)
+		require.NoError(t, err)
+
+		if runtime.GOOS == "windows" {
+			require.Equal(t, net.ParseIP("127.0.0.1"), ip)
+		} else {
+			require.Equal(t, net.ParseIP("::1"), ip)
+		}
+
+		// Ensure all entities are deregistered in discovery before continuing.
+		time.Sleep(time.Second * 2)
+	})
+
+	t.Run("test_disconnected_server", func(t *testing.T) {
+		// Prepare dmsg server B.
+		pkSrvB, skSrvB := GenKeyPair(t, "server_B")
+		srvB := NewServer(pkSrvB, skSrvB, dc, srvConf, nil)
+		srvB.SetLogger(logging.MustGetLogger("server_B"))
+		lisSrvB, err := net.Listen("tcp", "")
+		require.NoError(t, err)
+
+		// Serve dmsg server B.
+		chSrvB := make(chan error, 1)
+		go func() { chSrvB <- srvB.Serve(lisSrvB, "") }() //nolint:errcheck
+
+		// Ensure all entities are registered in discovery before continuing.
+		time.Sleep(time.Second * 2)
+
+		srvs := []cipher.PubKey{pkSrvB}
+		ip, err := dmsgC.LookupIP(context.Background(), srvs)
+		require.NoError(t, err)
+
+		if runtime.GOOS == "windows" {
+			require.Equal(t, net.ParseIP("127.0.0.1"), ip)
+		} else {
+			require.Equal(t, net.ParseIP("::1"), ip)
+		}
+
+		// Ensure all entities are deregistered in discovery before continuing.
+		time.Sleep(time.Second * 2)
+
+		// Ensure the server B entry is deleted and server A entry is still there.
+		pks := dmsgC.ConnectedServersPK()
+		require.Equal(t, []string{pkSrvA.String()}, pks)
+	})
+
+	// Closing logic.
+	require.NoError(t, dmsgC.Close())
 	require.NoError(t, srv.Close())
 	require.NoError(t, <-chSrv)
 }

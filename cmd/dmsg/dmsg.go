@@ -2,93 +2,23 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-
 	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/spf13/cobra"
 
-	dmsgdisc "github.com/skycoin/dmsg/cmd/dmsg-discovery/commands"
-	dmsgserver "github.com/skycoin/dmsg/cmd/dmsg-server/commands"
-	dmsgsocks "github.com/skycoin/dmsg/cmd/dmsg-socks5/commands"
-	dmsgcurl "github.com/skycoin/dmsg/cmd/dmsgcurl/commands"
-	dmsghttp "github.com/skycoin/dmsg/cmd/dmsghttp/commands"
-	dmsgptycli "github.com/skycoin/dmsg/cmd/dmsgpty-cli/commands"
-	dmsgptyhost "github.com/skycoin/dmsg/cmd/dmsgpty-host/commands"
-	dmsgptyui "github.com/skycoin/dmsg/cmd/dmsgpty-ui/commands"
-	dmsgweb "github.com/skycoin/dmsg/cmd/dmsgweb/commands"
+	"github.com/skycoin/dmsg/cmd/dmsg/commands"
 )
 
 func init() {
-	dmsgptyCmd.AddCommand(
-		dmsgptycli.RootCmd,
-		dmsgptyhost.RootCmd,
-		dmsgptyui.RootCmd,
-	)
-	RootCmd.AddCommand(
-		dmsgptyCmd,
-		dmsgdisc.RootCmd,
-		dmsgserver.RootCmd,
-		dmsghttp.RootCmd,
-		dmsgcurl.RootCmd,
-		dmsgweb.RootCmd,
-		dmsgsocks.RootCmd,
-	)
-	dmsgdisc.RootCmd.Use = "disc"
-	dmsgserver.RootCmd.Use = "server"
-	dmsghttp.RootCmd.Use = "http"
-	dmsgcurl.RootCmd.Use = "curl"
-	dmsgweb.RootCmd.Use = "web"
-	dmsgsocks.RootCmd.Use = "socks"
-	dmsgptycli.RootCmd.Use = "cli"
-	dmsgptyhost.RootCmd.Use = "host"
-	dmsgptyui.RootCmd.Use = "ui"
-
 	var helpflag bool
-	RootCmd.SetUsageTemplate(help)
-	RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help for dmsg")
-	RootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
-	RootCmd.PersistentFlags().MarkHidden("help") //nolint
-	RootCmd.CompletionOptions.DisableDefaultCmd = true
-
-}
-
-// RootCmd contains all binaries which may be separately compiled as subcommands
-var RootCmd = &cobra.Command{
-	Use: func() string {
-		return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
-	}(),
-	Short: "DMSG services & utilities",
-	Long: `
-	┌┬┐┌┬┐┌─┐┌─┐
-	 │││││└─┐│ ┬
-	─┴┘┴ ┴└─┘└─┘
-DMSG services & utilities`,
-	SilenceErrors:         true,
-	SilenceUsage:          true,
-	DisableSuggestions:    true,
-	DisableFlagsInUseLine: true,
-}
-
-var dmsgptyCmd = &cobra.Command{
-	Use:   "pty",
-	Short: "DMSG pseudoterminal (pty)",
-	Long: `
-	┌─┐┌┬┐┬ ┬
-	├─┘ │ └┬┘
-	┴   ┴  ┴
-DMSG pseudoterminal (pty)`,
-	SilenceErrors:         true,
-	SilenceUsage:          true,
-	DisableSuggestions:    true,
-	DisableFlagsInUseLine: true,
+	commands.RootCmd.SetUsageTemplate(help)
+	commands.RootCmd.PersistentFlags().BoolVarP(&helpflag, "help", "h", false, "help menu")
+	commands.RootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
+	commands.RootCmd.PersistentFlags().MarkHidden("help") //nolint
 }
 
 func main() {
 	cc.Init(&cc.Config{
-		RootCmd:         RootCmd,
+		RootCmd:         commands.RootCmd,
 		Headings:        cc.HiBlue + cc.Bold,
 		Commands:        cc.HiBlue + cc.Bold,
 		CmdShortDescr:   cc.HiBlue,
@@ -99,15 +29,12 @@ func main() {
 		NoExtraNewlines: true,
 		NoBottomNewline: true,
 	})
-
-	if err := RootCmd.Execute(); err != nil {
-		fmt.Println(err)
-	}
+	commands.Execute()
 }
 
-const help = "{{if gt (len .Aliases) 0}}" +
+const help = "{{if .HasAvailableSubCommands}}{{end}} {{if gt (len .Aliases) 0}}\r\n\r\n" +
 	"{{.NameAndAliases}}{{end}}{{if .HasAvailableSubCommands}}" +
-	"Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand)}}\r\n  " +
+	"Available Commands:{{range .Commands}}  {{if and (ne .Name \"completion\") .IsAvailableCommand}}\r\n  " +
 	"{{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}\r\n\r\n" +
 	"Flags:\r\n" +
 	"{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}\r\n\r\n" +
