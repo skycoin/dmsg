@@ -293,7 +293,8 @@ func TestNewMockUpdateEntriesEndpoint(t *testing.T) {
 			name:                "update entry iteration",
 			responseShouldError: false,
 			secretKey:           sk,
-			storerPreHook: func(apiClient disc.APIClient, e *disc.Entry) {
+			//			storerPreHook: func(apiClient disc.APIClient, e *disc.Entry) {
+			storerPreHook: func(_ disc.APIClient, e *disc.Entry) {
 				e.Server.Address = "different one"
 			},
 		},
@@ -301,7 +302,8 @@ func TestNewMockUpdateEntriesEndpoint(t *testing.T) {
 			name:                "update entry unauthorized",
 			responseShouldError: true,
 			secretKey:           ephemeralSk1,
-			storerPreHook: func(apiClient disc.APIClient, e *disc.Entry) {
+			//			storerPreHook: func(apiClient disc.APIClient, e *disc.Entry) {
+			storerPreHook: func(_ disc.APIClient, e *disc.Entry) {
 				e.Server.Address = "different one"
 			},
 		},

@@ -99,7 +99,7 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 	DisableSuggestions:    true,
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
-	Run: func(cmd *cobra.Command, _ []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		if isEnvs {
 			envfile := envfileLinux
 			if runtime.GOOS == "windows" {
@@ -391,7 +391,7 @@ func proxyTCPConn(n int) {
 			defer wg.Done()
 			defer conn.Close() //nolint
 
-			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: uint16(dmsgPorts[n])})
+			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: uint16(dmsgPorts[n])}) //nolint
 			if err != nil {
 				log.Printf("Failed to dial dmsg address %v:%v %v", dialPK[n].String(), dmsgPorts[n], err)
 				return

@@ -123,7 +123,7 @@ func (sc *SessionCommon) writeObject(w io.Writer, obj SignedObject) error {
 	p := sc.ns.EncryptUnsafe(obj)
 	sc.wMx.Unlock()
 	p = append(make([]byte, 2), p...)
-	binary.BigEndian.PutUint16(p, uint16(len(p)-2))
+	binary.BigEndian.PutUint16(p, uint16(len(p)-2)) //nolint
 	_, err := w.Write(p)
 	return err
 }

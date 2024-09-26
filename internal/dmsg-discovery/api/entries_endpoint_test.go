@@ -54,7 +54,8 @@ func TestEntriesEndpoint(t *testing.T) {
 			contentType:     "application/json",
 			responseIsEntry: true,
 			entry:           baseEntry,
-			entryPreHook: func(t *testing.T, e *disc.Entry, body *string) {
+			//			entryPreHook: func(t *testing.T, e *disc.Entry, body *string) {
+			entryPreHook: func(t *testing.T, e *disc.Entry, _ *string) {
 				err := e.Sign(sk)
 				require.NoError(t, err)
 			},

@@ -152,7 +152,7 @@ func server() {
 	var listN []net.Listener
 
 	for _, dport := range dmsgPort {
-		lis, err := dmsgC.Listen(uint16(dport))
+		lis, err := dmsgC.Listen(uint16(dport)) //nolint
 		if err != nil {
 			log.Fatalf("Error listening on port %d: %v", dport, err)
 		}
