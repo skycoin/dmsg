@@ -21,7 +21,6 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
-	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/pkg/disc"
@@ -44,7 +43,7 @@ var (
 )
 
 func init() {
-	RootCmd.Flags().StringSliceVarP(&dmsgDisc, "dmsg-disc", "c", []string{skyenv.DmsgDiscAddr}, "dmsg discovery url(s)")
+	RootCmd.Flags().StringSliceVarP(&dmsgDisc, "dmsg-disc", "c", []string{dmsg.DiscAddr(false)}, "dmsg discovery url(s)")
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "fatal", "[ debug | warn | error | fatal | panic | trace | info ]")
 	RootCmd.Flags().StringVarP(&dmsgcurlData, "data", "d", "", "dmsghttp POST data")
@@ -73,7 +72,7 @@ var RootCmd = &cobra.Command{
 	Version:               buildinfo.Version(),
 	RunE: func(_ *cobra.Command, args []string) error {
 		if len(dmsgDisc) == 0 || dmsgDisc[0] == "" {
-			dmsgDisc = []string{skyenv.DmsgDiscAddr}
+			dmsgDisc = []string{dmsg.DiscAddr(false)}
 		}
 		if dmsgcurlLog == nil {
 			dmsgcurlLog = logging.MustGetLogger("dmsgcurl")
