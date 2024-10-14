@@ -26,7 +26,7 @@ import (
 var (
 	httpC              http.Client
 	dmsgC              *dmsg.Client
-	dmsgDisc           string
+	dmsgDisc           []string
 	dmsgSessions       int
 	dmsgAddr           []string
 	dialPK             []cipher.PubKey

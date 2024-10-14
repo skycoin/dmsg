@@ -263,7 +263,7 @@ func ResponderHandshake(ns *Noise, r *bufio.Reader, w io.Writer) error {
 // It returns the bytes written.
 func WriteRawFrame(w io.Writer, p []byte) ([]byte, error) {
 	buf := make([]byte, prefixSize+len(p))
-	binary.BigEndian.PutUint16(buf, uint16(len(p)))
+	binary.BigEndian.PutUint16(buf, uint16(len(p))) //nolint
 	copy(buf[prefixSize:], p)
 
 	n, err := w.Write(buf)

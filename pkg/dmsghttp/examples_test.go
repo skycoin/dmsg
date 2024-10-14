@@ -74,7 +74,8 @@ func ExampleMakeHTTPTransport() {
 	}()
 
 	r := chi.NewRouter()
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	//	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("<html><body><h1>Hello World!</h1></body></html>")) //nolint:errcheck
 	})
 	go func() { _ = http.Serve(lis, r) }() //nolint

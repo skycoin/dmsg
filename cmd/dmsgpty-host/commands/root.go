@@ -84,8 +84,7 @@ DMSG host for pseudoterminal command line interface`,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
 	DisableFlagsInUseLine: true,
-	PreRun:                func(cmd *cobra.Command, args []string) {},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		conf, err := getConfig(cmd, false)
 		if err != nil {
 			return fmt.Errorf("failed to get config: %w", err)
@@ -260,7 +259,7 @@ func fillConfigFromENV(conf dmsgpty.Config) (dmsgpty.Config, error) {
 			return conf, fmt.Errorf("failed to parse dmsg port: %w", err)
 		}
 
-		conf.DmsgPort = uint16(dmsgPort)
+		conf.DmsgPort = uint16(dmsgPort) //nolint
 	}
 
 	if val, ok := os.LookupEnv(envPrefix + "_CLINET"); ok {
