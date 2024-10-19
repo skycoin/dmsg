@@ -12,7 +12,6 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
-	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
@@ -20,7 +19,7 @@ import (
 
 var (
 	dir      = "." // local dir to serve via http
-	dmsgDisc = skyenv.DmsgDiscAddr
+	dmsgDisc = dmsg.DiscAddr(false)
 	dmsgPort = uint(80)
 	pk, sk   = cipher.GenerateKeyPair()
 )

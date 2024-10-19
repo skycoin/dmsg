@@ -8,6 +8,8 @@ require (
 	github.com/ActiveState/termtest/conpty v0.5.0
 	github.com/VictoriaMetrics/metrics v1.35.1
 	github.com/bitfield/script v0.23.0
+	github.com/chen3feng/safecast v0.0.0-20220908170618-81b2ecd47937
+	github.com/coder/websocket v1.8.12
 	github.com/confiant-inc/go-socks5 v0.0.0-20210816151940-c1124825b1d6
 	github.com/creack/pty v1.1.23
 	github.com/gin-gonic/gin v1.10.0
@@ -27,7 +29,6 @@ require (
 	golang.org/x/net v0.30.0
 	golang.org/x/sys v0.26.0
 	golang.org/x/term v0.25.0
-	nhooyr.io/websocket v1.8.17
 )
 
 require (
