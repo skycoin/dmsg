@@ -7,7 +7,6 @@ import (
 
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
-	"github.com/skycoin/skywire-utilities/pkg/skyenv"
 	"golang.org/x/net/proxy"
 
 	"github.com/skycoin/dmsg/pkg/disc"
@@ -42,10 +41,10 @@ func main() {
 	}
 
 	// instantiate clients with custom config
-	respC := dmsg.NewClient(respPK, respSK, disc.NewHTTP(skyenv.DmsgDiscAddr, httpClient, log), dmsg.DefaultConfig())
+	respC := dmsg.NewClient(respPK, respSK, disc.NewHTTP(dmsg.DiscAddr(false), httpClient, log), dmsg.DefaultConfig())
 	go respC.Serve(context.Background())
 
-	initC := dmsg.NewClient(initPK, initSK, disc.NewHTTP(skyenv.DmsgDiscAddr, &http.Client{}, log), dmsg.DefaultConfig())
+	initC := dmsg.NewClient(initPK, initSK, disc.NewHTTP(dmsg.DiscAddr(false), &http.Client{}, log), dmsg.DefaultConfig())
 	go initC.Serve(context.Background())
 
 	time.Sleep(2 * time.Second)

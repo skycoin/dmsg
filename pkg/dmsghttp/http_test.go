@@ -86,7 +86,7 @@ func (r httpClientResult) Assert(t *testing.T, i int) {
 func startHTTPServer(t *testing.T, results chan httpServerResult, lis net.Listener) {
 	r := chi.NewRouter()
 
-	r.HandleFunc(endpointHTML, func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc(endpointHTML, func(w http.ResponseWriter, r *http.Request) { //nolint
 		result := httpServerResult{Path: endpointHTML}
 
 		n, err := w.Write(endpointHTMLData)
