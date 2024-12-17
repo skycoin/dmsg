@@ -12,7 +12,7 @@ import (
 
 // AddMetricsHandler adds a prometheus-format Handle at '/metrics' to the provided serve mux.
 func AddMetricsHandler(mux *chi.Mux) {
-	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/metrics", func(w http.ResponseWriter, _ *http.Request) {
 		metrics.WritePrometheus(w, true)
 	})
 }

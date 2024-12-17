@@ -76,13 +76,13 @@ github.com/confiant-inc/go-socks5
 # github.com/creack/pty v1.1.23
 ## explicit; go 1.18
 github.com/creack/pty
-# github.com/davecgh/go-spew v1.1.1
+# github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
 # github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f
 ## explicit
 github.com/dgryski/go-rendezvous
-# github.com/fatih/color v1.17.0
+# github.com/fatih/color v1.18.0
 ## explicit; go 1.17
 github.com/fatih/color
 # github.com/gabriel-vasile/mimetype v1.4.6
@@ -186,7 +186,7 @@ github.com/pelletier/go-toml/v2/unstable
 # github.com/pires/go-proxyproto v0.8.0
 ## explicit; go 1.18
 github.com/pires/go-proxyproto
-# github.com/pmezard/go-difflib v1.0.0
+# github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 ## explicit
 github.com/pmezard/go-difflib/difflib
 # github.com/sirupsen/logrus v1.9.3
@@ -196,27 +196,30 @@ github.com/sirupsen/logrus/hooks/syslog
 # github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
 ## explicit
 github.com/skycoin/noise
-# github.com/skycoin/skycoin v0.28.0
-## explicit; go 1.14
+# github.com/skycoin/skycoin v0.28.1-0.20241105130348-39b49a2d0a7f
+## explicit; go 1.22.0
 github.com/skycoin/skycoin/src/cipher
 github.com/skycoin/skycoin/src/cipher/base58
 github.com/skycoin/skycoin/src/cipher/ripemd160
 github.com/skycoin/skycoin/src/cipher/secp256k1-go
 github.com/skycoin/skycoin/src/cipher/secp256k1-go/secp256k1-go2
 github.com/skycoin/skycoin/src/util/logging
-# github.com/skycoin/skywire v1.3.28
-## explicit; go 1.21
+# github.com/skycoin/skywire v1.3.29-rc1.0.20241216202341-36a0a20ceafb
+## explicit; go 1.23
 github.com/skycoin/skywire
+github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo
+github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher
+github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil
+github.com/skycoin/skywire/pkg/skywire-utilities/pkg/httputil
+github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging
+github.com/skycoin/skywire/pkg/skywire-utilities/pkg/metricsutil
+github.com/skycoin/skywire/pkg/skywire-utilities/pkg/netutil
+github.com/skycoin/skywire/pkg/skywire-utilities/pkg/networkmonitor
 # github.com/skycoin/skywire-utilities v1.3.25
 ## explicit; go 1.21
 github.com/skycoin/skywire-utilities/pkg/buildinfo
 github.com/skycoin/skywire-utilities/pkg/cipher
-github.com/skycoin/skywire-utilities/pkg/cmdutil
-github.com/skycoin/skywire-utilities/pkg/httputil
 github.com/skycoin/skywire-utilities/pkg/logging
-github.com/skycoin/skywire-utilities/pkg/metricsutil
-github.com/skycoin/skywire-utilities/pkg/netutil
-github.com/skycoin/skywire-utilities/pkg/networkmonitor
 # github.com/spf13/cobra v1.8.1
 ## explicit; go 1.15
 github.com/spf13/cobra
@@ -316,8 +319,6 @@ google.golang.org/protobuf/proto
 google.golang.org/protobuf/reflect/protoreflect
 google.golang.org/protobuf/reflect/protoregistry
 google.golang.org/protobuf/runtime/protoiface
-# gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
-## explicit; go 1.11
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3

@@ -37,7 +37,7 @@ ifneq (,$(findstring 64,$(GOARCH)))
 endif
 
 DMSG_REPO := github.com/skycoin/dmsg
-SKYWIRE_UTILITIES_BASE := github.com/skycoin/skywire-utilities
+SKYWIRE_UTILITIES_BASE := github.com/skycoin/skywire/pkg/skywire-utilities
 BUILDINFO_PATH := $(SKYWIRE_UTILITIES_BASE)/pkg/buildinfo
 
 BUILDINFO_VERSION := -X $(BUILDINFO_PATH).version=$(VERSION)
