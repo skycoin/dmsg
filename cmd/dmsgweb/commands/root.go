@@ -15,9 +15,10 @@ import (
 	"time"
 
 	"github.com/bitfield/script"
+	"github.com/chen3feng/safecast"
 	"github.com/gin-gonic/gin"
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/logging"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
@@ -267,7 +268,11 @@ func scriptExecUint(s, envfile string) uint {
 			}
 			i, err := strconv.Atoi(strings.TrimSpace(strings.TrimRight(out, "\n")))
 			if err == nil {
-				return uint(i)
+				u, ok := safecast.To[uint](i)
+				if !ok {
+					log.Fatal("uint overflow")
+				}
+				return u
 			}
 			return 0
 		}
@@ -280,7 +285,11 @@ func scriptExecUint(s, envfile string) uint {
 		}
 		i, err := strconv.Atoi(z)
 		if err == nil {
-			return uint(i)
+			u, ok := safecast.To[uint](i)
+			if !ok {
+				log.Fatal("uint overflow")
+			}
+			return u
 		}
 	}
 	return uint(0)

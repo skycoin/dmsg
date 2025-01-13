@@ -9,9 +9,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
-	"github.com/skycoin/skywire-utilities/pkg/logging"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"golang.org/x/net/nettest"
 
 	"github.com/skycoin/dmsg/pkg/disc"
@@ -74,7 +74,7 @@ func ExampleMakeHTTPTransport() {
 	}()
 
 	r := chi.NewRouter()
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { //nolint
 		_, _ = w.Write([]byte("<html><body><h1>Hello World!</h1></body></html>")) //nolint:errcheck
 	})
 	go func() { _ = http.Serve(lis, r) }() //nolint

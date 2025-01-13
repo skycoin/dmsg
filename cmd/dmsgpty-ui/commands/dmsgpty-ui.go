@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/pkg/dmsgpty"
@@ -43,7 +43,7 @@ var RootCmd = &cobra.Command{
 	 │││││└─┐│ ┬├─┘ │ └┬┘───│ ││
 	─┴┘┴ ┴└─┘└─┘┴   ┴  ┴    └─┘┴
   ` + "DMSG pseudoterminal GUI",
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		if _, err := buildinfo.Get().WriteTo(log.Writer()); err != nil {
 			log.Printf("Failed to output build info: %v", err)
 		}

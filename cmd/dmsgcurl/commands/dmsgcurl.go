@@ -19,10 +19,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire"
-	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
-	"github.com/skycoin/skywire-utilities/pkg/logging"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/pkg/disc"
@@ -86,7 +86,7 @@ DMSG curl utility`,
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
 
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		if dmsgcurlLog == nil {
 			dmsgcurlLog = logging.MustGetLogger("dmsgcurl")
 		}
@@ -254,7 +254,7 @@ func parseOutputFile(output string, replace bool) (*os.File, error) {
 		return nil, statErr
 	}
 	if replace {
-		return os.OpenFile(filepath.Clean(output), os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+		return os.OpenFile(filepath.Clean(output), os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.ModePerm) //nolint
 	}
 	return nil, os.ErrExist
 }

@@ -11,12 +11,12 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/go-chi/chi/v5"
+	chi "github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
-	"github.com/skycoin/skywire-utilities/pkg/logging"
-	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/metricsutil"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/internal/dmsg-server/api"
@@ -40,8 +40,8 @@ func init() {
 var RootCmd = &cobra.Command{
 	Use:     "start",
 	Short:   "Start Dmsg Server",
-	PreRunE: func(cmd *cobra.Command, args []string) error { return sf.Check() },
-	Run: func(_ *cobra.Command, args []string) {
+	PreRunE: func(_ *cobra.Command, _ []string) error { return sf.Check() },
+	Run: func(_ *cobra.Command, _ []string) {
 		if _, err := buildinfo.Get().WriteTo(os.Stdout); err != nil {
 			log.Printf("Failed to output build info: %v", err)
 		}

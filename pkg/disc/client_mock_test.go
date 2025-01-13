@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -293,7 +293,7 @@ func TestNewMockUpdateEntriesEndpoint(t *testing.T) {
 			name:                "update entry iteration",
 			responseShouldError: false,
 			secretKey:           sk,
-			storerPreHook: func(apiClient disc.APIClient, e *disc.Entry) {
+			storerPreHook: func(apiClient disc.APIClient, e *disc.Entry) { //nolint
 				e.Server.Address = "different one"
 			},
 		},
@@ -301,7 +301,7 @@ func TestNewMockUpdateEntriesEndpoint(t *testing.T) {
 			name:                "update entry unauthorized",
 			responseShouldError: true,
 			secretKey:           ephemeralSk1,
-			storerPreHook: func(apiClient disc.APIClient, e *disc.Entry) {
+			storerPreHook: func(apiClient disc.APIClient, e *disc.Entry) { //nolint
 				e.Server.Address = "different one"
 			},
 		},

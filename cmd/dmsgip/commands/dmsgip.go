@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
-	"github.com/skycoin/skywire-utilities/pkg/logging"
-	"github.com/skycoin/skywire-utilities/pkg/skyenv"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
 
@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	dmsgDisc    string
+	dmsgDisc    = dmsg.DiscAddr(false)
 	sk          cipher.SecKey
 	logLvl      string
 	dmsgServers []string
@@ -31,14 +31,14 @@ var (
 )
 
 func init() {
-	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "c", skyenv.DmsgDiscAddr, "dmsg discovery url\n")
+	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "c", dmsgDisc, "dmsg discovery url\033[0m")
 	RootCmd.Flags().StringVarP(&proxyAddr, "proxy", "p", "", "connect to dmsg via proxy (i.e. '127.0.0.1:1080')")
-	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "fatal", "[debug|warn|error|fatal|panic|trace|info]\033[0m")
+	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "fatal", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
 	if os.Getenv("DMSGIP_SK") != "" {
 		sk.Set(os.Getenv("DMSGIP_SK")) //nolint
 	}
-	RootCmd.Flags().StringSliceVarP(&dmsgServers, "srv", "d", []string{}, "dmsg server public keys\n\r")
-	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
+	RootCmd.Flags().StringSliceVarP(&dmsgServers, "srv", "d", []string{}, "dmsg server public keys\n\r\033[0m")
+	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r\033[0m")
 }
 
 // RootCmd contains the root dmsgcurl command
@@ -56,6 +56,7 @@ var RootCmd = &cobra.Command{
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
 	DisableFlagsInUseLine: true,
+	Version:               buildinfo.Version(),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		log := logging.MustGetLogger("dmsgip")
 
