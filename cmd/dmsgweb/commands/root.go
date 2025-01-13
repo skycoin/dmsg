@@ -19,6 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
+	"golang.org/x/net/proxy"
 
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
@@ -27,7 +28,8 @@ import (
 var (
 	httpC              http.Client
 	dmsgC              *dmsg.Client
-	dmsgDisc           string
+	dmsgDisc           = dmsg.DiscAddr(false)
+	proxyAddr          string
 	dmsgSessions       int
 	dmsgAddr           []string
 	dialPK             []cipher.PubKey
@@ -50,6 +52,8 @@ var (
 	localPort          []uint
 	err                error
 	rawTCP             []bool
+	httpClient         *http.Client
+	dialer             proxy.Dialer = proxy.Direct
 )
 
 // Execute executes root CLI command.
@@ -60,8 +64,8 @@ func Execute() {
 }
 
 func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
-	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, dmsgWebLog), &dmsg.Config{MinSessions: dmsgSessions})
-	go dmsgC.Serve(context.Background())
+	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, httpClient, dmsgWebLog), &dmsg.Config{MinSessions: dmsgSessions})
+	go dmsgC.Serve(ctx)
 
 	stop = func() {
 		err := dmsgC.Close()
@@ -82,6 +86,8 @@ func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *
 		return dmsgC, stop, nil
 	}
 }
+
+//TODO: these functions are more or less duplicated in several places - need to standardize and put in it's own library import in "github.com/skycoin/skywire/pkg/skywire-utilities/pkg/..."
 
 func scriptExecString(s, envfile string) string {
 	if runtime.GOOS == "windows" {
@@ -133,6 +139,7 @@ func scriptExecString(s, envfile string) string {
 		return ""
 	}
 */
+
 func scriptExecStringSlice(s, envfile string) []string {
 	if runtime.GOOS == "windows" {
 		variable := s

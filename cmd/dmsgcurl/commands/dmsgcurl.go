@@ -24,6 +24,7 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/proxy"
 
 	"github.com/skycoin/dmsg/pkg/disc"
 	"github.com/skycoin/dmsg/pkg/dmsg"
@@ -43,6 +44,9 @@ var (
 	dmsgcurlWait   int
 	dmsgcurlOutput string
 	replace        bool
+	proxyAddr      string
+	httpClient     *http.Client
+	dialer         = proxy.Direct
 )
 
 func init() {
@@ -54,6 +58,7 @@ func init() {
 		}
 	}
 	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "c", dmsgDisc, "dmsg discovery url")
+	RootCmd.Flags().StringVarP(&proxyAddr, "proxy", "p", "", "connect to dmsg via proxy (i.e. '127.0.0.1:1080')")
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "fatal", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
 	RootCmd.Flags().StringVarP(&dmsgcurlData, "data", "d", "", "dmsghttp POST data")
@@ -101,6 +106,23 @@ DMSG curl utility`,
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), dmsgcurlLog)
 		defer cancel()
+
+		httpClient = &http.Client{}
+
+		if proxyAddr != "" {
+			// Use SOCKS5 proxy dialer if specified
+			dialer, err := proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
+			if err != nil {
+				log.Fatalf("Error creating SOCKS5 dialer: %v", err)
+			}
+			transport := &http.Transport{
+				Dial: dialer.Dial,
+			}
+			httpClient = &http.Client{
+				Transport: transport,
+			}
+			ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
+		}
 
 		pk, err := sk.PubKey()
 		if err != nil {
@@ -260,7 +282,7 @@ func parseOutputFile(output string, replace bool) (*os.File, error) {
 }
 
 func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
-	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, dmsgcurlLog), &dmsg.Config{MinSessions: dmsgSessions})
+	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, httpClient, dmsgcurlLog), &dmsg.Config{MinSessions: dmsgSessions})
 	go dmsgC.Serve(context.Background())
 
 	stop = func() {

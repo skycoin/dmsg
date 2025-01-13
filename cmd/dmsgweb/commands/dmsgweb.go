@@ -58,10 +58,11 @@ var dmsgwebconffile = os.Getenv(dmsgwebenvname)
 func init() {
 	RootCmd.Flags().StringVarP(&filterDomainSuffix, "filter", "f", ".dmsg", "domain suffix to filter")
 	RootCmd.Flags().UintVarP(&proxyPort, "socks", "q", scriptExecUint("${PROXYPORT:-4445}", dmsgwebconffile), "port to serve the socks5 proxy")
-	RootCmd.Flags().StringVarP(&addProxy, "proxy", "r", scriptExecString("${ADDPROXY}", dmsgwebconffile), "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)")
+	RootCmd.Flags().StringVarP(&addProxy, "addproxy", "r", scriptExecString("${ADDPROXY}", dmsgwebconffile), "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)")
 	RootCmd.Flags().UintSliceVarP(&webPort, "port", "p", scriptExecUintSlice("${WEBPORT[@]:-8080}", dmsgwebconffile), "port(s) to serve the web application")
 	RootCmd.Flags().StringSliceVarP(&resolveDmsgAddr, "resolve", "t", scriptExecStringSlice("${RESOLVEPK[@]}", dmsgwebconffile), "resolve the specified dmsg address:port on the local port & disable proxy")
-	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", dmsg.DiscAddr(false), "dmsg discovery url")
+	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", dmsgDisc, "dmsg discovery url")
+	RootCmd.Flags().StringVarP(&proxyAddr, "proxy", "x", "", "connect to dmsg via proxy (i.e. '127.0.0.1:1080')")
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebconffile), "number of dmsg servers to connect to")
 	RootCmd.Flags().BoolSliceVarP(&rawTCP, "rt", "c", scriptExecBoolSlice("${RAWTCP[@]:-false}", dmsgwebconffile), "proxy local port as raw TCP")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
@@ -203,7 +204,22 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 				}
 			}
 		}
-		dmsgWebLog.Info("test")
+
+		if proxyAddr != "" {
+			// Use SOCKS5 proxy dialer if specified
+			dialer, err = proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
+			if err != nil {
+				log.Fatalf("Error creating SOCKS5 dialer: %v", err)
+			}
+			transport := &http.Transport{
+				Dial: dialer.Dial,
+			}
+			httpClient = &http.Client{
+				Transport: transport,
+			}
+			ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
+		}
+
 		dmsgC, closeDmsg, err := startDmsg(ctx, pk, sk)
 		if err != nil {
 			dmsgWebLog.WithError(err).Fatal("failed to start dmsg")
