@@ -6,6 +6,42 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 updates may be generated with `scripts/changelog.sh <PR#lowest> <PR#highest>`
 
+## 1.3.29
+
+-   Fix Mac installer issue [#1900](https://github.com/skycoin/skywire/pull/1900)
+-   Fix WIX issue on versioning of Windows installer  [#1899](https://github.com/skycoin/skywire/pull/1899)
+-   Fix issue on release workflow  [#1896](https://github.com/skycoin/skywire/pull/1896)
+-   Improve Mac survey  [#1895](https://github.com/skycoin/skywire/pull/1895)
+-   Improve Windows installer [#1894](https://github.com/skycoin/skywire/pull/1894)
+-   Reward on Windows  [#1892](https://github.com/skycoin/skywire/pull/1892)
+-   Embed scripts for reward system  [#1888](https://github.com/skycoin/skywire/pull/1888)
+-   Fix codebase issues  [#1885](https://github.com/skycoin/skywire/pull/1885)
+-   Update Reward Calculation Cli &amp; UI  [#1884](https://github.com/skycoin/skywire/pull/1884)
+-   Update dependencies  [#1880](https://github.com/skycoin/skywire/pull/1880)
+-   Fix dmsghttp config gen logic  [#1877](https://github.com/skycoin/skywire/pull/1877)
+-   Fix services-config.json path reference for `skywire cli config gen`  [#1875](https://github.com/skycoin/skywire/pull/1875)
+
+## 1.3.26
+
+-   Embed Deployment Configuration  [#1873](https://github.com/skycoin/skywire/pull/1873)
+-   Remove hardcoded services  [#1872](https://github.com/skycoin/skywire/pull/1872)
+-   Update dmsg server ip address in dmsghttp-config.json [#1868](https://github.com/skycoin/skywire/pull/1868)
+
+## 1.3.25
+
+-   update skywire-services and skycoin-service-discovery to v1.3.25  [#1864](https://github.com/skycoin/skywire/pull/1864)
+-   make ready for v1.3.25  [#1863](https://github.com/skycoin/skywire/pull/1863)
+-   update skywire-utilties  [#1862](https://github.com/skycoin/skywire/pull/1862)
+-   Update Reward Calculation  [#1859](https://github.com/skycoin/skywire/pull/1859)
+
+## 1.3.24
+
+-   fix Windows installer script  [#1858](https://github.com/skycoin/skywire/pull/1858)
+-   fix reward calculation  [#1857](https://github.com/skycoin/skywire/pull/1857)
+-   fix survey &amp; reward calculation  [#1856](https://github.com/skycoin/skywire/pull/1856)
+-   Fix IP issue on survey  [#1855](https://github.com/skycoin/skywire/pull/1855)
+-   Fix skywire cli log / update dmsg dep  [#1853](https://github.com/skycoin/skywire/pull/1853)
+-   add windows arm64 archive to release  [#1852](https://github.com/skycoin/skywire/pull/1852)
 
 ## 1.3.23
 

@@ -11,7 +11,7 @@ RFC_3339 := "+%Y-%m-%dT%H:%M:%SZ"
 COMMIT := $(shell git rev-list -1 HEAD)
 
 PROJECT_BASE := github.com/skycoin/skywire
-SKYWIRE_UTILITIES_BASE := github.com/skycoin/skywire-utilities
+SKYWIRE_UTILITIES_BASE := github.com/skycoin/skywire/pkg/skywire-utilities
 ifeq ($(OS),Windows_NT)
 	SHELL := pwsh
 	OPTS?=powershell -Command setx GO111MODULE on;
@@ -97,6 +97,18 @@ date:
 commit:
 	@echo $(COMMIT)
 
+services: ## update services-config.json
+	scripts/services.sh
+
+dig-services: ## show IP addresses for the services
+	scripts/dig-services.sh
+
+dmsghttp: ## update dmsghttp-config.json
+	scripts/dmsghttp.sh
+
+count-dmsg-disc-entries:
+	curl -sL $(jq -r '.prod.dmsg_discovery' services-config.json)/dmsg-discovery/entries | jq '. | length'
+
 check: lint check-cg test ## Run linters and tests
 
 check-cg: ## Cursory check of the main help menu, offline dmsghttp config gen and offline config gen
@@ -120,8 +132,14 @@ check-windows: lint-windows test-windows ## Run linters and tests on windows ima
 
 build: clean build-merged ## Install dependencies, build apps and binaries. `go build` with ${OPTS}
 
+print-build: ## Print the command used to build the binary
+	@echo "${OPTS} go build ${BUILD_OPTS} -o $(BUILD_PATH)skywire ./cmd/skywire"
+
+print-run-source: ## Print the command used to go run from source
+	@echo "${OPTS} go run ${BUILD_OPTS} ./cmd/skywire/skywire.go cli config gen -n | sudo ${OPTS} go run ${BUILD_OPTS} ./cmd/skywire/skywire.go visor -n || true"
+
 build-merged: ## Install dependencies, build apps and binaries. `go build` with ${OPTS}
-	${OPTS} go build ${BUILD_OPTS} -o $(BUILD_PATH)skywire ./cmd/skywire
+	${OPTS} go build ${BUILD_OPTS} -o $(BUILD_PATH)skywire ./cmd/skycoin-skywire
 
 build-merged-windows: clean-windows
 	powershell '${OPTS} go build ${BUILD_OPTS} -o $(BUILD_PATH)skywire.exe ./cmd/skywire'
@@ -129,6 +147,8 @@ build-merged-windows: clean-windows
 install-system-linux: build ## Install apps and binaries over those provided by the linux package - linux package must be installed first!
 	sudo echo "sudo cache"
 	sudo install -Dm755 $(BUILD_PATH)skywire /opt/skywire/bin/
+	sudo install -Dm644 services-config.json /opt/skywire/
+	sudo install -Dm644 dmsghttp-config.json /opt/skywire/
 
 
 install-generate: ## Installs required execs for go generate.
@@ -158,11 +178,20 @@ install-static: ## Install `skywire-visor`, `skywire-cli`, `setup-node`
 
 lint: ## Run linters. Use make install-linters first
 	golangci-lint --version
-	${OPTS} golangci-lint run -c .golangci.yml ./...
+	${OPTS} golangci-lint run -c .golangci.yml skywire.go	#break down the linter run over smaller sections of the source code
+	${OPTS} golangci-lint run -c .golangci.yml ./cmd/...
+	${OPTS} golangci-lint run -c .golangci.yml ./pkg/...
+	${OPTS} golangci-lint run -c .golangci.yml	 ./...
+
+gocyclo: ## Run gocyclo
+	gocyclo -over 14 .
 
 lint-windows: ## Run linters. Use make install-linters-windows first
 	powershell 'golangci-lint --version'
 	powershell 'golangci-lint run -c .golangci.yml ./...'
+
+gocyclo-windows: ## Run gocyclo on windows
+	powershell 'gocyclo -over 14 .'
 
 test: ## Run tests
 	-go clean -testcache &>/dev/null
@@ -242,7 +271,7 @@ build-race: ## Build for testing Docker images
 	CGO_ENABLED=1 ${OPTS} go build -tags netgo ${BUILD_OPTS} -race -o /release/skywire ./cmd/skywire
 
 github-prepare-release:
-	$(eval GITHUB_TAG=$(shell git describe --abbrev=0 --tags | cut -c 2-6))
+	$(eval GITHUB_TAG=$(shell git describe --abbrev=0 --tags | sed 's/-.*//'))
 	sed '/^## ${GITHUB_TAG}$$/,/^## .*/!d;//d;/^$$/d' ./CHANGELOG.md > releaseChangelog.md
 
 github-release: github-prepare-release
@@ -304,19 +333,19 @@ prepare:
 
 
 run-source: prepare ## Run skywire from source, without compiling binaries
-	go run ./cmd/skywire/skywire.go cli config gen -in | sudo go run ./cmd/skywire/skywire.go visor -n || true
+	${OPTS} go run ${BUILD_OPTS} ./cmd/skywire/skywire.go cli config gen -n | sudo ${OPTS} go run ${BUILD_OPTS} ./cmd/skywire/skywire.go visor -n || true
 
 run-systray: prepare ## Run skywire from source, with vpn server enabled
-	go run ./cmd/skywire/skywire.go cli config gen -ni | sudo go run ./cmd/skywire/skywire.go visor -n --systray || true
+	${OPTS} go run ${BUILD_OPTS} ./cmd/skywire/skywire.go cli config gen -n | sudo ${OPTS} go run ${BUILD_OPTS} ./cmd/skywire/skywire.go visor -n --systray || true
 
 run-vpnsrv: prepare ## Run skywire from source, without compiling binaries
-	go run ./cmd/skywire/skywire.go cli config gen -in --servevpn | sudo go run ./cmd/skywire/skywire.go visor -n || true
+	${OPTS} go run ${BUILD_OPTS} ./cmd/skywire/skywire.go cli config gen -n --servevpn | sudo ${OPTS} go run ${BUILD_OPTS} ./cmd/skywire/skywire.go visor -n || true
 
 run-source-dmsghttp: prepare ## Run skywire from source with dmsghttp config
-	go run ./cmd/skywire/skywire.go cli config gen -din | sudo go run ./cmd/skywire/skywire.go visor -n || true
+	${OPTS} go run ${BUILD_OPTS} ./cmd/skywire/skywire.go cli config gen -dn | sudo ${OPTS} go run ${BUILD_OPTS} ./cmd/skywire/skywire.go visor -n || true
 
 run-vpnsrv-dmsghttp: prepare ## Run skywire from source with dmsghttp config and vpn server
-	go run ./cmd/skywire/skywire.go cli config gen -din --servevpn | sudo go run ./cmd/skywire/skywire.go visor -n || true
+	${OPTS} go run ${BUILD_OPTS} ./cmd/skywire/skywire.go cli config gen -dn --servevpn | sudo ${OPTS} go run ${BUILD_OPTS} ./cmd/skywire/skywire.go visor -n || true
 
 lint-ui:  ## Lint the UI code
 	cd $(MANAGER_UI_DIR) && npm run lint
@@ -357,11 +386,10 @@ windows-installer-release:
 	$(eval GITHUB_TAG=$(shell git describe --abbrev=0 --tags))
 	make win-installer CUSTOM_VERSION=$(GITHUB_TAG)
 	gh release upload --repo skycoin/skywire ${GITHUB_TAG} ./skywire-installer-${GITHUB_TAG}-windows-amd64.msi
-	gh release upload --repo skycoin/skywire ${GITHUB_TAG} ./skywire-installer-${GITHUB_TAG}-windows-386.msi
 
 # useful commands
-dmsghttp-update: ## update dmsghttp config
-	go run cmd/skywire/skywire.go cli config update dmsghttp -p dmsghttp-config.json
+#dmsghttp-update: ## update dmsghttp config
+#	go run cmd/skywire/skywire.go cli config update dmsghttp -p dmsghttp-config.json
 
 help: ## `make help` menu
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

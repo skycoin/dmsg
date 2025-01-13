@@ -16,11 +16,13 @@ import (
 	"time"
 
 	"github.com/bitfield/script"
+	"github.com/chen3feng/safecast"
 	"github.com/gin-gonic/gin"
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
-	"github.com/skycoin/skywire-utilities/pkg/logging"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/proxy"
 
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
@@ -35,7 +37,8 @@ func init() {
 	srvCmd.Flags().UintSliceVarP(&localPort, "lport", "l", scriptExecUintSlice("${LOCALPORT[@]:-8086}", dmsgwebsrvconffile), "local application http interface port(s)")
 	srvCmd.Flags().UintSliceVarP(&dmsgPort, "dport", "d", scriptExecUintSlice("${DMSGPORT[@]:-80}", dmsgwebsrvconffile), "dmsg port(s) to serve")
 	srvCmd.Flags().StringSliceVarP(&wl, "wl", "w", scriptExecStringSlice("${WHITELISTPKS[@]}", dmsgwebsrvconffile), "whitelisted keys for dmsg authenticated routes\r")
-	srvCmd.Flags().StringSliceVarP(&dmsgDisc, "dmsg-disc", "c", []string{dmsg.DiscAddr(false)}, "dmsg discovery url(s)")
+	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", []string{dmsg.DiscAddr(false)}, "dmsg discovery url(s)")
+	srvCmd.Flags().StringVarP(&proxyAddr, "proxy", "x", "", "connect to dmsg via proxy (i.e. '127.0.0.1:1080')")
 	srvCmd.Flags().IntVarP(&dmsgSess, "dsess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebsrvconffile), "dmsg sessions")
 	srvCmd.Flags().BoolSliceVarP(&rawTCP, "rt", "c", scriptExecBoolSlice("${RAWTCP[@]:-false}", dmsgwebsrvconffile), "proxy local port as raw TCP")
 	if os.Getenv("DMSGWEBSRVSK") != "" {
@@ -132,6 +135,21 @@ func server() {
 		}
 	}
 
+	if proxyAddr != "" {
+		// Use SOCKS5 proxy dialer if specified
+		dialer, err = proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
+		if err != nil {
+			log.Fatalf("Error creating SOCKS5 dialer: %v", err)
+		}
+		transport := &http.Transport{
+			Dial: dialer.Dial,
+		}
+		httpClient = &http.Client{
+			Transport: transport,
+		}
+		ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
+	}
+
 	dmsgC := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, log), dmsg.DefaultConfig())
 	defer func() {
 		if err := dmsgC.Close(); err != nil {
@@ -152,15 +170,19 @@ func server() {
 	var listN []net.Listener
 
 	for _, dport := range dmsgPort {
-		lis, err := dmsgC.Listen(uint16(dport)) //nolint
+		dp, ok := safecast.To[uint16](dport)
+		if !ok {
+			log.Fatal("uint16 overflow when converting dmsg port")
+		}
+		lis, err := dmsgC.Listen(dp)
 		if err != nil {
 			log.Fatalf("Error listening on port %d: %v", dport, err)
 		}
 
 		listN = append(listN, lis)
 
-		dport := dport
-		go func(l net.Listener, port uint) {
+		dport := dp
+		go func(l net.Listener, port uint16) {
 			<-ctx.Done()
 			if err := l.Close(); err != nil {
 				log.Printf("Error closing listener on port %d: %v", port, err)
