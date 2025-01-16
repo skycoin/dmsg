@@ -37,7 +37,7 @@ func init() {
 	srvCmd.Flags().UintSliceVarP(&localPort, "lport", "l", scriptExecUintSlice("${LOCALPORT[@]:-8086}", dmsgwebsrvconffile), "local application http interface port(s)")
 	srvCmd.Flags().UintSliceVarP(&dmsgPort, "dport", "d", scriptExecUintSlice("${DMSGPORT[@]:-80}", dmsgwebsrvconffile), "dmsg port(s) to serve")
 	srvCmd.Flags().StringSliceVarP(&wl, "wl", "w", scriptExecStringSlice("${WHITELISTPKS[@]}", dmsgwebsrvconffile), "whitelisted keys for dmsg authenticated routes\r")
-	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", []string{dmsg.DiscAddr(false)}, "dmsg discovery url(s)")
+	srvCmd.Flags().StringSliceVarP(&dmsgDisc, "dmsg-disc", "D", dmsgDisc, "dmsg discovery url(s)")
 	srvCmd.Flags().StringVarP(&proxyAddr, "proxy", "x", "", "connect to dmsg via proxy (i.e. '127.0.0.1:1080')")
 	srvCmd.Flags().IntVarP(&dmsgSess, "dsess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebsrvconffile), "dmsg sessions")
 	srvCmd.Flags().BoolSliceVarP(&rawTCP, "rt", "c", scriptExecBoolSlice("${RAWTCP[@]:-false}", dmsgwebsrvconffile), "proxy local port as raw TCP")
@@ -150,7 +150,7 @@ func server() {
 		ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
 	}
 
-	dmsgC := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, log), dmsg.DefaultConfig())
+	dmsgC := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc[0], &http.Client{}, log), dmsg.DefaultConfig())
 	defer func() {
 		if err := dmsgC.Close(); err != nil {
 			log.WithError(err).Error()

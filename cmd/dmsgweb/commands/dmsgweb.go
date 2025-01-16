@@ -28,6 +28,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
 
+	"github.com/skycoin/dmsg/internal/cli"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
@@ -61,7 +62,7 @@ func init() {
 	RootCmd.Flags().StringVarP(&addProxy, "addproxy", "r", scriptExecString("${ADDPROXY}", dmsgwebconffile), "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)")
 	RootCmd.Flags().UintSliceVarP(&webPort, "port", "p", scriptExecUintSlice("${WEBPORT[@]:-8080}", dmsgwebconffile), "port(s) to serve the web application")
 	RootCmd.Flags().StringSliceVarP(&resolveDmsgAddr, "resolve", "t", scriptExecStringSlice("${RESOLVEPK[@]}", dmsgwebconffile), "resolve the specified dmsg address:port on the local port & disable proxy")
-	RootCmd.Flags().StringSliceVarP(&dmsgDisc, "dmsg-disc", "D", []string{dmsg.DiscAddr(false)}, "dmsg discovery url(s)")
+	RootCmd.Flags().StringSliceVarP(&dmsgDisc, "dmsg-disc", "D", dmsgDisc, "dmsg discovery url(s)")
 	RootCmd.Flags().StringVarP(&proxyAddr, "proxy", "x", "", "connect to dmsg via proxy (i.e. '127.0.0.1:1080')")
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebconffile), "number of dmsg servers to connect to")
 	RootCmd.Flags().BoolSliceVarP(&rawTCP, "rt", "c", scriptExecBoolSlice("${RAWTCP[@]:-false}", dmsgwebconffile), "proxy local port as raw TCP")
@@ -217,7 +218,7 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 			ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
 		}
 
-		dmsgC, closeDmsg, err := startDmsg(ctx, pk, sk)
+		dmsgC, closeDmsg, err := cli.StartDmsg(ctx, dmsgWebLog, pk, sk, &httpC, dmsgDisc[0], dmsgSessions)
 		if err != nil {
 			dmsgWebLog.WithError(err).Fatal("failed to start dmsg")
 		}
