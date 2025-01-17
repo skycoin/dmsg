@@ -21,8 +21,9 @@ const (
 
 	DefaultCommunityDmsgServerType = "community"
 
-	DmsghttpJSON = skywire.DmsghttpJSON
 )
+
+var DmsghttpJSON = skywire.DmsghttpJSON
 
 // DiscAddr returns the address of the dmsg discovery
 func DiscAddr(testenv bool) string {

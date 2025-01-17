@@ -97,7 +97,6 @@ var RootCmd = &cobra.Command{
 			cancels = append(cancels, cancel)
 
 			httpClient := &http.Client{}
-			dmsgcurlLog.Debug("test")
 
 			if i < len(proxyAddr) && proxyAddr[i] != "" {
 				// Use SOCKS5 proxy dialer if specified
