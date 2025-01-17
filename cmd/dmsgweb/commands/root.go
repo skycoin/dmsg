@@ -25,7 +25,7 @@ import (
 var (
 	httpC              http.Client
 	dmsgC              *dmsg.Client
-	dmsgDisc =          dmsg.DiscAddr(false)
+	dmsgDisc           = dmsg.DiscAddr(false)
 	proxyAddr          string
 	dmsgSessions       int
 	dmsgAddr           []string

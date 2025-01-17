@@ -20,9 +20,9 @@ const (
 	DefaultOfficialDmsgServerType = "official"
 
 	DefaultCommunityDmsgServerType = "community"
-
 )
 
+// DmsghttpJSON is dmsghttp-config.json embedded in skywire.DmsghttpJSON
 var DmsghttpJSON = skywire.DmsghttpJSON
 
 // DiscAddr returns the address of the dmsg discovery
@@ -33,6 +33,7 @@ func DiscAddr(testenv bool) string {
 	return skywire.Prod.DmsgDiscovery
 }
 
+// DmsghttpConfig is the struct that corresponds to the json data of the dmsghttp-config.json
 type DmsghttpConfig struct {
 	Test struct {
 		DmsgServers []struct {
