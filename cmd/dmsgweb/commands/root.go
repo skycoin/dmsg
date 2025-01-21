@@ -2,12 +2,10 @@
 package commands
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -21,7 +19,6 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"golang.org/x/net/proxy"
 
-	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 )
 
@@ -63,7 +60,8 @@ func Execute() {
 	}
 }
 
-func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
+/*
+func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, dmsgDisc string) (dmsgC *dmsg.Client, stop func(), err error) {
 	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, httpClient, dmsgWebLog), &dmsg.Config{MinSessions: dmsgSessions})
 	go dmsgC.Serve(ctx)
 
@@ -86,7 +84,7 @@ func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *
 		return dmsgC, stop, nil
 	}
 }
-
+*/
 //TODO: these functions are more or less duplicated in several places - need to standardize and put in it's own library import in "github.com/skycoin/skywire/pkg/skywire-utilities/pkg/..."
 
 func scriptExecString(s, envfile string) string {
