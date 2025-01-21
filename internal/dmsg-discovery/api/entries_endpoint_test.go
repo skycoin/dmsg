@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/logging"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/stretchr/testify/require"
 
 	"github.com/skycoin/dmsg/internal/discmetrics"
@@ -54,7 +54,8 @@ func TestEntriesEndpoint(t *testing.T) {
 			contentType:     "application/json",
 			responseIsEntry: true,
 			entry:           baseEntry,
-			entryPreHook: func(t *testing.T, e *disc.Entry, body *string) {
+			//			entryPreHook: func(t *testing.T, e *disc.Entry, body *string) {
+			entryPreHook: func(t *testing.T, e *disc.Entry, _ *string) {
 				err := e.Sign(sk)
 				require.NoError(t, err)
 			},

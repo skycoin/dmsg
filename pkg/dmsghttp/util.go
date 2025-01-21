@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/skycoin/skywire-utilities/pkg/logging"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 
 	"github.com/skycoin/dmsg/pkg/disc"
 	"github.com/skycoin/dmsg/pkg/dmsg"
@@ -52,7 +52,7 @@ func UpdateServers(ctx context.Context, dClient disc.APIClient, dmsgDisc string,
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return entries
 		case <-ticker.C:
 			servers, err := dmsgclient.AllServers(ctx)
 			if err != nil {

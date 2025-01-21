@@ -63,6 +63,21 @@ Visor apps are not executed directly by the user, but hosted by the visor proces
 
 Further documentation can be found in the [skywire wiki](https://github.com/skycoin/skywire/wiki).
 
+## `go install` or `go run` Skywire
+
+If you have golang set up - including setting GOPATH, GOBIN, and appending GOBIN to your PATH reenvironmental variable, skywire may be installed to your GOBIN as follows:
+
+```
+_skywire="github.com/skycoin/skywire" go install -ldflags=" -X ${_skywire}/pkg/skywire-utilities/pkg/buildinfo.golist=$(go list -mod=mod -m -json ${_skywire}@develop)" ${_skywire}/cmd/skywire@develop
+```
+
+`-ldflags` compiles the version into the binary, so that the visor will be eligible for rewards.
+
+It's also possible to `go run` skywire from outside the source code, but this is generally not recommended:
+```
+_skywire="github.com/skycoin/skywire" go run -ldflags=" -X ${_skywire}/pkg/skywire-utilities/pkg/buildinfo.golist=$(go list -mod=mod -m -json ${_skywire}@develop)" ${_skywire}/cmd/skywire@develop
+```
+
 ## Installing Skywire from Release
 
 Releases for windows & macOS are available from the [release section](https://github.com/skycoin/skywire/releases/)
@@ -549,3 +564,14 @@ yay --mflags " -p git.PKGBUILD " -S skywire
 6. [ ̶I̶s̶s̶u̶e̶ ̶a̶ ̶p̶e̶r̶s̶o̶n̶a̶l̶ ̶G̶i̶t̶H̶u̶b̶ ̶a̶c̶c̶e̶s̶s̶ ̶t̶o̶k̶e̶n̶.̶](https://github.com/settings/tokens)
 7.  ̶R̶u̶n̶ ̶`̶G̶I̶T̶H̶U̶B̶_̶T̶O̶K̶E̶N̶=̶y̶o̶u̶r̶_̶t̶o̶k̶e̶n̶ ̶m̶a̶k̶e̶ ̶g̶i̶t̶h̶u̶b̶-̶r̶e̶l̶e̶a̶s̶e̶`̶
 8. [Check the created GitHub release.](https://github.com/skycoin/skywire/releases/)
+
+
+## Dependency Graph
+
+made with [goda](https://github.com/loov/goda)
+
+```
+goda graph github.com/skycoin/skywire/... | dot -Tsvg -o docs/skywire-goda-graph.svg
+```
+
+![Dependency Graph](docs/skywire-goda-graph.svg "github.com/skycoin/skywire Dependency Graph")

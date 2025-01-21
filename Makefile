@@ -37,7 +37,7 @@ ifneq (,$(findstring 64,$(GOARCH)))
 endif
 
 DMSG_REPO := github.com/skycoin/dmsg
-SKYWIRE_UTILITIES_BASE := github.com/skycoin/skywire-utilities
+SKYWIRE_UTILITIES_BASE := github.com/skycoin/skywire/pkg/skywire-utilities
 BUILDINFO_PATH := $(SKYWIRE_UTILITIES_BASE)/pkg/buildinfo
 
 BUILDINFO_VERSION := -X $(BUILDINFO_PATH).version=$(VERSION)
@@ -54,6 +54,7 @@ check: lint test ## Run linters and tests
 check-windows: lint test-windows ## Run linters and tests on windows
 
 lint: ## Run linters. Use make install-linters first
+	golangci-lint version
 	${OPTS} golangci-lint run -c .golangci.yml ./cmd/...
 	${OPTS} golangci-lint run -c .golangci.yml ./pkg/...
 	${OPTS} golangci-lint run -c .golangci.yml ./internal/...

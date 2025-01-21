@@ -18,15 +18,17 @@ import (
 	"syscall"
 
 	"github.com/bitfield/script"
+	"github.com/chen3feng/safecast"
 	"github.com/confiant-inc/go-socks5"
 	"github.com/gin-gonic/gin"
-	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
-	"github.com/skycoin/skywire-utilities/pkg/logging"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
 
+	"github.com/skycoin/dmsg/internal/cli"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
@@ -57,10 +59,11 @@ var dmsgwebconffile = os.Getenv(dmsgwebenvname)
 func init() {
 	RootCmd.Flags().StringVarP(&filterDomainSuffix, "filter", "f", ".dmsg", "domain suffix to filter")
 	RootCmd.Flags().UintVarP(&proxyPort, "socks", "q", scriptExecUint("${PROXYPORT:-4445}", dmsgwebconffile), "port to serve the socks5 proxy")
-	RootCmd.Flags().StringVarP(&addProxy, "proxy", "r", scriptExecString("${ADDPROXY}", dmsgwebconffile), "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)")
+	RootCmd.Flags().StringVarP(&addProxy, "addproxy", "r", scriptExecString("${ADDPROXY}", dmsgwebconffile), "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)")
 	RootCmd.Flags().UintSliceVarP(&webPort, "port", "p", scriptExecUintSlice("${WEBPORT[@]:-8080}", dmsgwebconffile), "port(s) to serve the web application")
 	RootCmd.Flags().StringSliceVarP(&resolveDmsgAddr, "resolve", "t", scriptExecStringSlice("${RESOLVEPK[@]}", dmsgwebconffile), "resolve the specified dmsg address:port on the local port & disable proxy")
-	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", dmsg.DiscAddr(false), "dmsg discovery url")
+	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", dmsgDisc, "dmsg discovery url(s)")
+	RootCmd.Flags().StringVarP(&proxyAddr, "proxy", "x", "", "connect to dmsg via proxy (i.e. '127.0.0.1:1080')")
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebconffile), "number of dmsg servers to connect to")
 	RootCmd.Flags().BoolSliceVarP(&rawTCP, "rt", "c", scriptExecBoolSlice("${RAWTCP[@]:-false}", dmsgwebconffile), "proxy local port as raw TCP")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
@@ -99,7 +102,7 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 	DisableSuggestions:    true,
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
-	Run: func(cmd *cobra.Command, _ []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		if isEnvs {
 			envfile := envfileLinux
 			if runtime.GOOS == "windows" {
@@ -168,9 +171,6 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 		if filterDomainSuffix == "" {
 			dmsgWebLog.Fatal("domain suffix to filter cannot be an empty string")
 		}
-		if dmsgDisc == "" {
-			dmsgDisc = dmsg.DiscAddr(false)
-		}
 		ctx, cancel := cmdutil.SignalContext(context.Background(), dmsgWebLog)
 		defer cancel()
 
@@ -202,7 +202,23 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 				}
 			}
 		}
-		dmsgC, closeDmsg, err = startDmsg(ctx, pk, sk)
+
+		if proxyAddr != "" {
+			// Use SOCKS5 proxy dialer if specified
+			dialer, err = proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
+			if err != nil {
+				log.Fatalf("Error creating SOCKS5 dialer: %v", err)
+			}
+			transport := &http.Transport{
+				Dial: dialer.Dial,
+			}
+			httpClient = &http.Client{
+				Transport: transport,
+			}
+			ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
+		}
+
+		dmsgC, closeDmsg, err := cli.StartDmsg(ctx, dmsgWebLog, pk, sk, &httpC, dmsgDisc, dmsgSessions)
 		if err != nil {
 			dmsgWebLog.WithError(err).Fatal("failed to start dmsg")
 		}
@@ -393,8 +409,11 @@ func proxyTCPConn(n int) {
 		go func(conn net.Conn, n int, dmsgC *dmsg.Client) {
 			defer wg.Done()
 			defer conn.Close() //nolint
-
-			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: uint16(dmsgPorts[n])})
+			dp, ok := safecast.To[uint16](dmsgPorts[n])
+			if !ok {
+				dmsgWebLog.Fatal("uint16 overflow when converting dmsg port")
+			}
+			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: dp}) //nolint
 			if err != nil {
 				log.Printf("Failed to dial dmsg address %v:%v %v", dialPK[n].String(), dmsgPorts[n], err)
 				return

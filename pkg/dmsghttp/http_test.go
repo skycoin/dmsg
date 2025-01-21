@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/stretchr/testify/assert"
 
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
@@ -86,7 +86,7 @@ func (r httpClientResult) Assert(t *testing.T, i int) {
 func startHTTPServer(t *testing.T, results chan httpServerResult, lis net.Listener) {
 	r := chi.NewRouter()
 
-	r.HandleFunc(endpointHTML, func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc(endpointHTML, func(w http.ResponseWriter, _ *http.Request) {
 		result := httpServerResult{Path: endpointHTML}
 
 		n, err := w.Write(endpointHTMLData)
