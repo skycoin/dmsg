@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -188,13 +187,13 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 				var setpk cipher.PubKey
 				err := setpk.Set(dmsgAddr[0])
 				if err != nil {
-					log.Fatalf("failed to parse dmsg <address>:<port> : %v", err)
+					dmsgWebLog.WithError(err).Fatal("failed to parse dmsg <address>:<port>")
 				}
 				dialPK[i] = setpk
 				if len(dmsgAddr) > 1 {
 					dport, err := strconv.ParseUint(dmsgAddr[1], 10, 64)
 					if err != nil {
-						log.Fatalf("Failed to parse dmsg port: %v", err)
+						dmsgWebLog.WithError(err).Fatal("Failed to parse dmsg port")
 					}
 					dmsgPorts[i] = uint(dport)
 				} else {
@@ -207,7 +206,7 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 			// Use SOCKS5 proxy dialer if specified
 			dialer, err = proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
 			if err != nil {
-				log.Fatalf("Error creating SOCKS5 dialer: %v", err)
+				dmsgWebLog.WithError(err).Fatal("Error creating SOCKS5 dialer")
 			}
 			transport := &http.Transport{
 				Dial: dialer.Dial,
@@ -267,11 +266,11 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 
 			// Start the SOCKS5 server
 			socksAddr := fmt.Sprintf("127.0.0.1:%v", proxyPort)
-			log.Printf("SOCKS5 proxy server started on %s", socksAddr)
+			dmsgWebLog.Debug("SOCKS5 proxy server started on", socksAddr)
 
 			server, err := socks5.New(conf)
 			if err != nil {
-				log.Fatalf("Failed to create SOCKS5 server: %v", err)
+				dmsgWebLog.WithError(err).Fatal("Failed to create SOCKS5 server")
 			}
 
 			wg.Add(1)
@@ -279,7 +278,7 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 				dmsgWebLog.Debug("Serving SOCKS5 proxy on " + socksAddr)
 				err := server.ListenAndServe("tcp", socksAddr)
 				if err != nil {
-					log.Fatalf("Failed to start SOCKS5 server: %v", err)
+					dmsgWebLog.WithError(err).Fatal("Failed to start SOCKS5 server")
 				}
 				defer server.Close()
 				dmsgWebLog.Debug("Stopped serving SOCKS5 proxy on " + socksAddr)
@@ -289,19 +288,19 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 		if len(resolveDmsgAddr) == 0 && len(webPort) == 1 {
 			if rawTCP[0] {
 				dmsgWebLog.Debug("proxyTCPConn(-1)")
-				proxyTCPConn(-1)
+				proxyTCPConn(-1, dmsgC)
 			} else {
 				dmsgWebLog.Debug("proxyHTTPConn(-1)")
-				proxyHTTPConn(-1)
+				proxyHTTPConn(-1, dmsgC)
 			}
 		} else {
 			for i := range resolveDmsgAddr {
 				if rawTCP[i] {
 					dmsgWebLog.Debug("proxyTCPConn(" + fmt.Sprintf("%v", i) + ")")
-					proxyTCPConn(i)
+					proxyTCPConn(i, dmsgC)
 				} else {
 					dmsgWebLog.Debug("proxyHTTPConn(" + fmt.Sprintf("%v", i) + ")")
-					proxyHTTPConn(i)
+					proxyHTTPConn(i, dmsgC)
 				}
 			}
 		}
@@ -309,7 +308,7 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 	},
 }
 
-func proxyHTTPConn(n int) {
+func proxyHTTPConn(n int, dmsgC *dmsg.Client) {
 	r := gin.New()
 
 	r.Use(gin.Recovery())
@@ -337,10 +336,11 @@ func proxyHTTPConn(n int) {
 			}
 		}
 
-		fmt.Printf("Proxying request: %s %s\n", c.Request.Method, urlStr)
+		dmsgWebLog.Debug("Proxying request: %s %s\n", c.Request.Method, urlStr)
 		req, err := http.NewRequest(c.Request.Method, urlStr, c.Request.Body)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Failed to create HTTP request")
+			dmsgWebLog.WithError(err).Warn("Failed to create HTTP request")
 			return
 		}
 
@@ -353,7 +353,7 @@ func proxyHTTPConn(n int) {
 		resp, err := httpC.Do(req)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Failed to connect to HTTP server")
-			fmt.Printf("Error: %v\n", err)
+			dmsgWebLog.WithError(err).Warn("Failed to connect to HTTP server")
 			return
 		}
 		defer resp.Body.Close() //nolint
@@ -367,7 +367,7 @@ func proxyHTTPConn(n int) {
 		c.Status(resp.StatusCode)
 		if _, err := io.Copy(c.Writer, resp.Body); err != nil {
 			c.String(http.StatusInternalServerError, "Failed to copy response body")
-			fmt.Printf("Error copying response body: %v\n", err)
+			dmsgWebLog.WithError(err).Warn("Failed to copy response body")
 		}
 	})
 	wg.Add(1)
@@ -384,7 +384,7 @@ func proxyHTTPConn(n int) {
 		wg.Done()
 	}()
 }
-func proxyTCPConn(n int) {
+func proxyTCPConn(n int, dmsgC *dmsg.Client) {
 	var thiswebport uint
 	if n == -1 {
 		thiswebport = webPort[0]
@@ -393,15 +393,18 @@ func proxyTCPConn(n int) {
 	}
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%v", thiswebport))
 	if err != nil {
-		dmsgWebLog.Fatalf("Failed to start TCP listener on port %v: %v", thiswebport, err)
+		dmsgWebLog.WithError(err).Fatal(fmt.Sprintf("Failed to start TCP listener on port: %v", thiswebport))
 	}
 	defer listener.Close() //nolint
-	log.Printf("Serving TCP on 127.0.0.1:%v", thiswebport)
+	dmsgWebLog.Debug("Serving TCP on 127.0.0.1:", thiswebport)
+	if dmsgC == nil {
+		dmsgWebLog.Fatal("dmsgC is nil")
+	}
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Printf("Failed to accept connection: %v", err)
+			dmsgWebLog.WithError(err).Warn("Failed to accept connection")
 			continue
 		}
 
@@ -413,9 +416,12 @@ func proxyTCPConn(n int) {
 			if !ok {
 				dmsgWebLog.Fatal("uint16 overflow when converting dmsg port")
 			}
+			//			dialPK[n].Set("020679271a434fd4a362000ccba80ce583df58b5a16cba091004f657406443e773")
+			//			dp = uint16(8000)
+			//			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: dp}) //nolint
 			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: dp}) //nolint
 			if err != nil {
-				log.Printf("Failed to dial dmsg address %v:%v %v", dialPK[n].String(), dmsgPorts[n], err)
+				dmsgWebLog.WithError(err).Warn(fmt.Sprintf("Failed to dial dmsg address %v:%v", dialPK[n].String(), dmsgPorts[n]))
 				return
 			}
 			defer dmsgConn.Close() //nolint
@@ -423,7 +429,7 @@ func proxyTCPConn(n int) {
 			go func() {
 				_, err := io.Copy(dmsgConn, conn)
 				if err != nil {
-					log.Printf("Error copying data to dmsg client: %v", err)
+					dmsgWebLog.WithError(err).Warn("Error on io.Copy(dmsgConn, conn)")
 				}
 				dmsgConn.Close() //nolint
 			}()
@@ -431,7 +437,7 @@ func proxyTCPConn(n int) {
 			go func() {
 				_, err := io.Copy(conn, dmsgConn)
 				if err != nil {
-					log.Printf("Error copying data from dmsg client: %v", err)
+					dmsgWebLog.WithError(err).Warn("Error on io.Copy(conn, dmsgConn)")
 				}
 				conn.Close() //nolint
 			}()
