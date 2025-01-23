@@ -16,11 +16,9 @@ import (
 	"syscall"
 
 	cc "github.com/ivanpirog/coloredcobra"
-	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
-	"github.com/skycoin/skywire-utilities/pkg/logging"
-	"github.com/skycoin/skywire-utilities/pkg/skyenv"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/pkg/disc"
@@ -76,7 +74,7 @@ var (
 func init() {
 	RootCmd.Flags().UintVarP(&webPort, "port", "p", 8080, "port to serve the web application")
 	RootCmd.Flags().StringVarP(&resolveDmsgAddr, "resolve", "t", "", "resolve the specified dmsg address:port on the local port & disable proxy")
-	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", skyenv.DmsgDiscAddr, "dmsg discovery url")
+	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "d", dmsg.DiscAddr(false), "dmsg discovery url")
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
 	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
@@ -93,7 +91,6 @@ var RootCmd = &cobra.Command{
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
 	DisableFlagsInUseLine: true,
-	Version:               buildinfo.Version(),
 	Run: func(cmd *cobra.Command, _ []string) {
 
 		c := make(chan os.Signal, 1)
@@ -111,9 +108,6 @@ var RootCmd = &cobra.Command{
 			}
 		}
 
-		if dmsgDisc == "" {
-			dmsgDisc = skyenv.DmsgDiscAddr
-		}
 		ctx, cancel := cmdutil.SignalContext(context.Background(), dmsgWebLog)
 		defer cancel()
 

@@ -10,10 +10,9 @@ import (
 	"sync"
 
 	cc "github.com/ivanpirog/coloredcobra"
-	"github.com/skycoin/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
-	"github.com/skycoin/skywire-utilities/pkg/logging"
-	"github.com/skycoin/skywire-utilities/pkg/skyenv"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/pkg/disc"
@@ -79,7 +78,7 @@ var (
 func init() {
 	srvCmd.Flags().UintVarP(&localPort, "lport", "l", 8086, "local application http interface port(s)")
 	srvCmd.Flags().UintVarP(&dmsgPort, "dport", "d", 8086, "dmsg port(s) to serve")
-	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", skyenv.DmsgDiscAddr, "dmsg discovery url")
+	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", dmsg.DiscAddr(false), "dmsg discovery url")
 	srvCmd.Flags().IntVarP(&dmsgSess, "dsess", "e", 1, "dmsg sessions")
 	srvCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
 

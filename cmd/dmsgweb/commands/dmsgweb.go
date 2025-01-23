@@ -419,9 +419,10 @@ func proxyTCPConn(n int, dmsgC *dmsg.Client) {
 			//			dialPK[n].Set("020679271a434fd4a362000ccba80ce583df58b5a16cba091004f657406443e773")
 			//			dp = uint16(8000)
 			//			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: dp}) //nolint
+			dmsgWebLog.Debug(fmt.Sprintf("Dialing dmsg address: %v ; port: %v", dialPK[n].String(), dmsgPorts[n]))
 			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: dp}) //nolint
 			if err != nil {
-				dmsgWebLog.WithError(err).Warn(fmt.Sprintf("Failed to dial dmsg address %v:%v", dialPK[n].String(), dmsgPorts[n]))
+				dmsgWebLog.WithError(err).Warn(fmt.Sprintf("Failed to dial dmsg address %v port %v", dialPK[n].String(), dmsgPorts[n]))
 				return
 			}
 			defer dmsgConn.Close() //nolint
