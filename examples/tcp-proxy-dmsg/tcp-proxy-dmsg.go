@@ -169,20 +169,41 @@ func handleTCPConnection(dmsgConn net.Conn, localPort uint, log *logging.Logger)
 
 	localConn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", localPort))
 	if err != nil {
-		log.Printf("Error connecting to local port %d: %v", localPort, err)
+		log.Printf("Failed to dial server %s: %v", fmt.Sprintf("127.0.0.1:%d", localPort), err)
 		return
 	}
 	defer localConn.Close() //nolint
 
-	copyConn := func(dst net.Conn, src net.Conn) {
-		_, err := io.Copy(dst, src)
-		if err != nil {
-			log.Printf("Error during copy: %v", err)
-		}
-	}
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-	go copyConn(dmsgConn, localConn)
-	go copyConn(localConn, dmsgConn)
+	go func() {
+		_, err := io.Copy(dmsgConn, localConn)
+		if err != nil && !isClosedConnErr(err) {
+			log.Printf("Error copying from local to dmsg: %v", err)
+		}
+		dmsgConn.Close()
+		wg.Done()
+	}()
+
+	go func() {
+		_, err := io.Copy(localConn, dmsgConn)
+		if err != nil && !isClosedConnErr(err) {
+			log.Printf("Error copying from dmsg to local: %v", err)
+		}
+		localConn.Close()
+		wg.Done()
+	}()
+
+	wg.Wait()
+}
+
+func isClosedConnErr(err error) bool {
+	if err == io.EOF {
+		return true
+	}
+	netErr, ok := err.(net.Error)
+	return ok && netErr.Timeout()
 }
 
 func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {

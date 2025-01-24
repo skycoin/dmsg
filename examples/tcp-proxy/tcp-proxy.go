@@ -54,35 +54,31 @@ func handleConnection(conn net.Conn, targetPort int) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	// Copy from client to target
 	go func() {
 		_, err := io.Copy(target, conn)
 		if err != nil && !isClosedConnErr(err) {
 			log.Printf("Error copying from client to target: %v", err)
 		}
-		target.Close() // Close target side after copy
+		target.Close()
 		wg.Done()
 	}()
 
-	// Copy from target to client
 	go func() {
 		_, err := io.Copy(conn, target)
 		if err != nil && !isClosedConnErr(err) {
 			log.Printf("Error copying from target to client: %v", err)
 		}
-		conn.Close() // Close client side after copy
+		conn.Close()
 		wg.Done()
 	}()
 
-	// Wait for both copies to finish
 	wg.Wait()
 }
 
-// isClosedConnErr checks if the error indicates a closed connection.
 func isClosedConnErr(err error) bool {
 	if err == io.EOF {
 		return true
 	}
 	netErr, ok := err.(net.Error)
-	return ok && netErr.Timeout() // Check for timeout error indicating closed connection
+	return ok && netErr.Timeout()
 }
