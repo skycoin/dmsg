@@ -171,32 +171,53 @@ func proxyTCPConn() {
 		wg.Add(1)
 		go func(conn net.Conn) {
 			defer wg.Done()
-			defer conn.Close() //nolint
 
 			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK, Port: uint16(dmsgPort)})
 			if err != nil {
 				log.Printf("Failed to dial dmsg address %v:%v %v", dialPK.String(), dmsgPort, err)
 				return
 			}
-			defer dmsgConn.Close() //nolint
-
+			// Log data copied to the dmsg connection (from the client connection)
 			go func() {
-				_, err := io.Copy(dmsgConn, conn)
+				defer dmsgConn.Close()
+				reader := io.TeeReader(conn, logWriter("client -> dmsg", dmsgWebLog))
+				_, err := io.Copy(dmsgConn, reader)
 				if err != nil {
 					log.Printf("Error copying data to dmsg client: %v", err)
 				}
-				dmsgConn.Close() //nolint
 			}()
 
+			// Log data copied from the dmsg connection (to the client connection)
 			go func() {
-				_, err := io.Copy(conn, dmsgConn)
+				defer conn.Close() //nolint
+				reader := io.TeeReader(dmsgConn, logWriter("dmsg -> client", dmsgWebLog))
+				_, err := io.Copy(conn, reader)
 				if err != nil {
 					log.Printf("Error copying data from dmsg client: %v", err)
 				}
-				conn.Close() //nolint
 			}()
 		}(conn)
+		wg.Wait()
 	}
+}
+
+// logWriter creates a writer that logs the copied data with a prefix.
+func logWriter(direction string, log *logging.Logger) io.Writer {
+	return &logWriterImpl{
+		prefix: direction,
+		log:    log,
+	}
+}
+
+// logWriterImpl is an implementation of io.Writer that logs data as it is written.
+type logWriterImpl struct {
+	prefix string
+	log    *logging.Logger
+}
+
+func (lw *logWriterImpl) Write(p []byte) (int, error) {
+	lw.log.Printf("[%s] %s", lw.prefix, string(p)) // Log the data as a string.
+	return len(p), nil
 }
 
 func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {

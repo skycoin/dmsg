@@ -165,45 +165,70 @@ func proxyTCPConnections(localPort uint, lis net.Listener, log *logging.Logger) 
 }
 
 func handleTCPConnection(dmsgConn net.Conn, localPort uint, log *logging.Logger) {
-	defer dmsgConn.Close() //nolint
+	defer dmsgConn.Close() // Ensure the dmsg connection is closed.
 
 	localConn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", localPort))
 	if err != nil {
 		log.Printf("Failed to dial server %s: %v", fmt.Sprintf("127.0.0.1:%d", localPort), err)
 		return
 	}
-	defer localConn.Close() //nolint
+	defer localConn.Close() // Ensure the local connection is closed.
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
+	// Log data copied from localConn to dmsgConn
 	go func() {
-		_, err := io.Copy(dmsgConn, localConn)
+		defer wg.Done()
+		reader := io.TeeReader(localConn, logWriter("local -> dmsg", log))
+		_, err := io.Copy(dmsgConn, reader)
 		if err != nil && !isClosedConnErr(err) {
 			log.Printf("Error copying from local to dmsg: %v", err)
 		}
-		dmsgConn.Close()
-		wg.Done()
 	}()
 
+	// Log data copied from dmsgConn to localConn
 	go func() {
-		_, err := io.Copy(localConn, dmsgConn)
+		defer wg.Done()
+		reader := io.TeeReader(dmsgConn, logWriter("dmsg -> local", log))
+		_, err := io.Copy(localConn, reader)
 		if err != nil && !isClosedConnErr(err) {
 			log.Printf("Error copying from dmsg to local: %v", err)
 		}
-		localConn.Close()
-		wg.Done()
 	}()
 
 	wg.Wait()
+	dmsgConn.Close()
+	localConn.Close()
+	log.Printf("Closed connection between DMSG and local port %d", localPort)
 }
 
+// logWriter creates a writer that logs the copied data with a prefix.
+func logWriter(direction string, log *logging.Logger) io.Writer {
+	return &logWriterImpl{
+		prefix: direction,
+		log:    log,
+	}
+}
+
+// logWriterImpl is an implementation of io.Writer that logs data as it is written.
+type logWriterImpl struct {
+	prefix string
+	log    *logging.Logger
+}
+
+func (lw *logWriterImpl) Write(p []byte) (int, error) {
+	lw.log.Printf("[%s] %s", lw.prefix, string(p)) // Log the data as a string.
+	return len(p), nil
+}
+
+// isClosedConnErr checks if the error indicates a closed connection.
 func isClosedConnErr(err error) bool {
 	if err == io.EOF {
 		return true
 	}
 	netErr, ok := err.(net.Error)
-	return ok && netErr.Timeout()
+	return ok && netErr.Timeout() // Check for timeout error indicating closed connection
 }
 
 func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey) (dmsgC *dmsg.Client, stop func(), err error) {
