@@ -61,7 +61,7 @@ func init() {
 	RootCmd.Flags().StringVarP(&addProxy, "addproxy", "r", scriptExecString("${ADDPROXY}", dmsgwebconffile), "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)")
 	RootCmd.Flags().UintSliceVarP(&webPort, "port", "p", scriptExecUintSlice("${WEBPORT[@]:-8080}", dmsgwebconffile), "port(s) to serve the web application")
 	RootCmd.Flags().StringSliceVarP(&resolveDmsgAddr, "resolve", "t", scriptExecStringSlice("${RESOLVEPK[@]}", dmsgwebconffile), "resolve the specified dmsg address:port on the local port & disable proxy")
-	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", dmsgDisc, "dmsg discovery url(s)")
+	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", dmsgDisc, "dmsg discovery url")
 	RootCmd.Flags().StringVarP(&proxyAddr, "proxy", "x", "", "connect to dmsg via proxy (i.e. '127.0.0.1:1080')")
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebconffile), "number of dmsg servers to connect to")
 	RootCmd.Flags().BoolSliceVarP(&rawTCP, "rt", "c", scriptExecBoolSlice("${RAWTCP[@]:-false}", dmsgwebconffile), "proxy local port as raw TCP")
@@ -411,15 +411,12 @@ func proxyTCPConn(n int, dmsgC *dmsg.Client) {
 		wg.Add(1)
 		go func(conn net.Conn, n int, dmsgC *dmsg.Client) {
 			defer wg.Done()
-			defer conn.Close() //nolint
+
 			dp, ok := safecast.To[uint16](dmsgPorts[n])
 			if !ok {
 				dmsgWebLog.Fatal("uint16 overflow when converting dmsg port")
 			}
-			//			dialPK[n].Set("020679271a434fd4a362000ccba80ce583df58b5a16cba091004f657406443e773")
-			//			dp = uint16(8000)
-			//			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: dp}) //nolint
-			dmsgWebLog.Debug(fmt.Sprintf("Dialing dmsg address: %v ; port: %v", dialPK[n].String(), dmsgPorts[n]))
+			dmsgWebLog.Debug(fmt.Sprintf("Dialing dmsg address: %v ; port: %v", dialPK[n].String(), dp))
 			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: dp}) //nolint
 			if err != nil {
 				dmsgWebLog.WithError(err).Warn(fmt.Sprintf("Failed to dial dmsg address %v port %v", dialPK[n].String(), dmsgPorts[n]))
@@ -428,21 +425,22 @@ func proxyTCPConn(n int, dmsgC *dmsg.Client) {
 			defer dmsgConn.Close() //nolint
 
 			go func() {
+				defer dmsgConn.Close()
 				_, err := io.Copy(dmsgConn, conn)
 				if err != nil {
 					dmsgWebLog.WithError(err).Warn("Error on io.Copy(dmsgConn, conn)")
 				}
-				dmsgConn.Close() //nolint
 			}()
 
 			go func() {
+				defer conn.Close() //nolint
 				_, err := io.Copy(conn, dmsgConn)
 				if err != nil {
 					dmsgWebLog.WithError(err).Warn("Error on io.Copy(conn, dmsgConn)")
 				}
-				conn.Close() //nolint
 			}()
 		}(conn, n, dmsgC)
+		wg.Wait()
 	}
 }
 

@@ -160,6 +160,9 @@ func proxyTCPConn() {
 	}
 	defer listener.Close() //nolint
 	log.Printf("Serving TCP on 127.0.0.1:%v", webPort)
+	if dmsgC == nil {
+		log.Fatal("dmsgC is nil")
+	}
 
 	for {
 		conn, err := listener.Accept()
@@ -172,6 +175,7 @@ func proxyTCPConn() {
 		go func(conn net.Conn) {
 			defer wg.Done()
 
+			log.Println(fmt.Sprintf("Dialing dmsg address: %v ; port: %v", dialPK.String(), dmsgPort))
 			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK, Port: uint16(dmsgPort)})
 			if err != nil {
 				log.Printf("Failed to dial dmsg address %v:%v %v", dialPK.String(), dmsgPort, err)

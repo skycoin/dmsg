@@ -12,7 +12,7 @@ import (
 
 func main() {
 	if len(os.Args) < 3 {
-		log.Fatalf("requires two arguments; usage: tcp1 <target-port> <source-port>")
+		log.Fatalf("requires two arguments; usage: tcp-proxy <target-port> <source-port>")
 	}
 	sourcePort, err := strconv.Atoi(os.Args[2])
 	if err != nil {

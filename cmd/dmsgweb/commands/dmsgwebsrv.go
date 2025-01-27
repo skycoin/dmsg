@@ -13,10 +13,8 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/bitfield/script"
-	"github.com/chen3feng/safecast"
 	"github.com/gin-gonic/gin"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
@@ -30,49 +28,45 @@ import (
 
 const dmsgwebsrvenvname = "DMSGWEBSRV"
 
-var dmsgwebsrvconffile = os.Getenv(dmsgwebsrvenvname)
-
 func init() {
 	RootCmd.AddCommand(srvCmd)
-	srvCmd.Flags().UintSliceVarP(&localPort, "lport", "l", scriptExecUintSlice("${LOCALPORT[@]:-8086}", dmsgwebsrvconffile), "local application http interface port(s)")
-	srvCmd.Flags().UintSliceVarP(&dmsgPort, "dport", "d", scriptExecUintSlice("${DMSGPORT[@]:-80}", dmsgwebsrvconffile), "dmsg port(s) to serve")
-	srvCmd.Flags().StringSliceVarP(&wl, "wl", "w", scriptExecStringSlice("${WHITELISTPKS[@]}", dmsgwebsrvconffile), "whitelisted keys for dmsg authenticated routes\r")
-	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", dmsgDisc, "dmsg discovery url(s)")
-	srvCmd.Flags().StringVarP(&proxyAddr, "proxy", "x", proxyAddr, "connect to dmsg via proxy (i.e. '127.0.0.1:1080')")
-	srvCmd.Flags().IntVarP(&dmsgSess, "dsess", "e", scriptExecInt("${DMSGSESSIONS:-1}", dmsgwebsrvconffile), "dmsg sessions")
-	srvCmd.Flags().BoolSliceVarP(&rawTCP, "rt", "c", scriptExecBoolSlice("${RAWTCP[@]:-false}", dmsgwebsrvconffile), "proxy local port as raw TCP")
-	if os.Getenv("DMSGWEBSRVSK") != "" {
-		sk.Set(os.Getenv("DMSGWEBSRVSK")) //nolint
-	}
-	if scriptExecString("${DMSGWEBSRVSK}", dmsgwebsrvconffile) != "" {
-		sk.Set(scriptExecString("${DMSGWEBSRVSK}", dmsgwebsrvconffile)) //nolint
-	}
-	pk, _ = sk.PubKey() //nolint
-	srvCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
+	srvCmd.Flags().UintSliceVarP(&localPort, "lport", "l", scriptExecUintSlice("${LOCALPORT[@]:-8086}", srvenvfileLinux), "local application HTTP interface port(s)")
+	srvCmd.Flags().UintSliceVarP(&dmsgPort, "dport", "d", scriptExecUintSlice("${DMSGPORT[@]:-80}", srvenvfileLinux), "DMSG port(s) to serve")
+	srvCmd.Flags().StringSliceVarP(&wl, "wl", "w", scriptExecStringSlice("${WHITELISTPKS[@]}", srvenvfileLinux), "whitelisted keys for DMSG authenticated routes")
+	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", dmsgDisc, "DMSG discovery URL(s)")
+	srvCmd.Flags().StringVarP(&proxyAddr, "proxy", "x", proxyAddr, "connect to DMSG via proxy (e.g., '127.0.0.1:1080')")
+	srvCmd.Flags().IntVarP(&dmsgSess, "dsess", "e", scriptExecInt("${DMSGSESSIONS:-1}", srvenvfileLinux), "DMSG sessions")
+	srvCmd.Flags().BoolSliceVarP(&rawTCP, "rt", "c", scriptExecBoolSlice("${RAWTCP[@]:-false}", srvenvfileLinux), "proxy local port as raw TCP")
 	srvCmd.Flags().BoolVarP(&isEnvs, "envs", "z", false, "show example .conf file")
+
+	if os.Getenv("DMSGWEBSRVSK") != "" {
+		sk.Set(os.Getenv("DMSGWEBSRVSK"))
+	}
+	if scriptExecString("${DMSGWEBSRVSK}", srvenvfileLinux) != "" {
+		sk.Set(scriptExecString("${DMSGWEBSRVSK}", srvenvfileLinux))
+	}
+	pk, _ = sk.PubKey()
+	srvCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified")
 
 	srvCmd.CompletionOptions.DisableDefaultCmd = true
 }
 
 var srvCmd = &cobra.Command{
 	Use:   "srv",
-	Short: "serve http or raw TCP from local port over dmsg",
-	Long: `DMSG web server - serve http or raw TCP interface from local port over dmsg` + func() string {
-		if _, err := os.Stat(dmsgwebsrvconffile); err == nil {
-			return `
-	dmsenv file detected: ` + dmsgwebsrvconffile
+	Short: "Serve HTTP or raw TCP from local port over DMSG",
+	Long: `DMSG web server - serve HTTP or raw TCP interface from local port over DMSG` + func() string {
+		if _, err := os.Stat(srvenvfileLinux); err == nil {
+			return "\n\t.dmsenv file detected: " + srvenvfileLinux
 		}
-		return `
-	.conf file may also be specified with
-	` + dmsgwebsrvenvname + `=/path/to/dmsgwebsrv.conf skywire dmsg web srv`
+		return "\n\t.conf file may also be specified with " + dmsgwebsrvenvname + `=/path/to/dmsgwebsrv.conf skywire dmsg web srv`
 	}(),
 	Run: func(_ *cobra.Command, _ []string) {
 		if isEnvs {
 			envfile := srvenvfileLinux
 			if runtime.GOOS == "windows" {
-				envfileslice, _ := script.Echo(envfile).Slice() //nolint
+				envfileslice, _ := script.Echo(envfile).Slice()
 				for i := range envfileslice {
-					efs, _ := script.Echo(envfileslice[i]).Reject("##").Reject("#-").Reject("# ").Replace("#", "#$").String() //nolint
+					efs, _ := script.Echo(envfileslice[i]).Reject("##").Reject("#-").Reject("# ").Replace("#", "#$").String()
 					if efs != "" && efs != "\n" {
 						envfileslice[i] = strings.ReplaceAll(efs, "\n", "")
 					}
@@ -89,189 +83,119 @@ var srvCmd = &cobra.Command{
 
 func server() {
 	log := logging.MustGetLogger("dmsgwebsrv")
-	if len(localPort) != len(dmsgPort) {
-		log.Fatal(fmt.Sprintf("the same number of local ports as dmsg ports must be specified ; local ports: %v ; dmsg ports: %v", len(localPort), len(dmsgPort)))
-	}
 
-	seenLocalPort := make(map[uint]bool)
-	for _, item := range localPort {
-		if seenLocalPort[item] {
-			log.Fatal("-lport --l flag cannot contain duplicates")
-		}
-		seenLocalPort[item] = true
-	}
-
-	seenDmsgPort := make(map[uint]bool)
-	for _, item := range dmsgPort {
-		if seenDmsgPort[item] {
-			log.Fatal("-dport --d flag cannot contain duplicates")
-		}
-		seenDmsgPort[item] = true
+	if len(localPort) != len(dmsgPort) || len(localPort) != len(rawTCP) {
+		log.Fatal("The number of local ports, DMSG ports, and raw TCP flags must be the same")
 	}
 
 	ctx, cancel := cmdutil.SignalContext(context.Background(), log)
-
 	defer cancel()
-	pk, err = sk.PubKey()
+
+	pk, err := sk.PubKey()
 	if err != nil {
 		pk, sk = cipher.GenerateKeyPair()
 	}
-	log.Infof("dmsg client pk: %v", pk.String())
+	log.Infof("DMSG client public key: %v", pk.String())
 
 	if len(wl) > 0 {
 		for _, key := range wl {
-			var pk0 cipher.PubKey
-			err := pk0.Set(key)
-			if err == nil {
-				wlkeys = append(wlkeys, pk0)
+			var pk cipher.PubKey
+			if err := pk.Set(key); err == nil {
+				wlkeys = append(wlkeys, pk)
 			}
 		}
-	}
-	if len(wlkeys) > 0 {
-		if len(wlkeys) == 1 {
-			log.Info(fmt.Sprintf("%d key whitelisted", len(wlkeys)))
-		} else {
-			log.Info(fmt.Sprintf("%d keys whitelisted", len(wlkeys)))
-		}
+		log.Infof("%d keys whitelisted", len(wlkeys))
 	}
 
 	if proxyAddr != "" {
-		// Use SOCKS5 proxy dialer if specified
+		var err error
 		dialer, err = proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
 		if err != nil {
 			log.Fatalf("Error creating SOCKS5 dialer: %v", err)
 		}
-		transport := &http.Transport{
-			Dial: dialer.Dial,
-		}
-		httpClient = &http.Client{
-			Transport: transport,
-		}
-		ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
+		httpClient = &http.Client{Transport: &http.Transport{Dial: dialer.Dial}}
 	}
 
-	dmsgC := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, log), dmsg.DefaultConfig())
+	dmsgClient := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, log), dmsg.DefaultConfig())
 	defer func() {
-		if err := dmsgC.Close(); err != nil {
+		if err := dmsgClient.Close(); err != nil {
 			log.WithError(err).Error()
 		}
 	}()
-
-	go dmsgC.Serve(context.Background())
+	go dmsgClient.Serve(context.Background())
 
 	select {
 	case <-ctx.Done():
 		log.WithError(ctx.Err()).Warn()
 		return
-
-	case <-dmsgC.Ready():
+	case <-dmsgClient.Ready():
 	}
 
-	var listN []net.Listener
-
-	for _, dport := range dmsgPort {
-		dp, ok := safecast.To[uint16](dport)
-		if !ok {
-			log.Fatal("uint16 overflow when converting dmsg port")
-		}
-		lis, err := dmsgC.Listen(dp)
+	wg := sync.WaitGroup{}
+	for i := range localPort {
+		lis, err := dmsgClient.Listen(uint16(dmsgPort[i]))
 		if err != nil {
-			log.Fatalf("Error listening on port %d: %v", dport, err)
+			log.Fatalf("Error listening on DMSG port %d: %v", dmsgPort[i], err)
 		}
-
-		listN = append(listN, lis)
-
-		dport := dp
-		go func(l net.Listener, port uint16) {
-			<-ctx.Done()
-			if err := l.Close(); err != nil {
-				log.Printf("Error closing listener on port %d: %v", port, err)
-				log.WithError(err).Error()
-			}
-		}(lis, dport)
-	}
-
-	wg := new(sync.WaitGroup)
-
-	for i, lpt := range localPort {
 		wg.Add(1)
-		go func(localPort uint, rtcp bool, lis net.Listener) {
+		go func(localPort uint, rawTCP bool, listener net.Listener) {
 			defer wg.Done()
-			if rtcp {
-				proxyTCPConnections(localPort, lis, log)
+			if rawTCP {
+				proxyTCPConnections(localPort, listener, log)
 			} else {
-				proxyHTTPConnections(localPort, lis, log)
+				proxyHTTPConnections(localPort, listener, log)
 			}
-		}(lpt, rawTCP[i], listN[i])
+		}(localPort[i], rawTCP[i], lis)
 	}
-
 	wg.Wait()
 }
 
-func proxyHTTPConnections(localPort uint, lis net.Listener, log *logging.Logger) {
-	r1 := gin.New()
-	r1.Use(gin.Recovery())
-	r1.Use(loggingMiddleware())
+func proxyHTTPConnections(localPort uint, listener net.Listener, log *logging.Logger) {
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(loggingMiddleware())
 
-	authRoute := r1.Group("/")
+	authRoute := router.Group("/")
 	if len(wlkeys) > 0 {
 		authRoute.Use(whitelistAuth(wlkeys))
 	}
 	authRoute.Any("/*path", func(c *gin.Context) {
-		targetURL, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%v%s?%s", localPort, c.Request.URL.Path, c.Request.URL.RawQuery)) //nolint
-		proxy := httputil.ReverseProxy{
-			Director: func(req *http.Request) {
-				req.URL = targetURL
-				req.Host = targetURL.Host
-				req.Method = c.Request.Method
-			},
-			Transport: &http.Transport{},
-		}
+		targetURL := fmt.Sprintf("http://127.0.0.1:%d%s?%s", localPort, c.Request.URL.Path, c.Request.URL.RawQuery)
+		proxy := httputil.ReverseProxy{Director: func(req *http.Request) {
+			req.URL, _ = url.Parse(targetURL)
+			req.Host = req.URL.Host
+		}}
 		proxy.ServeHTTP(c.Writer, c.Request)
 	})
-	serve := &http.Server{
-		Handler:           &ginHandler{Router: r1},
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      10 * time.Second,
-	}
-	log.Printf("Serving HTTP on dmsg port %v with DMSG listener %s", localPort, lis.Addr().String())
-	if err := serve.Serve(lis); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Serve: %v", err)
+
+	server := &http.Server{Handler: router}
+	if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("HTTP server error: %v", err)
 	}
 }
 
-func proxyTCPConnections(localPort uint, lis net.Listener, log *logging.Logger) {
+func proxyTCPConnections(localPort uint, listener net.Listener, log *logging.Logger) {
 	for {
-		conn, err := lis.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
-			log.Printf("Error accepting connection: %v", err)
+			log.Errorf("Error accepting connection: %v", err)
 			return
 		}
 
-		go handleTCPConnection(conn, localPort, log)
+		go func(dmsgConn net.Conn) {
+			defer dmsgConn.Close()
+
+			localConn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", localPort))
+			if err != nil {
+				log.Errorf("Error connecting to local port %d: %v", localPort, err)
+				return
+			}
+			defer localConn.Close()
+
+			go io.Copy(dmsgConn, localConn)
+			io.Copy(localConn, dmsgConn)
+		}(conn)
 	}
-}
-
-func handleTCPConnection(dmsgConn net.Conn, localPort uint, log *logging.Logger) {
-	defer dmsgConn.Close() //nolint
-
-	localConn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", localPort))
-	if err != nil {
-		log.Printf("Error connecting to local port %d: %v", localPort, err)
-		return
-	}
-	defer localConn.Close() //nolint
-
-	copyConn := func(dst net.Conn, src net.Conn) {
-		_, err := io.Copy(dst, src)
-		if err != nil {
-			log.Printf("Error during copy: %v", err)
-		}
-	}
-
-	go copyConn(dmsgConn, localConn)
-	go copyConn(localConn, dmsgConn)
 }
 
 const srvenvfileLinux = `
