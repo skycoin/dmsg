@@ -288,19 +288,19 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 		if len(resolveDmsgAddr) == 0 && len(webPort) == 1 {
 			if rawTCP[0] {
 				dmsgWebLog.Debug("proxyTCPConn(-1)")
-				proxyTCPConn(-1, dmsgC)
+				proxyTCPConn(-1)
 			} else {
 				dmsgWebLog.Debug("proxyHTTPConn(-1)")
-				proxyHTTPConn(-1, dmsgC)
+				proxyHTTPConn(-1)
 			}
 		} else {
 			for i := range resolveDmsgAddr {
 				if rawTCP[i] {
 					dmsgWebLog.Debug("proxyTCPConn(" + fmt.Sprintf("%v", i) + ")")
-					proxyTCPConn(i, dmsgC)
+					proxyTCPConn(i)
 				} else {
 					dmsgWebLog.Debug("proxyHTTPConn(" + fmt.Sprintf("%v", i) + ")")
-					proxyHTTPConn(i, dmsgC)
+					proxyHTTPConn(i)
 				}
 			}
 		}
@@ -308,7 +308,7 @@ dmsgweb conf file detected: ` + dmsgwebconffile
 	},
 }
 
-func proxyHTTPConn(n int, dmsgC *dmsg.Client) {
+func proxyHTTPConn(n int) {
 	r := gin.New()
 
 	r.Use(gin.Recovery())
@@ -384,7 +384,7 @@ func proxyHTTPConn(n int, dmsgC *dmsg.Client) {
 		wg.Done()
 	}()
 }
-func proxyTCPConn(n int, dmsgC *dmsg.Client) {
+func proxyTCPConn(n int) {
 	var thiswebport uint
 	if n == -1 {
 		thiswebport = webPort[0]
