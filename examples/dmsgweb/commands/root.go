@@ -7,10 +7,10 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"regexp"
 	"sync"
 	"time"
-	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"

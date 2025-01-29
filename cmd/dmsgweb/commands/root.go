@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -23,6 +24,7 @@ import (
 )
 
 var (
+	dLog               *logging.Logger
 	httpC              http.Client
 	dmsgC              *dmsg.Client
 	closeDmsg          func()
@@ -86,6 +88,22 @@ func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, dmsgDisc
 	}
 }
 */
+
+func printEnvs(envfile string) {
+	if runtime.GOOS == "windows" {
+		envfileslice, _ := script.Echo(envfile).Slice()
+		for i := range envfileslice {
+			efs, _ := script.Echo(envfileslice[i]).Reject("##").Reject("#-").Reject("# ").Replace("#", "#$").String()
+			if efs != "" && efs != "\n" {
+				envfileslice[i] = strings.ReplaceAll(efs, "\n", "")
+			}
+		}
+		envfile = strings.Join(envfileslice, "\n")
+	}
+	fmt.Println(envfile)
+	os.Exit(0)
+}
+
 //TODO: these functions are more or less duplicated in several places - need to standardize and put in it's own library import in "github.com/skycoin/skywire/pkg/skywire-utilities/pkg/..."
 
 func scriptExecString(s, envfile string) string {
