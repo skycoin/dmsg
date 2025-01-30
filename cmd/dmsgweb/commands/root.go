@@ -91,9 +91,9 @@ func startDmsg(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, dmsgDisc
 
 func printEnvs(envfile string) {
 	if runtime.GOOS == "windows" {
-		envfileslice, _ := script.Echo(envfile).Slice()
+		envfileslice, _ := script.Echo(envfile).Slice() //nolint
 		for i := range envfileslice {
-			efs, _ := script.Echo(envfileslice[i]).Reject("##").Reject("#-").Reject("# ").Replace("#", "#$").String()
+			efs, _ := script.Echo(envfileslice[i]).Reject("##").Reject("#-").Reject("# ").Replace("#", "#$").String() //nolint
 			if efs != "" && efs != "\n" {
 				envfileslice[i] = strings.ReplaceAll(efs, "\n", "")
 			}

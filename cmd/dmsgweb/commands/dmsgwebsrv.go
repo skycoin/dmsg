@@ -34,10 +34,10 @@ func init() {
 	localPort = scriptExecUintSlice("${LOCALPORT[@]:-8086}", dwscfg)
 	rawTCP = scriptExecBoolSlice("${RAWTCP[@]:-false}", dwscfg)
 	if os.Getenv("DMSGWEBSRVSK") != "" {
-		sk.Set(os.Getenv("DMSGWEBSRVSK"))
+		sk.Set(os.Getenv("DMSGWEBSRVSK")) //nolint
 	}
 	if scriptExecString("${DMSGWEBSRVSK}", dwscfg) != "" {
-		sk.Set(scriptExecString("${DMSGWEBSRVSK}", dwscfg))
+		sk.Set(scriptExecString("${DMSGWEBSRVSK}", dwscfg)) //nolint
 	}
 	pk, _ = sk.PubKey()
 
@@ -136,7 +136,7 @@ func server() {
 		wg.Add(1)
 		go func(ctx context.Context, localPort uint, rawTCP bool, listener net.Listener) {
 			defer wg.Done()
-			defer listener.Close()
+			defer listener.Close() //nolint
 
 			if rawTCP {
 				proxyTCPConnections(ctx, localPort, listener)
@@ -160,7 +160,7 @@ func proxyHTTPConnections(ctx context.Context, localPort uint, listener net.List
 	authRoute.Any("/*path", func(c *gin.Context) {
 		targetURL := fmt.Sprintf("http://127.0.0.1:%d%s?%s", localPort, c.Request.URL.Path, c.Request.URL.RawQuery)
 		proxy := httputil.ReverseProxy{Director: func(req *http.Request) {
-			req.URL, _ = url.Parse(targetURL)
+			req.URL, _ = url.Parse(targetURL) //nolint
 			req.Host = req.URL.Host
 		}}
 		proxy.ServeHTTP(c.Writer, c.Request)
@@ -207,31 +207,26 @@ func proxyTCPConnections(ctx context.Context, localPort uint, listener net.Liste
 		}
 	}()
 
-	// Goroutine to handle active connections
 	for {
 		select {
 		case <-ctx.Done():
-			// Context canceled: stop accepting new connections and clean up
 			dLog.Info("Shutting down TCP proxy connections...")
-			listener.Close() // Close the listener to stop new connections
+			listener.Close() //nolint
 
-			// Close all active connections
 			connMutex.Lock()
 			for conn := range activeConns {
-				conn.Close() // Forcefully close connections to unblock io.Copy()
+				conn.Close() //nolint
 			}
 			connMutex.Unlock()
 
-			connWg.Wait() // Now it should not hang because io.Copy() is unblocked
+			connWg.Wait()
 			return
 
 		case conn, ok := <-connChan:
 			if !ok {
-				// connChan closed, exit the loop
 				return
 			}
 
-			// Track the connection
 			connMutex.Lock()
 			activeConns[conn] = struct{}{}
 			connMutex.Unlock()
@@ -246,18 +241,16 @@ func proxyTCPConnections(ctx context.Context, localPort uint, listener net.Liste
 					dLog.Errorf("Error connecting to local port %d: %v", localPort, err)
 
 					connMutex.Lock()
-					delete(activeConns, dmsgConn) // Remove from tracking
+					delete(activeConns, dmsgConn)
 					connMutex.Unlock()
 
 					return
 				}
-				defer localConn.Close()
+				defer localConn.Close() //nolint
 
-				// Start bidirectional copy
 				go io.Copy(dmsgConn, localConn)
 				io.Copy(localConn, dmsgConn)
 
-				// Remove connection from tracking on completion
 				connMutex.Lock()
 				delete(activeConns, dmsgConn)
 				connMutex.Unlock()

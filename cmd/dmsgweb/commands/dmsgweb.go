@@ -65,7 +65,7 @@ func init() {
 	if scriptExecString("${DMSGWEBSK}", dwcfg) != "" {
 		sk.Set(scriptExecString("${DMSGWEBSK}", dwcfg)) //nolint
 	}
-	pk, _ = sk.PubKey()
+	pk, _ = sk.PubKey() //nolint
 
 	RootCmd.Flags().StringVarP(&filterDomainSuffix, "filter", "f", ".dmsg", "domain suffix to filter")
 	RootCmd.Flags().UintVarP(&proxyPort, "socks", "q", proxyPort, "port to serve the socks5 proxy")
@@ -208,23 +208,20 @@ dmsgweb conf file detected: ` + dwcfg
 			}
 		}
 
-		/*
-			if proxyAddr != "" {
-				// Use SOCKS5 proxy dialer if specified
-				dialer, err = proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
-				if err != nil {
-					dLog.WithError(err).Fatal("Error creating SOCKS5 dialer")
-				}
-				transport := &http.Transport{
-					Dial: dialer.Dial,
-				}
-				httpClient = &http.Client{
-					Transport: transport,
-				}
-				ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
+		if proxyAddr != "" {
+			dialer, err = proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
+			if err != nil {
+				dLog.WithError(err).Fatal("Error creating SOCKS5 dialer")
 			}
-		*/
-		//		dmsgC, closeDmsg, err := cli.StartDmsg(ctx, dLog, pk, sk, &httpC, dmsgDisc, dmsgSessions)
+			transport := &http.Transport{
+				Dial: dialer.Dial,
+			}
+			httpClient = &http.Client{
+				Transport: transport,
+			}
+			ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
+		}
+
 		dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dLog, pk, sk, &http.Client{}, dmsgDisc, dmsgSessions)
 		if err != nil {
 			dLog.WithError(err).Fatal("failed to start dmsg")
@@ -285,7 +282,7 @@ dmsgweb conf file detected: ` + dwcfg
 				if err != nil {
 					dLog.WithError(err).Fatal("Failed to start SOCKS5 server")
 				}
-				defer server.Close()
+				defer server.Close() //nolint
 				dLog.Debug("Stopped serving SOCKS5 proxy on " + socksAddr)
 			}()
 		}
@@ -339,7 +336,7 @@ func proxyTCPConn(n int) {
 		}
 
 		go func(conn net.Conn, n int, dmsgC *dmsg.Client) {
-			defer conn.Close()
+			defer conn.Close() //nolint
 			dp, ok := safecast.To[uint16](dmsgPorts[n])
 			if !ok {
 				dLog.Fatal("uint16 overflow when converting dmsg port")
@@ -351,7 +348,7 @@ func proxyTCPConn(n int) {
 				return
 			}
 
-			defer dmsgConn.Close()
+			defer dmsgConn.Close() //nolint
 
 			var wg sync.WaitGroup
 			wg.Add(2)
