@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
@@ -39,7 +40,7 @@ func init() {
 	if scriptExecString("${DMSGWEBSRVSK}", dwscfg) != "" {
 		sk.Set(scriptExecString("${DMSGWEBSRVSK}", dwscfg)) //nolint
 	}
-	pk, _ = sk.PubKey()
+	pk, _ = sk.PubKey() //nolint
 
 	RootCmd.AddCommand(srvCmd)
 	srvCmd.Flags().UintSliceVarP(&localPort, "lport", "p", localPort, "local application interface port(s)")
@@ -129,7 +130,7 @@ func server() {
 
 	wg := sync.WaitGroup{}
 	for i := range localPort {
-		lis, err := dmsgClient.Listen(uint16(dmsgPort[i]))
+		lis, err := dmsgClient.Listen(uint16(dmsgPort[i])) //nolint
 		if err != nil {
 			dLog.Fatalf("Error listening on DMSG port %d: %v", dmsgPort[i], err)
 		}
@@ -166,7 +167,14 @@ func proxyHTTPConnections(ctx context.Context, localPort uint, listener net.List
 		proxy.ServeHTTP(c.Writer, c.Request)
 	})
 
-	server := &http.Server{Handler: router}
+	server := &http.Server{
+		Handler:           router,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20,
+	}
 
 	// Graceful shutdown on context cancellation
 	go func() {
@@ -234,7 +242,7 @@ func proxyTCPConnections(ctx context.Context, localPort uint, listener net.Liste
 			connWg.Add(1)
 			go func(dmsgConn net.Conn) {
 				defer connWg.Done()
-				defer dmsgConn.Close()
+				defer dmsgConn.Close() //nolint
 
 				localConn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", localPort))
 				if err != nil {
@@ -248,8 +256,16 @@ func proxyTCPConnections(ctx context.Context, localPort uint, listener net.Liste
 				}
 				defer localConn.Close() //nolint
 
-				go io.Copy(dmsgConn, localConn)
-				io.Copy(localConn, dmsgConn)
+				go func() {
+					_, err := io.Copy(dmsgConn, localConn)
+					if err != nil {
+						dLog.WithError(err).Warn("Error on io.Copy(dmsgConn, localConn)")
+					}
+				}()
+				_, err := io.Copy(localConn, dmsgConn)
+				if err != nil {
+					dLog.WithError(err).Warn("Error on io.Copy(localConn, dmsgConn)")
+				}
 
 				connMutex.Lock()
 				delete(activeConns, dmsgConn)
