@@ -264,7 +264,7 @@ func proxyTCPConnections(ctx context.Context, localPort uint, listener net.Liste
 				}()
 				_, err2 := io.Copy(localConn, dmsgConn)
 				if err2 != nil {
-					dLog.WithError(err1).Warn("Error on io.Copy(localConn, dmsgConn)")
+					dLog.WithError(err2).Warn("Error on io.Copy(localConn, dmsgConn)")
 				}
 
 				connMutex.Lock()
