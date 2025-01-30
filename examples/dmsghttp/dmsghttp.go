@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
+	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
-	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/pkg/disc"
@@ -39,8 +39,8 @@ var RootCmd = &cobra.Command{
 	Use: func() string {
 		return strings.Split(os.Args[0], " ")[0]
 	}(),
-	Short: "DMSG HTTP Hello World server",
-	Long:  "DMSG HTTP Hello World server",
+	Short:                 "DMSG HTTP Hello World server",
+	Long:                  "DMSG HTTP Hello World server",
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,

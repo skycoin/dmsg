@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 )
 

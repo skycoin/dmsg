@@ -11,11 +11,10 @@ import (
 	"strings"
 	"syscall"
 
+	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
-
-	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/internal/cli"
@@ -93,7 +92,7 @@ var RootCmd = &cobra.Command{
 			log.Info("Received shutdown signal.")
 			lis.Close()
 			closeDmsg()
-			cancel()  // Cancel context to terminate DMSG client and server
+			cancel() // Cancel context to terminate DMSG client and server
 		}()
 
 		// Accept TCP connections and respond with "Hello, World!"

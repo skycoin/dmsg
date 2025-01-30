@@ -28,7 +28,6 @@ const dwsenv = "DMSGWEBSRV"
 var dwscfg = os.Getenv(dwsenv)
 
 func init() {
-	dLog = logging.MustGetLogger("dmsgwebsrv")
 	dmsgPort = scriptExecUintSlice("${DMSGPORT[@]:-80}", dwscfg)
 	dmsgSess = scriptExecInt("${DMSGSESSIONS:-1}", dwscfg)
 	wl = scriptExecStringSlice("${WHITELISTPKS[@]}", dwscfg)
@@ -43,13 +42,14 @@ func init() {
 	pk, _ = sk.PubKey()
 
 	RootCmd.AddCommand(srvCmd)
-	srvCmd.Flags().UintSliceVarP(&localPort, "lport", "l", localPort, "local application HTTP interface port(s)")
+	srvCmd.Flags().UintSliceVarP(&localPort, "lport", "p", localPort, "local application interface port(s)")
 	srvCmd.Flags().UintSliceVarP(&dmsgPort, "dport", "d", dmsgPort, "DMSG port(s) to serve")
 	srvCmd.Flags().StringSliceVarP(&wl, "wl", "w", wl, "whitelisted keys for DMSG authenticated routes")
-	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", dmsgDisc, "DMSG discovery URL(s)")
+	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", dmsgDisc, "DMSG discovery URL")
 	srvCmd.Flags().StringVarP(&proxyAddr, "proxy", "x", proxyAddr, "connect to DMSG via proxy (e.g., '127.0.0.1:1080')")
 	srvCmd.Flags().IntVarP(&dmsgSess, "dsess", "e", dmsgSess, "DMSG sessions")
-	srvCmd.Flags().BoolSliceVarP(&rawTCP, "rt", "c", rawTCP, "proxy local port as raw TCP")
+	srvCmd.Flags().BoolSliceVarP(&rawTCP, "rt", "c", rawTCP, "proxy local port as raw TCP, comma separated")
+	srvCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
 	srvCmd.Flags().BoolVarP(&isEnvs, "envs", "z", false, "show example .conf file")
 	srvCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified")
 	srvCmd.CompletionOptions.DisableDefaultCmd = true
@@ -68,6 +68,12 @@ var srvCmd = &cobra.Command{
 		if isEnvs {
 			printEnvs(srvenvfileLinux)
 		}
+		if logLvl != "" {
+			if lvl, err := logging.LevelFromString(logLvl); err == nil {
+				logging.SetLevel(lvl)
+			}
+		}
+		dLog = logging.MustGetLogger("dmsgwebsrv")
 		if len(localPort) != len(dmsgPort) || len(localPort) != len(rawTCP) {
 			dLog.Fatal("The number of local ports, DMSG ports, and raw TCP flags must be the same")
 		}
@@ -75,7 +81,7 @@ var srvCmd = &cobra.Command{
 		if err != nil {
 			pk, sk = cipher.GenerateKeyPair()
 		}
-		dLog.Infof("DMSG client public key: %v", pk.String())
+		dLog.Debugf("DMSG client public key: %v", pk.String())
 
 		if len(wl) > 0 {
 			for _, key := range wl {
@@ -179,6 +185,8 @@ func proxyTCPConnections(ctx context.Context, localPort uint, listener net.Liste
 	// To track active connections for cleanup
 	var connWg sync.WaitGroup
 	connChan := make(chan net.Conn)
+	activeConns := make(map[net.Conn]struct{})
+	connMutex := &sync.Mutex{} // Protect access to activeConns
 
 	// Goroutine to accept new connections
 	go func() {
@@ -206,15 +214,28 @@ func proxyTCPConnections(ctx context.Context, localPort uint, listener net.Liste
 			// Context canceled: stop accepting new connections and clean up
 			dLog.Info("Shutting down TCP proxy connections...")
 			listener.Close() // Close the listener to stop new connections
-			connWg.Wait()    // Wait for all active connections to finish
+
+			// Close all active connections
+			connMutex.Lock()
+			for conn := range activeConns {
+				conn.Close() // Forcefully close connections to unblock io.Copy()
+			}
+			connMutex.Unlock()
+
+			connWg.Wait() // Now it should not hang because io.Copy() is unblocked
 			return
+
 		case conn, ok := <-connChan:
 			if !ok {
 				// connChan closed, exit the loop
 				return
 			}
 
-			// Handle each connection
+			// Track the connection
+			connMutex.Lock()
+			activeConns[conn] = struct{}{}
+			connMutex.Unlock()
+
 			connWg.Add(1)
 			go func(dmsgConn net.Conn) {
 				defer connWg.Done()
@@ -223,6 +244,11 @@ func proxyTCPConnections(ctx context.Context, localPort uint, listener net.Liste
 				localConn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", localPort))
 				if err != nil {
 					dLog.Errorf("Error connecting to local port %d: %v", localPort, err)
+
+					connMutex.Lock()
+					delete(activeConns, dmsgConn) // Remove from tracking
+					connMutex.Unlock()
+
 					return
 				}
 				defer localConn.Close()
@@ -230,6 +256,11 @@ func proxyTCPConnections(ctx context.Context, localPort uint, listener net.Liste
 				// Start bidirectional copy
 				go io.Copy(dmsgConn, localConn)
 				io.Copy(localConn, dmsgConn)
+
+				// Remove connection from tracking on completion
+				connMutex.Lock()
+				delete(activeConns, dmsgConn)
+				connMutex.Unlock()
 			}(conn)
 		}
 	}

@@ -8,11 +8,12 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
+
 	"github.com/skycoin/dmsg/internal/cli"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
-	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 )
 
 func main() {

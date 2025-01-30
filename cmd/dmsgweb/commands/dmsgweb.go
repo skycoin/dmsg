@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/chen3feng/safecast"
@@ -51,7 +52,6 @@ const dwenv = "DMSGWEB"
 var dwcfg = os.Getenv(dwenv)
 
 func init() {
-	dLog = logging.MustGetLogger("dmsgweb")
 	dmsgDisc = dmsg.DiscAddr(false)
 	webPort = scriptExecUintSlice("${WEBPORT[@]:-8080}", dwcfg)
 	proxyPort = scriptExecUint("${PROXYPORT:-4445}", dwcfg)
@@ -115,6 +115,7 @@ dmsgweb conf file detected: ` + dwcfg
 				logging.SetLevel(lvl)
 			}
 		}
+		dLog = logging.MustGetLogger("dmsgweb")
 		if dmsgDisc == "" {
 			dLog.Fatal("Dmsg Discovery URL not specified")
 		}
@@ -161,7 +162,7 @@ dmsgweb conf file detected: ` + dwcfg
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM) //nolint
 		go func() {
 			<-c
-			os.Exit(1)
+			os.Exit(0)
 		}()
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), dLog)
@@ -173,8 +174,8 @@ dmsgweb conf file detected: ` + dwcfg
 		}
 		dLog.Info("dmsg client pk: ", pk.String())
 		if len(resolveDmsgAddr) > 0 {
-			dialPK := make([]cipher.PubKey, len(resolveDmsgAddr))
-			dmsgPorts := make([]uint, len(resolveDmsgAddr))
+			dialPK = make([]cipher.PubKey, len(resolveDmsgAddr))
+			dmsgPorts = make([]uint, len(resolveDmsgAddr))
 
 			for i, dmsgaddr := range resolveDmsgAddr {
 				dLog.Info("dmsg address to dial: ", dmsgaddr)
@@ -207,23 +208,23 @@ dmsgweb conf file detected: ` + dwcfg
 			}
 		}
 
-/*
-		if proxyAddr != "" {
-			// Use SOCKS5 proxy dialer if specified
-			dialer, err = proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
-			if err != nil {
-				dLog.WithError(err).Fatal("Error creating SOCKS5 dialer")
+		/*
+			if proxyAddr != "" {
+				// Use SOCKS5 proxy dialer if specified
+				dialer, err = proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
+				if err != nil {
+					dLog.WithError(err).Fatal("Error creating SOCKS5 dialer")
+				}
+				transport := &http.Transport{
+					Dial: dialer.Dial,
+				}
+				httpClient = &http.Client{
+					Transport: transport,
+				}
+				ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
 			}
-			transport := &http.Transport{
-				Dial: dialer.Dial,
-			}
-			httpClient = &http.Client{
-				Transport: transport,
-			}
-			ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
-		}
-*/
-//		dmsgC, closeDmsg, err := cli.StartDmsg(ctx, dLog, pk, sk, &httpC, dmsgDisc, dmsgSessions)
+		*/
+		//		dmsgC, closeDmsg, err := cli.StartDmsg(ctx, dLog, pk, sk, &httpC, dmsgDisc, dmsgSessions)
 		dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dLog, pk, sk, &http.Client{}, dmsgDisc, dmsgSessions)
 		if err != nil {
 			dLog.WithError(err).Fatal("failed to start dmsg")
@@ -299,17 +300,81 @@ dmsgweb conf file detected: ` + dwcfg
 			}
 		} else {
 			for i := range resolveDmsgAddr {
+				wg.Add(1)
 				if rawTCP[i] {
 					dLog.Debug("proxyTCPConn(" + fmt.Sprintf("%v", i) + ")")
-					proxyTCPConn(i)
+					go proxyTCPConn(i)
 				} else {
 					dLog.Debug("proxyHTTPConn(" + fmt.Sprintf("%v", i) + ")")
-					proxyHTTPConn(i)
+					go proxyHTTPConn(i)
 				}
 			}
 		}
 		wg.Wait()
 	},
+}
+
+func proxyTCPConn(n int) {
+	var thiswebport uint
+	if n == -1 {
+		thiswebport = webPort[0]
+	} else {
+		thiswebport = webPort[n]
+	}
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%v", thiswebport))
+	if err != nil {
+		dLog.WithError(err).Fatal(fmt.Sprintf("Failed to start TCP listener on port: %v", thiswebport))
+	}
+	defer listener.Close() //nolint
+	dLog.Debug("Serving TCP on 127.0.0.1:", thiswebport)
+	if dmsgC == nil {
+		dLog.Fatal("dmsgC is nil")
+	}
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			dLog.WithError(err).Warn("Failed to accept connection")
+			continue
+		}
+
+		go func(conn net.Conn, n int, dmsgC *dmsg.Client) {
+			defer conn.Close()
+			dp, ok := safecast.To[uint16](dmsgPorts[n])
+			if !ok {
+				dLog.Fatal("uint16 overflow when converting dmsg port")
+			}
+			dLog.Debug(fmt.Sprintf("Dialing %v:%v", dialPK[n].String(), dp))
+			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: dp}) //nolint
+			if err != nil {
+				dLog.WithError(err).Warn(fmt.Sprintf("Failed to dial dmsg address %v port %v", dialPK[n].String(), dmsgPorts[n]))
+				return
+			}
+
+			defer dmsgConn.Close()
+
+			var wg sync.WaitGroup
+			wg.Add(2)
+
+			go func() {
+				defer wg.Done()
+				_, err := io.Copy(dmsgConn, conn)
+				if err != nil {
+					dLog.WithError(err).Warn("Error on io.Copy(dmsgConn, conn)")
+				}
+			}()
+
+			go func() {
+				defer wg.Done()
+				_, err := io.Copy(conn, dmsgConn)
+				if err != nil {
+					dLog.WithError(err).Warn("Error on io.Copy(conn, dmsgConn)")
+				}
+			}()
+
+			wg.Wait()
+		}(conn, n, dmsgC)
+	}
 }
 
 func proxyHTTPConn(n int) {
@@ -387,65 +452,6 @@ func proxyHTTPConn(n int) {
 		dLog.Debug(fmt.Sprintf("Stopped serving http on: http://127.0.0.1:%v", thiswebport))
 		wg.Done()
 	}()
-}
-func proxyTCPConn(n int) {
-	var thiswebport uint
-	if n == -1 {
-		thiswebport = webPort[0]
-	} else {
-		thiswebport = webPort[n]
-	}
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%v", thiswebport))
-	if err != nil {
-		dLog.WithError(err).Fatal(fmt.Sprintf("Failed to start TCP listener on port: %v", thiswebport))
-	}
-	defer listener.Close() //nolint
-	dLog.Debug("Serving TCP on 127.0.0.1:", thiswebport)
-	if dmsgC == nil {
-		dLog.Fatal("dmsgC is nil")
-	}
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			dLog.WithError(err).Warn("Failed to accept connection")
-			continue
-		}
-
-		wg.Add(1)
-		go func(conn net.Conn, n int, dmsgC *dmsg.Client) {
-			defer wg.Done()
-
-			dp, ok := safecast.To[uint16](dmsgPorts[n])
-			if !ok {
-				dLog.Fatal("uint16 overflow when converting dmsg port")
-			}
-			dLog.Debug(fmt.Sprintf("Dialing dmsg address: %v ; port: %v", dialPK[n].String(), dp))
-			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: dp}) //nolint
-			if err != nil {
-				dLog.WithError(err).Warn(fmt.Sprintf("Failed to dial dmsg address %v port %v", dialPK[n].String(), dmsgPorts[n]))
-				return
-			}
-			defer dmsgConn.Close() //nolint
-
-			go func() {
-				defer dmsgConn.Close()
-				_, err := io.Copy(dmsgConn, conn)
-				if err != nil {
-					dLog.WithError(err).Warn("Error on io.Copy(dmsgConn, conn)")
-				}
-			}()
-
-			go func() {
-				defer conn.Close() //nolint
-				_, err := io.Copy(conn, dmsgConn)
-				if err != nil {
-					dLog.WithError(err).Warn("Error on io.Copy(conn, dmsgConn)")
-				}
-			}()
-		}(conn, n, dmsgC)
-		wg.Wait()
-	}
 }
 
 const envfileLinux = `
