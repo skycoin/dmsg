@@ -259,12 +259,12 @@ func proxyTCPConnections(ctx context.Context, localPort uint, listener net.Liste
 				go func() {
 					_, err1 := io.Copy(dmsgConn, localConn)
 					if err1 != nil {
-						dLog.WithError(err).Warn("Error on io.Copy(dmsgConn, localConn)")
+						dLog.WithError(err1).Warn("Error on io.Copy(dmsgConn, localConn)")
 					}
 				}()
 				_, err2 := io.Copy(localConn, dmsgConn)
 				if err2 != nil {
-					dLog.WithError(err).Warn("Error on io.Copy(localConn, dmsgConn)")
+					dLog.WithError(err1).Warn("Error on io.Copy(localConn, dmsgConn)")
 				}
 
 				connMutex.Lock()
