@@ -5,7 +5,7 @@ $ skywire dmsg curl dmsg://{pk}:{port}/xxx
 ```
 
 #### Errors
-We trying to use same error's status code like what libcurl used
+We trying to use same error's status code like what libcurl used as below:
 | ERROR CODE | SHORT DESCRIPTION | LONG DESCRIPTION |
 |---|---|---|
 | 0 | OK | All fine. Proceed as usual. |
