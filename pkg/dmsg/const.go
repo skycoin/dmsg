@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/skycoin/skywire"
+
+	"github.com/skycoin/dmsg/pkg/disc"
 )
 
 // Constants.
@@ -50,17 +52,12 @@ type DmsghttpConfig struct {
 		ServiceDiscovery   string `json:"service_discovery"`
 	} `json:"test"`
 	Prod struct {
-		DmsgServers []struct {
-			Static string `json:"static"`
-			Server struct {
-				Address string `json:"address"`
-			} `json:"server"`
-		} `json:"dmsg_servers"`
-		DmsgDiscovery      string `json:"dmsg_discovery"`
-		TransportDiscovery string `json:"transport_discovery"`
-		AddressResolver    string `json:"address_resolver"`
-		RouteFinder        string `json:"route_finder"`
-		UptimeTracker      string `json:"uptime_tracker"`
-		ServiceDiscovery   string `json:"service_discovery"`
+		DmsgServers        []disc.Entry `json:"dmsg_servers"`
+		DmsgDiscovery      string       `json:"dmsg_discovery"`
+		TransportDiscovery string       `json:"transport_discovery"`
+		AddressResolver    string       `json:"address_resolver"`
+		RouteFinder        string       `json:"route_finder"`
+		UptimeTracker      string       `json:"uptime_tracker"`
+		ServiceDiscovery   string       `json:"service_discovery"`
 	} `json:"prod"`
 }

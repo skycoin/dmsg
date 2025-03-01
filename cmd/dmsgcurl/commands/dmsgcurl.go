@@ -3,6 +3,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -25,6 +26,8 @@ import (
 	"golang.org/x/net/proxy"
 
 	"github.com/skycoin/dmsg/internal/cli"
+	"github.com/skycoin/dmsg/pkg/direct"
+	"github.com/skycoin/dmsg/pkg/disc"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
@@ -46,10 +49,14 @@ var (
 	proxyAddr      []string
 	httpClients    []*http.Client
 	dialer         = proxy.Direct
+	dmsgHTTPPath   string
+	useHTTP        bool
 )
 
 func init() {
+	RootCmd.Flags().BoolVarP(&useHTTP, "http", "z", false, "use regular http to connect to dmsg discovery")
 	RootCmd.Flags().StringSliceVarP(&dmsgDiscs, "dmsg-disc", "c", []string{dmsg.DiscAddr(false)}, "dmsg discovery url(s)")
+	RootCmd.Flags().StringVarP(&dmsgHTTPPath, "dmsgconf", "D", "", "dmsghttp-config path")
 	RootCmd.Flags().StringSliceVarP(&proxyAddr, "proxy", "p", proxyAddr, "connect to dmsg via proxy (i.e. '127.0.0.1:1080')")
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "fatal", "[ debug | warn | error | fatal | panic | trace | info ]")
@@ -78,9 +85,6 @@ var RootCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
 	RunE: func(_ *cobra.Command, args []string) error {
-		if len(dmsgDiscs) == 0 || dmsgDiscs[0] == "" {
-			dmsgDiscs = []string{dmsg.DiscAddr(false)}
-		}
 		if dmsgcurlLog == nil {
 			dmsgcurlLog = logging.MustGetLogger("dmsgcurl")
 		}
@@ -88,31 +92,6 @@ var RootCmd = &cobra.Command{
 			if lvl, err := logging.LevelFromString(logLvl); err == nil {
 				logging.SetLevel(lvl)
 			}
-		}
-		dmsgcurlLog.Debug("DMSG Discovery: ", dmsgDiscs)
-		for i := range dmsgDiscs {
-			ctx, cancel := cmdutil.SignalContext(context.Background(), dmsgcurlLog)
-			defer cancel()
-			ctxs = append(ctxs, ctx)
-			cancels = append(cancels, cancel)
-
-			httpClient := &http.Client{}
-
-			if i < len(proxyAddr) && proxyAddr[i] != "" {
-				// Use SOCKS5 proxy dialer if specified
-				dialer, err := proxy.SOCKS5("tcp", proxyAddr[i], nil, proxy.Direct)
-				if err != nil {
-					log.Fatalf("Error creating SOCKS5 dialer: %v", err)
-				}
-				transport := &http.Transport{
-					Dial: dialer.Dial,
-				}
-				httpClient = &http.Client{
-					Transport: transport,
-				}
-				ctxs[i] = context.WithValue(context.Background(), "socks5_proxy", proxyAddr[i]) //nolint
-			}
-			httpClients = append(httpClients, httpClient)
 		}
 		pk, err := sk.PubKey()
 		if err != nil {
@@ -128,15 +107,86 @@ var RootCmd = &cobra.Command{
 		if err != nil {
 			dmsgcurlLog.WithError(err).Fatal("failed to parse provided URL")
 		}
-		for i := range dmsgDiscs {
-			if dmsgcurlData != "" {
-				err = handlePostRequest(ctxs[i], dmsgcurlLog, pk, sk, httpClients[i], dmsgDiscs[i], dmsgSessions, parsedURL, dmsgcurlData)
+		if useHTTP {
+			if len(dmsgDiscs) == 0 || dmsgDiscs[0] == "" {
+				dmsgDiscs = []string{dmsg.DiscAddr(false)}
+			}
+			dmsgcurlLog.Debug("DMSG Discovery: ", dmsgDiscs)
+			for i := range dmsgDiscs {
+				ctx, cancel := cmdutil.SignalContext(context.Background(), dmsgcurlLog)
+				defer cancel()
+				ctxs = append(ctxs, ctx)
+				cancels = append(cancels, cancel)
+
+				httpClient := &http.Client{}
+
+				if i < len(proxyAddr) && proxyAddr[i] != "" {
+					// Use SOCKS5 proxy dialer if specified
+					dialer, err := proxy.SOCKS5("tcp", proxyAddr[i], nil, proxy.Direct)
+					if err != nil {
+						dmsgcurlLog.Fatalf("Error creating SOCKS5 dialer: %v", err)
+					}
+					transport := &http.Transport{
+						Dial: dialer.Dial,
+					}
+					httpClient = &http.Client{
+						Transport: transport,
+					}
+					ctxs[i] = context.WithValue(context.Background(), "socks5_proxy", proxyAddr[i]) //nolint
+				}
+				httpClients = append(httpClients, httpClient)
+			}
+			for i := range dmsgDiscs {
+				if dmsgcurlData != "" {
+					err = handlePostRequest(ctxs[i], dmsgcurlLog, pk, sk, httpClients[i], dmsgDiscs[i], dmsgSessions, parsedURL, dmsgcurlData, nil)
+					if err == nil {
+						return nil
+					}
+					dmsgcurlLog.WithError(err).Debug("An error occurred")
+				}
+				err = handleDownload(ctxs[i], dmsgcurlLog, pk, sk, httpClients[i], dmsgDiscs[i], dmsgSessions, parsedURL, nil)
 				if err == nil {
 					return nil
 				}
 				dmsgcurlLog.WithError(err).Debug("An error occurred")
 			}
-			err = handleDownload(ctxs[i], dmsgcurlLog, pk, sk, httpClients[i], dmsgDiscs[i], dmsgSessions, parsedURL)
+		} else { //Use direct client & embedded config
+			var dhconfig dmsg.DmsghttpConfig
+
+			err = json.Unmarshal(dmsg.DmsghttpJSON, &dhconfig)
+			if err != nil {
+				fmt.Println("Error unmarshaling JSON:", err)
+				return err
+			}
+			var servers []*disc.Entry
+			for i := range dhconfig.Prod.DmsgServers {
+				servers = append(servers, &dhconfig.Prod.DmsgServers[i])
+			}
+			if len(servers) == 0 {
+				return nil
+			}
+
+			var keys cipher.PubKeys
+			keys = append(keys, pk)
+			entries := direct.GetAllEntries(keys, servers)
+			dClient := direct.NewClient(entries, dmsgcurlLog)
+			ctx, cancel := cmdutil.SignalContext(context.Background(), dmsgcurlLog)
+			defer cancel()
+
+			dmsgDC, closeDmsgDC, err := direct.StartDmsg(ctx, dmsgcurlLog, pk, sk, dClient, dmsg.DefaultConfig())
+			if err != nil {
+				return fmt.Errorf("failed to start dmsg: %w", err)
+			}
+			defer closeDmsgDC()
+			//httpClient := &http.Client{}
+			if dmsgcurlData != "" {
+				err = handlePostRequest(ctx, dmsgcurlLog, pk, sk, &http.Client{}, "", dmsgSessions, parsedURL, dmsgcurlData, dmsgDC)
+				if err == nil {
+					return nil
+				}
+				dmsgcurlLog.WithError(err).Debug("An error occurred")
+			}
+			err = handleDownload(ctx, dmsgcurlLog, pk, sk, &http.Client{}, "", dmsgSessions, parsedURL, dmsgDC)
 			if err == nil {
 				return nil
 			}
@@ -146,15 +196,20 @@ var RootCmd = &cobra.Command{
 	},
 }
 
-func handlePostRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, dmsgDisc string, dmsgSessions int, parsedURL *url.URL, dmsgcurlData string) error {
-	dmsgC, closeDmsg, err := cli.StartDmsg(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
-	if err != nil {
-		dmsgcurlLog.WithError(err).Warnf("Failed to start dmsg")
-		return err
+func handlePostRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, dmsgDisc string, dmsgSessions int, parsedURL *url.URL, dmsgcurlData string, dmsgC *dmsg.Client) error {
+	if dmsgC == nil {
+		var err error
+		var closeDmsg func()
+		dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
+		if err != nil {
+			dmsgcurlLog.WithError(err).Warnf("Failed to start dmsg")
+			return err
+		}
+		defer closeDmsg()
 	}
-	defer closeDmsg()
 
 	httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
+
 	req, err := http.NewRequest(http.MethodPost, parsedURL.String(), strings.NewReader(dmsgcurlData))
 	if err != nil {
 		dmsgcurlLog.WithError(err).Fatal("Failed to formulate HTTP request.")
@@ -177,19 +232,22 @@ func handlePostRequest(ctx context.Context, dmsgLogger *logging.Logger, pk ciphe
 
 }
 
-func handleDownload(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, dmsgDisc string, dmsgSessions int, parsedURL *url.URL) error {
+func handleDownload(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, dmsgDisc string, dmsgSessions int, parsedURL *url.URL, dmsgC *dmsg.Client) error {
 	file, err := prepareOutputFile()
 	if err != nil {
 		return fmt.Errorf("failed to prepare output file: %w", err)
 	}
 	defer closeAndCleanFile(file, err)
-
-	dmsgC, closeDmsg, err := cli.StartDmsg(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
-	if err != nil {
-		dmsgcurlLog.WithError(err).Warnf("Failed to start dmsg")
-		return err
+	if dmsgC == nil {
+		var err error
+		var closeDmsg func()
+		dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
+		if err != nil {
+			dmsgcurlLog.WithError(err).Warnf("Failed to start dmsg")
+			return err
+		}
+		defer closeDmsg()
 	}
-	defer closeDmsg()
 
 	httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
 
