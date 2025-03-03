@@ -307,7 +307,7 @@ func (pw *progressWriter) Write(p []byte) (int, error) {
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
 		// WHY WON'T THIS PRINT??
-		dmsgcurlLog.WithError(err).Debug("An error occured\n")
+		dmsgcurlLog.WithError(err).Debug("An error occurred\n")
 		log.Fatal("Failed to execute command: ", err)
 	}
 }
