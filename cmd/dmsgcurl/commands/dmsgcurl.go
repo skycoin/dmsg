@@ -159,7 +159,6 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 		dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
 	} else {
 		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
-		dmsgcurlLog.Debug(parsedURL)
 	}
 	if err != nil {
 		dmsgcurlLog.WithError(err).Fatal("Failed to start dmsg\n")
