@@ -100,7 +100,7 @@ var RootCmd = &cobra.Command{
 		}
 		parsedURL, err := url.Parse(args[0])
 		if err != nil {
-			dmsgcurlLog.WithError(err).Fatal("failed to parse provided URL")
+			dmsgcurlLog.WithError(err).Fatal("failed to parse provided URL\n")
 		}
 		if useHTTP {
 			if len(dmsgDiscs) == 0 || dmsgDiscs[0] == "" {
@@ -135,7 +135,7 @@ var RootCmd = &cobra.Command{
 				if err == nil {
 					return nil
 				}
-				dmsgcurlLog.WithError(err).Debug("An error occurred")
+				dmsgcurlLog.WithError(err).Debug("An error occurred\n")
 			}
 		} else { //Use direct dmsg client & embedded config
 			ctx, cancel := cmdutil.SignalContext(context.Background(), dmsgcurlLog)
@@ -144,7 +144,7 @@ var RootCmd = &cobra.Command{
 			if err == nil {
 				return nil
 			}
-			dmsgcurlLog.WithError(err).Debug("An error occurred")
+			dmsgcurlLog.WithError(err).Debug("An error occurred\n")
 		}
 		return err
 	},
@@ -164,7 +164,7 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
 	}
 	if err != nil {
-		dmsgcurlLog.WithError(err).Fatal("Failed to start dmsg")
+		dmsgcurlLog.WithError(err).Fatal("Failed to start dmsg\n")
 		return err
 	}
 	defer closeDmsg()
@@ -232,18 +232,18 @@ func prepareOutputFile() (*os.File, error) {
 
 func closeAndCleanFile(file *os.File, err error) {
 	if fErr := file.Close(); fErr != nil {
-		dmsgcurlLog.WithError(fErr).Warn("Failed to close output file.")
+		dmsgcurlLog.WithError(fErr).Warn("Failed to close output file.\n")
 	}
 	if err != nil && file != os.Stdout {
 		if rErr := os.RemoveAll(file.Name()); rErr != nil {
-			dmsgcurlLog.WithError(rErr).Warn("Failed to remove output file.")
+			dmsgcurlLog.WithError(rErr).Warn("Failed to remove output file.\n")
 		}
 	}
 }
 
 func closeResponseBody(resp *http.Response) {
 	if err := resp.Body.Close(); err != nil {
-		dmsgcurlLog.WithError(err).Fatal("Failed to close response body")
+		dmsgcurlLog.WithError(err).Fatal("Failed to close response body\n")
 	}
 }
 

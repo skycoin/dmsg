@@ -4,6 +4,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
@@ -23,11 +24,11 @@ func StartDmsg(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey
 
 	stop = func() {
 		err := dmsgC.Close()
-		dmsgLogger.WithError(err).Debug("Disconnected from dmsg network.")
-		fmt.Printf("\n")
+		dmsgLogger.WithError(err).Debug("Disconnected from dmsg network.\n")
+		log.Println()
 	}
-	dmsgLogger.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsgDisc).
-		Debug("Connecting to dmsg network...")
+	dmsgLogger.WithField("dmsg_disc", dmsgDisc).Debug("Connecting to dmsg network...\n")
+	dmsgLogger.WithField("public_key", pk.String()).Debug("\n")
 	select {
 	case <-ctx.Done():
 		stop()
@@ -61,13 +62,13 @@ func StartDmsgDirect(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.
 
 	dmsgDC, closeDmsgDC, err := direct.StartDmsg(ctx, dmsgLogger, pk, sk, dClient, dmsg.DefaultConfig())
 	if err != nil {
-		dmsgLogger.WithError(err).Fatal("failed to start dmsg")
+		dmsgLogger.WithError(err).Fatal("failed to start dmsg\n")
 	}
 	go dmsgDC.Serve(context.Background())
 
 	servers, err = dClient.AvailableServers(ctx)
 	if err != nil {
-		dmsgLogger.WithError(err).Fatal("error getting AvailableServers")
+		dmsgLogger.WithError(err).Fatal("error getting AvailableServers\n")
 	}
 	// randomize dmsg servers list
 	rand.Shuffle(len(servers), func(i, j int) {
@@ -86,18 +87,19 @@ func StartDmsgDirect(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.
 
 	err = dClient.PostEntry(ctx, clientEntry)
 	if err != nil {
-		dmsgLogger.WithError(err).Fatal("error saving clientEntry")
+		dmsgLogger.WithError(err).Fatal("error saving client entry\n")
 	}
 
 	stop = func() {
 		err := dmsgDC.Close()
-		dmsgLogger.WithError(err).Debug("Disconnected from dmsg network.")
+		dmsgLogger.WithError(err).Debug("Disconnected from dmsg network.\n")
 		closeDmsgDC()
-		fmt.Printf("\n")
+		log.Println()
 	}
 	// it technically may not be using the dmsg discovery defined in dmsg.Prod.DmsgDiscovery
-	dmsgLogger.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsg.Prod.DmsgDiscovery).Debug("Connecting to dmsg network...")
-	// it just uses whatever dmsg discovery that the dmsg server is connected to, by default
+	dmsgLogger.WithField("dmsg_disc", dmsg.Prod.DmsgDiscovery).Debug("Connecting to dmsg network...\n")
+	// it just uses whichever dmsg discovery that the dmsg server is connected to, by default
+	dmsgLogger.WithField("public_key", pk.String()).Debug("\n")
 	select {
 	case <-ctx.Done():
 		stop()
