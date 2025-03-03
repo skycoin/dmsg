@@ -10,7 +10,6 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
-	"math/rand/v2"
 
 	"github.com/skycoin/dmsg/pkg/direct"
 	"github.com/skycoin/dmsg/pkg/disc"
@@ -52,61 +51,57 @@ func StartDmsgDirect(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.
 	}
 
 	var keys cipher.PubKeys
-	var delegatedServers []cipher.PubKey
 
 	keys = append(keys, pk)
 	entries := direct.GetAllEntries(keys, servers)
 	dClient := direct.NewClient(entries, dmsgLogger)
 	ctx, cancel := cmdutil.SignalContext(context.Background(), dmsgLogger)
 	defer cancel()
+	return direct.StartDmsg(ctx, dmsgLogger, pk, sk, dClient, dmsg.DefaultConfig())
+	/*
+		var delegatedServers []cipher.PubKey
+		dmsgDC, closeDmsgDC, err := direct.StartDmsg(ctx, dmsgLogger, pk, sk, dClient, dmsg.DefaultConfig())
+		if err != nil {
+			dmsgLogger.WithError(err).Fatal("failed to start dmsg\n")
+		}
+		go dmsgDC.Serve(context.Background())
 
-	dmsgDC, closeDmsgDC, err := direct.StartDmsg(ctx, dmsgLogger, pk, sk, dClient, dmsg.DefaultConfig())
-	if err != nil {
-		dmsgLogger.WithError(err).Fatal("failed to start dmsg\n")
-	}
-	go dmsgDC.Serve(context.Background())
+		servers, err = dClient.AvailableServers(ctx)
+		if err != nil {
+			dmsgLogger.WithError(err).Fatal("error getting AvailableServers\n")
+		}
+		// randomize dmsg servers list
+		rand.Shuffle(len(servers), func(i, j int) {
+			servers[i], servers[j] = servers[j], servers[i]
+		})
+		for _, server := range servers {
+			delegatedServers = append(delegatedServers, server.Static)
+		}
 
-	servers, err = dClient.AvailableServers(ctx)
-	if err != nil {
-		dmsgLogger.WithError(err).Fatal("error getting AvailableServers\n")
-	}
-	// randomize dmsg servers list
-	rand.Shuffle(len(servers), func(i, j int) {
-		servers[i], servers[j] = servers[j], servers[i]
-	})
-	for _, server := range servers {
-		delegatedServers = append(delegatedServers, server.Static)
-	}
+		clientEntry := &disc.Entry{
+			Client: &disc.Client{
+				DelegatedServers: delegatedServers,
+			},
+			Static: pk,
+		}
 
-	clientEntry := &disc.Entry{
-		Client: &disc.Client{
-			DelegatedServers: delegatedServers,
-		},
-		Static: pk,
-	}
+		err = dClient.PostEntry(ctx, clientEntry)
+		if err != nil {
+			dmsgLogger.WithError(err).Fatal("error saving client entry\n")
+		}
 
-	err = dClient.PostEntry(ctx, clientEntry)
-	if err != nil {
-		dmsgLogger.WithError(err).Fatal("error saving client entry\n")
-	}
 
-	stop = func() {
-		err := dmsgDC.Close()
-		dmsgLogger.WithError(err).Debug("Disconnected from dmsg network.\n")
-		closeDmsgDC()
-		log.Println()
-	}
-	// it technically may not be using the dmsg discovery defined in dmsg.Prod.DmsgDiscovery
-	dmsgLogger.WithField("dmsg_disc", dmsg.Prod.DmsgDiscovery).Debug("Connecting to dmsg network...\n")
-	// it just uses whichever dmsg discovery that the dmsg server is connected to, by default
-	dmsgLogger.WithField("public_key", pk.String()).Debug("\n")
-	select {
-	case <-ctx.Done():
-		stop()
-		return nil, nil, ctx.Err()
+		//this logging is already present from direct.StartDmsg
+		//	dmsgLogger.WithField("dmsg_disc", dmsg.Prod.DmsgDiscovery).Debug("Connecting to dmsg network...\n")
+		//	dmsgLogger.WithField("public_key", pk.String()).Debug("\n")
+		select {
+		case <-ctx.Done():
+			stop()
+			return nil, nil, ctx.Err()
 
-	case <-dmsgDC.Ready():
-		dmsgLogger.Debug("Dmsg network ready.")
-		return dmsgDC, stop, nil
-	}
+		case <-dmsgDC.Ready():
+			dmsgLogger.Debug("Dmsg network ready.")
+			return dmsgDC, stop, nil
+		}
+	*/
 }

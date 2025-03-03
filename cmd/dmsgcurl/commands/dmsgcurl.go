@@ -35,7 +35,7 @@ var (
 	dmsgSessions   int
 	dmsgcurlData   string
 	sk             cipher.SecKey
-	dmsgcurlLog    *logging.Logger
+	dmsgcurlLog    = logging.MustGetLogger("dmsgcurl")
 	dmsgcurlAgent  string
 	logLvl         string
 	dmsgcurlTries  int
@@ -80,9 +80,6 @@ var RootCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
 	RunE: func(_ *cobra.Command, args []string) error {
-		if dmsgcurlLog == nil {
-			dmsgcurlLog = logging.MustGetLogger("dmsgcurl")
-		}
 		if logLvl != "" {
 			if lvl, err := logging.LevelFromString(logLvl); err == nil {
 				logging.SetLevel(lvl)
@@ -308,6 +305,8 @@ func (pw *progressWriter) Write(p []byte) (int, error) {
 // Execute executes the RootCmd
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
+		// WHY WON'T THIS PRINT??
+		dmsgcurlLog.WithError(err).Debug("An error occured\n")
 		log.Fatal("Failed to execute command: ", err)
 	}
 }
