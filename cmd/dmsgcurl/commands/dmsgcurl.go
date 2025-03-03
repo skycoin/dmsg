@@ -199,7 +199,7 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 		}
 		resp, err := httpC.Do(req)
 		if err != nil {
-			return fmt.Errorf("failed to preform htttp request: %w", err)
+			return fmt.Errorf("failed to preform HTTP request: %w", err)
 		}
 		//		if maxSize > 0 && resp.ContentLength > maxSize*1024 {
 		//			return fmt.Errorf("requested file size is more than allowed size: %d KB > %d KB", (resp.ContentLength / 1024), maxSize)
