@@ -196,6 +196,7 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 		}
 		resp, err := httpC.Do(req)
 		if err != nil {
+			dmsgcurlLog.WithError(err).Error("Failed to preform HTTP request\n")
 			return fmt.Errorf("failed to preform HTTP request: %w", err)
 		}
 		//		if maxSize > 0 && resp.ContentLength > maxSize*1024 {
