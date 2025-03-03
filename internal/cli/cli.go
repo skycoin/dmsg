@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 
 	"github.com/skycoin/dmsg/pkg/direct"
@@ -55,8 +54,6 @@ func StartDmsgDirect(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.
 	keys = append(keys, pk)
 	entries := direct.GetAllEntries(keys, servers)
 	dClient := direct.NewClient(entries, dmsgLogger)
-	ctx, cancel := cmdutil.SignalContext(context.Background(), dmsgLogger)
-	defer cancel()
 	return direct.StartDmsg(ctx, dmsgLogger, pk, sk, dClient, dmsg.DefaultConfig())
 	/*
 		var delegatedServers []cipher.PubKey
