@@ -3,12 +3,12 @@ package commands
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -54,29 +54,28 @@ var (
 )
 
 func init() {
+	RootCmd.Flags().SortFlags = false
 	RootCmd.Flags().BoolVarP(&useHTTP, "http", "z", false, "use regular http to connect to dmsg discovery")
-	RootCmd.Flags().StringSliceVarP(&dmsgDiscs, "dmsg-disc", "c", []string{dmsg.DiscAddr(false)}, "dmsg discovery url(s)")
+	RootCmd.Flags().StringSliceVarP(&dmsgDiscs, "dmsg-disc", "c", []string{dmsg.DiscAddr(false)}, "dmsg discovery url(s)\033[0m\n\r")
 	RootCmd.Flags().StringVarP(&dmsgHTTPPath, "dmsgconf", "D", "", "dmsghttp-config path")
 	RootCmd.Flags().StringSliceVarP(&proxyAddr, "proxy", "p", proxyAddr, "connect to dmsg via proxy (i.e. '127.0.0.1:1080')")
-	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to")
-	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "fatal", "[ debug | warn | error | fatal | panic | trace | info ]")
+	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to\033[0m\n\r")
+	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "fatal", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m\n\r")
 	RootCmd.Flags().StringVarP(&dmsgcurlData, "data", "d", "", "dmsghttp POST data")
 	RootCmd.Flags().StringVarP(&dmsgcurlOutput, "out", "o", "", "output filepath")
 	RootCmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace existing file with new downloaded")
-	RootCmd.Flags().IntVarP(&dmsgcurlTries, "try", "t", 1, "download attempts (0 unlimits)")
-	RootCmd.Flags().IntVarP(&dmsgcurlWait, "wait", "w", 0, "time to wait between fetches")
-	RootCmd.Flags().StringVarP(&dmsgcurlAgent, "agent", "a", "dmsgcurl/"+buildinfo.Version(), "identify as `AGENT`")
+	RootCmd.Flags().IntVarP(&dmsgcurlTries, "try", "t", 1, "download attempts (0 unlimits)\033[0m\n\r")
+	RootCmd.Flags().IntVarP(&dmsgcurlWait, "wait", "w", 0, "time to wait between requests")
+	RootCmd.Flags().StringVarP(&dmsgcurlAgent, "agent", "a", "dmsgcurl/"+buildinfo.Version(), "identify as `AGENT`\033[0m\n\r")
 	if os.Getenv("DMSGCURL_SK") != "" {
 		sk.Set(os.Getenv("DMSGCURL_SK")) //nolint
 	}
-	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified")
+	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\033[0m\n\r")
 }
 
 // RootCmd contains the root cli command
 var RootCmd = &cobra.Command{
-	Use: func() string {
-		return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
-	}(),
+	Use:                   "curl",
 	Short:                 "DMSG curl utility",
 	Long:                  `DMSG curl utility`,
 	SilenceErrors:         true,
@@ -151,22 +150,18 @@ var RootCmd = &cobra.Command{
 				dmsgcurlLog.WithError(err).Debug("An error occurred")
 			}
 		} else { //Use direct client & embedded config
-			var dhconfig dmsg.DmsghttpConfig
 
-			err = json.Unmarshal(dmsg.DmsghttpJSON, &dhconfig)
-			if err != nil {
-				fmt.Println("Error unmarshaling JSON:", err)
-				return err
-			}
 			var servers []*disc.Entry
-			for i := range dhconfig.Prod.DmsgServers {
-				servers = append(servers, &dhconfig.Prod.DmsgServers[i])
+			for i := range dmsg.Prod.DmsgServers {
+				servers = append(servers, &dmsg.Prod.DmsgServers[i])
 			}
 			if len(servers) == 0 {
 				return nil
 			}
 
 			var keys cipher.PubKeys
+			var delegatedServers []cipher.PubKey
+
 			keys = append(keys, pk)
 			entries := direct.GetAllEntries(keys, servers)
 			dClient := direct.NewClient(entries, dmsgcurlLog)
@@ -175,18 +170,42 @@ var RootCmd = &cobra.Command{
 
 			dmsgDC, closeDmsgDC, err := direct.StartDmsg(ctx, dmsgcurlLog, pk, sk, dClient, dmsg.DefaultConfig())
 			if err != nil {
-				return fmt.Errorf("failed to start dmsg: %w", err)
+				dmsgcurlLog.WithError(err).Fatal("failed to start dmsg")
 			}
 			defer closeDmsgDC()
-			//httpClient := &http.Client{}
+
+			servers, err = dClient.AvailableServers(ctx)
+			if err != nil {
+				dmsgcurlLog.WithError(err).Fatal("error getting AvailableServers")
+			}
+			// randomize dmsg servers list
+			rand.Shuffle(len(servers), func(i, j int) {
+				servers[i], servers[j] = servers[j], servers[i]
+			})
+			for _, server := range servers {
+				delegatedServers = append(delegatedServers, server.Static)
+			}
+
+			clientEntry := &disc.Entry{
+				Client: &disc.Client{
+					DelegatedServers: delegatedServers,
+				},
+				Static: pk,
+			}
+
+			err = dClient.PostEntry(ctx, clientEntry)
+			if err != nil {
+				dmsgcurlLog.WithError(err).Fatal("error saving clientEntry")
+			}
+			httpClient := &http.Client{}
 			if dmsgcurlData != "" {
-				err = handlePostRequest(ctx, dmsgcurlLog, pk, sk, &http.Client{}, "", dmsgSessions, parsedURL, dmsgcurlData, dmsgDC)
+				err = handlePostRequest(ctx, dmsgcurlLog, pk, sk, httpClient, "", dmsgSessions, parsedURL, dmsgcurlData, dmsgDC)
 				if err == nil {
 					return nil
 				}
 				dmsgcurlLog.WithError(err).Debug("An error occurred")
 			}
-			err = handleDownload(ctx, dmsgcurlLog, pk, sk, &http.Client{}, "", dmsgSessions, parsedURL, dmsgDC)
+			err = handleDownload(ctx, dmsgcurlLog, pk, sk, httpClient, "", dmsgSessions, parsedURL, dmsgDC)
 			if err == nil {
 				return nil
 			}
