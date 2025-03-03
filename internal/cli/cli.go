@@ -7,8 +7,11 @@ import (
 	"net/http"
 
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
+	"math/rand/v2"
 
+	"github.com/skycoin/dmsg/pkg/direct"
 	"github.com/skycoin/dmsg/pkg/disc"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 )
@@ -37,38 +40,71 @@ func StartDmsg(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey
 }
 
 //TODO
-/*
-func startDmsgDirect(ctx context.Context, v *Visor, log *logging.Logger) error { //nolint:all
-	var keys cipher.PubKeys
-	servers := v.conf.Dmsg.Servers
 
+func StartDmsgDirect(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, _ string, dmsgSessions int) (dmsgC *dmsg.Client, stop func(), err error) { //nolint:all
+	var servers []*disc.Entry
+	for i := range dmsg.Prod.DmsgServers {
+		servers = append(servers, &dmsg.Prod.DmsgServers[i])
+	}
 	if len(servers) == 0 {
-		return nil
+		return nil, nil, fmt.Errorf("no dmsg servers configured")
 	}
 
-	keys = append(keys, v.conf.PK)
+	var keys cipher.PubKeys
+	var delegatedServers []cipher.PubKey
+
+	keys = append(keys, pk)
 	entries := direct.GetAllEntries(keys, servers)
-	dClient := direct.NewClient(entries, v.MasterLogger().PackageLogger("dmsg_http:direct_client"))
+	dClient := direct.NewClient(entries, dmsgLogger)
+	ctx, cancel := cmdutil.SignalContext(context.Background(), dmsgLogger)
+	defer cancel()
 
-	dmsgDC, closeDmsgDC, err := direct.StartDmsg(ctx, v.MasterLogger().PackageLogger("dmsg_http:dmsgDC"),
-		v.conf.PK, v.conf.SK, dClient, dmsg.DefaultConfig())
+	dmsgDC, closeDmsgDC, err := direct.StartDmsg(ctx, dmsgLogger, pk, sk, dClient, dmsg.DefaultConfig())
 	if err != nil {
-		return fmt.Errorf("failed to start dmsg: %w", err)
+		dmsgLogger.WithError(err).Fatal("failed to start dmsg")
+	}
+	go dmsgDC.Serve(context.Background())
+
+	servers, err = dClient.AvailableServers(ctx)
+	if err != nil {
+		dmsgLogger.WithError(err).Fatal("error getting AvailableServers")
+	}
+	// randomize dmsg servers list
+	rand.Shuffle(len(servers), func(i, j int) {
+		servers[i], servers[j] = servers[j], servers[i]
+	})
+	for _, server := range servers {
+		delegatedServers = append(delegatedServers, server.Static)
 	}
 
-	dmsgHTTP := http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgDC)}
+	clientEntry := &disc.Entry{
+		Client: &disc.Client{
+			DelegatedServers: delegatedServers,
+		},
+		Static: pk,
+	}
 
-	v.pushCloseStack("dmsg_http", func() error {
+	err = dClient.PostEntry(ctx, clientEntry)
+	if err != nil {
+		dmsgLogger.WithError(err).Fatal("error saving clientEntry")
+	}
+
+	stop = func() {
+		err := dmsgDC.Close()
+		dmsgLogger.WithError(err).Debug("Disconnected from dmsg network.")
 		closeDmsgDC()
-		return nil
-	})
+		fmt.Printf("\n")
+	}
+	// it technically may not be using the dmsg discovery defined in dmsg.Prod.DmsgDiscovery
+	dmsgLogger.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsg.Prod.DmsgDiscovery).Debug("Connecting to dmsg network...")
+	// it just uses whatever dmsg discovery that the dmsg server is connected to, by default
+	select {
+	case <-ctx.Done():
+		stop()
+		return nil, nil, ctx.Err()
 
-	v.initLock.Lock()
-	v.dClient = dClient
-	v.dmsgHTTP = &dmsgHTTP
-	v.dmsgDC = dmsgDC
-	v.initLock.Unlock()
-	time.Sleep(time.Duration(len(entries)) * time.Second)
-	return nil
+	case <-dmsgDC.Ready():
+		dmsgLogger.Debug("Dmsg network ready.")
+		return dmsgDC, stop, nil
+	}
 }
-*/

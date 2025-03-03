@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/fs"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,7 +16,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
@@ -26,8 +24,6 @@ import (
 	"golang.org/x/net/proxy"
 
 	"github.com/skycoin/dmsg/internal/cli"
-	"github.com/skycoin/dmsg/pkg/direct"
-	"github.com/skycoin/dmsg/pkg/disc"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
@@ -134,78 +130,17 @@ var RootCmd = &cobra.Command{
 					ctxs[i] = context.WithValue(context.Background(), "socks5_proxy", proxyAddr[i]) //nolint
 				}
 				httpClients = append(httpClients, httpClient)
-			}
-			for i := range dmsgDiscs {
-				if dmsgcurlData != "" {
-					err = handlePostRequest(ctxs[i], dmsgcurlLog, pk, sk, httpClients[i], dmsgDiscs[i], dmsgSessions, parsedURL, dmsgcurlData, nil)
-					if err == nil {
-						return nil
-					}
-					dmsgcurlLog.WithError(err).Debug("An error occurred")
-				}
-				err = handleDownload(ctxs[i], dmsgcurlLog, pk, sk, httpClients[i], dmsgDiscs[i], dmsgSessions, parsedURL, nil)
+
+				err = handleRequest(ctxs[i], dmsgcurlLog, pk, sk, httpClients[i], dmsgDiscs[i], dmsgSessions, parsedURL, dmsgcurlData, !useHTTP)
 				if err == nil {
 					return nil
 				}
 				dmsgcurlLog.WithError(err).Debug("An error occurred")
 			}
-		} else { //Use direct client & embedded config
-
-			var servers []*disc.Entry
-			for i := range dmsg.Prod.DmsgServers {
-				servers = append(servers, &dmsg.Prod.DmsgServers[i])
-			}
-			if len(servers) == 0 {
-				return nil
-			}
-
-			var keys cipher.PubKeys
-			var delegatedServers []cipher.PubKey
-
-			keys = append(keys, pk)
-			entries := direct.GetAllEntries(keys, servers)
-			dClient := direct.NewClient(entries, dmsgcurlLog)
+		} else { //Use direct dmsg client & embedded config
 			ctx, cancel := cmdutil.SignalContext(context.Background(), dmsgcurlLog)
 			defer cancel()
-
-			dmsgDC, closeDmsgDC, err := direct.StartDmsg(ctx, dmsgcurlLog, pk, sk, dClient, dmsg.DefaultConfig())
-			if err != nil {
-				dmsgcurlLog.WithError(err).Fatal("failed to start dmsg")
-			}
-			defer closeDmsgDC()
-
-			servers, err = dClient.AvailableServers(ctx)
-			if err != nil {
-				dmsgcurlLog.WithError(err).Fatal("error getting AvailableServers")
-			}
-			// randomize dmsg servers list
-			rand.Shuffle(len(servers), func(i, j int) {
-				servers[i], servers[j] = servers[j], servers[i]
-			})
-			for _, server := range servers {
-				delegatedServers = append(delegatedServers, server.Static)
-			}
-
-			clientEntry := &disc.Entry{
-				Client: &disc.Client{
-					DelegatedServers: delegatedServers,
-				},
-				Static: pk,
-			}
-
-			err = dClient.PostEntry(ctx, clientEntry)
-			if err != nil {
-				dmsgcurlLog.WithError(err).Fatal("error saving clientEntry")
-			}
-			httpClient := &http.Client{}
-			if dmsgcurlData != "" {
-				err = handlePostRequest(ctx, dmsgcurlLog, pk, sk, httpClient, "", dmsgSessions, parsedURL, dmsgcurlData, dmsgDC)
-				if err == nil {
-					return nil
-				}
-				dmsgcurlLog.WithError(err).Debug("An error occurred")
-			}
-			err = handleDownload(ctx, dmsgcurlLog, pk, sk, httpClient, "", dmsgSessions, parsedURL, dmsgDC)
+			err = handleRequest(ctx, dmsgcurlLog, pk, sk, &http.Client{}, "", dmsgSessions, parsedURL, dmsgcurlData, !useHTTP)
 			if err == nil {
 				return nil
 			}
@@ -215,69 +150,66 @@ var RootCmd = &cobra.Command{
 	},
 }
 
-func handlePostRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, dmsgDisc string, dmsgSessions int, parsedURL *url.URL, dmsgcurlData string, dmsgC *dmsg.Client) error {
-	if dmsgC == nil {
-		var err error
-		var closeDmsg func()
-		dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
-		if err != nil {
-			dmsgcurlLog.WithError(err).Warnf("Failed to start dmsg")
-			return err
-		}
-		defer closeDmsg()
-	}
-
-	httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
-
-	req, err := http.NewRequest(http.MethodPost, parsedURL.String(), strings.NewReader(dmsgcurlData))
-	if err != nil {
-		dmsgcurlLog.WithError(err).Fatal("Failed to formulate HTTP request.")
-	}
-	req.Header.Set("Content-Type", "text/plain")
-
-	resp, err := httpC.Do(req)
-	if err != nil {
-		dmsgcurlLog.WithError(err).Debug("Failed to execute HTTP request")
-	}
-	defer closeResponseBody(resp)
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		dmsgcurlLog.WithError(err).Debug("Failed to read response body.")
-		return err
-	}
-	fmt.Println(string(respBody))
-	return nil
-
-}
-
-func handleDownload(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, dmsgDisc string, dmsgSessions int, parsedURL *url.URL, dmsgC *dmsg.Client) error {
+func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, dmsgDisc string, dmsgSessions int, parsedURL *url.URL, dmsgcurlData string, dmsgHTTP bool) error {
 	file, err := prepareOutputFile()
 	if err != nil {
 		return fmt.Errorf("failed to prepare output file: %w", err)
 	}
 	defer closeAndCleanFile(file, err)
-	if dmsgC == nil {
-		var err error
-		var closeDmsg func()
+	var dmsgC *dmsg.Client
+	var closeDmsg func()
+	if !dmsgHTTP {
 		dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
-		if err != nil {
-			dmsgcurlLog.WithError(err).Warnf("Failed to start dmsg")
-			return err
-		}
-		defer closeDmsg()
+	} else {
+		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
+	}
+	if err != nil {
+		dmsgcurlLog.WithError(err).Fatal("Failed to start dmsg")
+		return err
+	}
+	defer closeDmsg()
+
+	if dmsgC == nil {
+		dmsgcurlLog.Fatal("nil dmsg client pointer")
 	}
 
 	httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
-
+	firstTry := true
 	for i := 0; i < dmsgcurlTries; i++ {
 		if dmsgcurlOutput != "" {
-			dmsgcurlLog.Debugf("Download attempt %d/%d ...", i, dmsgcurlTries)
+			if !firstTry {
+				dmsgcurlLog.Debugf("Download attempt %d/%d ...", i, dmsgcurlTries)
+			}
+			firstTry = false
 			if _, err := file.Seek(0, 0); err != nil {
 				return fmt.Errorf("failed to reset file: %w", err)
 			}
 		}
-		if err := download(ctx, dmsgcurlLog, &httpC, file, parsedURL.String(), 0); err != nil {
+		var req *http.Request
+		if dmsgcurlData != "" {
+			req, err = http.NewRequest(http.MethodPost, parsedURL.String(), strings.NewReader(dmsgcurlData))
+		} else {
+			req, err = http.NewRequest(http.MethodGet, parsedURL.String(), nil)
+		}
+		if err != nil {
+			return fmt.Errorf("Failed to formulate HTTP request: %w", err)
+		}
+		if dmsgcurlData != "" {
+			req.Header.Set("Content-Type", "text/plain")
+		}
+		resp, err := httpC.Do(req)
+		if err != nil {
+			return fmt.Errorf("failed to preform htttp request: %w", err)
+		}
+		//		if maxSize > 0 && resp.ContentLength > maxSize*1024 {
+		//			return fmt.Errorf("requested file size is more than allowed size: %d KB > %d KB", (resp.ContentLength / 1024), maxSize)
+		//		}
+		n, err := cancellableCopy(ctx, file, resp.Body, resp.ContentLength)
+		if err != nil {
+			return fmt.Errorf("download failed at %d/%dB: %w", n, resp.ContentLength, err)
+		}
+		defer closeResponseBody(resp)
+		if err != nil {
 			dmsgcurlLog.WithError(err).Error()
 			select {
 			case <-ctx.Done():
@@ -286,7 +218,6 @@ func handleDownload(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.P
 				continue
 			}
 		}
-
 		return nil
 	}
 	return err
@@ -335,27 +266,6 @@ func parseOutputFile(output string, replace bool) (*os.File, error) {
 		return os.OpenFile(filepath.Clean(output), os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.ModePerm) //nolint
 	}
 	return nil, os.ErrExist
-}
-
-func download(ctx context.Context, log logrus.FieldLogger, httpC *http.Client, w io.Writer, urlStr string, maxSize int64) error {
-	req, err := http.NewRequest(http.MethodGet, urlStr, nil)
-	if err != nil {
-		log.WithError(err).Fatal("Failed to formulate HTTP request.")
-	}
-	resp, err := httpC.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to connect to HTTP server: %w", err)
-	}
-	if maxSize > 0 && resp.ContentLength > maxSize*1024 {
-		return fmt.Errorf("requested file size is more than allowed size: %d KB > %d KB", (resp.ContentLength / 1024), maxSize)
-	}
-	n, err := cancellableCopy(ctx, w, resp.Body, resp.ContentLength)
-	if err != nil {
-		return fmt.Errorf("download failed at %d/%dB: %w", n, resp.ContentLength, err)
-	}
-	defer closeResponseBody(resp)
-
-	return nil
 }
 
 type readerFunc func(p []byte) (n int, err error)
