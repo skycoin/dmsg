@@ -1,6 +1,8 @@
 package commands
 
 var errorCode = map[string]int{
+	"SUCCESS":               0,
+	"FAILURE":               1,
 	"FAILED_INIT":           2,
 	"URL_MALFORMAT":         3,
 	"DMSG_INIT":             4,
@@ -16,6 +18,8 @@ var errorCode = map[string]int{
 	"CONTEXT_CANCELED":      64,
 }
 var errorDesc = map[string]string{
+	"SUCCESS":               "No error",
+	"FAILURE":               "An error occured",
 	"FAILED_INIT":           "Very early initialization code failed.",
 	"URL_MALFORMAT":         "The URL was not properly formatted.",
 	"DMSG_INIT":             "Couldn't resolve dmsg initialziation.",
@@ -29,4 +33,10 @@ var errorDesc = map[string]string{
 	"DOWNLOAD_ERROR":        "Failure with downloading data.",
 	"FILESIZE_EXCEEDED":     "Maximum file size exceeded.",
 	"CONTEXT_CANCELED":      "Operation canceled by user",
+}
+
+// curlError is the struct of dmsgcurl functions output, to set appropriate exit code
+type curlError struct {
+	Error error
+	Code  int
 }

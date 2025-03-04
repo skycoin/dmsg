@@ -90,15 +90,19 @@ var RootCmd = &cobra.Command{
 			pk, sk = cipher.GenerateKeyPair()
 		}
 		if len(args) == 0 {
-			return errors.New("no URL(s) provided")
+			dmsgcurlLog.WithError(fmt.Errorf("no URL(s) provided")).Error(errorDesc["FAILED_INIT"] + "\n")
+			os.Exit(errorCode["FAILED_INIT"])
 		}
 		if len(args) > 1 {
-			return errors.New("multiple URLs is not yet supported")
+			dmsgcurlLog.WithError(fmt.Errorf("multiple URLs are not yet supported")).Error(errorDesc["FAILED_INIT"] + "\n")
+			os.Exit(errorCode["FAILED_INIT"])
 		}
 		parsedURL, err := url.Parse(args[0])
 		if err != nil {
-			dmsgcurlLog.WithError(err).Fatal("failed to parse provided URL\n")
+			dmsgcurlLog.WithError(fmt.Errorf("failed to parse provided URL")).Error(errorDesc["URL_MALFORMAT"] + "\n")
+			os.Exit(errorCode["URL_MALFORMAT"])
 		}
+		var cErr curlError
 		if useHTTP {
 			if len(dmsgDiscs) == 0 || dmsgDiscs[0] == "" {
 				dmsgDiscs = []string{dmsg.DiscAddr(false)}
@@ -116,7 +120,8 @@ var RootCmd = &cobra.Command{
 					// Use SOCKS5 proxy dialer if specified
 					dialer, err := proxy.SOCKS5("tcp", proxyAddr[i], nil, proxy.Direct)
 					if err != nil {
-						dmsgcurlLog.Fatalf("Error creating SOCKS5 dialer: %v", err)
+						dmsgcurlLog.WithError(fmt.Errorf("Error creating SOCKS5 dialer: %v", err)).Error(errorDesc["COULDNT_RESOLVE_PROXY"])
+						os.Exit(errorCode["COULDNT_RESOLVE_PROXY"])
 					}
 					transport := &http.Transport{
 						Dial: dialer.Dial,
@@ -128,29 +133,36 @@ var RootCmd = &cobra.Command{
 				}
 				httpClients = append(httpClients, httpClient)
 
-				err = handleRequest(ctxs[i], dmsgcurlLog, pk, sk, httpClients[i], dmsgDiscs[i], dmsgSessions, parsedURL, dmsgcurlData, !useHTTP)
-				if err == nil {
+				cErr = handleRequest(ctxs[i], dmsgcurlLog, pk, sk, httpClients[i], dmsgDiscs[i], dmsgSessions, parsedURL, dmsgcurlData, !useHTTP)
+				if cErr.Code == 0 {
 					return nil
 				}
-				dmsgcurlLog.WithError(err).Debug("An error occurred\n")
+				dmsgcurlLog.WithError(cErr.Error).Debug("An error occurred\n")
 			}
 		} else { //Use direct dmsg client & embedded config
 			ctx, cancel := cmdutil.SignalContext(context.Background(), dmsgcurlLog)
 			defer cancel()
-			err = handleRequest(ctx, dmsgcurlLog, pk, sk, &http.Client{}, "", dmsgSessions, parsedURL, dmsgcurlData, !useHTTP)
-			if err == nil {
+			cErr = handleRequest(ctx, dmsgcurlLog, pk, sk, &http.Client{}, "", dmsgSessions, parsedURL, dmsgcurlData, !useHTTP)
+			if cErr.Code == 0 {
 				return nil
 			}
-			dmsgcurlLog.WithError(err).Debug("An error occurred\n")
+			dmsgcurlLog.WithError(cErr.Error).Debug("An error occurred\n")
+		}
+		if cErr.Code != 0 {
+			dmsgcurlLog.WithError(cErr.Error).Error("An error occurred\n")
+			return cErr.Error
 		}
 		return err
 	},
 }
 
-func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, dmsgDisc string, dmsgSessions int, parsedURL *url.URL, dmsgcurlData string, dmsgHTTP bool) error {
+func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, dmsgDisc string, dmsgSessions int, parsedURL *url.URL, dmsgcurlData string, dmsgHTTP bool) curlError {
 	file, err := prepareOutputFile()
 	if err != nil {
-		return fmt.Errorf("failed to prepare output file: %w", err)
+		return curlError{
+			Error: fmt.Errorf("%s", errorDesc["WRITE_INIT"]),
+			Code:  errorCode["WRITE_INIT"],
+		}
 	}
 	defer closeAndCleanFile(file, err)
 	var dmsgC *dmsg.Client
@@ -161,13 +173,19 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
 	}
 	if err != nil {
-		dmsgcurlLog.WithError(err).Fatal("Failed to start dmsg\n")
-		return err
+		return curlError{
+			Error: fmt.Errorf("%s", errorDesc["DMSG_INIT"]),
+			Code:  errorCode["DMSG_INIT"],
+		}
 	}
 	defer closeDmsg()
 
 	if dmsgC == nil {
-		dmsgcurlLog.Fatal("nil dmsg client pointer")
+		dmsgcurlLog.Error("nil dmsg client pointer")
+		return curlError{
+			Error: fmt.Errorf("%s", errorDesc["DMSG_INIT"]),
+			Code:  errorCode["DMSG_INIT"],
+		}
 	}
 
 	httpC := http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
@@ -179,7 +197,10 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 			}
 			firstTry = false
 			if _, err := file.Seek(0, 0); err != nil {
-				return fmt.Errorf("failed to reset file: %w", err)
+				return curlError{
+					Error: fmt.Errorf("%s", errorDesc["WRITE_ERROR"]),
+					Code:  errorCode["WRITE_ERROR"],
+				}
 			}
 		}
 		var req *http.Request
@@ -189,7 +210,11 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 			req, err = http.NewRequest(http.MethodGet, parsedURL.String(), nil)
 		}
 		if err != nil {
-			return fmt.Errorf("Failed to formulate HTTP request: %w", err)
+			dmsgcurlLog.WithError(err).Error("Failed to formulate HTTP request\n")
+			return curlError{
+				Error: fmt.Errorf("%s", errorDesc["FAILED_INIT"]),
+				Code:  errorCode["FAILED_INIT"],
+			}
 		}
 		if dmsgcurlData != "" {
 			req.Header.Set("Content-Type", "text/plain")
@@ -197,28 +222,50 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 		resp, err := httpC.Do(req)
 		if err != nil {
 			dmsgcurlLog.WithError(err).Error("Failed to preform HTTP request\n")
-			return fmt.Errorf("failed to preform HTTP request: %w", err)
+			return curlError{
+				Error: fmt.Errorf("%s", errorDesc["RECV_ERROR"]),
+				Code:  errorCode["RECV_ERROR"],
+			}
 		}
 		//		if maxSize > 0 && resp.ContentLength > maxSize*1024 {
 		//			return fmt.Errorf("requested file size is more than allowed size: %d KB > %d KB", (resp.ContentLength / 1024), maxSize)
 		//		}
 		n, err := cancellableCopy(ctx, file, resp.Body, resp.ContentLength)
 		if err != nil {
-			return fmt.Errorf("download failed at %d/%dB: %w", n, resp.ContentLength, err)
+			dmsgcurlLog.WithError(err).Error(fmt.Sprintf("download failed at %d/%dB\n", n, resp.ContentLength))
+			return curlError{
+				Error: fmt.Errorf("%s", errorDesc["DOWNLOAD_ERROR"]),
+				Code:  errorCode["DOWNLOAD_ERROR"],
+			}
 		}
 		defer closeResponseBody(resp)
 		if err != nil {
 			dmsgcurlLog.WithError(err).Error()
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return curlError{
+					Error: fmt.Errorf("%s", errorDesc["CONTEXT_CANCELED"]),
+					Code:  errorCode["CONTEXT_CANCELED"],
+				}
 			case <-time.After(time.Duration(dmsgcurlWait) * time.Second):
 				continue
 			}
 		}
-		return nil
+		return curlError{
+			Error: fmt.Errorf("%s", errorDesc["SUCCESS"]),
+			Code:  errorCode["SUCCESS"],
+		}
 	}
-	return err
+	if err != nil {
+		return curlError{
+			Error: fmt.Errorf("%s", errorDesc["FAILURE"]),
+			Code:  errorCode["FAILURE"],
+		}
+	}
+	return curlError{
+		Error: fmt.Errorf("%s", errorDesc["SUCCESS"]),
+		Code:  errorCode["SUCCESS"],
+	}
 }
 
 func prepareOutputFile() (*os.File, error) {
