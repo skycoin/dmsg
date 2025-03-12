@@ -19,7 +19,7 @@ var errorCode = map[string]int{
 }
 var errorDesc = map[string]string{
 	"SUCCESS":               "No error",
-	"FAILURE":               "An error occured",
+	"FAILURE":               "An error occurred",
 	"FAILED_INIT":           "Very early initialization code failed.",
 	"URL_MALFORMAT":         "The URL was not properly formatted.",
 	"DMSG_INIT":             "Couldn't resolve dmsg initialziation.",
