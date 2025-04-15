@@ -451,7 +451,8 @@ func proxyHTTPConn(n int) {
 	}()
 }
 
-const envfileLinux = `
+const envfileLinux = //nolint unused
+` 
 #########################################################################
 #--	DMSGWEB CONFIG TEMPLATE
 #--		Defaults shown
