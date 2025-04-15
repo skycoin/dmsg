@@ -1,8 +1,8 @@
 module github.com/skycoin/dmsg
 
-go 1.23
+go 1.24
 
-toolchain go1.23.4
+toolchain go1.24.2
 
 require (
 	github.com/ActiveState/termtest/conpty v0.5.0
@@ -13,7 +13,7 @@ require (
 	github.com/confiant-inc/go-socks5 v0.0.0-20210816151940-c1124825b1d6
 	github.com/creack/pty v1.1.23
 	github.com/gin-gonic/gin v1.10.0
-	github.com/go-chi/chi/v5 v5.1.0
+	github.com/go-chi/chi/v5 v5.2.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/hashicorp/yamux v0.1.2
 	github.com/ivanpirog/coloredcobra v1.0.1
@@ -22,12 +22,12 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
 	github.com/skycoin/skycoin v0.28.1-0.20241105130348-39b49a2d0a7f
-	github.com/skycoin/skywire v1.3.29-rc1.0.20241217211947-72c9d0b82083
+	github.com/skycoin/skywire v1.3.29-rc7.0.20250414132907-330ec8cce85f
 	github.com/spf13/cobra v1.8.1
-	github.com/stretchr/testify v1.9.0
-	golang.org/x/net v0.30.0
-	golang.org/x/sys v0.26.0
-	golang.org/x/term v0.25.0
+	github.com/stretchr/testify v1.10.0
+	golang.org/x/net v0.36.0
+	golang.org/x/sys v0.30.0
+	golang.org/x/term v0.29.0
 )
 
 require (
@@ -49,7 +49,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/itchyny/gojq v0.12.16 // indirect
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -64,8 +64,8 @@ require (
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
 	golang.org/x/arch v0.11.0 // indirect
-	golang.org/x/crypto v0.28.0 // indirect
-	golang.org/x/text v0.19.0 // indirect
+	golang.org/x/crypto v0.35.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	mvdan.cc/sh/v3 v3.9.0 // indirect
