@@ -44,7 +44,7 @@ var (
 	replace        bool
 	proxyAddr      []string
 	httpClients    []*http.Client
-	dialer         = proxy.Direct
+	dialer         = proxy.Direct //nolint unused
 	dmsgHTTPPath   string
 	useHTTP        bool
 )
