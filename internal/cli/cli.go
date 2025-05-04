@@ -58,7 +58,7 @@ func StartDmsgDirect(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.
 	// Fix `dmsg error 102 - entry is not of client in discovery` error
 	destinationPk := cipher.PubKey{}
 	if err = destinationPk.UnmarshalText([]byte(destination)); err != nil {
-		return nil, nil, fmt.Errorf("destination address is wrong")
+		return nil, nil, fmt.Errorf("destination address (pk) is wrong")
 	}
 	var delegatedServers []cipher.PubKey
 	for _, server := range servers {
@@ -70,7 +70,10 @@ func StartDmsgDirect(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.
 		},
 		Static: destinationPk,
 	}
-	dClient.PostEntry(ctx, clientEntry)
+	err = dClient.PostEntry(ctx, clientEntry)
+	if err != nil {
+		return nil, nil, fmt.Errorf("an error occurred during setup dClient for httpClient of destination")
+	}
 
 	return direct.StartDmsg(ctx, dmsgLogger, pk, sk, dClient, dmsg.DefaultConfig())
 }
