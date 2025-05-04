@@ -40,7 +40,7 @@ func StartDmsg(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey
 
 //TODO
 
-func StartDmsgDirect(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, _ string, dmsgSessions int) (dmsgC *dmsg.Client, stop func(), err error) { //nolint:all
+func StartDmsgDirect(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, _ string, dmsgSessions int, destination string) (dmsgC *dmsg.Client, stop func(), err error) { //nolint:all
 	var servers []*disc.Entry
 	for i := range dmsg.Prod.DmsgServers {
 		servers = append(servers, &dmsg.Prod.DmsgServers[i])
@@ -54,51 +54,23 @@ func StartDmsgDirect(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.
 	keys = append(keys, pk)
 	entries := direct.GetAllEntries(keys, servers)
 	dClient := direct.NewClient(entries, dmsgLogger)
+
+	// Fix `dmsg error 102 - entry is not of client in discovery` error
+	destinationPk := cipher.PubKey{}
+	if err = destinationPk.UnmarshalText([]byte(destination)); err != nil {
+		return nil, nil, fmt.Errorf("destination address is wrong")
+	}
+	var delegatedServers []cipher.PubKey
+	for _, server := range servers {
+		delegatedServers = append(delegatedServers, server.Static)
+	}
+	clientEntry := &disc.Entry{
+		Client: &disc.Client{
+			DelegatedServers: delegatedServers,
+		},
+		Static: destinationPk,
+	}
+	err = dClient.PostEntry(ctx, clientEntry)
+
 	return direct.StartDmsg(ctx, dmsgLogger, pk, sk, dClient, dmsg.DefaultConfig())
-	/*
-		var delegatedServers []cipher.PubKey
-		dmsgDC, closeDmsgDC, err := direct.StartDmsg(ctx, dmsgLogger, pk, sk, dClient, dmsg.DefaultConfig())
-		if err != nil {
-			dmsgLogger.WithError(err).Fatal("failed to start dmsg\n")
-		}
-		go dmsgDC.Serve(context.Background())
-
-		servers, err = dClient.AvailableServers(ctx)
-		if err != nil {
-			dmsgLogger.WithError(err).Fatal("error getting AvailableServers\n")
-		}
-		// randomize dmsg servers list
-		rand.Shuffle(len(servers), func(i, j int) {
-			servers[i], servers[j] = servers[j], servers[i]
-		})
-		for _, server := range servers {
-			delegatedServers = append(delegatedServers, server.Static)
-		}
-
-		clientEntry := &disc.Entry{
-			Client: &disc.Client{
-				DelegatedServers: delegatedServers,
-			},
-			Static: pk,
-		}
-
-		err = dClient.PostEntry(ctx, clientEntry)
-		if err != nil {
-			dmsgLogger.WithError(err).Fatal("error saving client entry\n")
-		}
-
-
-		//this logging is already present from direct.StartDmsg
-		//	dmsgLogger.WithField("dmsg_disc", dmsg.Prod.DmsgDiscovery).Debug("Connecting to dmsg network...\n")
-		//	dmsgLogger.WithField("public_key", pk.String()).Debug("\n")
-		select {
-		case <-ctx.Done():
-			stop()
-			return nil, nil, ctx.Err()
-
-		case <-dmsgDC.Ready():
-			dmsgLogger.Debug("Dmsg network ready.")
-			return dmsgDC, stop, nil
-		}
-	*/
 }

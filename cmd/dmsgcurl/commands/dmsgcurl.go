@@ -170,7 +170,8 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 	if !dmsgHTTP {
 		dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
 	} else {
-		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
+		destination := strings.Split(parsedURL.Host, ":")[0]
+		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions, destination)
 	}
 	if err != nil {
 		return curlError{
