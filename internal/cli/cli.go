@@ -70,7 +70,7 @@ func StartDmsgDirect(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.
 		},
 		Static: destinationPk,
 	}
-	err = dClient.PostEntry(ctx, clientEntry)
+	dClient.PostEntry(ctx, clientEntry)
 
 	return direct.StartDmsg(ctx, dmsgLogger, pk, sk, dClient, dmsg.DefaultConfig())
 }
