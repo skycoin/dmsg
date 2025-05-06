@@ -142,6 +142,7 @@ var RootCmd = &cobra.Command{
 		} else { //Use direct dmsg client & embedded config
 			ctx, cancel := cmdutil.SignalContext(context.Background(), dlog)
 			defer cancel()
+			ctxs = append(ctxs, ctx)
 
 			httpClient := &http.Client{}
 			if 0 < len(proxyAddr) && proxyAddr[0] != "" {
@@ -157,10 +158,10 @@ var RootCmd = &cobra.Command{
 				httpClient = &http.Client{
 					Transport: transport,
 				}
-				ctxs[i] = context.WithValue(context.Background(), "socks5_proxy", proxyAddr[0]) //nolint
+				ctxs[0] = context.WithValue(context.Background(), "socks5_proxy", proxyAddr[0]) //nolint
 			}
 
-			cErr = handleRequest(ctx, dlog, pk, sk, httpClient, "", dmsgSessions, parsedURL, dmsgcurlData, !useHTTP)
+			cErr = handleRequest(ctxs[0], dlog, pk, sk, httpClient, "", dmsgSessions, parsedURL, dmsgcurlData, !useHTTP)
 			if cErr.Code == 0 {
 				return nil
 			}
