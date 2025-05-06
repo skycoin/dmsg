@@ -140,8 +140,7 @@ func server() {
 	if useHTTP {
 		dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, dmsgDisc, dmsgSessions)
 	} else {
-//		destination := strings.Split(parsedURL.Host, ":")[0]
-		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, dmsgDisc, dmsgSessions, "") // What should the destination be in this case?
+		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, dmsgDisc, dmsgSessions, pk.String())
 	}
 
 	lis, err := dmsgC.Listen(uint16(dmsgPort))
