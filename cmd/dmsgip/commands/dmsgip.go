@@ -115,7 +115,7 @@ var RootCmd = &cobra.Command{
 		}
 		if err != nil {
 			dlog.WithError(err).Fatal("Error connecting to dmsg network")
-			return
+			return err
 		}
 		defer closeDmsg()
 		// Perform IP lookup using the context with the proxy dialer
