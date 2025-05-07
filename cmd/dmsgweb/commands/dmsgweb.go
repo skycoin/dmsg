@@ -16,6 +16,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/0magnet/calvin"
 	"github.com/chen3feng/safecast"
 	"github.com/confiant-inc/go-socks5"
 	"github.com/gin-gonic/gin"
@@ -25,8 +26,6 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
-	"github.com/0magnet/calvin"
-
 
 	"github.com/skycoin/dmsg/internal/cli"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
@@ -91,7 +90,7 @@ var RootCmd = &cobra.Command{
 		return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
 	}(),
 	Short: "DMSG resolving proxy & browser client",
-	Long: calvin.AsciiFont("dmsgweb")+`
+	Long: calvin.AsciiFont("dmsgweb") + `
 DMSG resolving proxy & browser client - access websites and http interfaces over dmsg` + func() string {
 		if _, err := os.Stat(dwcfg); err == nil {
 			return `

@@ -10,29 +10,27 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/0magnet/calvin"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
-	"github.com/0magnet/calvin"
 
-	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/internal/cli"
-
+	"github.com/skycoin/dmsg/pkg/dmsg"
 )
 
 var (
-	dmsgDisc    = dmsg.DiscAddr(false)
-	sk          cipher.SecKey
-	logLvl      string
-	dmsgServers []string
-	proxyAddr   string
-	httpClient  *http.Client
+	dmsgDisc     = dmsg.DiscAddr(false)
+	sk           cipher.SecKey
+	logLvl       string
+	dmsgServers  []string
+	proxyAddr    string
+	httpClient   *http.Client
 	useHTTP      bool
 	dmsgSessions int
-
 )
 
 func init() {
@@ -54,7 +52,7 @@ var RootCmd = &cobra.Command{
 		return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
 	}(),
 	Short: "DMSG IP utility",
-	Long: calvin.AsciiFont("dmsgip")+`
+	Long: calvin.AsciiFont("dmsgip") + `
 	DMSG IP utility`,
 	SilenceErrors:         true,
 	SilenceUsage:          true,

@@ -54,8 +54,7 @@ var (
 	rawTCP             []bool
 	httpClient         *http.Client //nolint unused
 	dialer             proxy.Dialer = proxy.Direct
-	useHTTP      bool
-
+	useHTTP            bool
 )
 
 // Execute executes root CLI command.

@@ -12,32 +12,30 @@ import (
 	"strings"
 	"time"
 
+	"github.com/0magnet/calvin"
 	socks5 "github.com/confiant-inc/go-socks5"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
-	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
-
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
-	"github.com/0magnet/calvin"
-
 
 	"github.com/skycoin/dmsg/internal/cli"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 )
 
 var (
-	sk        cipher.SecKey
-	pubk      string
-	wl        string
-	wlkeys    []cipher.PubKey
-	proxyPort int
-	dmsgPort  uint16
-	dmsgDisc           = dmsg.DiscAddr(false)
+	sk           cipher.SecKey
+	pubk         string
+	wl           string
+	wlkeys       []cipher.PubKey
+	proxyPort    int
+	dmsgPort     uint16
+	dmsgDisc     = dmsg.DiscAddr(false)
 	useHTTP      bool
-	httpClient  *http.Client
+	httpClient   *http.Client
 	dmsgSessions int
-	dlog *logging.Logger
+	dlog         *logging.Logger
 )
 
 // Execute executes root CLI command.
@@ -79,7 +77,7 @@ var RootCmd = &cobra.Command{
 		return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
 	}(),
 	Short: "DMSG socks5 proxy server & client",
-	Long: calvin.AsciiFont("dmsg-socks")+`
+	Long: calvin.AsciiFont("dmsg-socks") + `
 	DMSG socks5 proxy server & client`,
 	SilenceErrors:         true,
 	SilenceUsage:          true,
@@ -92,7 +90,7 @@ var RootCmd = &cobra.Command{
 var serveCmd = &cobra.Command{
 	Use:                   "server",
 	Short:                 "dmsg socks5 proxy server",
-	Long:                 "dmsg socks5 proxy server",
+	Long:                  "dmsg socks5 proxy server",
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
@@ -185,9 +183,9 @@ var serveCmd = &cobra.Command{
 
 // proxyCmd serves the local socks5 proxy
 var proxyCmd = &cobra.Command{
-	Use:   "client",
-	Short: "socks5 proxy client for dmsg socks5 proxy server",
-	Long: "socks5 proxy client for dmsg socks5 proxy server",
+	Use:                   "client",
+	Short:                 "socks5 proxy client for dmsg socks5 proxy server",
+	Long:                  "socks5 proxy client for dmsg socks5 proxy server",
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,

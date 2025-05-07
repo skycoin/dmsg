@@ -16,13 +16,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/0magnet/calvin"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
-	"github.com/0magnet/calvin"
 
 	"github.com/skycoin/dmsg/internal/cli"
 	"github.com/skycoin/dmsg/pkg/dmsg"
@@ -72,9 +72,9 @@ func init() {
 
 // RootCmd contains the root cli command
 var RootCmd = &cobra.Command{
-	Use:                   "curl",
-	Short:                 "DMSG curl utility",
-	Long:                  calvin.AsciiFont("dmsgcurl")+`
+	Use:   "curl",
+	Short: "DMSG curl utility",
+	Long: calvin.AsciiFont("dmsgcurl") + `
 	DMSG curl utility`,
 	SilenceErrors:         true,
 	SilenceUsage:          true,
