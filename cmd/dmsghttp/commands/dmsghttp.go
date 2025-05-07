@@ -137,8 +137,10 @@ func server() {
 	} else {
 		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, dmsgDisc, dmsgSessions, pk.String())
 	}
-	defer closeDmsg()
-
+	if err != nil {
+		dlog.WithError(err).Fatal("Error connecting to dmsg network")
+		return
+	}
 	defer closeDmsg()
 
 	lis, err := dmsgC.Listen(uint16(dmsgPort)) //nolint gosec

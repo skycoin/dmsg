@@ -113,7 +113,10 @@ var RootCmd = &cobra.Command{
 			dlog.WithField("public_key", pk.String()).Debug("Connecting to dmsg network...")
 			dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, dmsgDisc, dmsgSessions, pk.String())
 		}
-
+		if err != nil {
+			dlog.WithError(err).Fatal("Error connecting to dmsg network")
+			return
+		}
 		defer closeDmsg()
 		// Perform IP lookup using the context with the proxy dialer
 		ip, err := dmsgC.LookupIP(ctx, srvs)
