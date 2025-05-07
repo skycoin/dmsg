@@ -140,6 +140,11 @@ var serveCmd = &cobra.Command{
 			dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, dmsgDisc, dmsgSessions, pk.String())
 		}
 
+		if err != nil {
+			dlog.WithError(err).Fatal("Error connecting to dmsg network")
+			return
+		}
+
 		defer closeDmsg()
 
 		dlog.Infof("dmsg client pk: " + pk.String())
@@ -214,6 +219,10 @@ var proxyCmd = &cobra.Command{
 		} else {
 			dlog.WithField("public_key", pk.String()).Debug("Connecting to dmsg network...")
 			dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, dmsgDisc, dmsgSessions, pk.String())
+		}
+		if err != nil {
+			dlog.WithError(err).Fatal("Error connecting to dmsg network")
+			return
 		}
 
 		defer closeDmsg()
