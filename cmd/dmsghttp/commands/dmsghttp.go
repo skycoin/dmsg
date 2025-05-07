@@ -137,6 +137,7 @@ func server() {
 	} else {
 		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, dmsgDisc, dmsgSessions, pk.String())
 	}
+	defer closeDmsg()
 
 	defer closeDmsg()
 

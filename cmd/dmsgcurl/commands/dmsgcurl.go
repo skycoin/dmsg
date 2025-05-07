@@ -22,6 +22,7 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
+	"github.com/0magnet/calvin"
 
 	"github.com/skycoin/dmsg/internal/cli"
 	"github.com/skycoin/dmsg/pkg/dmsg"
@@ -73,7 +74,8 @@ func init() {
 var RootCmd = &cobra.Command{
 	Use:                   "curl",
 	Short:                 "DMSG curl utility",
-	Long:                  `DMSG curl utility`,
+	Long:                  calvin.AsciiFont("dmsgcurl")+`
+	DMSG curl utility`,
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
