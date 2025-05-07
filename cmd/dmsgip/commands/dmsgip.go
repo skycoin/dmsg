@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/0magnet/calvin"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cmdutil"
@@ -17,21 +18,25 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
 
-	"github.com/skycoin/dmsg/pkg/disc"
+	"github.com/skycoin/dmsg/internal/cli"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 )
 
 var (
-	dmsgDisc    = dmsg.DiscAddr(false)
-	sk          cipher.SecKey
-	logLvl      string
-	dmsgServers []string
-	proxyAddr   string
-	httpClient  *http.Client
+	dmsgDisc     = dmsg.DiscAddr(false)
+	sk           cipher.SecKey
+	logLvl       string
+	dmsgServers  []string
+	proxyAddr    string
+	httpClient   *http.Client
+	useHTTP      bool
+	dmsgSessions int
 )
 
 func init() {
+	RootCmd.Flags().BoolVarP(&useHTTP, "http", "z", false, "use regular http to connect to dmsg discovery")
 	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "c", dmsgDisc, "dmsg discovery url\033[0m")
+	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to\033[0m\n\r")
 	RootCmd.Flags().StringVarP(&proxyAddr, "proxy", "p", "", "connect to dmsg via proxy (i.e. '127.0.0.1:1080')")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "fatal", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m")
 	if os.Getenv("DMSGIP_SK") != "" {
@@ -47,10 +52,7 @@ var RootCmd = &cobra.Command{
 		return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
 	}(),
 	Short: "DMSG IP utility",
-	Long: `
-	┌┬┐┌┬┐┌─┐┌─┐ ┬┌─┐
-	 │││││└─┐│ ┬ │├─┘
-	─┴┘┴ ┴└─┘└─┘ ┴┴
+	Long: calvin.AsciiFont("dmsgip") + `
 	DMSG IP utility`,
 	SilenceErrors:         true,
 	SilenceUsage:          true,
@@ -58,7 +60,7 @@ var RootCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
 	RunE: func(_ *cobra.Command, _ []string) error {
-		log := logging.MustGetLogger("dmsgip")
+		dlog := logging.MustGetLogger("dmsgip")
 
 		if logLvl != "" {
 			if lvl, err := logging.LevelFromString(logLvl); err == nil {
@@ -80,7 +82,7 @@ var RootCmd = &cobra.Command{
 			pk, sk = cipher.GenerateKeyPair()
 		}
 
-		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+		ctx, cancel := cmdutil.SignalContext(context.Background(), dlog)
 		defer cancel()
 
 		httpClient = &http.Client{}
@@ -90,7 +92,7 @@ var RootCmd = &cobra.Command{
 			// Use SOCKS5 proxy dialer if specified
 			dialer, err = proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
 			if err != nil {
-				log.Fatalf("Error creating SOCKS5 dialer: %v", err)
+				dlog.Fatalf("Error creating SOCKS5 dialer: %v", err)
 			}
 			transport := &http.Transport{
 				Dial: dialer.Dial,
@@ -101,33 +103,25 @@ var RootCmd = &cobra.Command{
 			ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
 		}
 
-		// Create DMSG client
-		dmsgC := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, httpClient, log), &dmsg.Config{MinSessions: dmsg.DefaultMinSessions})
-		go dmsgC.Serve(ctx) // Pass the context here
+		var dmsgC *dmsg.Client
+		var closeDmsg func()
 
-		stop := func() {
-			err := dmsgC.Close()
-			log.WithError(err).Debug("Disconnected from dmsg network.")
-			fmt.Printf("\n")
+		if useHTTP {
+			dlog.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsgDisc).Debug("Connecting to dmsg network...")
+			dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, dmsgDisc, dmsgSessions)
+		} else {
+			dlog.WithField("public_key", pk.String()).Debug("Connecting to dmsg network...")
+			dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, dmsgDisc, dmsgSessions, pk.String())
 		}
-		defer stop()
-
-		log.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsgDisc).
-			Debug("Connecting to dmsg network...")
-
-		select {
-		case <-ctx.Done():
-			stop()
-			return ctx.Err()
-
-		case <-dmsgC.Ready():
-			log.Debug("Dmsg network ready.")
+		if err != nil {
+			dlog.WithError(err).Fatal("Error connecting to dmsg network")
+			return err
 		}
-
+		defer closeDmsg()
 		// Perform IP lookup using the context with the proxy dialer
 		ip, err := dmsgC.LookupIP(ctx, srvs)
 		if err != nil {
-			log.WithError(err).Error("failed to lookup IP")
+			dlog.WithError(err).Error("failed to lookup IP")
 		}
 
 		fmt.Printf("%v\n", ip)
