@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	dLog               *logging.Logger
+	dlog               *logging.Logger
 	httpC              http.Client
 	dmsgC              *dmsg.Client
 	closeDmsg          func()
@@ -54,6 +54,8 @@ var (
 	rawTCP             []bool
 	httpClient         *http.Client //nolint unused
 	dialer             proxy.Dialer = proxy.Direct
+	useHTTP      bool
+
 )
 
 // Execute executes root CLI command.
