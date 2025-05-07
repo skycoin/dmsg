@@ -10,8 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 	"sync"
+	"time"
 
 	"github.com/0magnet/calvin"
 	"github.com/gin-gonic/gin"
@@ -22,14 +22,11 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
 
-
 	"github.com/skycoin/dmsg/internal/cli"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 )
 
 var (
-	startTime = time.Now()
-runTime   time.Duration
 	dlog         = logging.MustGetLogger("dmsghttp")
 	dmsgDisc     = dmsg.DiscAddr(false)
 	dmsgPort     uint
@@ -38,12 +35,12 @@ runTime   time.Duration
 	logLvl       string
 	proxyAddr    string
 	sk           cipher.SecKey
-	pk			cipher.PubKey
+	pk           cipher.PubKey
 	serveDir     string
 	useHTTP      bool
 	wl           string
 	wlkeys       []cipher.PubKey
-	err error
+	err          error
 )
 
 func init() {
@@ -132,10 +129,8 @@ func server() {
 		ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
 	}
 
-
 	var dmsgC *dmsg.Client
 	var closeDmsg func()
-	defer closeDmsg()
 
 	if useHTTP {
 		dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, dmsgDisc, dmsgSessions)
@@ -143,7 +138,9 @@ func server() {
 		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, dmsgDisc, dmsgSessions, pk.String())
 	}
 
-	lis, err := dmsgC.Listen(uint16(dmsgPort))
+	defer closeDmsg()
+
+	lis, err := dmsgC.Listen(uint16(dmsgPort)) //nolint gosec
 	if err != nil {
 		log.WithError(err).Fatal()
 	}
@@ -164,14 +161,14 @@ func server() {
 		authRoute.Use(whitelistAuth(wlkeys))
 	}
 
-r1.Static("/", serveDir)
+	r1.Static("/", serveDir)
 
 	// Start the server using the custom Gin handler
 	serve := &http.Server{
 		Handler:           &GinHandler{Router: r1},
 		ReadHeaderTimeout: 5 * time.Second,
-    ReadTimeout:  10 * time.Second,
-    WriteTimeout: 10 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
 	}
 
 	// Start serving
@@ -186,50 +183,48 @@ r1.Static("/", serveDir)
 	wg.Wait()
 }
 
-
-	func whitelistAuth(whitelistedPKs []cipher.PubKey) gin.HandlerFunc {
-		return func(c *gin.Context) {
-			// Get the remote PK.
-			remotePK, _, err := net.SplitHostPort(c.Request.RemoteAddr)
-			if err != nil {
-				c.Writer.WriteHeader(http.StatusInternalServerError)
-				c.Writer.Write([]byte("500 Internal Server Error"))
-				c.AbortWithStatus(http.StatusInternalServerError)
-				return
-			}
-			// Check if the remote PK is whitelisted.
-			whitelisted := false
-			if len(whitelistedPKs) == 0 {
-				whitelisted = true
-			} else {
-				for _, whitelistedPK := range whitelistedPKs {
-					if remotePK == whitelistedPK.String() {
-						whitelisted = true
-						break
-					}
+func whitelistAuth(whitelistedPKs []cipher.PubKey) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Get the remote PK.
+		remotePK, _, err := net.SplitHostPort(c.Request.RemoteAddr)
+		if err != nil {
+			c.Writer.WriteHeader(http.StatusInternalServerError)
+			c.Writer.Write([]byte("500 Internal Server Error")) //nolint errcheck
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		// Check if the remote PK is whitelisted.
+		whitelisted := false
+		if len(whitelistedPKs) == 0 {
+			whitelisted = true
+		} else {
+			for _, whitelistedPK := range whitelistedPKs {
+				if remotePK == whitelistedPK.String() {
+					whitelisted = true
+					break
 				}
 			}
-			if whitelisted {
-				c.Next()
-			} else {
-				// Otherwise, return a 401 Unauthorized error.
-				c.Writer.WriteHeader(http.StatusUnauthorized)
-				c.Writer.Write([]byte("401 Unauthorized"))
-				c.AbortWithStatus(http.StatusUnauthorized)
-				return
-			}
+		}
+		if whitelisted {
+			c.Next()
+		} else {
+			// Otherwise, return a 401 Unauthorized error.
+			c.Writer.WriteHeader(http.StatusUnauthorized)
+			c.Writer.Write([]byte("401 Unauthorized")) //nolint errcheck
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
 		}
 	}
+}
 
-
+// GinHandler is handler for gin on dmsg http sever
 type GinHandler struct {
-Router *gin.Engine
+	Router *gin.Engine
 }
 
 func (h *GinHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-h.Router.ServeHTTP(w, r)
+	h.Router.ServeHTTP(w, r)
 }
-
 
 func loggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -302,14 +297,6 @@ func resetColor() string {
 	return reset
 }
 
-type consoleColorModeValue int
-var consoleColorMode = autoColor
-const (
-	autoColor consoleColorModeValue = iota
-	disableColor
-	forceColor
-)
-
 const (
 	green   = "\033[97;42m"
 	white   = "\033[90;47m"
@@ -320,8 +307,6 @@ const (
 	cyan    = "\033[97;46m"
 	reset   = "\033[0m"
 )
-
-
 
 // Execute executes root CLI command.
 func Execute() {
