@@ -73,5 +73,7 @@ func StartDmsgDirect(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.
 		return nil, nil, fmt.Errorf("an error occurred during setup dClient for httpClient of destination")
 	}
 
-	return direct.StartDmsg(ctx, dmsgLogger, pk, sk, dClient, dmsg.DefaultConfig())
+	dmsgConfig := dmsg.DefaultConfig()
+	dmsgConfig.MinSessions = dmsgSessions
+	return direct.StartDmsg(ctx, dmsgLogger, pk, sk, dClient, dmsgConfig)
 }
