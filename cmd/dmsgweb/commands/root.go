@@ -27,7 +27,6 @@ var (
 	dlog               *logging.Logger
 	httpC              http.Client
 	dmsgC              *dmsg.Client
-	closeDmsg          func()
 	dmsgDisc           = dmsg.DiscAddr(false)
 	proxyAddr          string
 	dmsgSessions       int
