@@ -31,10 +31,13 @@ var (
 	httpClient   *http.Client
 	useHTTP      bool
 	dmsgSessions int
+	dmsgHTTPPath string
+	err          error
 )
 
 func init() {
 	RootCmd.Flags().BoolVarP(&useHTTP, "http", "z", false, "use regular http to connect to dmsg discovery")
+	RootCmd.Flags().StringVarP(&dmsgHTTPPath, "dmsgconf", "F", "", "dmsghttp-config path\033[0m\n\r")
 	RootCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "c", dmsgDisc, "dmsg discovery url\033[0m")
 	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of dmsg servers to connect to\033[0m\n\r")
 	RootCmd.Flags().StringVarP(&proxyAddr, "proxy", "p", "", "connect to dmsg via proxy (i.e. '127.0.0.1:1080')")
@@ -65,6 +68,17 @@ var RootCmd = &cobra.Command{
 		if logLvl != "" {
 			if lvl, err := logging.LevelFromString(logLvl); err == nil {
 				logging.SetLevel(lvl)
+			}
+		}
+
+		if dmsgHTTPPath != "" {
+			dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath)
+			if err != nil {
+				dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
+			}
+			err = dmsg.InitConfig()
+			if err != nil {
+				dlog.WithError(err).Fatal("Failed to unmarshal dmsghttp-config")
 			}
 		}
 

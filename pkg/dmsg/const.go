@@ -55,17 +55,25 @@ type DmsghttpConfig struct {
 }
 
 func init() {
+	err := InitConfig()
+	if err != nil {
+		log.Panic(err)
+	}
+}
+
+func InitConfig() error {
 	var envServices skywire.EnvServices
 	err := json.Unmarshal(DmsghttpJSON, &envServices)
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
 	err = json.Unmarshal(envServices.Prod, &Prod)
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
 	err = json.Unmarshal(envServices.Test, &Test)
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
+	return nil
 }

@@ -48,6 +48,7 @@ func init() {
 	srvCmd.Flags().UintSliceVarP(&dmsgPort, "dport", "d", dmsgPort, "DMSG port(s) to serve\033[0m\n\r")
 	srvCmd.Flags().StringSliceVarP(&wl, "wl", "w", wl, "whitelisted keys for DMSG authenticated routes\033[0m\n\r")
 	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", dmsgDisc, "DMSG discovery URL\033[0m\n\r")
+	srvCmd.Flags().StringVarP(&dmsgHTTPPath, "dmsgconf", "F", "", "dmsghttp-config path\033[0m\n\r")
 	srvCmd.Flags().StringVarP(&proxyAddr, "proxy", "x", proxyAddr, "connect to DMSG via proxy (e.g., '127.0.0.1:1080')\033[0m\n\r")
 	srvCmd.Flags().IntVarP(&dmsgSess, "dsess", "e", dmsgSess, "DMSG sessions\033[0m\n\r")
 	srvCmd.Flags().BoolSliceVarP(&rawTCP, "rt", "c", rawTCP, "proxy local port as raw TCP, comma separated\033[0m\n\r")
@@ -76,6 +77,18 @@ var srvCmd = &cobra.Command{
 			}
 		}
 		dlog = logging.MustGetLogger("dmsgwebsrv")
+
+		if dmsgHTTPPath != "" {
+			dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath)
+			if err != nil {
+				dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
+			}
+			err = dmsg.InitConfig()
+			if err != nil {
+				dlog.WithError(err).Fatal("Failed to unmarshal dmsghttp-config")
+			}
+		}
+
 		if len(localPort) != len(dmsgPort) || len(localPort) != len(rawTCP) {
 			dlog.Fatal("The number of local ports, DMSG ports, and raw TCP flags must be the same")
 		}
