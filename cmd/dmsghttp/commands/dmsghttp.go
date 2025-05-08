@@ -87,7 +87,7 @@ func server() {
 	log := logging.MustGetLogger("dmsghttp")
 
 	if dmsgHTTPPath != "" {
-		dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath)
+		dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath) //nolint
 		if err != nil {
 			dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
 		}

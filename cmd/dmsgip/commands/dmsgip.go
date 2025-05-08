@@ -72,7 +72,7 @@ var RootCmd = &cobra.Command{
 		}
 
 		if dmsgHTTPPath != "" {
-			dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath)
+			dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath) //nolint
 			if err != nil {
 				dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
 			}

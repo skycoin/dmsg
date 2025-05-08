@@ -110,7 +110,7 @@ var serveCmd = &cobra.Command{
 		}()
 
 		if dmsgHTTPPath != "" {
-			dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath)
+			dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath) //nolint
 			if err != nil {
 				dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
 			}
@@ -215,7 +215,7 @@ var proxyCmd = &cobra.Command{
 		dlog = logging.MustGetLogger("dmsg-proxy-client")
 
 		if dmsgHTTPPath != "" {
-			dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath)
+			dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath) //nolint
 			if err != nil {
 				dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
 			}
