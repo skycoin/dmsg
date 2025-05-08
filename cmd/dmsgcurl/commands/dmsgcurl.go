@@ -36,6 +36,7 @@ var (
 	dmsgSessions   int
 	dmsgcurlData   string
 	sk             cipher.SecKey
+	pk             cipher.PubKey
 	dlog           = logging.MustGetLogger("dmsgcurl")
 	dmsgcurlAgent  string
 	logLvl         string
@@ -48,6 +49,7 @@ var (
 	dialer         = proxy.Direct //nolint unused
 	dmsgHTTPPath   string
 	useHTTP        bool
+	err            error
 )
 
 func init() {
@@ -87,7 +89,19 @@ var RootCmd = &cobra.Command{
 				logging.SetLevel(lvl)
 			}
 		}
-		pk, err := sk.PubKey()
+
+		if dmsgHTTPPath != "" {
+			dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath) //nolint
+			if err != nil {
+				dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
+			}
+			err = dmsg.InitConfig()
+			if err != nil {
+				dlog.WithError(err).Fatal("Failed to unmarshal dmsghttp-config")
+			}
+		}
+
+		pk, err = sk.PubKey()
 		if err != nil {
 			pk, sk = cipher.GenerateKeyPair()
 		}

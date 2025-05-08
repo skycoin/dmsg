@@ -54,6 +54,7 @@ var (
 	httpClient         *http.Client //nolint unused
 	dialer             proxy.Dialer = proxy.Direct
 	useHTTP            bool
+	dmsgHTTPPath       string
 )
 
 // Execute executes root CLI command.
