@@ -61,6 +61,7 @@ func init() {
 	}
 }
 
+// InitConfig initialized the config
 func InitConfig() error {
 	var envServices skywire.EnvServices
 	err := json.Unmarshal(DmsghttpJSON, &envServices)
