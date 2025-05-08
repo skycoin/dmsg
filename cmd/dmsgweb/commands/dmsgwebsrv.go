@@ -89,7 +89,7 @@ var srvCmd = &cobra.Command{
 		dlog = logging.MustGetLogger("dmsgwebsrv")
 
 		if dmsgHTTPPath != "" {
-			dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath)v
+			dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath) //nolint
 			if err != nil {
 				dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
 			}
