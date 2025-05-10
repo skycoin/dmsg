@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -210,10 +211,10 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 	}
 	if err != nil {
 		dlog.WithError(err).Debug("Error connecting to dmsg network")
-//		return curlError{
-//			Error: fmt.Errorf("%s", errorDesc["DMSG_INIT"]),
-//			Code:  errorCode["DMSG_INIT"],
-//		}
+		//		return curlError{
+		//			Error: fmt.Errorf("%s", errorDesc["DMSG_INIT"]),
+		//			Code:  errorCode["DMSG_INIT"],
+		//		}
 	}
 	defer closeDmsg()
 
@@ -257,8 +258,37 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 			req.Header.Set("Content-Type", "text/plain")
 		}
 		resp, err := httpC.Do(req)
+		for attempts := 1; attempts <= 10; attempts++ {
+			if err != nil {
+				var netErr net.Error
+
+				if errors.As(err, &netErr) && netErr.Timeout() {
+					dlog.WithError(err).Error("Failed to perform HTTP request\n")
+					return curlError{
+						Error: fmt.Errorf("%s", errorDesc["RECV_ERROR"]),
+						Code:  errorCode["RECV_ERROR"],
+					}
+				} else if errors.Is(err, context.DeadlineExceeded) {
+					dlog.WithError(err).Error("Failed to perform HTTP request\n")
+					return curlError{
+						Error: fmt.Errorf("%s", errorDesc["RECV_ERROR"]),
+						Code:  errorCode["RECV_ERROR"],
+					}
+				}
+
+				dlog.WithError(err).Debugf("Attempt %d failed, retrying...\n", attempts)
+				time.Sleep(time.Duration(attempts) * time.Second) // Exponential backoff
+				resp, err = httpC.Do(req)
+				continue
+			}
+
+			defer resp.Body.Close()
+			dlog.Debugf("Request succeeded with status code: %d\n", resp.StatusCode)
+			break
+		}
+
 		if err != nil {
-			dlog.WithError(err).Error("Failed to preform HTTP request\n")
+			dlog.WithError(err).Debug("Failed to perform HTTP request after maximum retries\n")
 			return curlError{
 				Error: fmt.Errorf("%s", errorDesc["RECV_ERROR"]),
 				Code:  errorCode["RECV_ERROR"],
