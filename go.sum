@@ -126,8 +126,8 @@ github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6 h1:1Nc5EBY6pjfw1kwW0
 github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6/go.mod h1:UXghlricA7J3aRD/k7p/zBObQfmBawwCxIVPVjz2Q3o=
 github.com/skycoin/skycoin v0.28.1-0.20241105130348-39b49a2d0a7f h1:isCGulVHahQfFoS37B7JT3rb8n4Ih2o9oMg2p25D7o8=
 github.com/skycoin/skycoin v0.28.1-0.20241105130348-39b49a2d0a7f/go.mod h1:1iZLomiHUOEvmJaBNrzE+Tllf09uhrCZ5JLL3cHdKKQ=
-github.com/skycoin/skywire v1.3.29-rc7.0.20250414132907-330ec8cce85f h1:h19lB5QC69EgQNG1P4M1eM+IHEBnfJjGm+EOFD6wTL4=
-github.com/skycoin/skywire v1.3.29-rc7.0.20250414132907-330ec8cce85f/go.mod h1:glvykhPscsNEkZUQf0bdmhzL/IYcT1bvY9HiJNO3Z+I=
+github.com/skycoin/skywire v1.3.29-rc7.0.20250508164904-b41ecc73d7d7 h1:d8cFToBLYpwrOBVxNZBdnIErO6YO10Hd2W0FJ4oFVZ0=
+github.com/skycoin/skywire v1.3.29-rc7.0.20250508164904-b41ecc73d7d7/go.mod h1:23ysuf+uXLHLTSBvYuupEfSywtO7o1opUwN2IvQi4Xk=
 github.com/spf13/cobra v1.4.0/go.mod h1:Wo4iy3BUC+X2Fybo0PDqwJIv3dNRiZLHQymsfxlB84g=
 github.com/spf13/cobra v1.8.1 h1:e5/vxKd/rZsfSJMUX1agtjeTDf+qv1/JdBF8gg5k9ZM=
 github.com/spf13/cobra v1.8.1/go.mod h1:wHxEcudfqmLYa8iTfL+OuZPbBZkmvliBWKIezN3kD9Y=
