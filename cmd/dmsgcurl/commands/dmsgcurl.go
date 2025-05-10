@@ -209,10 +209,11 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions, destination)
 	}
 	if err != nil {
-		return curlError{
-			Error: fmt.Errorf("%s", errorDesc["DMSG_INIT"]),
-			Code:  errorCode["DMSG_INIT"],
-		}
+		dlog.WithError(err).Debug("Error connecting to dmsg network")
+//		return curlError{
+//			Error: fmt.Errorf("%s", errorDesc["DMSG_INIT"]),
+//			Code:  errorCode["DMSG_INIT"],
+//		}
 	}
 	defer closeDmsg()
 
@@ -263,9 +264,7 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 				Code:  errorCode["RECV_ERROR"],
 			}
 		}
-		//		if maxSize > 0 && resp.ContentLength > maxSize*1024 {
-		//			return fmt.Errorf("requested file size is more than allowed size: %d KB > %d KB", (resp.ContentLength / 1024), maxSize)
-		//		}
+
 		n, err := cancellableCopy(ctx, file, resp.Body, resp.ContentLength)
 		if err != nil {
 			dlog.WithError(err).Error(fmt.Sprintf("download failed at %d/%dB\n", n, resp.ContentLength))
@@ -324,7 +323,7 @@ func closeAndCleanFile(file *os.File, err error) {
 
 func closeResponseBody(resp *http.Response) {
 	if err := resp.Body.Close(); err != nil {
-		dlog.WithError(err).Fatal("Failed to close response body\n")
+		dlog.WithError(err).Debug("Failed to close response body\n")
 	}
 }
 

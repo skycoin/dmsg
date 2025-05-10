@@ -148,19 +148,19 @@ func server() {
 		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, dmsgDisc, dmsgSessions, pk.String())
 	}
 	if err != nil {
-		dlog.WithError(err).Fatal("Error connecting to dmsg network")
+		dlog.WithError(err).Debug("Error connecting to dmsg network")
 		return
 	}
 	defer closeDmsg()
 
 	lis, err := dmsgC.Listen(uint16(dmsgPort)) //nolint gosec
 	if err != nil {
-		log.WithError(err).Fatal()
+		dlog.WithError(err).Debug()
 	}
 	go func() {
 		<-ctx.Done()
 		if err := lis.Close(); err != nil {
-			log.WithError(err).Error()
+			dlog.WithError(err).Debug()
 		}
 	}()
 
@@ -186,9 +186,9 @@ func server() {
 
 	// Start serving
 	go func() {
-		log.WithField("dmsg_addr", lis.Addr().String()).Info("Serving...")
+		log.WithField("dmsg_addr", lis.Addr().String(),"\n").Debug("Serving...")
 		if err := serve.Serve(lis); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Serve: %v", err)
+			dlog.WithError(err).Debug("Server error\n")
 		}
 		wg.Done()
 	}()
