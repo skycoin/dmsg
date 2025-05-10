@@ -186,7 +186,7 @@ func server() {
 
 	// Start serving
 	go func() {
-		log.WithField("dmsg_addr", lis.Addr().String(),"\n").Debug("Serving...")
+		log.WithField("dmsg_addr", lis.Addr().String()).Debug("Serving...\n")
 		if err := serve.Serve(lis); err != nil && err != http.ErrServerClosed {
 			dlog.WithError(err).Debug("Server error\n")
 		}
