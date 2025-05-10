@@ -282,7 +282,7 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 				continue
 			}
 
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint
 			dlog.Debugf("Request succeeded with status code: %d\n", resp.StatusCode)
 			break
 		}
