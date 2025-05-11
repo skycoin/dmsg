@@ -38,6 +38,8 @@ var (
 	dmsgcurlData   string
 	sk             cipher.SecKey
 	pk             cipher.PubKey
+	destPK	cipher.PubKey
+	destPort uint16
 	dlog           = logging.MustGetLogger("dmsgcurl")
 	dmsgcurlAgent  string
 	logLvl         string
@@ -119,6 +121,15 @@ var RootCmd = &cobra.Command{
 			dlog.WithError(fmt.Errorf("failed to parse provided URL")).Error(errorDesc["URL_MALFORMAT"] + "\n")
 			os.Exit(errorCode["URL_MALFORMAT"])
 		}
+		destSlc := strings.Split(parsedURL.Host, ":")
+		if len(destSlc) == 1 {
+			destSlc = append(destSlc, "80")
+		}
+		err = destPK.Set(destSlc[0])
+		if err != nil {
+			dlog.WithError(err).Fatal("bad PK for host\n")
+		}
+
 		var cErr curlError
 		if useHTTP {
 			if len(dmsgDiscs) == 0 || dmsgDiscs[0] == "" {
@@ -206,8 +217,7 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 	if !dmsgHTTP {
 		dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
 	} else {
-		destination := strings.Split(parsedURL.Host, ":")[0]
-		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions, destination)
+		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions, destPK.String())
 	}
 	if err != nil {
 		dlog.WithError(err).Debug("Error connecting to dmsg network")
