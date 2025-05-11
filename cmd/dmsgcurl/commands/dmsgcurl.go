@@ -39,7 +39,6 @@ var (
 	sk             cipher.SecKey
 	pk             cipher.PubKey
 	destPK         cipher.PubKey
-	destPort       uint16
 	dlog           = logging.MustGetLogger("dmsgcurl")
 	dmsgcurlAgent  string
 	logLvl         string
