@@ -63,7 +63,7 @@ func init() {
 		return ""
 	}())
 	srvCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "debug", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m\n\r")
-	srvCmd.Flags().BoolVarP(&isEnvs, "envs", "Z", false, "show example .conf file")
+	srvCmd.Flags().BoolVarP(&isEnvs, "envs", "E", false, "show example .conf file")
 	srvCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\033[0m\n\r")
 	srvCmd.CompletionOptions.DisableDefaultCmd = true
 }

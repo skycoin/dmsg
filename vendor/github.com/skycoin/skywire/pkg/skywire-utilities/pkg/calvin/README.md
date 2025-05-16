@@ -1,5 +1,5 @@
 # calvin
-convert text to Calvin S ascii font (https://patorjk.com/software/taag/#p=display&amp;f=Calvin%20S&amp;t=)
+convert text to Calvin S ascii font (https://patorjk.com/software/taag/#p=display&f=Calvin%20S&t=Type%20Something%20)
 
 
 example:
@@ -18,7 +18,7 @@ library usage example
 package main
 
 import (
-	"github.com/0magnet/calvin"
+	"github.com/skycoin/skywire/pkg/skywire-utilities/calvin"
 )
 
 func main() {
