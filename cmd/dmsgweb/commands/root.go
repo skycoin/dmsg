@@ -28,7 +28,8 @@ var (
 	httpC              http.Client
 	dmsgC              *dmsg.Client
 	closeDmsg          func()
-	dmsgDisc           = dmsg.DiscAddr(false)
+	dmsgDiscURL        = dmsg.DiscURL(false)
+	dmsgDiscAddr       = dmsg.DiscAddr(false)
 	proxyAddr          string
 	dmsgSessions       int
 	dmsgAddr           []string //nolint unused

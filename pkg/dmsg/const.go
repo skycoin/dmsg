@@ -35,12 +35,20 @@ var Prod DmsghttpConfig
 // Test is the test deployment dmsghttp-config.json services
 var Test DmsghttpConfig
 
-// DiscAddr returns the address of the dmsg discovery
-func DiscAddr(testenv bool) string {
+// DiscAddr returns the URL of the dmsg discovery service
+func DiscURL(testenv bool) string {
 	if testenv {
 		return skywire.Test.DmsgDiscovery
 	}
 	return skywire.Prod.DmsgDiscovery
+}
+
+// DiscAddr returns the dmsg address of the dmsg discovery service
+func DiscAddr(testenv bool) string {
+	if testenv {
+		return Test.DmsgDiscovery
+	}
+	return Prod.DmsgDiscovery
 }
 
 // DmsghttpConfig is the struct that corresponds to the json data of the dmsghttp-config.json

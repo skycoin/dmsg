@@ -43,7 +43,7 @@ func init() {
 	pk, _ = sk.PubKey() //nolint
 
 	RootCmd.AddCommand(srvCmd)
-	srvCmd.Flags().BoolVarP(&useHTTP, "http", "z", false, "use regular http to connect to dmsg discovery")
+	srvCmd.Flags().BoolVarP(&useHTTP, "http", "z", false, "use regular http to connect to DMSG Discovery")
 	srvCmd.Flags().UintSliceVarP(&localPort, "lport", "p", localPort, "local application interface port(s)\033[0m\n\r")
 	srvCmd.Flags().UintSliceVarP(&dmsgPort, "dport", "d", dmsgPort, "DMSG port(s) to serve\033[0m\n\r")
 	srvCmd.Flags().StringSliceVarP(&wl, "wl", "w", wl, "whitelisted keys for DMSG authenticated routes"+func() string {
@@ -52,7 +52,8 @@ func init() {
 		}
 		return ""
 	}())
-	srvCmd.Flags().StringVarP(&dmsgDisc, "dmsg-disc", "D", dmsgDisc, "DMSG discovery URL\033[0m\n\r")
+	srvCmd.Flags().StringVarP(&dmsgDiscURL, "disc-url", "U", dmsgDiscURL, "DMSG Discovery URL\033[0m\n\r")
+	srvCmd.Flags().StringVarP(&dmsgDiscAddr, "disc-addr", "A", dmsgDiscAddr, "DMSG Discovery dmsg address\033[0m\n\r")
 	srvCmd.Flags().StringVarP(&dmsgHTTPPath, "dmsgconf", "F", "", "dmsghttp-config path")
 	srvCmd.Flags().StringVarP(&proxyAddr, "proxy", "x", proxyAddr, "connect to DMSG via proxy (e.g., '127.0.0.1:1080')")
 	srvCmd.Flags().IntVarP(&dmsgSess, "dsess", "e", dmsgSess, "DMSG sessions\033[0m\n\r")
@@ -137,7 +138,7 @@ func server() {
 	ctx, cancel := cmdutil.SignalContext(context.Background(), dlog)
 	defer cancel()
 
-	dmsgClient := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, &http.Client{}, dlog), dmsg.DefaultConfig())
+	dmsgClient := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDiscURL, &http.Client{}, dlog), dmsg.DefaultConfig())
 	defer func() {
 		if err := dmsgClient.Close(); err != nil {
 			dlog.WithError(err).Error()
@@ -301,10 +302,10 @@ func proxyTCPConnections(ctx context.Context, localPort uint, listener net.Liste
 
 const srvenvfileLinux = `
 #########################################################################
-#--	DMSGWEB SRV CONFIG TEMPLATE
+#--	DMSG WEB SRV CONFIG TEMPLATE
 #--		Defaults shown
 #--		Uncomment to change default value
-#--		LOCALPORT and DMSGPORT must contain the same number of elements
+#--		LOCALPORT, DMSGPORT, and RAWTCP must contain the same number of elements
 #########################################################################
 
 #--	DMSG port to serve
