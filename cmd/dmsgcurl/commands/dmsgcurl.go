@@ -26,14 +26,12 @@ import (
 	"golang.org/x/net/proxy"
 
 	"github.com/skycoin/dmsg/internal/cli"
+	"github.com/skycoin/dmsg/internal/flags"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
 
 var (
-	dmsgDiscURL    = dmsg.DiscURL(false)
-	dmsgDiscAddr   = dmsg.DiscAddr(false)
-	dmsgSessions   int
 	dmsgcurlData   string
 	sk             cipher.SecKey
 	pk             cipher.PubKey
@@ -47,19 +45,13 @@ var (
 	replace        bool
 	proxyAddr      string
 	dialer         = proxy.Direct //nolint unused
-	dmsgHTTPPath   string
-	useHTTP        bool
 	err            error
 )
 
 func init() {
 	RootCmd.Flags().SortFlags = false
-	RootCmd.Flags().BoolVarP(&useHTTP, "http", "z", false, "use regular http to connect to DMSG Discovery")
-	RootCmd.Flags().StringVarP(&dmsgDiscURL, "disc-url", "U", dmsgDiscURL, "DMSG Discovery URL\033[0m\n\r")
-	RootCmd.Flags().StringVarP(&dmsgDiscAddr, "disc-addr", "A", dmsgDiscAddr, "DMSG Discovery dmsg address\033[0m\n\r")
-	RootCmd.Flags().StringVarP(&dmsgHTTPPath, "dmsgconf", "D", "", "dmsghttp-config path")
+	flags.InitFlags(RootCmd)
 	RootCmd.Flags().StringVarP(&proxyAddr, "proxy", "p", proxyAddr, "connect to DMSG via proxy (i.e. '127.0.0.1:1080')")
-	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of DMSG Servers to connect to\033[0m\n\r")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "fatal", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m\n\r")
 	RootCmd.Flags().StringVarP(&dmsgcurlData, "data", "d", "", "dmsghttp POST data")
 	RootCmd.Flags().StringVarP(&dmsgcurlOutput, "out", "o", "", "output filepath")
@@ -91,8 +83,8 @@ var RootCmd = &cobra.Command{
 			}
 		}
 
-		if dmsgHTTPPath != "" {
-			dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath) //nolint
+		if flags.DmsgHTTPPath != "" {
+			dmsg.DmsghttpJSON, err = os.ReadFile(flags.DmsgHTTPPath) //nolint
 			if err != nil {
 				dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
 			}
@@ -129,8 +121,8 @@ var RootCmd = &cobra.Command{
 		}
 
 		var cErr curlError
-		if useHTTP {
-			dlog.Debug("DMSG Discovery: ", dmsgDiscURL)
+		if flags.UseHTTP {
+			dlog.Debug("DMSG Discovery: ", flags.DmsgDiscURL)
 			ctx, cancel := cmdutil.SignalContext(context.Background(), dlog)
 			defer cancel()
 
@@ -152,7 +144,7 @@ var RootCmd = &cobra.Command{
 				ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
 			}
 
-			cErr = handleRequest(ctx, dlog, pk, sk, httpClient, dmsgDiscURL, dmsgSessions, parsedURL, dmsgcurlData, !useHTTP)
+			cErr = handleRequest(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions, parsedURL, dmsgcurlData, !flags.UseHTTP)
 			if cErr.Code == 0 {
 				return nil
 			}
@@ -179,7 +171,7 @@ var RootCmd = &cobra.Command{
 				ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
 			}
 
-			cErr = handleRequest(ctx, dlog, pk, sk, httpClient, "", dmsgSessions, parsedURL, dmsgcurlData, !useHTTP)
+			cErr = handleRequest(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, parsedURL, dmsgcurlData, !flags.UseHTTP)
 			if cErr.Code == 0 {
 				return nil
 			}

@@ -23,39 +23,32 @@ import (
 	"golang.org/x/net/proxy"
 
 	"github.com/skycoin/dmsg/internal/cli"
+	"github.com/skycoin/dmsg/internal/flags"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 )
 
 var (
 	dlog         = logging.MustGetLogger("dmsghttp")
-	dmsgDiscURL  = dmsg.DiscURL(false)
-	dmsgDiscAddr = dmsg.DiscAddr(false)
 	dmsgPort     uint
-	dmsgHTTPPath string
-	dmsgSessions int
 	logLvl       string
 	proxyAddr    string
 	sk           cipher.SecKey
 	pk           cipher.PubKey
 	serveDir     string
-	useHTTP      bool
-	wl           string
+	useDC        bool
+	wl           []string
 	wlkeys       []cipher.PubKey
 	err          error
 )
 
 func init() {
 	RootCmd.Flags().SortFlags = false
-	RootCmd.Flags().BoolVarP(&useHTTP, "http", "z", false, "use regular http to connect to DMSG Discovery")
-	RootCmd.Flags().StringVarP(&dmsgHTTPPath, "dmsgconf", "F", "", "dmsghttp-config path")
+	flags.InitFlags(RootCmd)
 	RootCmd.Flags().StringVarP(&proxyAddr, "proxy", "p", proxyAddr, "connect to DMSG via proxy (i.e. '127.0.0.1:1080')")
-	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", 1, "number of DMSG servers to connect to\033[0m\n\r")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "debug", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m\n\r")
 	RootCmd.Flags().StringVarP(&serveDir, "dir", "r", ".", "local dir to serve via dmsghttp\033[0m\n\r")
 	RootCmd.Flags().UintVarP(&dmsgPort, "port", "d", 80, "DMSG port to serve from\033[0m\n\r")
-	RootCmd.Flags().StringVarP(&wl, "wl", "w", "", "whitelist keys to access server, comma separated")
-	RootCmd.Flags().StringVarP(&dmsgDiscURL, "disc-url", "U", dmsgDiscURL, "DMSG Discovery URL\033[0m\n\r")
-	RootCmd.Flags().StringVarP(&dmsgDiscAddr, "disc-addr", "A", dmsgDiscAddr, "DMSG Discovery dmsg address\033[0m\n\r")
+	RootCmd.Flags().StringSliceVarP(&wl, "wl", "w", []string{}, "whitelist keys to access server, comma separated")
 	if os.Getenv("DMSGHTTP_SK") != "" {
 		sk.Set(os.Getenv("DMSGHTTP_SK")) //nolint
 	}
@@ -86,42 +79,36 @@ func server() {
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 
-	log := logging.MustGetLogger("dmsghttp")
-
-	if dmsgHTTPPath != "" {
-		dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath) //nolint
-		if err != nil {
-			dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
-		}
-		err = dmsg.InitConfig()
-		if err != nil {
-			dlog.WithError(err).Fatal("Failed to unmarshal dmsghttp-config")
-		}
+	err = flags.InitConfig()
+	if err != nil {
+		dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
 	}
+
+
 
 	pk, err = sk.PubKey()
 	if err != nil {
 		pk, sk = cipher.GenerateKeyPair()
 	}
-	if wl != "" {
-		wlk := strings.Split(wl, ",")
-		for _, key := range wlk {
+
+
+		for _, key := range wl {
 			var pk1 cipher.PubKey
 			err := pk1.Set(key)
 			if err == nil {
 				wlkeys = append(wlkeys, pk1)
 			}
 		}
-	}
+
 	if len(wlkeys) > 0 {
 		if len(wlkeys) == 1 {
-			log.Info(fmt.Sprintf("%d key whitelisted", len(wlkeys)))
+			dlog.Info(fmt.Sprintf("%d key whitelisted", len(wlkeys)))
 		} else {
-			log.Info(fmt.Sprintf("%d keys whitelisted", len(wlkeys)))
+			dlog.Info(fmt.Sprintf("%d keys whitelisted", len(wlkeys)))
 		}
 	}
 
-	ctx, cancel := cmdutil.SignalContext(context.Background(), log)
+	ctx, cancel := cmdutil.SignalContext(context.Background(), dlog)
 	defer cancel()
 
 	httpClient := &http.Client{}
@@ -144,10 +131,10 @@ func server() {
 	var dmsgC *dmsg.Client
 	var closeDmsg func()
 
-	if useHTTP {
-		dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, dmsgDiscURL, dmsgSessions)
+	if flags.UseHTTP {
+		dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
 	} else {
-		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", dmsgSessions, pk.String())
+		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, pk.String())
 	}
 	if err != nil {
 		dlog.WithError(err).Debug("Error connecting to dmsg network")
@@ -188,7 +175,7 @@ func server() {
 
 	// Start serving
 	go func() {
-		log.WithField("dmsg_addr", lis.Addr().String()).Debug("Serving...\n")
+		dlog.WithField("dmsg_addr", lis.Addr().String()).Debug("Serving...\n")
 		if err := serve.Serve(lis); err != nil && err != http.ErrServerClosed {
 			dlog.WithError(err).Debug("Server error\n")
 		}

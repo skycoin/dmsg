@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
 
+	"github.com/skycoin/dmsg/internal/flags"
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 )
@@ -30,7 +31,6 @@ var dwscfg = os.Getenv(dwsenv)
 
 func init() {
 	dmsgPort = scriptExecUintSlice("${DMSGPORT[@]:-80}", dwscfg)
-	dmsgSess = scriptExecInt("${DMSGSESSIONS:-1}", dwscfg)
 	wl = scriptExecStringSlice("${WHITELISTPKS[@]}", dwscfg)
 	localPort = scriptExecUintSlice("${LOCALPORT[@]:-8086}", dwscfg)
 	rawTCP = scriptExecBoolSlice("${RAWTCP[@]:-false}", dwscfg)
@@ -43,7 +43,7 @@ func init() {
 	pk, _ = sk.PubKey() //nolint
 
 	RootCmd.AddCommand(srvCmd)
-	srvCmd.Flags().BoolVarP(&useHTTP, "http", "z", false, "use regular http to connect to DMSG Discovery")
+	flags.InitFlags(srvCmd)
 	srvCmd.Flags().UintSliceVarP(&localPort, "lport", "p", localPort, "local application interface port(s)\033[0m\n\r")
 	srvCmd.Flags().UintSliceVarP(&dmsgPort, "dport", "d", dmsgPort, "DMSG port(s) to serve\033[0m\n\r")
 	srvCmd.Flags().StringSliceVarP(&wl, "wl", "w", wl, "whitelisted keys for DMSG authenticated routes"+func() string {
@@ -52,11 +52,7 @@ func init() {
 		}
 		return ""
 	}())
-	srvCmd.Flags().StringVarP(&dmsgDiscURL, "disc-url", "U", dmsgDiscURL, "DMSG Discovery URL\033[0m\n\r")
-	srvCmd.Flags().StringVarP(&dmsgDiscAddr, "disc-addr", "A", dmsgDiscAddr, "DMSG Discovery dmsg address\033[0m\n\r")
-	srvCmd.Flags().StringVarP(&dmsgHTTPPath, "dmsgconf", "F", "", "dmsghttp-config path")
 	srvCmd.Flags().StringVarP(&proxyAddr, "proxy", "x", proxyAddr, "connect to DMSG via proxy (e.g., '127.0.0.1:1080')")
-	srvCmd.Flags().IntVarP(&dmsgSess, "dsess", "e", dmsgSess, "DMSG sessions\033[0m\n\r")
 	srvCmd.Flags().BoolSliceVarP(&rawTCP, "rt", "c", rawTCP, "proxy local port as raw TCP, comma separated"+func() string {
 		if len(rawTCP) > 0 {
 			return "\033[0m\n\r"
@@ -89,15 +85,9 @@ var srvCmd = &cobra.Command{
 		}
 		dlog = logging.MustGetLogger("dmsgwebsrv")
 
-		if dmsgHTTPPath != "" {
-			dmsg.DmsghttpJSON, err = os.ReadFile(dmsgHTTPPath) //nolint
-			if err != nil {
-				dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
-			}
-			err = dmsg.InitConfig()
-			if err != nil {
-				dlog.WithError(err).Fatal("Failed to unmarshal dmsghttp-config")
-			}
+		err = flags.InitConfig()
+		if err != nil {
+			dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
 		}
 
 		if len(localPort) != len(dmsgPort) || len(localPort) != len(rawTCP) {
@@ -138,7 +128,7 @@ func server() {
 	ctx, cancel := cmdutil.SignalContext(context.Background(), dlog)
 	defer cancel()
 
-	dmsgClient := dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDiscURL, &http.Client{}, dlog), dmsg.DefaultConfig())
+	dmsgClient := dmsg.NewClient(pk, sk, disc.NewHTTP(flags.DmsgDiscURL, &http.Client{}, dlog), dmsg.DefaultConfig())
 	defer func() {
 		if err := dmsgClient.Close(); err != nil {
 			dlog.WithError(err).Error()
