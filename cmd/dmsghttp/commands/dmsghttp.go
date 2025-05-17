@@ -28,17 +28,17 @@ import (
 )
 
 var (
-	dlog         = logging.MustGetLogger("dmsghttp")
-	dmsgPort     uint
-	logLvl       string
-	proxyAddr    string
-	sk           cipher.SecKey
-	pk           cipher.PubKey
-	serveDir     string
-	useDC        bool
-	wl           []string
-	wlkeys       []cipher.PubKey
-	err          error
+	dlog      = logging.MustGetLogger("dmsghttp")
+	dmsgPort  uint
+	logLvl    string
+	proxyAddr string
+	sk        cipher.SecKey
+	pk        cipher.PubKey
+	serveDir  string
+	useDC     bool
+	wl        []string
+	wlkeys    []cipher.PubKey
+	err       error
 )
 
 func init() {
@@ -84,21 +84,18 @@ func server() {
 		dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
 	}
 
-
-
 	pk, err = sk.PubKey()
 	if err != nil {
 		pk, sk = cipher.GenerateKeyPair()
 	}
 
-
-		for _, key := range wl {
-			var pk1 cipher.PubKey
-			err := pk1.Set(key)
-			if err == nil {
-				wlkeys = append(wlkeys, pk1)
-			}
+	for _, key := range wl {
+		var pk1 cipher.PubKey
+		err := pk1.Set(key)
+		if err == nil {
+			wlkeys = append(wlkeys, pk1)
 		}
+	}
 
 	if len(wlkeys) > 0 {
 		if len(wlkeys) == 1 {

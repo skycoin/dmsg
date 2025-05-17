@@ -3,28 +3,30 @@ package flags
 
 import (
 	"os"
+
 	"github.com/spf13/cobra"
+
 	"github.com/skycoin/dmsg/pkg/dmsg"
 )
 
 var (
 	// DmsgDiscURL is the dmsg discovery URL
-	DmsgDiscURL    = dmsg.DiscURL(false)
+	DmsgDiscURL = dmsg.DiscURL(false)
 
 	// DmsgDiscAddr is the dmsg discovery dmsg address
-	DmsgDiscAddr   = dmsg.DiscAddr(false)
+	DmsgDiscAddr = dmsg.DiscAddr(false)
 
 	// DmsgSessions is the default number of sessions i.e. servers to connecet to
-	DmsgSessions   = 2
+	DmsgSessions = 2
 
 	// DmsgHTTPPath is the path to the dmsghttp-config.json which overrides embedded defaults
-	DmsgHTTPPath   string
+	DmsgHTTPPath string
 
 	// UseHTTP connecet to the dmsg discoverey over plain http or dmsghttp
-	UseHTTP        = false
+	UseHTTP = false
 
 	// UseDC use dmsg direct client with embedded dmsg server configuration and don't connect to discovery server
-	UseDC        = false
+	UseDC = false
 )
 
 func InitFlags(cmd *cobra.Command) {
@@ -45,8 +47,8 @@ func InitConfig() error {
 		}
 		err = dmsg.InitConfig()
 		if err != nil {
-		return err
-	}
+			return err
+		}
 	}
 	return err
 
