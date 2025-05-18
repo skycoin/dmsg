@@ -27,6 +27,7 @@ import (
 	"golang.org/x/net/proxy"
 
 	"github.com/skycoin/dmsg/internal/cli"
+	"github.com/skycoin/dmsg/internal/flags"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
@@ -56,7 +57,6 @@ func init() {
 	proxyPort = scriptExecUint("${PROXYPORT:-4445}", dwcfg)
 	addProxy = scriptExecString("${ADDPROXY}", dwcfg)
 	resolveDmsgAddr = scriptExecStringSlice("${RESOLVEPK[@]}", dwcfg)
-	dmsgSess = scriptExecInt("${DMSGSESSIONS:-1}", dwcfg)
 	rawTCP = scriptExecBoolSlice("${RAWTCP[@]:-false}", dwcfg)
 	if os.Getenv("DMSGWEBSK") != "" {
 		sk.Set(os.Getenv("DMSGWEBSK")) //nolint
@@ -66,16 +66,13 @@ func init() {
 	}
 	pk, _ = sk.PubKey() //nolint
 
-	RootCmd.Flags().BoolVarP(&useHTTP, "http", "z", false, "use regular http to connect to DMSG Discovery")
+	flags.InitFlags(RootCmd)
 	RootCmd.Flags().StringVarP(&filterDomainSuffix, "filter", "f", ".dmsg", "domain suffix to filter\033[0m\n\r")
 	RootCmd.Flags().UintVarP(&proxyPort, "socks", "q", proxyPort, "port to serve the socks5 proxy\033[0m\n\r")
 	RootCmd.Flags().StringVarP(&addProxy, "addproxy", "r", addProxy, "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)\033[0m\n\r")
 	RootCmd.Flags().UintSliceVarP(&webPort, "port", "p", webPort, "port(s) to serve the web application\033[0m\n\r")
 	RootCmd.Flags().StringSliceVarP(&resolveDmsgAddr, "resolve", "t", resolveDmsgAddr, "resolve the specified dmsg address:port on the local port & disable proxy\033[0m\n\r")
-	RootCmd.Flags().StringVarP(&dmsgDiscURL, "disc-url", "U", dmsgDiscURL, "DMSG Discovery URL\033[0m\n\r")
-	RootCmd.Flags().StringVarP(&dmsgDiscAddr, "disc-addr", "A", dmsgDiscAddr, "DMSG Discovery dmsg address\033[0m\n\r")
 	RootCmd.Flags().StringVarP(&proxyAddr, "proxy", "x", "", "connect to DMSG via proxy (i.e. '127.0.0.1:1080')\033[0m\n\r")
-	RootCmd.Flags().IntVarP(&dmsgSessions, "sess", "e", dmsgSess, "number of DMSG Servers to connect to\033[0m\n\r")
 	RootCmd.Flags().BoolSliceVarP(&rawTCP, "rt", "c", rawTCP, "proxy to local port as raw TCP, comma separated\033[0m\n\r")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "debug", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m\n\r")
 	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r")
@@ -117,10 +114,10 @@ dmsgweb conf file detected: ` + dwcfg
 			}
 		}
 		dlog = logging.MustGetLogger("dmsgweb")
-		if dmsgDiscURL == "" {
+		if flags.DmsgDiscURL == "" {
 			dlog.Fatal("Dmsg Discovery Server URL not specified")
 		}
-		if dmsgDiscAddr == "" {
+		if flags.DmsgDiscURL == "" {
 			dlog.Fatal("Dmsg Discovery Server dmsg address not specified")
 		}
 
@@ -228,12 +225,12 @@ dmsgweb conf file detected: ` + dwcfg
 			ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
 		}
 
-		if useHTTP {
-			dlog.WithField("public_key", pk.String()).WithField("dmsg_disc", dmsgDiscURL).Debug("Connecting to dmsg network...")
-			dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, dmsgDiscURL, dmsgSessions)
+		if flags.UseHTTP {
+			dlog.WithField("public_key", pk.String()).WithField("dmsg_disc", flags.DmsgDiscURL).Debug("Connecting to dmsg network...")
+			dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
 		} else {
 			dlog.WithField("public_key", pk.String()).Debug("Connecting to dmsg network...")
-			dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", dmsgSessions, dialPK[0].String())
+			dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, dialPK[0].String())
 		}
 
 		defer closeDmsg()
@@ -484,9 +481,6 @@ const envfileLinux = //nolint unused
 
 #--	Use raw tcp mode instead of http (also disables proxy)
 #RAWTCP=('false')
-
-#--	Number of dmsg servers to connect to (0 unlimits)
-#DMSGSESSIONS=2
 
 #--	Dmsg port to use
 #DMSGPORT=('80')

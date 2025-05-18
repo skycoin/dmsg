@@ -35,7 +35,6 @@ var (
 	sk        cipher.SecKey
 	pk        cipher.PubKey
 	serveDir  string
-	useDC     bool
 	wl        []string
 	wlkeys    []cipher.PubKey
 	err       error

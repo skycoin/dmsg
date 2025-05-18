@@ -28,10 +28,7 @@ var (
 	httpC              http.Client
 	dmsgC              *dmsg.Client
 	closeDmsg          func()
-	dmsgDiscURL        = dmsg.DiscURL(false)
-	dmsgDiscAddr       = dmsg.DiscAddr(false)
 	proxyAddr          string
-	dmsgSessions       int
 	dmsgAddr           []string //nolint unused
 	dialPK             []cipher.PubKey
 	filterDomainSuffix string
@@ -47,7 +44,6 @@ var (
 	isEnvs             bool
 	dmsgPort           []uint
 	dmsgPorts          []uint
-	dmsgSess           int
 	wl                 []string
 	wlkeys             []cipher.PubKey
 	localPort          []uint
@@ -55,8 +51,6 @@ var (
 	rawTCP             []bool
 	httpClient         *http.Client //nolint unused
 	dialer             proxy.Dialer = proxy.Direct
-	useHTTP            bool
-	dmsgHTTPPath       string
 )
 
 // Execute executes root CLI command.
@@ -219,6 +213,7 @@ func scriptExecUintSlice(s, envfile string) []uint {
 	return res
 }
 
+/*
 func scriptExecInt(s, envfile string) int {
 	if runtime.GOOS == "windows" {
 		var variable string
@@ -253,6 +248,8 @@ func scriptExecInt(s, envfile string) int {
 	}
 	return 0
 }
+*/
+
 func scriptExecUint(s, envfile string) uint {
 	if runtime.GOOS == "windows" {
 		var variable string

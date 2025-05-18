@@ -35,7 +35,7 @@ var Prod DmsghttpConfig
 // Test is the test deployment dmsghttp-config.json services
 var Test DmsghttpConfig
 
-// DiscAddr returns the URL of the dmsg discovery service
+// DiscURL returns the URL of the dmsg discovery service
 func DiscURL(testenv bool) string {
 	if testenv {
 		return skywire.Test.DmsgDiscovery

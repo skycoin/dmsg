@@ -1,4 +1,4 @@
-// Package cobracli internal/flags/flags.go
+// Package flags internal/flags/flags.go
 package flags
 
 import (
@@ -29,6 +29,7 @@ var (
 	UseDC = false
 )
 
+// InitFlags is used to set command flags for the above variables
 func InitFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&UseHTTP, "http", "Z", UseHTTP, "use regular http to connect to DMSG Discovery")
 	cmd.Flags().BoolVarP(&UseDC, "direct", "B", UseDC, "use dmsg-direct client & don't connect to DMSG Discovery")
@@ -38,6 +39,7 @@ func InitFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&DmsgSessions, "sess", "e", DmsgSessions, "number of DMSG Servers to connect to\033[0m\n\r")
 }
 
+// InitConfig is used to set command flags for the above variables
 func InitConfig() error {
 	var err error
 	if DmsgHTTPPath != "" {
