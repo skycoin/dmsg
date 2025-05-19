@@ -134,9 +134,11 @@ func server() {
 		if flags.UseHTTP {
 			dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
 		} else {
-			dmsgDC, closeDmsgDC, err := cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
+			var dmsgDC *dmsg.Client
+			var closeDmsgDC func()
+			dmsgDC, closeDmsgDC, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
 			if err != nil {
-				dlog.WithError(err).Debug("Error connecting to dmsg network")
+				dlog.WithError(err).Error("Error connecting to dmsg network")
 				return
 			}
 			defer closeDmsgDC()
@@ -145,7 +147,7 @@ func server() {
 		}
 	}
 	if err != nil {
-		dlog.WithError(err).Debug("Error connecting to dmsg network")
+		dlog.WithError(err).Error("Error connecting to dmsg network")
 		return
 	}
 	defer closeDmsg()
