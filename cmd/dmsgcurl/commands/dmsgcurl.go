@@ -121,62 +121,31 @@ var RootCmd = &cobra.Command{
 		}
 
 		var cErr curlError
-		if flags.UseHTTP {
-			dlog.Debug("DMSG Discovery: ", flags.DmsgDiscURL)
-			ctx, cancel := cmdutil.SignalContext(context.Background(), dlog)
-			defer cancel()
+		ctx, cancel := cmdutil.SignalContext(context.Background(), dlog)
+		defer cancel()
 
-			httpClient := &http.Client{}
-
-			if proxyAddr != "" {
-				// Use SOCKS5 proxy dialer if specified
-				dialer, err := proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
-				if err != nil {
-					dlog.WithError(fmt.Errorf("Error creating SOCKS5 dialer: %v", err)).Error(errorDesc["COULDNT_RESOLVE_PROXY"])
-					os.Exit(errorCode["COULDNT_RESOLVE_PROXY"])
-				}
-				transport := &http.Transport{
-					Dial: dialer.Dial,
-				}
-				httpClient = &http.Client{
-					Transport: transport,
-				}
-				ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
+		httpClient := &http.Client{}
+		if proxyAddr != "" {
+			// Use SOCKS5 proxy dialer if specified
+			dialer, err := proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
+			if err != nil {
+				dlog.WithError(fmt.Errorf("Error creating SOCKS5 dialer: %v", err)).Error(errorDesc["COULDNT_RESOLVE_PROXY"])
+				os.Exit(errorCode["COULDNT_RESOLVE_PROXY"])
 			}
-
-			cErr = handleRequest(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions, parsedURL, dmsgcurlData, !flags.UseHTTP)
-			if cErr.Code == 0 {
-				return nil
+			transport := &http.Transport{
+				Dial: dialer.Dial,
 			}
-			dlog.WithError(cErr.Error).Debug("An error occurred\n")
-		} else { //Use direct dmsg client & embedded config
-			dlog.Debug("DMSG Direct connection")
-			ctx, cancel := cmdutil.SignalContext(context.Background(), dlog)
-			defer cancel()
-
-			httpClient := &http.Client{}
-			if proxyAddr != "" {
-				// Use SOCKS5 proxy dialer if specified
-				dialer, err := proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
-				if err != nil {
-					dlog.WithError(fmt.Errorf("Error creating SOCKS5 dialer: %v", err)).Error(errorDesc["COULDNT_RESOLVE_PROXY"])
-					os.Exit(errorCode["COULDNT_RESOLVE_PROXY"])
-				}
-				transport := &http.Transport{
-					Dial: dialer.Dial,
-				}
-				httpClient = &http.Client{
-					Transport: transport,
-				}
-				ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
+			httpClient = &http.Client{
+				Transport: transport,
 			}
-
-			cErr = handleRequest(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, parsedURL, dmsgcurlData, !flags.UseHTTP)
-			if cErr.Code == 0 {
-				return nil
-			}
-			dlog.WithError(cErr.Error).Debug("An error occurred\n")
+			ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
 		}
+
+		cErr = handleRequest(ctx, pk, sk, httpClient, parsedURL, dmsgcurlData)
+		if cErr.Code == 0 {
+			return nil
+		}
+
 		if cErr.Code != 0 {
 			dlog.WithError(cErr.Error).Error("An error occurred\n")
 			return cErr.Error
@@ -185,7 +154,7 @@ var RootCmd = &cobra.Command{
 	},
 }
 
-func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, dmsgDisc string, dmsgSessions int, parsedURL *url.URL, dmsgcurlData string, dmsgHTTP bool) curlError {
+func handleRequest(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, parsedURL *url.URL, dmsgcurlData string) curlError {
 	file, err := prepareOutputFile()
 	if err != nil {
 		return curlError{
@@ -196,17 +165,35 @@ func handleRequest(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.Pu
 	defer closeAndCleanFile(file, err)
 	var dmsgC *dmsg.Client
 	var closeDmsg func()
-	if !dmsgHTTP {
-		dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dmsgLogger, pk, sk, httpClient, dmsgDisc, dmsgSessions)
+
+	if flags.UseDC {
+		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, pk.String())
 	} else {
-		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dmsgLogger, pk, sk, httpClient, "", dmsgSessions, destPK.String())
+		if flags.UseHTTP {
+			dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
+		} else {
+			var dmsgDC *dmsg.Client
+			var closeDmsgDC func()
+			dmsgDC, closeDmsgDC, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
+			if err != nil {
+				dlog.WithError(err).Error("Error connecting to dmsg network")
+				return curlError{
+					Error: fmt.Errorf("%s", errorDesc["DMSG_INIT"]),
+					Code:  errorCode["DMSG_INIT"],
+				}
+			}
+			defer closeDmsgDC()
+			dmsgHTTP := &http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgDC)}
+			dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
+		}
 	}
+
 	if err != nil {
 		dlog.WithError(err).Debug("Error connecting to dmsg network")
-		//		return curlError{
-		//			Error: fmt.Errorf("%s", errorDesc["DMSG_INIT"]),
-		//			Code:  errorCode["DMSG_INIT"],
-		//		}
+		return curlError{
+			Error: fmt.Errorf("%s", errorDesc["DMSG_INIT"]),
+			Code:  errorCode["DMSG_INIT"],
+		}
 	}
 	defer closeDmsg()
 
