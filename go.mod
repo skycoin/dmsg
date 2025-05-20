@@ -5,7 +5,6 @@ go 1.24
 toolchain go1.24.2
 
 require (
-	github.com/0magnet/calvin v0.0.0-20241204203002-126d3bcd81d8
 	github.com/ActiveState/termtest/conpty v0.5.0
 	github.com/VictoriaMetrics/metrics v1.36.0
 	github.com/bitfield/script v0.24.1
