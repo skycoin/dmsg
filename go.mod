@@ -6,13 +6,13 @@ toolchain go1.24.2
 
 require (
 	github.com/ActiveState/termtest/conpty v0.5.0
-	github.com/VictoriaMetrics/metrics v1.36.0
+	github.com/VictoriaMetrics/metrics v1.37.0
 	github.com/bitfield/script v0.24.1
 	github.com/chen3feng/safecast v0.0.0-20220908170618-81b2ecd47937
 	github.com/coder/websocket v1.8.13
 	github.com/confiant-inc/go-socks5 v0.0.0-20210816151940-c1124825b1d6
 	github.com/creack/pty v1.1.24
-	github.com/gin-gonic/gin v1.10.0
+	github.com/gin-gonic/gin v1.10.1
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/hashicorp/yamux v0.1.2
@@ -22,7 +22,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
 	github.com/skycoin/skycoin v0.28.1-0.20241105130348-39b49a2d0a7f //DO NOT MODIFY OR UPDATE v0.28.1-0.20241105130348-39b49a2d0a7f
-	github.com/skycoin/skywire v1.3.29-rc7.0.20250511174520-aee80a241891
+	github.com/skycoin/skywire v1.3.29-rc7.0.20250513064423-44197bc76ba7
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/net v0.40.0
@@ -70,10 +70,7 @@ require (
 	mvdan.cc/sh/v3 v3.11.0 // indirect
 )
 
-// Uncomment for tests with alternate branches of 'skywire-utilities'
+// Uncomment for tests with alternate branches of 'skywire'
 //replace github.com/skycoin/skywire => ../skywire
 //replace github.com/skycoin/skywire => github.com/skycoin/skywire <commit-hash>
-//replace github.com/skycoin/skywire => github.com/skycoin/skywire v1.3.29-rc7.0.20250511174520-aee80a241891
-
-// replace github.com/skycoin/skywire-utilities => ../skywire-utilities
-// replace github.com/skycoin/skywire-utilities => github.com/skycoin/skywire-utilities
+//replace github.com/skycoin/skywire => github.com/skycoin/skywire v1.3.29-rc7.0.20250513064423-44197bc76ba7
