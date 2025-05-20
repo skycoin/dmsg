@@ -16,13 +16,13 @@ var (
 	// DmsgDiscAddr is the dmsg discovery dmsg address
 	DmsgDiscAddr = dmsg.DiscAddr(false)
 
-	// DmsgSessions is the default number of sessions i.e. servers to connecet to
+	// DmsgSessions is the default number of sessions i.e. servers to connect to
 	DmsgSessions = 2
 
 	// DmsgHTTPPath is the path to the dmsghttp-config.json which overrides embedded defaults
 	DmsgHTTPPath string
 
-	// UseHTTP connecet to the dmsg discoverey over plain http or dmsghttp
+	// UseHTTP connect to the dmsg discoverey over plain http or dmsghttp
 	UseHTTP = false
 
 	// UseDC use dmsg direct client with embedded dmsg server configuration and don't connect to discovery server

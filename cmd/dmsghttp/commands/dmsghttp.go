@@ -129,7 +129,26 @@ func server() {
 	var closeDmsg func()
 
 	if flags.UseDC {
+		//TODO: implement direct client which gets the servers from dmsg-disc via http client that can be configured to use a proxy
+		/*
+					if flags.UseHTTP {
+						//TODO: support proxy configuration here & in all direct client functions that interact with dmsg-disc
+						// Need to be able to specify http client as input to dmsghttp.GetServers
+						servers := dmsghttp.GetServers(ctx, flags.DmsgDiscURL, "", dlog)
+						config := &dmsg.Config{
+							MinSessions:          flags.DmsgSessions,
+							UpdateInterval:       dmsg.DefaultUpdateInterval,
+			//				ConnectedServersType: dmsgServerType,
+						}
+						var keys cipher.PubKeys
+						keys = append(keys, pk)
+						dClient := direct.NewClient(direct.GetAllEntries(keys, servers), log)
+
+						dmsgC, closeDmsg, err := direct.StartDmsg(ctx, log, pk, sk, dClient, config)
+					} else {
+		*/
 		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, pk.String())
+		//		}
 	} else {
 		if flags.UseHTTP {
 			dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)

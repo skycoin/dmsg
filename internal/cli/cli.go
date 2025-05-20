@@ -45,6 +45,7 @@ func StartDmsg(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey
 	}
 }
 
+// StartDmsgDirect starts dmsg returns a dmsg direct client
 func StartDmsgDirect(ctx context.Context, dmsgLogger *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, _ string, dmsgSessions int, destination string) (dmsgC *dmsg.Client, stop func(), err error) { //nolint:all
 	var servers []*disc.Entry
 	for i := range dmsg.Prod.DmsgServers {

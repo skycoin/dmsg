@@ -8,13 +8,11 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 
 	"github.com/chen3feng/safecast"
 	"github.com/confiant-inc/go-socks5"
@@ -159,12 +157,12 @@ dmsgweb conf file detected: ` + dwcfg
 		}
 	},
 	Run: func(_ *cobra.Command, _ []string) {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt, syscall.SIGTERM) //nolint
-		go func() {
-			<-c
-			os.Exit(0)
-		}()
+		//		c := make(chan os.Signal, 1)
+		//		signal.Notify(c, os.Interrupt, syscall.SIGTERM) //nolint
+		//		go func() {
+		//			<-c
+		//			os.Exit(0)
+		//		}()
 
 		ctx, cancel := cmdutil.SignalContext(context.Background(), dlog)
 		defer cancel()
@@ -225,23 +223,38 @@ dmsgweb conf file detected: ` + dwcfg
 			ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
 		}
 
-		if flags.UseHTTP {
-			dlog.WithField("public_key", pk.String()).WithField("dmsg_disc", flags.DmsgDiscURL).Debug("Connecting to dmsg network...")
-			dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
+		if flags.UseDC {
+			dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, pk.String())
 		} else {
-			dlog.WithField("public_key", pk.String()).Debug("Connecting to dmsg network...")
-			dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, dialPK[0].String())
+			if flags.UseHTTP {
+				dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
+			} else {
+				var dmsgDC *dmsg.Client
+				var closeDmsgDC func()
+				dmsgDC, closeDmsgDC, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
+				if err != nil {
+					dlog.WithError(err).Error("Error connecting to dmsg network")
+					return
+				}
+				defer closeDmsgDC()
+				dmsgHTTP := &http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgDC)}
+				dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
+			}
 		}
-
+		if err != nil {
+			dlog.WithError(err).Error("Error connecting to dmsg network")
+			return
+		}
 		defer closeDmsg()
 
-		go func() {
-			<-ctx.Done()
-			cancel()
-			closeDmsg()
-			os.Exit(0)
-		}()
-
+		/*
+			go func() {
+				<-ctx.Done()
+				cancel()
+				closeDmsg()
+				os.Exit(0)
+			}()
+		*/
 		httpC = http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
 
 		if len(resolveDmsgAddr) == 0 {
