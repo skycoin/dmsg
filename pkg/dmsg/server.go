@@ -226,7 +226,7 @@ func (s *Server) handleSession(conn net.Conn) {
 			log.WithError(dSes.Close()).Info("Stopped session corrupted.")
 			return
 		}
-		log.WithField("pk", dSes.rPK.String()).Info("Stopped session.")
+		log.Info("Stopped session.")
 	}()
 
 	if s.setSession(ctx, dSes.SessionCommon) {
