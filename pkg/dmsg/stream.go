@@ -6,9 +6,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/hashicorp/yamux"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
+	"github.com/xtaci/smux"
 
 	"github.com/skycoin/dmsg/pkg/noise"
 )
@@ -16,7 +16,7 @@ import (
 // Stream represents a dmsg connection between two dmsg clients.
 type Stream struct {
 	ses  *ClientSession // back reference
-	yStr *yamux.Stream
+	yStr *smux.Stream
 
 	// The following fields are to be filled after handshake.
 	lAddr  Addr
@@ -241,7 +241,7 @@ func (s *Stream) ServerPK() cipher.PubKey {
 
 // StreamID returns the stream ID.
 func (s *Stream) StreamID() uint32 {
-	return s.yStr.StreamID()
+	return s.yStr.ID()
 }
 
 // Read implements io.Reader

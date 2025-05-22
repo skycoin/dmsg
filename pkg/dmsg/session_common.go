@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/chen3feng/safecast"
-	"github.com/hashicorp/yamux"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
+	"github.com/xtaci/smux"
 
 	"github.com/skycoin/dmsg/pkg/noise"
 )
@@ -24,7 +24,7 @@ type SessionCommon struct {
 	rPK    cipher.PubKey // remote pk
 
 	netConn net.Conn // underlying net.Conn (TCP connection to the dmsg server)
-	ys      *yamux.Session
+	ys      *smux.Session
 	ns      *noise.Noise
 	nMap    noise.NonceMap
 	rMx     sync.Mutex
@@ -71,7 +71,7 @@ func (sc *SessionCommon) initClient(entity *EntityCommon, conn net.Conn, rPK cip
 		return ErrSessionHandshakeExtraBytes
 	}
 
-	ySes, err := yamux.Client(conn, yamux.DefaultConfig())
+	ySes, err := smux.Client(conn, smux.DefaultConfig())
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (sc *SessionCommon) initServer(entity *EntityCommon, conn net.Conn) error {
 		return ErrSessionHandshakeExtraBytes
 	}
 
-	ySes, err := yamux.Server(conn, yamux.DefaultConfig())
+	ySes, err := smux.Server(conn, smux.DefaultConfig())
 	if err != nil {
 		return err
 	}
@@ -168,9 +168,6 @@ func (sc *SessionCommon) LocalTCPAddr() net.Addr { return sc.netConn.LocalAddr()
 
 // RemoteTCPAddr returns the remote address of the underlying TCP connection.
 func (sc *SessionCommon) RemoteTCPAddr() net.Addr { return sc.netConn.RemoteAddr() }
-
-// Ping obtains the round trip latency of the session.
-func (sc *SessionCommon) Ping() (time.Duration, error) { return sc.ys.Ping() }
 
 // Close closes the session.
 func (sc *SessionCommon) Close() error {

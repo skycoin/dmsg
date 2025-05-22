@@ -6,9 +6,9 @@ import (
 	"io"
 	"net"
 
-	"github.com/hashicorp/yamux"
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/netutil"
+	"github.com/xtaci/smux"
 
 	"github.com/skycoin/dmsg/internal/servermetrics"
 	"github.com/skycoin/dmsg/pkg/noise"
@@ -49,7 +49,7 @@ func (ss *ServerSession) Serve() {
 		yStr, err := ss.ys.AcceptStream()
 		if err != nil {
 			switch err {
-			case yamux.ErrSessionShutdown, io.EOF:
+			case smux.ErrConsumed, io.EOF:
 				ss.log.WithError(err).Info("Stopping session...")
 			default:
 				ss.log.WithError(err).Warn("Failed to accept stream, stopping session...")
@@ -57,17 +57,17 @@ func (ss *ServerSession) Serve() {
 			return
 		}
 
-		log := ss.log.WithField("yamux_id", yStr.StreamID())
+		log := ss.log.WithField("smux_id", yStr.ID())
 		log.Info("Initiating stream.")
 
-		go func(yStr *yamux.Stream) {
+		go func(yStr *smux.Stream) {
 			err := ss.serveStream(log, yStr)
 			log.WithError(err).Info("Stopped stream.")
 		}(yStr)
 	}
 }
 
-func (ss *ServerSession) serveStream(log logrus.FieldLogger, yStr *yamux.Stream) error {
+func (ss *ServerSession) serveStream(log logrus.FieldLogger, yStr *smux.Stream) error {
 	readRequest := func() (StreamRequest, error) {
 		obj, err := ss.readObject(yStr)
 		if err != nil {
@@ -164,12 +164,12 @@ func addrToIP(addr net.Addr) (net.IP, error) {
 	}
 }
 
-func (ss *ServerSession) forwardRequest(req StreamRequest) (yStr *yamux.Stream, respObj SignedObject, err error) {
+func (ss *ServerSession) forwardRequest(req StreamRequest) (yStr *smux.Stream, respObj SignedObject, err error) {
 	defer func() {
 		if err != nil && yStr != nil {
 			ss.log.
 				WithError(yStr.Close()).
-				Debugf("After forwardRequest failed, the yamux stream is closed.")
+				Debugf("After forwardRequest failed, the smux stream is closed.")
 		}
 	}()
 

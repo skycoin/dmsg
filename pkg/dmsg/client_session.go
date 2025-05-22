@@ -2,11 +2,9 @@
 package dmsg
 
 import (
-	"errors"
 	"net"
 	"time"
 
-	"github.com/hashicorp/yamux"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/netutil"
 )
@@ -130,10 +128,6 @@ func (cs *ClientSession) serve() error {
 				continue
 			}
 
-			if errors.Is(err, yamux.ErrSessionShutdown) {
-				cs.log.WithError(err).Debug("Stopped accepting streams.")
-				return err
-			}
 			cs.log.WithError(err).Warn("Stopped accepting streams.")
 			return err
 		}
