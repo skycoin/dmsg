@@ -49,7 +49,7 @@ func (ss *ServerSession) Serve() {
 		yStr, err := ss.ys.AcceptStream()
 		if err != nil {
 			switch err {
-			case smux.ErrConsumed, io.EOF:
+			case io.EOF:
 				ss.log.WithError(err).Info("Stopping session...")
 			default:
 				ss.log.WithError(err).Warn("Failed to accept stream, stopping session...")
