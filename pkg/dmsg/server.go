@@ -221,7 +221,12 @@ func (s *Server) handleSession(conn net.Conn) {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		awaitDone(ctx, s.done)
-		log.WithError(dSes.Close()).Info("Stopped session.")
+		err := dSes.Close()
+		if err != nil {
+			log.WithError(dSes.Close()).Info("Stopped session corrupted.")
+			return
+		}
+		log.WithField("pk", dSes.rPK.String()).Info("Stopped session.")
 	}()
 
 	if s.setSession(ctx, dSes.SessionCommon) {
