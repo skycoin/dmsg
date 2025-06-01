@@ -22,7 +22,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
 	github.com/skycoin/skycoin v0.28.1-0.20241105130348-39b49a2d0a7f //DO NOT MODIFY OR UPDATE v0.28.1-0.20241105130348-39b49a2d0a7f
-	github.com/skycoin/skywire v1.3.29-rc7.0.20250520183323-190aec794bf9
+	github.com/skycoin/skywire v1.3.29-rc7.0.20250531233621-adbfd6b7eaed
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/net v0.40.0
@@ -59,7 +59,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
-	github.com/ugorji/go/codec v1.2.12 // indirect
+	github.com/ugorji/go/codec v1.2.14 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
 	golang.org/x/arch v0.17.0 // indirect
@@ -73,4 +73,4 @@ require (
 // Uncomment for tests with alternate branches of 'skywire'
 //replace github.com/skycoin/skywire => ../skywire
 //replace github.com/skycoin/skywire => github.com/skycoin/skywire <commit-hash>
-//replace github.com/skycoin/skywire => github.com/skycoin/skywire v1.3.29-rc7.0.20250513064423-44197bc76ba7
+//replace github.com/skycoin/skywire => github.com/skycoin/skywire v1.3.29-rc7.0.20250531233621-adbfd6b7eaed

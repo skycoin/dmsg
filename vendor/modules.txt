@@ -206,7 +206,7 @@ github.com/skycoin/skycoin/src/cipher/ripemd160
 github.com/skycoin/skycoin/src/cipher/secp256k1-go
 github.com/skycoin/skycoin/src/cipher/secp256k1-go/secp256k1-go2
 github.com/skycoin/skycoin/src/util/logging
-# github.com/skycoin/skywire v1.3.29-rc7.0.20250520183323-190aec794bf9
+# github.com/skycoin/skywire v1.3.29-rc7.0.20250531233621-adbfd6b7eaed
 ## explicit; go 1.24
 github.com/skycoin/skywire
 github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo
@@ -248,7 +248,7 @@ github.com/twitchyliquid64/golang-asm/objabi
 github.com/twitchyliquid64/golang-asm/src
 github.com/twitchyliquid64/golang-asm/sys
 github.com/twitchyliquid64/golang-asm/unsafeheader
-# github.com/ugorji/go/codec v1.2.12
+# github.com/ugorji/go/codec v1.2.14
 ## explicit; go 1.11
 github.com/ugorji/go/codec
 # github.com/valyala/fastrand v1.1.0
