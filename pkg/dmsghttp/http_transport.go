@@ -83,7 +83,6 @@ func (wb *wrappedBody) Close() error {
 	return err2
 }
 
-
 func closeStream(ctx context.Context, resp *http.Response, stream *dmsg.Stream) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
