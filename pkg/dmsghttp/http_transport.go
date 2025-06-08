@@ -54,12 +54,35 @@ func (t HTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	defer func() {
-		go closeStream(t.ctx, resp, stream)
-	}()
+	// Wrap resp.Body to ensure the stream is closed when the body is closed
+	resp.Body = &wrappedBody{
+		ReadCloser: resp.Body,
+		stream:     stream,
+	}
 
 	return resp, nil
 }
+
+// wrappedBody ensures that the DMSG stream is closed when the HTTP response body is closed.
+type wrappedBody struct {
+	io.ReadCloser
+	stream *dmsg.Stream
+}
+
+func (wb *wrappedBody) Close() error {
+	// Drain the response body up to a limit (e.g., 512KB).
+	const maxDrainBytes = 512 * 1024
+	_, _ = io.CopyN(io.Discard, wb.ReadCloser, maxDrainBytes)
+
+	err1 := wb.ReadCloser.Close()
+	err2 := wb.stream.Close()
+
+	if err1 != nil {
+		return err1
+	}
+	return err2
+}
+
 
 func closeStream(ctx context.Context, resp *http.Response, stream *dmsg.Stream) {
 	ticker := time.NewTicker(time.Second)
