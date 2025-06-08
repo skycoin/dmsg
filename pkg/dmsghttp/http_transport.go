@@ -82,28 +82,3 @@ func (wb *wrappedBody) Close() error {
 	}
 	return err2
 }
-
-func closeStream(ctx context.Context, resp *http.Response, stream *dmsg.Stream) {
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			_, err := resp.Body.Read(nil)
-			log := stream.Logger()
-			// If error is not nil and is equal to ErrBodyReadAfterClose or EOF
-			// then it means that the body has been closed so we close the stream
-			if err != nil && (errors.Is(err, http.ErrBodyReadAfterClose) || errors.Is(err, io.EOF)) {
-				err := stream.Close()
-				if err != nil {
-					log.Warnf("Error closing stream: %v", err)
-				}
-				return
-			}
-		}
-	}
-
-}
