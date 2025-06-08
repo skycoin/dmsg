@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
+	"github.com/chen3feng/safecast"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/calvin"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
@@ -24,13 +27,15 @@ import (
 )
 
 var (
-	sk          cipher.SecKey
-	dmsgServers []string
+	sk       cipher.SecKey
+	dpk      cipher.PubKey
+	waitTime int
+	dport    uint
 )
 
 func init() {
 	flags.InitFlags(RootCmd)
-	RootCmd.Flags().StringSliceVarP(&dmsgServers, "srv", "d", []string{}, "dmsg server public keys")
+	RootCmd.Flags().IntVarP(&waitTime, "wait", "w", 0, "wait time in seconds before disconnecting\n\r\033[0m")
 	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r\033[0m")
 }
 
@@ -49,7 +54,7 @@ var RootCmd = &cobra.Command{
 	DisableSuggestions:    true,
 	DisableFlagsInUseLine: true,
 	Version:               buildinfo.Version(),
-	Run: func(_ *cobra.Command, _ []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		dlog := logging.MustGetLogger("dmsgdial")
 		lvl, err := logging.LevelFromString("debug")
 		if err == nil {
@@ -61,18 +66,41 @@ var RootCmd = &cobra.Command{
 			pk, sk = cipher.GenerateKeyPair()
 		}
 
+		if len(args) > 0 && strings.Contains(args[0], ":") {
+			parts := strings.Split(args[0], ":")
+			if len(parts) < 1 || parts[0] == "" {
+				dlog.Fatal("Invalid dmsg address format. Expected <public_key>[:<port>]")
+			}
+
+			// Parse the public key
+			if err := dpk.Set(parts[0]); err != nil {
+				dlog.WithError(err).Fatal("Failed to parse public key from dmsg address")
+			}
+			dlog.Info("Parsed dmsg client public key to dial: ", dpk.String())
+			// Parse the port or use the default (80)
+			dport = uint(80) // Default port
+			if len(parts) > 1 && parts[1] != "" {
+				parsedPort, err := strconv.ParseUint(parts[1], 10, 16) // Ports are 16-bit unsigned integers
+				if err != nil {
+					dlog.WithError(err).Fatal("Failed to parse dmsg port")
+				}
+				dport = uint(parsedPort)
+			}
+			dlog.Info("Parsed dmsg client port to dial: ", dport)
+		}
+
 		ctx, cancel := cmdutil.SignalContext(context.Background(), dlog)
 		defer cancel()
 
 		httpClient := &http.Client{}
-
+		dmsgC  :=       &dmsg.Client{}
 		var closeDmsg func()
 
 		if flags.UseDC {
-			_, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, pk.String())
+			dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, pk.String())
 		} else {
 			if flags.UseHTTP {
-				_, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
+				dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
 			} else {
 				var dmsgDC *dmsg.Client
 				var closeDmsgDC func()
@@ -83,12 +111,30 @@ var RootCmd = &cobra.Command{
 				}
 				defer closeDmsgDC()
 				dmsgHTTP := &http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgDC)}
-				_, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
+				dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
 			}
 		}
 		if err != nil {
 			dlog.WithError(err).Error("Error connecting to dmsg network")
+			return
 		}
+		if len(args) > 0 {
+			dlog.Debug(fmt.Sprintf("Dialing %v:%v", dpk.String(), dport))
+			dp, ok := safecast.To[uint16](dport)
+			if !ok {
+				dlog.Fatal("uint16 overflow when converting dmsg port")
+			}
+			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dpk, Port: dp}) //nolint
+			if err != nil {
+				dlog.WithError(err).Warn(fmt.Sprintf("Failed to dial dmsg address %v port %v", dpk.String(), dp))
+			}
+			err = dmsgConn.Close() //nolint
+			if err != nil {
+				dlog.WithError(err).Error("Error closing dmsg client connection")
+			}
+		}
+
+		time.Sleep(time.Duration(waitTime) * time.Second)
 		dlog.Info("Disconnecting from dmsg network")
 		closeDmsg()
 	},
