@@ -4,6 +4,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -63,7 +64,11 @@ var RootCmd = &cobra.Command{
 
 		pk, err := sk.PubKey()
 		if err != nil {
-			pk, sk = cipher.GenerateKeyPair()
+			_, sk = cipher.GenerateKeyPair()
+			pk, err = sk.PubKey()
+			if err != nil {
+				dlog.WithError(err).Fatal("Failed to derive public key from secret key")
+			}
 		}
 
 		if len(args) > 0 && strings.Contains(args[0], ":") {
@@ -100,17 +105,44 @@ var RootCmd = &cobra.Command{
 			dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, pk.String())
 		} else {
 			if flags.UseHTTP {
+				resp, err := httpClient.Get(flags.DmsgDiscURL + "/health")
+				if err != nil {
+					dlog.WithError(err).Fatal("Error connecting to dmsg-discovery with http client")
+				}
+				defer resp.Body.Close()
+
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					dlog.WithError(err).Error("Failed to read response body from discovery")
+				} else {
+					dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", flags.DmsgDiscURL, string(body))
+				}
+
 				dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
 			} else {
+				//Default dmsghttp mode
 				var dmsgDC *dmsg.Client
 				var closeDmsgDC func()
-				dmsgDC, closeDmsgDC, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
+				dmsgDC, closeDmsgDC, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscAddr, flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
 				if err != nil {
 					dlog.WithError(err).Error("Error connecting to dmsg network")
 					return
 				}
 				defer closeDmsgDC()
 				dmsgHTTP := &http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgDC)}
+
+				resp, err := dmsgHTTP.Get(flags.DmsgDiscAddr + "/health")
+				if err != nil {
+					dlog.WithError(err).Fatal("Error connecting to dmsg-discovery with dmsg direct client via current dmsg server.")
+				}
+				defer resp.Body.Close()
+
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					dlog.WithError(err).Error("Failed to read response body from dmsg-discovery")
+				} else {
+					dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", flags.DmsgDiscURL, string(body))
+				}
 				dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
 			}
 		}
