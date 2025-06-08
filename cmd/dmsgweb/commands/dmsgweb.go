@@ -112,6 +112,12 @@ dmsgweb conf file detected: ` + dwcfg
 			}
 		}
 		dlog = logging.MustGetLogger("dmsgweb")
+
+		err = flags.InitConfig()
+		if err != nil {
+			dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
+		}
+
 		if flags.DmsgDiscURL == "" {
 			dlog.Fatal("Dmsg Discovery Server URL not specified")
 		}
@@ -120,10 +126,10 @@ dmsgweb conf file detected: ` + dwcfg
 		}
 
 		if len(resolveDmsgAddr) > 0 && len(webPort) != len(resolveDmsgAddr) {
-			dlog.Fatal("--resolve -t flag cannot contain a different number of elements than -port -p flag")
+			dlog.Fatal("--resolve -t flag cannot contain a different number of elements than --port -p flag")
 		}
 		if len(resolveDmsgAddr) == 0 && len(webPort) > 1 {
-			dlog.Fatal("--port -p flag cannot specify multiple ports without specifying multiple dmsg address:port(s) to -resolve --t flag")
+			dlog.Fatal("--port -p flag cannot specify multiple ports without specifying multiple dmsg address:port(s) to --resolve -t flag")
 		}
 
 		seenResolveDmsgAddr := make(map[string]bool)
