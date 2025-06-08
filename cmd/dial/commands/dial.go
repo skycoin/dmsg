@@ -93,7 +93,7 @@ var RootCmd = &cobra.Command{
 		defer cancel()
 
 		httpClient := &http.Client{}
-		dmsgC  :=       &dmsg.Client{}
+		dmsgC := &dmsg.Client{}
 		var closeDmsg func()
 
 		if flags.UseDC {
