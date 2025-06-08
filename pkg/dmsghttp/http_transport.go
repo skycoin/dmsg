@@ -4,11 +4,9 @@ package dmsghttp
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 )
