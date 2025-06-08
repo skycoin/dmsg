@@ -72,7 +72,7 @@ type wrappedBody struct {
 func (wb *wrappedBody) Close() error {
 	// Drain the response body up to a limit (e.g., 512KB).
 	const maxDrainBytes = 512 * 1024
-	_, _ = io.CopyN(io.Discard, wb.ReadCloser, maxDrainBytes)
+	_, _ = io.CopyN(io.Discard, wb.ReadCloser, maxDrainBytes) //nolint
 
 	err1 := wb.ReadCloser.Close()
 	err2 := wb.stream.Close()
