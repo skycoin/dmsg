@@ -47,9 +47,31 @@ var RootCmd = &cobra.Command{
 	}(),
 	Short: "DMSG Dial utility",
 	Long: calvin.AsciiFont("dmsgdial") + `
-	DMSG Dial network test utility
+DMSG Dial network test utility
+Test connection to dmsg servers
+Test connecting to dmsg client address [<pk>:<port>]
 
-	Test connection to dmsg server`,
+Default mode of operation is dmsghttp:
+	* Start dmsg-direct client ; connect directly to a dmsg server
+	* HTTP client is configured with a dmsg HTTP transport provided by the dmsg-direct client
+	* HTTP client is used to make HTTP GET request to '/health' of dmsg discovery dmsg address
+	* If the dmsg-discovery is unreachable via the configured http client:
+		- Shuffle dmsg servers
+		- Re-make dmsg direct clent
+		- Reconfigure HTTP client with dmsg HTTP transport provided by the dmsg-direct client
+		- Fetch '/health' from dmsg discovery dmsg address
+		- Repeat the previous 4 steps on error / until no error
+	* Start dmsghttp client
+	* Connect to dmsg client address if specified
+
+'-Z' flag: use plain http to connect to dmsg-discovery
+	* Start dmsghttp client
+	* Connect to dmsg client address if specified
+
+'-B' flag: use dmsg direct client
+	* Start dmsg direct client
+	* Connect to dmsg client address if specified
+`,
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
@@ -120,36 +142,56 @@ var RootCmd = &cobra.Command{
 
 				dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
 			} else {
-				//Default dmsghttp mode
-				var dmsgDC *dmsg.Client
+				// Default dmsghttp mode
+				var dmsgHTTP *http.Client
 				var closeDmsgDC func()
-				dmsgDC, closeDmsgDC, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscAddr, flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
-				if err != nil {
-					dlog.WithError(err).Error("Error connecting to dmsg network")
-					return
+
+				for {
+					dlog.Debug("Initializing DMSG config and attempting connection...")
+
+					//Randomize dmsg servers
+					dmsg.InitConfig()
+
+					dmsgDC, closeFn, err := cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscAddr, flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
+					if err != nil {
+						dlog.WithError(err).Error("Failed to start dmsg direct client. Retrying...")
+						continue
+					}
+
+					dmsgHTTP = &http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgDC)}
+
+					resp, err := dmsgHTTP.Get(flags.DmsgDiscAddr + "/health")
+					if err != nil {
+						dlog.WithError(err).Error("Failed to access dmsg-discovery via dmsgHTTP. Retrying...")
+						closeFn()
+						continue
+					}
+
+					defer resp.Body.Close()
+
+					body, err := io.ReadAll(resp.Body)
+					if err != nil {
+						dlog.WithError(err).Error("Failed to read response body from dmsg-discovery")
+					} else {
+						dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", flags.DmsgDiscAddr, string(body))
+					}
+
+					// success — assign and break
+					closeDmsgDC = closeFn
+					break
 				}
+
 				defer closeDmsgDC()
-				dmsgHTTP := &http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgDC)}
 
-				resp, err := dmsgHTTP.Get(flags.DmsgDiscAddr + "/health")
-				if err != nil {
-					dlog.WithError(err).Fatal("Error connecting to dmsg-discovery with dmsg direct client via current dmsg server.")
-				}
-				defer resp.Body.Close()
-
-				body, err := io.ReadAll(resp.Body)
-				if err != nil {
-					dlog.WithError(err).Error("Failed to read response body from dmsg-discovery")
-				} else {
-					dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", flags.DmsgDiscURL, string(body))
-				}
 				dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
 			}
 		}
+
 		if err != nil {
 			dlog.WithError(err).Error("Error connecting to dmsg network")
 			return
 		}
+
 		if len(args) > 0 {
 			dlog.Debug(fmt.Sprintf("Dialing %v:%v", dpk.String(), dport))
 			dp, ok := safecast.To[uint16](dport)
