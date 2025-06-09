@@ -23,6 +23,7 @@ import (
 
 	"github.com/skycoin/dmsg/internal/cli"
 	"github.com/skycoin/dmsg/internal/flags"
+	"github.com/skycoin/dmsg/pkg/disc"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
@@ -52,25 +53,25 @@ Test connection to dmsg servers
 Test connecting to dmsg client address [<pk>:<port>]
 
 Default mode of operation is dmsghttp:
-	* Start dmsg-direct client ; connect directly to a dmsg server
-	* HTTP client is configured with a dmsg HTTP transport provided by the dmsg-direct client
-	* HTTP client is used to make HTTP GET request to '/health' of dmsg discovery dmsg address
-	* If the dmsg-discovery is unreachable via the configured http client:
-		- Shuffle dmsg servers
-		- Re-make dmsg direct clent
-		- Reconfigure HTTP client with dmsg HTTP transport provided by the dmsg-direct client
-		- Fetch '/health' from dmsg discovery dmsg address
-		- Repeat the previous 4 steps on error / until no error
-	* Start dmsghttp client
-	* Connect to dmsg client address if specified
+* Start dmsg-direct client ; connect directly to a dmsg server
+* HTTP client is configured with a dmsg HTTP transport provided by the dmsg-direct client
+* HTTP client is used to make HTTP GET request to '/health' of dmsg discovery dmsg address
+* If the dmsg-discovery is unreachable via the configured http client:
+	- Shuffle dmsg servers
+	- Re-make dmsg direct clent
+	- Reconfigure HTTP client with dmsg HTTP transport provided by the dmsg-direct client
+	- Fetch '/health' from dmsg discovery dmsg address
+	- Repeat the previous 4 steps on error / until no error
+* Start dmsghttp client
+* Connect to dmsg client address (if specified)
 
 '-Z' flag: use plain http to connect to dmsg-discovery
-	* Start dmsghttp client
-	* Connect to dmsg client address if specified
+* Start dmsg client
+* Connect to dmsg client address (if specified)
 
 '-B' flag: use dmsg direct client
-	* Start dmsg direct client
-	* Connect to dmsg client address if specified
+* Start dmsg-direct client
+* Connect to dmsg client address (if specified)
 `,
 	SilenceErrors:         true,
 	SilenceUsage:          true,
@@ -144,44 +145,55 @@ Default mode of operation is dmsghttp:
 			} else {
 				// Default dmsghttp mode
 				var dmsgHTTP *http.Client
-				var closeDmsgDC func()
+				//				var closeDmsgDC func()
 
-				for {
-					dlog.Debug("Initializing DMSG config and attempting connection...")
+				var dmsgClients []*dmsg.Client
+				var closeFns []func()
 
-					//Randomize dmsg servers
-					dmsg.InitConfig()
+				dlog.Debug("Starting DMSG direct clients.")
+				for _, server := range dmsg.Prod.DmsgServers {
+					if len(dmsgClients) >= flags.DmsgSessions {
+						break
+					}
 
-					dmsgDC, closeFn, err := cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscAddr, flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
+					dmsgDC, closeFn, err := cli.StartDmsgDirectWithServers(
+						ctx, dlog, pk, sk, httpClient, flags.DmsgDiscAddr,
+						[]*disc.Entry{&server}, flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr),
+					)
 					if err != nil {
-						dlog.WithError(err).Error("Failed to start dmsg direct client. Retrying...")
+						dlog.WithError(err).Error("Failed to start DMSG direct client. Skipping server...")
 						continue
 					}
 
-					dmsgHTTP = &http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgDC)}
-
-					resp, err := dmsgHTTP.Get(flags.DmsgDiscAddr + "/health")
-					if err != nil {
-						dlog.WithError(err).Error("Failed to access dmsg-discovery via dmsgHTTP. Retrying...")
-						closeFn()
-						continue
-					}
-
-					defer resp.Body.Close()
-
-					body, err := io.ReadAll(resp.Body)
-					if err != nil {
-						dlog.WithError(err).Error("Failed to read response body from dmsg-discovery")
-					} else {
-						dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", flags.DmsgDiscAddr, string(body))
-					}
-
-					// success — assign and break
-					closeDmsgDC = closeFn
-					break
+					dmsgClients = append(dmsgClients, dmsgDC)
+					closeFns = append(closeFns, closeFn)
 				}
 
-				defer closeDmsgDC()
+				if len(dmsgClients) == 0 {
+					dlog.Fatal("Failed to start any DMSG direct clients.")
+				}
+
+				// Build HTTP client with fallback round tripper
+				dmsgHTTP = &http.Client{
+					Transport: NewFallbackRoundTripper(ctx, dmsgClients),
+				}
+
+				dlog.Debug("Checking discovery /health using fallback DMSG HTTP client.")
+				resp, err := dmsgHTTP.Get(flags.DmsgDiscAddr + "/health")
+				if err != nil {
+					for _, fn := range closeFns {
+						fn()
+					}
+					dlog.WithError(err).Fatal("All DMSG transports failed to reach discovery /health")
+				}
+				defer resp.Body.Close()
+
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					dlog.WithError(err).Error("Failed to read discovery /health response body")
+				} else {
+					dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", flags.DmsgDiscAddr, string(body))
+				}
 
 				dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
 			}
@@ -219,4 +231,33 @@ func Execute() {
 	if err := RootCmd.Execute(); err != nil {
 		log.Fatal("Failed to execute command: ", err)
 	}
+}
+
+// FallbackRoundTripper tries multiple DMSG transports until one succeeds.
+type FallbackRoundTripper struct {
+	ctx     context.Context
+	clients []*dmsg.Client
+}
+
+// NewFallbackRoundTripper initializes the fallback round tripper.
+func NewFallbackRoundTripper(ctx context.Context, clients []*dmsg.Client) http.RoundTripper {
+	return &FallbackRoundTripper{
+		ctx:     ctx,
+		clients: clients,
+	}
+}
+
+// RoundTrip tries each DMSG client in order until a successful response is received.
+func (f *FallbackRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	var lastErr error
+	for _, client := range f.clients {
+		rt := dmsghttp.MakeHTTPTransport(f.ctx, client)
+		resp, err := rt.RoundTrip(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		return resp, nil
+	}
+	return nil, fmt.Errorf("all DMSG transports failed: last error: %w", lastErr)
 }
