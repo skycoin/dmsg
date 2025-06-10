@@ -222,24 +222,7 @@ dmsgweb conf file detected: ` + dwcfg
 			ctx = context.WithValue(context.Background(), "socks5_proxy", proxyAddr) //nolint
 		}
 
-		if flags.UseDC {
-			dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, pk.String())
-		} else {
-			if flags.UseHTTP {
-				dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
-			} else {
-				var dmsgDC *dmsg.Client
-				var closeDmsgDC func()
-				dmsgDC, closeDmsgDC, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
-				if err != nil {
-					dlog.WithError(err).Error("Error connecting to dmsg network")
-					return
-				}
-				defer closeDmsgDC()
-				dmsgHTTP := &http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgDC)}
-				dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
-			}
-		}
+		dmsgC, closeDmsg, err = cli.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, "")
 		if err != nil {
 			dlog.WithError(err).Error("Error connecting to dmsg network")
 			return

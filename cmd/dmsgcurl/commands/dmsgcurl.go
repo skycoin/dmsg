@@ -94,9 +94,13 @@ var RootCmd = &cobra.Command{
 			}
 		}
 
-		pk, err = sk.PubKey()
+		pk, err := sk.PubKey()
 		if err != nil {
-			pk, sk = cipher.GenerateKeyPair()
+			_, sk = cipher.GenerateKeyPair()
+			pk, err = sk.PubKey()
+			if err != nil {
+				dlog.WithError(err).Fatal("Failed to derive public key from secret key")
+			}
 		}
 		if len(args) == 0 {
 			dlog.WithError(fmt.Errorf("no URL(s) provided")).Error(errorDesc["FAILED_INIT"] + "\n")
@@ -165,28 +169,7 @@ func handleRequest(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, http
 	defer closeAndCleanFile(file, err)
 	var dmsgC *dmsg.Client
 	var closeDmsg func()
-
-	if flags.UseDC {
-		dmsgC, closeDmsg, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, pk.String())
-	} else {
-		if flags.UseHTTP {
-			dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
-		} else {
-			var dmsgDC *dmsg.Client
-			var closeDmsgDC func()
-			dmsgDC, closeDmsgDC, err = cli.StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
-			if err != nil {
-				dlog.WithError(err).Error("Error connecting to dmsg network")
-				return curlError{
-					Error: fmt.Errorf("%s", errorDesc["DMSG_INIT"]),
-					Code:  errorCode["DMSG_INIT"],
-				}
-			}
-			defer closeDmsgDC()
-			dmsgHTTP := &http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgDC)}
-			dmsgC, closeDmsg, err = cli.StartDmsg(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
-		}
-	}
+	dmsgC, closeDmsg, err = cli.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, "")
 
 	if err != nil {
 		dlog.WithError(err).Debug("Error connecting to dmsg network")
