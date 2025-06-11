@@ -31,7 +31,7 @@ var (
 	dpk      cipher.PubKey
 	waitTime int
 	dport    uint
-	logLvl         string
+	logLvl   string
 )
 
 func init() {
