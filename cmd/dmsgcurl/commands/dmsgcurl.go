@@ -169,7 +169,7 @@ func handleRequest(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, http
 	defer closeAndCleanFile(file, err)
 	var dmsgC *dmsg.Client
 	var closeDmsg func()
-	dmsgC, closeDmsg, err = cli.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, "")
+	dmsgC, closeDmsg, err = cli.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, parsedURL.String())
 
 	if err != nil {
 		dlog.WithError(err).Debug("Error connecting to dmsg network")
