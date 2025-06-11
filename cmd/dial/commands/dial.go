@@ -22,6 +22,7 @@ import (
 
 	"github.com/skycoin/dmsg/internal/cli"
 	"github.com/skycoin/dmsg/internal/flags"
+	"github.com/skycoin/dmsg/pkg/disc"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 )
 
@@ -120,31 +121,62 @@ Default mode of operation is dmsghttp:
 		ctx, cancel := cmdutil.SignalContext(context.Background(), dlog)
 		defer cancel()
 
-		dmsgC, closeDmsg, err := cli.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, pk.String())
-		if err != nil {
-			dlog.WithError(err).Error("Error connecting to dmsg network")
-			return
+		var dmsgClients []*dmsg.Client
+		if flags.UseDC {
+			dlog.Debug("Starting DMSG direct clients.")
+			for _, server := range dmsg.Prod.DmsgServers {
+				if len(dmsgClients) >= flags.DmsgSessions {
+					break
+				}
+				dest := dpk.String()
+
+				dmsgDC, closeFn, err := cli.StartDmsgDirectWithServers(ctx, dlog, pk, sk, "", []*disc.Entry{&server}, flags.DmsgSessions, dest)
+				if err != nil {
+					dlog.WithError(err).Error("Failed to start DMSG direct client. Skipping server...")
+					continue
+				}
+
+				defer closeFn()
+				dmsgClients = append(dmsgClients, dmsgDC)
+			}
+		} else {
+			dmsgC, closeDmsg, err := cli.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, pk.String())
+			if err != nil {
+				dlog.WithError(err).Error("Error connecting to dmsg network")
+				return
+			}
+			defer closeDmsg()
+			dmsgClients = append(dmsgClients, dmsgC)
 		}
 
 		if len(args) > 0 {
-			dlog.Debug(fmt.Sprintf("Dialing %v:%v", dpk.String(), dport))
 			dp, ok := safecast.To[uint16](dport)
 			if !ok {
 				dlog.Fatal("uint16 overflow when converting dmsg port")
 			}
-			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dpk, Port: dp}) //nolint
-			if err != nil {
-				dlog.WithError(err).Warn(fmt.Sprintf("Failed to dial dmsg address %v port %v", dpk.String(), dp))
-			}
-			err = dmsgConn.Close() //nolint
-			if err != nil {
-				dlog.WithError(err).Error("Error closing dmsg client connection")
+			dlog.Debug(fmt.Sprintf("Dialing dmsg address %v:%v", dpk.String(), dp))
+			for _, dmsgC := range dmsgClients {
+				dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dpk, Port: dp}) //nolint
+				if err != nil {
+					dlog.WithError(err).Warn("Failed to connect to remote host via dmsg servers: ", dmsgC.ConnectedServersPK())
+					err = dmsgConn.Close() //nolint
+					if err != nil {
+						dlog.WithError(err).Error("Error closing dmsg client connection")
+					}
+					continue
+				}
+				dlog.Debug("Successfully dialed remote host with dmsg servers: ", dmsgC.ConnectedServersPK())
+
+				err = dmsgConn.Close() //nolint
+				if err != nil {
+					dlog.WithError(err).Error("Error closing dmsg client connection")
+				}
 			}
 		}
 
 		time.Sleep(time.Duration(waitTime) * time.Second)
 		dlog.Info("Disconnecting from dmsg network")
-		closeDmsg()
+
 	},
 }
 
