@@ -20,7 +20,7 @@ import (
 
 func InitDmsgWithFlags(ctx context.Context, dlog *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, destination string) (dmsgC *dmsg.Client, stop func(), err error) {
 	if flags.UseDC {
-		return StartDmsgDirect(ctx, dlog, pk, sk, httpClient, "", flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(destination))
+		return StartDmsgDirect(ctx, dlog, pk, sk, "", flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(destination))
 	} else {
 		if flags.UseHTTP {
 			resp, err := httpClient.Get(flags.DmsgDiscURL + "/health")
@@ -49,7 +49,7 @@ func InitDmsgWithFlags(ctx context.Context, dlog *logging.Logger, pk cipher.PubK
 					break
 				}
 
-				dmsgDC, closeFn, err := StartDmsgDirectWithServers(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscAddr, []*disc.Entry{&server}, flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
+				dmsgDC, closeFn, err := StartDmsgDirectWithServers(ctx, dlog, pk, sk, flags.DmsgDiscAddr, []*disc.Entry{&server}, flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
 				if err != nil {
 					dlog.WithError(err).Error("Failed to start DMSG direct client. Skipping server...")
 					continue
@@ -88,7 +88,6 @@ func InitDmsgWithFlags(ctx context.Context, dlog *logging.Logger, pk cipher.PubK
 			return StartDmsg(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
 		}
 	}
-
 }
 
 // StartDmsg starts dmsg returns a dmsg client for the given dmsg discovery
@@ -122,7 +121,7 @@ func StartDmsg(ctx context.Context, dlog *logging.Logger, pk cipher.PubKey, sk c
 }
 
 // StartDmsgDirect starts dmsg returns a dmsg direct client
-func StartDmsgDirect(ctx context.Context, dlog *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, dmsgDiscAddr string, dmsgSessions int, destination string) (*dmsg.Client, func(), error) {
+func StartDmsgDirect(ctx context.Context, dlog *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, dmsgDiscAddr string, dmsgSessions int, destination string) (*dmsg.Client, func(), error) {
 	if len(dmsg.Prod.DmsgServers) == 0 {
 		return nil, nil, fmt.Errorf("no DMSG servers configured")
 	}
@@ -132,12 +131,12 @@ func StartDmsgDirect(ctx context.Context, dlog *logging.Logger, pk cipher.PubKey
 		serverPtrs[i] = &dmsg.Prod.DmsgServers[i]
 	}
 
-	return StartDmsgDirectWithServers(ctx, dlog, pk, sk, httpClient, dmsgDiscAddr, serverPtrs, dmsgSessions, destination)
+	return StartDmsgDirectWithServers(ctx, dlog, pk, sk, dmsgDiscAddr, serverPtrs, dmsgSessions, destination)
 }
 
 // StartDmsgDirectWithServers starts a DMSG client using the provided set of DMSG servers.
 // It attempts to connect and validate discovery access via the full server set.
-func StartDmsgDirectWithServers(ctx context.Context, dlog *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, dmsgDiscAddr string, dmsgServers []*disc.Entry, dmsgSessions int, destination string) (dmsgC *dmsg.Client, stop func(), err error) {
+func StartDmsgDirectWithServers(ctx context.Context, dlog *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, dmsgDiscAddr string, dmsgServers []*disc.Entry, dmsgSessions int, destination string) (dmsgC *dmsg.Client, stop func(), err error) {
 
 	if len(dmsgServers) == 0 {
 		return nil, nil, fmt.Errorf("no DMSG servers provided")
