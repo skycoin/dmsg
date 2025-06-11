@@ -18,6 +18,31 @@ import (
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
 
+/*
+Default mode of operation is dmsghttp:
+* Start dmsg-direct client ; connect directly to a dmsg server
+* HTTP client is configured with a dmsg HTTP transport provided by the dmsg-direct client
+* HTTP client is used to make HTTP GET request to '/health' of dmsg discovery dmsg address
+* If the dmsg-discovery is unreachable via the configured http client:
+	- Shuffle dmsg servers
+	- Re-make dmsg direct clent
+	- Reconfigure HTTP client with dmsg HTTP transport provided by the dmsg-direct client
+	- Fetch '/health' from dmsg discovery dmsg address [<pk>:<port>]
+	- Repeat the previous 4 steps on error / until no error
+* Start dmsghttp client
+* Connect to dmsg client address (if specified)
+
+'-Z' flag: use plain http to connect to dmsg-discovery
+* HTTP client is used to make HTTP GET request to '/health' of dmsg discovery URL
+* Start dmsg client
+* Connect to dmsg client address (if specified)
+
+'-B' flag: use dmsg direct client
+* Start dmsg-direct client
+* Connect to dmsg client address (if specified)
+*/
+
+// InitDmsgWithFlags starts dmsg with flags from the flags package
 func InitDmsgWithFlags(ctx context.Context, dlog *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, destination string) (dmsgC *dmsg.Client, stop func(), err error) {
 	if flags.UseDC {
 		return StartDmsgDirect(ctx, dlog, pk, sk, "", flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(destination))

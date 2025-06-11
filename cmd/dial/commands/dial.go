@@ -63,10 +63,11 @@ Default mode of operation is dmsghttp:
 * Connect to dmsg client address (if specified)
 
 '-Z' flag: use plain http to connect to dmsg-discovery
+* HTTP client is used to make HTTP GET request to '/health' of dmsg discovery URL
 * Start dmsg client
 * Connect to dmsg client address (if specified)
 
-'-B' flag: use dmsg direct client ; do not connect to dmsg-discovery
+'-B' flag: use dmsg direct client
 * Start dmsg-direct client
 * Connect to dmsg client address (if specified)
 `,

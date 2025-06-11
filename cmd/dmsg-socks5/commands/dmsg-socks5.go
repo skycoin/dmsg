@@ -140,7 +140,6 @@ var serveCmd = &cobra.Command{
 
 		dmsgC, closeDmsg, err := cli.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, pk.String())
 
-
 		if err != nil {
 			dlog.WithError(err).Fatal("Error connecting to dmsg network")
 			return
