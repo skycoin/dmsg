@@ -46,73 +46,72 @@ Default mode of operation is dmsghttp:
 func InitDmsgWithFlags(ctx context.Context, dlog *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, destination string) (dmsgC *dmsg.Client, stop func(), err error) {
 	if flags.UseDC {
 		return StartDmsgDirect(ctx, dlog, pk, sk, "", flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(destination))
-	} else {
-		if flags.UseHTTP {
-			resp, err := httpClient.Get(flags.DmsgDiscURL + "/health")
-			if err != nil {
-				dlog.WithError(err).Fatal("Error connecting to dmsg-discovery with http client")
-			}
-			defer resp.Body.Close()
-
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				dlog.WithError(err).Error("Failed to read response body from discovery")
-			} else {
-				dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", flags.DmsgDiscURL, string(body))
-			}
-
-			return StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
-		} else {
-			// Default dmsghttp mode
-			var dmsgHTTP *http.Client
-			var dmsgClients []*dmsg.Client
-			var closeFns []func()
-
-			dlog.Debug("Starting DMSG direct clients.")
-			for _, server := range dmsg.Prod.DmsgServers {
-				if len(dmsgClients) >= flags.DmsgSessions {
-					break
-				}
-
-				dmsgDC, closeFn, err := StartDmsgDirectWithServers(ctx, dlog, pk, sk, flags.DmsgDiscAddr, []*disc.Entry{&server}, flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
-				if err != nil {
-					dlog.WithError(err).Error("Failed to start DMSG direct client. Skipping server...")
-					continue
-				}
-
-				dmsgClients = append(dmsgClients, dmsgDC)
-				closeFns = append(closeFns, closeFn)
-			}
-
-			if len(dmsgClients) == 0 {
-				dlog.Fatal("Failed to start any DMSG direct clients.")
-			}
-
-			// Build HTTP client with fallback round tripper
-			dmsgHTTP = &http.Client{
-				Transport: NewFallbackRoundTripper(ctx, dmsgClients),
-			}
-
-			dlog.Debug("Checking discovery /health using DMSG HTTP client.")
-			resp, err := dmsgHTTP.Get(flags.DmsgDiscAddr + "/health")
-			if err != nil {
-				for _, fn := range closeFns {
-					fn()
-				}
-				dlog.WithError(err).Fatal("All DMSG transports failed to reach discovery /health")
-			}
-			defer resp.Body.Close()
-
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				dlog.WithError(err).Error("Failed to read discovery /health response body")
-			} else {
-				dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", flags.DmsgDiscAddr, string(body))
-			}
-
-			return StartDmsg(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
-		}
 	}
+	if flags.UseHTTP {
+		resp, err := httpClient.Get(flags.DmsgDiscURL + "/health")
+		if err != nil {
+			dlog.WithError(err).Fatal("Error connecting to dmsg-discovery with http client")
+		}
+		defer resp.Body.Close() //nolint
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			dlog.WithError(err).Error("Failed to read response body from discovery")
+		} else {
+			dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", flags.DmsgDiscURL, string(body))
+		}
+
+		return StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
+	}
+
+	// Default dmsghttp mode
+	var dmsgHTTP *http.Client
+	var dmsgClients []*dmsg.Client
+	var closeFns []func()
+
+	dlog.Debug("Starting DMSG direct clients.")
+	for _, server := range dmsg.Prod.DmsgServers {
+		if len(dmsgClients) >= flags.DmsgSessions {
+			break
+		}
+
+		dmsgDC, closeFn, err := StartDmsgDirectWithServers(ctx, dlog, pk, sk, flags.DmsgDiscAddr, []*disc.Entry{&server}, flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
+		if err != nil {
+			dlog.WithError(err).Error("Failed to start DMSG direct client. Skipping server...")
+			continue
+		}
+
+		dmsgClients = append(dmsgClients, dmsgDC)
+		closeFns = append(closeFns, closeFn)
+	}
+
+	if len(dmsgClients) == 0 {
+		dlog.Fatal("Failed to start any DMSG direct clients.")
+	}
+
+	// Build HTTP client with fallback round tripper
+	dmsgHTTP = &http.Client{
+		Transport: NewFallbackRoundTripper(ctx, dmsgClients),
+	}
+
+	dlog.Debug("Checking discovery /health using DMSG HTTP client.")
+	resp, err := dmsgHTTP.Get(flags.DmsgDiscAddr + "/health")
+	if err != nil {
+		for _, fn := range closeFns {
+			fn()
+		}
+		dlog.WithError(err).Fatal("All DMSG transports failed to reach discovery /health")
+	}
+	defer resp.Body.Close() //nolint
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		dlog.WithError(err).Error("Failed to read discovery /health response body")
+	} else {
+		dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", flags.DmsgDiscAddr, string(body))
+	}
+
+	return StartDmsg(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
 }
 
 // StartDmsg starts dmsg returns a dmsg client for the given dmsg discovery
@@ -210,7 +209,7 @@ func StartDmsgDirectWithServers(ctx context.Context, dlog *logging.Logger, pk ci
 			stop() // Cleanup if validation fails
 			return nil, nil, fmt.Errorf("failed to reach discovery server via DMSG: %w", err)
 		}
-		resp.Body.Close()
+		resp.Body.Close() //nolint
 	}
 
 	return dmsgC, stop, nil
