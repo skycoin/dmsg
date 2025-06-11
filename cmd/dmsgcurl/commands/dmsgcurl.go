@@ -35,7 +35,6 @@ import (
 var (
 	dmsgcurlData   string
 	sk             cipher.SecKey
-	pk             cipher.PubKey
 	destPK         cipher.PubKey
 	dlog           = logging.MustGetLogger("dmsgcurl")
 	dmsgcurlAgent  string
@@ -172,7 +171,6 @@ func handleRequest(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, http
 
 	if flags.UseDC {
 		var dmsgClients []*dmsg.Client
-		var closeFns []func()
 
 		dlog.Debug("Starting DMSG direct clients.")
 		for _, server := range dmsg.Prod.DmsgServers {
@@ -187,7 +185,7 @@ func handleRequest(ctx context.Context, pk cipher.PubKey, sk cipher.SecKey, http
 			}
 
 			dmsgClients = append(dmsgClients, dmsgDC)
-			closeFns = append(closeFns, closeFn)
+			defer closeFn()
 		}
 
 		if len(dmsgClients) == 0 {

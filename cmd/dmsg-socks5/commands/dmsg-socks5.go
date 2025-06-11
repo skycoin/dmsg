@@ -33,7 +33,6 @@ var (
 	dmsgDisc     = dmsg.DiscAddr(false)
 	useHTTP      bool
 	httpClient   *http.Client
-	dmsgSessions int
 	dlog         *logging.Logger
 	dmsgHTTPPath string
 	err          error
