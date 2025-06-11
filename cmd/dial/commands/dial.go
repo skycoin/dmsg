@@ -31,10 +31,12 @@ var (
 	dpk      cipher.PubKey
 	waitTime int
 	dport    uint
+	logLvl         string
 )
 
 func init() {
 	flags.InitFlags(RootCmd)
+	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "info", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m\n\r")
 	RootCmd.Flags().IntVarP(&waitTime, "wait", "w", 0, "wait time in seconds before disconnecting\n\r\033[0m")
 	RootCmd.Flags().VarP(&sk, "sk", "s", "a random key is generated if unspecified\n\r\033[0m")
 }
@@ -79,10 +81,12 @@ Default mode of operation is dmsghttp:
 	Version:               buildinfo.Version(),
 	Run: func(_ *cobra.Command, args []string) {
 		dlog := logging.MustGetLogger("dmsgdial")
-		lvl, err := logging.LevelFromString("debug")
-		if err == nil {
-			logging.SetLevel(lvl)
+		if logLvl != "" {
+			if lvl, err := logging.LevelFromString(logLvl); err == nil {
+				logging.SetLevel(lvl)
+			}
 		}
+
 		//		var rpk cipher.PubKey
 		pk, err := sk.PubKey()
 		if err != nil {
@@ -103,7 +107,7 @@ Default mode of operation is dmsghttp:
 			if err := dpk.Set(parts[0]); err != nil {
 				dlog.WithError(err).Fatal("Failed to parse public key from dmsg address")
 			}
-			dlog.Info("Parsed dmsg client public key to dial: ", dpk.String())
+			dlog.Debug("Parsed dmsg client public key to dial: ", dpk.String())
 			// Parse the port or use the default (80)
 			dport = uint(80) // Default port
 			if len(parts) > 1 && parts[1] != "" {
@@ -113,7 +117,7 @@ Default mode of operation is dmsghttp:
 				}
 				dport = uint(parsedPort)
 			}
-			dlog.Info("Parsed dmsg client port to dial: ", dport)
+			dlog.Debug("Parsed dmsg client port to dial: ", dport)
 		}
 
 		httpClient := &http.Client{}
@@ -158,14 +162,14 @@ Default mode of operation is dmsghttp:
 			for _, dmsgC := range dmsgClients {
 				dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dpk, Port: dp}) //nolint
 				if err != nil {
-					dlog.WithError(err).Warn("Failed to connect to remote host via dmsg servers: ", dmsgC.ConnectedServersPK())
+					dlog.WithError(err).Warn("Failed to dial remote host: ", args[0], " via dmsg server: ", dmsgC.ConnectedServersPK())
 					err = dmsgConn.Close() //nolint
 					if err != nil {
 						dlog.WithError(err).Error("Error closing dmsg client connection")
 					}
 					continue
 				}
-				dlog.Debug("Successfully dialed remote host with dmsg servers: ", dmsgC.ConnectedServersPK())
+				dlog.Info("Successfully dialed remote host: ", args[0], " with dmsg server: ", dmsgC.ConnectedServersPK())
 
 				err = dmsgConn.Close() //nolint
 				if err != nil {
@@ -175,7 +179,7 @@ Default mode of operation is dmsghttp:
 		}
 
 		time.Sleep(time.Duration(waitTime) * time.Second)
-		dlog.Info("Disconnecting from dmsg network")
+		dlog.Debug("Disconnecting from dmsg network")
 
 	},
 }
