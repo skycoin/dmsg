@@ -22,17 +22,17 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
 	github.com/skycoin/skycoin v0.28.1-0.20241105130348-39b49a2d0a7f //DO NOT MODIFY OR UPDATE v0.28.1-0.20241105130348-39b49a2d0a7f
-	github.com/skycoin/skywire v1.3.29-rc7.0.20250531233621-adbfd6b7eaed
+	github.com/skycoin/skywire v1.3.29-rc7.0.20250607190835-2f7c5898d485
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/net v0.40.0
+	golang.org/x/net v0.41.0
 	golang.org/x/sys v0.33.0
 	golang.org/x/term v0.32.0
 )
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
-	github.com/bytedance/sonic v1.13.2 // indirect
+	github.com/bytedance/sonic v1.13.3 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
@@ -62,9 +62,9 @@ require (
 	github.com/ugorji/go/codec v1.2.14 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
-	golang.org/x/arch v0.17.0 // indirect
-	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
+	golang.org/x/arch v0.18.0 // indirect
+	golang.org/x/crypto v0.39.0 // indirect
+	golang.org/x/text v0.26.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	mvdan.cc/sh/v3 v3.11.0 // indirect
@@ -73,4 +73,4 @@ require (
 // Uncomment for tests with alternate branches of 'skywire'
 //replace github.com/skycoin/skywire => ../skywire
 //replace github.com/skycoin/skywire => github.com/skycoin/skywire <commit-hash>
-//replace github.com/skycoin/skywire => github.com/skycoin/skywire v1.3.29-rc7.0.20250531233621-adbfd6b7eaed
+//replace github.com/skycoin/skywire => github.com/skycoin/skywire v1.3.29-rc7.0.20250607190835-2f7c5898d485

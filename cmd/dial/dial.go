@@ -1,10 +1,10 @@
-// Package main cmd/dmsgpty-host/dmsgpty-host.go
+// package main cmd/dial/dial.go
 package main
 
 import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/flags"
 
-	"github.com/skycoin/dmsg/cmd/dmsgpty-host/commands"
+	"github.com/skycoin/dmsg/cmd/dial/commands"
 )
 
 func init() {
