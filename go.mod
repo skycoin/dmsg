@@ -6,14 +6,14 @@ toolchain go1.24.2
 
 require (
 	github.com/ActiveState/termtest/conpty v0.5.0
-	github.com/VictoriaMetrics/metrics v1.37.0
+	github.com/VictoriaMetrics/metrics v1.38.0
 	github.com/bitfield/script v0.24.1
 	github.com/chen3feng/safecast v0.0.0-20220908170618-81b2ecd47937
 	github.com/coder/websocket v1.8.13
 	github.com/confiant-inc/go-socks5 v0.0.0-20210816151940-c1124825b1d6
 	github.com/creack/pty v1.1.24
 	github.com/gin-gonic/gin v1.10.1
-	github.com/go-chi/chi/v5 v5.2.1
+	github.com/go-chi/chi/v5 v5.2.2
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/hashicorp/yamux v0.1.2
 	github.com/ivanpirog/coloredcobra v1.0.1
@@ -22,7 +22,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
 	github.com/skycoin/skycoin v0.28.1-0.20241105130348-39b49a2d0a7f //DO NOT MODIFY OR UPDATE v0.28.1-0.20241105130348-39b49a2d0a7f
-	github.com/skycoin/skywire v1.3.29-rc7.0.20250607190835-2f7c5898d485
+	github.com/skycoin/skywire v1.3.29-rc7.0.20250623153831-0d7a5018d3d1
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/net v0.41.0
@@ -59,7 +59,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
-	github.com/ugorji/go/codec v1.2.14 // indirect
+	github.com/ugorji/go/codec v1.3.0 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
 	golang.org/x/arch v0.18.0 // indirect
@@ -73,4 +73,4 @@ require (
 // Uncomment for tests with alternate branches of 'skywire'
 //replace github.com/skycoin/skywire => ../skywire
 //replace github.com/skycoin/skywire => github.com/skycoin/skywire <commit-hash>
-//replace github.com/skycoin/skywire => github.com/skycoin/skywire v1.3.29-rc7.0.20250607190835-2f7c5898d485
+//replace github.com/skycoin/skywire => github.com/skycoin/skywire v1.3.29-rc7.0.20250623153831-0d7a5018d3d1
