@@ -22,7 +22,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
 	github.com/skycoin/skycoin v0.28.1-0.20241105130348-39b49a2d0a7f //DO NOT MODIFY OR UPDATE v0.28.1-0.20241105130348-39b49a2d0a7f
-	github.com/skycoin/skywire v1.3.29-rc7.0.20250716142800-965ab766f877
+	github.com/skycoin/skywire v1.3.31-0.20250724153549-ec7ca3554d42
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/net v0.42.0
@@ -73,4 +73,4 @@ require (
 // Uncomment for tests with alternate branches of 'skywire'
 //replace github.com/skycoin/skywire => ../skywire
 //replace github.com/skycoin/skywire => github.com/skycoin/skywire <commit-hash>
-//replace github.com/skycoin/skywire => github.com/skycoin/skywire v1.3.29-rc7.0.20250716142800-965ab766f877
+//replace github.com/skycoin/skywire => github.com/skycoin/skywire v1.3.31-0.20250724153549-ec7ca3554d42
