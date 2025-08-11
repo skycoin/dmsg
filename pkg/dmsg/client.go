@@ -10,9 +10,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/yamux"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/netutil"
+	"github.com/xtaci/smux"
 	"golang.org/x/net/proxy"
 
 	"github.com/skycoin/dmsg/pkg/disc"
@@ -47,6 +49,7 @@ type Config struct {
 	Callbacks            *ClientCallbacks
 	ClientType           string
 	ConnectedServersType string
+	Protocol             string
 }
 
 // Ensure ensures all config values are set.
@@ -536,6 +539,19 @@ func (ce *Client) dialSession(ctx context.Context, entry *disc.Entry) (cs Client
 	dSes, err := makeClientSession(&ce.EntityCommon, ce.porter, conn, entry.Static)
 	if err != nil {
 		return ClientSession{}, err
+	}
+	if ce.conf.Protocol == "smux" {
+		dSes.sp.smux, err = smux.Server(conn, smux.DefaultConfig())
+		ce.log.Infof("smux stream session initial for %s", dSes.RemotePK().String())
+		if err != nil {
+			return ClientSession{}, err
+		}
+	} else {
+		dSes.sp.yamux, err = yamux.Server(conn, yamux.DefaultConfig())
+		ce.log.Infof("yamux stream session initial for %s", dSes.RemotePK().String())
+		if err != nil {
+			return ClientSession{}, err
+		}
 	}
 
 	if !ce.setSession(ctx, dSes.SessionCommon) {
