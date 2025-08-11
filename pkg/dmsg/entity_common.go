@@ -295,6 +295,17 @@ func (c *EntityCommon) updateClientEntryLoop(ctx context.Context, done chan stru
 	}
 }
 
+func (c *EntityCommon) entryProtocol(ctx context.Context, pk cipher.PubKey) (string, error) {
+	entry, err := c.dc.Entry(ctx, pk)
+	if err != nil {
+		c.log.Debug("Entry not found.")
+		return "", err
+	}
+
+	c.log.WithField("entry", entry).Debug("Entry's protocol fetch.\n")
+	return entry.Protocol, nil
+}
+
 func (c *EntityCommon) delEntry(ctx context.Context) (err error) {
 
 	entry, err := c.dc.Entry(ctx, c.pk)

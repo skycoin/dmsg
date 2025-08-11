@@ -5,7 +5,6 @@ go 1.24
 toolchain go1.24.2
 
 require (
-	github.com/0magnet/calvin v0.0.0-20241204203002-126d3bcd81d8
 	github.com/ActiveState/termtest/conpty v0.5.0
 	github.com/VictoriaMetrics/metrics v1.36.0
 	github.com/bitfield/script v0.24.1
@@ -30,6 +29,8 @@ require (
 	golang.org/x/sys v0.33.0
 	golang.org/x/term v0.32.0
 )
+
+require github.com/xtaci/smux v1.5.34
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
