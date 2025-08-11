@@ -2,11 +2,14 @@
 package dmsg
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"log"
+	"math/big"
+	"regexp"
 	"time"
 
-	"github.com/skycoin/skywire"
+	"github.com/skycoin/skywire/deployment"
 
 	"github.com/skycoin/dmsg/pkg/disc"
 )
@@ -26,8 +29,8 @@ const (
 	DefaultCommunityDmsgServerType = "community"
 )
 
-// DmsghttpJSON is dmsghttp-config.json embedded in skywire.DmsghttpJSON
-var DmsghttpJSON = skywire.DmsghttpJSON
+// DmsghttpJSON is dmsghttp-config.json embedded in deployment.DmsghttpJSON
+var DmsghttpJSON = deployment.DmsghttpJSON
 
 // Prod is the production deployment dmsghttp-config.json services
 var Prod DmsghttpConfig
@@ -35,12 +38,30 @@ var Prod DmsghttpConfig
 // Test is the test deployment dmsghttp-config.json services
 var Test DmsghttpConfig
 
-// DiscAddr returns the address of the dmsg discovery
+// DiscURL returns the URL of the dmsg discovery service
+func DiscURL(testenv bool) string {
+	if testenv {
+		return deployment.Test.DmsgDiscovery
+	}
+	return deployment.Prod.DmsgDiscovery
+}
+
+// DiscAddr returns the dmsg address of the dmsg discovery service in the format "dmsg://<pk>:<port>"
 func DiscAddr(testenv bool) string {
 	if testenv {
-		return skywire.Test.DmsgDiscovery
+		return Test.DmsgDiscovery
 	}
-	return skywire.Prod.DmsgDiscovery
+	return Prod.DmsgDiscovery
+}
+
+// ExtractPKFromDmsgAddr returns the public key of the dmsg address input in this format in the format "dmsg://<pk>:<port>"
+func ExtractPKFromDmsgAddr(input string) string {
+	re := regexp.MustCompile(`dmsg://([^:/]+):`)
+	match := re.FindStringSubmatch(input)
+	if len(match) > 1 {
+		return match[1]
+	}
+	return ""
 }
 
 // DmsghttpConfig is the struct that corresponds to the json data of the dmsghttp-config.json
@@ -63,7 +84,7 @@ func init() {
 
 // InitConfig initialized the config
 func InitConfig() error {
-	var envServices skywire.EnvServices
+	var envServices deployment.EnvServices
 	err := json.Unmarshal(DmsghttpJSON, &envServices)
 	if err != nil {
 		return err
@@ -72,9 +93,23 @@ func InitConfig() error {
 	if err != nil {
 		return err
 	}
+	Prod.DmsgServers = shuffleServers(Prod.DmsgServers)
 	err = json.Unmarshal(envServices.Test, &Test)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func shuffleServers(in []disc.Entry) []disc.Entry {
+	n := len(in)
+	for i := n - 1; i > 0; i-- {
+		jBig, err := rand.Int(rand.Reader, big.NewInt(int64(i+1)))
+		if err != nil {
+			panic(err)
+		}
+		j := int(jBig.Int64())
+		in[i], in[j] = in[j], in[i]
+	}
+	return in
 }

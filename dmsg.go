@@ -1,6 +1,16 @@
-/*
-This file is a workaround to avoid go module errors.
-*/
+// Package main dmsg.go
+package main
 
-// Package dmsg dmsg.go
-package dmsg
+import (
+	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/flags"
+
+	"github.com/skycoin/dmsg/cmd/dmsg/commands"
+)
+
+func init() {
+	flags.InitFlags(commands.RootCmd, false)
+}
+
+func main() {
+	commands.Execute()
+}

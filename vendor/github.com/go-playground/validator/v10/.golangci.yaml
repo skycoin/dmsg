@@ -2,6 +2,7 @@ version: "2"
 linters:
   default: all
   disable:
+<<<<<<< HEAD
     - asasalint
     - asciicheck
     - bidichk
@@ -12,10 +13,17 @@ linters:
     - copyloopvar
     - cyclop
     - decorder
+=======
+    - noinlineerr
+    - wsl_v5
+    - copyloopvar
+    - cyclop
+>>>>>>> develop
     - depguard
     - dogsled
     - dupl
     - dupword
+<<<<<<< HEAD
     - durationcheck
     - err113
     - errcheck
@@ -34,11 +42,22 @@ linters:
     - gochecknoglobals
     - gochecknoinits
     - gochecksumtype
+=======
+    - err113
+    - errorlint
+    - exhaustive
+    - exhaustruct
+    - forbidigo
+    - forcetypeassert
+    - funlen
+    - gochecknoglobals
+>>>>>>> develop
     - gocognit
     - goconst
     - gocritic
     - gocyclo
     - godot
+<<<<<<< HEAD
     - godox
     - goheader
     - gomoddirectives
@@ -52,10 +71,15 @@ linters:
     - importas
     - inamedparam
     - ineffassign
+=======
+    - gosec
+    - gosmopolitan
+>>>>>>> develop
     - interfacebloat
     - intrange
     - ireturn
     - lll
+<<<<<<< HEAD
     - loggercheck
     - maintidx
     - makezero
@@ -91,12 +115,35 @@ linters:
     - tagliatelle
     - testableexamples
     - testifylint
+=======
+    - maintidx
+    - misspell
+    - mnd
+    - nakedret
+    - nestif
+    - nilnil
+    - nlreturn
+    - nonamedreturns
+    - paralleltest
+    - perfsprint
+    - prealloc
+    - recvcheck
+    - revive
+    - staticcheck
+    - tagalign
+    - tagliatelle
+>>>>>>> develop
     - testpackage
     - thelper
     - tparallel
     - unparam
     - varnamelen
+<<<<<<< HEAD
     - whitespace
     - wrapcheck
     - wsl
     - zerologlint
+=======
+    - wrapcheck
+    - wsl
+>>>>>>> develop
