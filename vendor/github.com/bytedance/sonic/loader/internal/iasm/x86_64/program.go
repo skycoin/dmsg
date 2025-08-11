@@ -112,11 +112,7 @@ func (self *_Pseudo) evalExpr(low int64, high int64) int64 {
 
 func (self *_Pseudo) alignSize(pc uintptr) int {
 	if !ispow2(self.uint) {
-<<<<<<< HEAD
-		panic(fmt.Sprintf("aligment should be a power of 2, not %d", self.uint))
-=======
 		panic(fmt.Sprintf("alignment should be a power of 2, not %d", self.uint))
->>>>>>> develop
 	} else {
 		return align(int(pc), bits.TrailingZeros64(self.uint)) - int(pc)
 	}
@@ -473,11 +469,7 @@ func (self *Program) Free() {
 // Link pins a label at the current position.
 func (self *Program) Link(p *Label) {
 	if p.Dest != nil {
-<<<<<<< HEAD
-		panic("lable was alreay linked")
-=======
 		panic("label was already linked")
->>>>>>> develop
 	} else {
 		p.Dest = self.pseudo(_PseudoNop)
 	}
