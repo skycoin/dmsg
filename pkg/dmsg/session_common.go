@@ -25,20 +25,14 @@ type SessionCommon struct {
 	rPK    cipher.PubKey // remote pk
 
 	netConn net.Conn // underlying net.Conn (TCP connection to the dmsg server)
-	sp      SessionProtocols
+	ys      *yamux.Session
+	ss      *smux.Session
 	ns      *noise.Noise
 	nMap    noise.NonceMap
 	rMx     sync.Mutex
 	wMx     sync.Mutex
 
 	log logrus.FieldLogger
-}
-
-// SessionProtocols is simple struct for multiplexing stream session different libraries
-type SessionProtocols struct {
-	yamux *yamux.Session
-	smux  *smux.Session
-	addr  net.Addr
 }
 
 // GetConn returns underlying TCP `net.Conn`.
@@ -78,7 +72,6 @@ func (sc *SessionCommon) initClient(entity *EntityCommon, conn net.Conn, rPK cip
 	if rw.Buffered() > 0 {
 		return ErrSessionHandshakeExtraBytes
 	}
-
 	sc.entity = entity
 	sc.rPK = rPK
 	sc.netConn = conn
@@ -105,7 +98,11 @@ func (sc *SessionCommon) initServer(entity *EntityCommon, conn net.Conn) error {
 	if rw.Buffered() > 0 {
 		return ErrSessionHandshakeExtraBytes
 	}
-
+	ySes, err := yamux.Server(conn, yamux.DefaultConfig())
+	if err != nil {
+		return err
+	}
+	sc.ys = ySes
 	sc.entity = entity
 	sc.rPK = ns.RemoteStatic()
 	sc.netConn = conn
@@ -167,8 +164,8 @@ func (sc *SessionCommon) RemoteTCPAddr() net.Addr { return sc.netConn.RemoteAddr
 
 // Ping obtains the round trip latency of the session.
 func (sc *SessionCommon) Ping() (time.Duration, error) {
-	if sc.sp.yamux != nil {
-		return sc.sp.yamux.Ping()
+	if sc.ys != nil {
+		return sc.ys.Ping()
 	}
 	return 0, fmt.Errorf("Ping not available on SMUX protocol")
 }
@@ -179,11 +176,11 @@ func (sc *SessionCommon) Close() error {
 		return nil
 	}
 	var err error
-	if sc.sp.smux != nil {
-		err = sc.sp.smux.Close()
+	if sc.ss != nil {
+		err = sc.ss.Close()
 	}
-	if sc.sp.yamux != nil {
-		err = sc.sp.yamux.Close()
+	if sc.ys != nil {
+		err = sc.ys.Close()
 	}
 	sc.rMx.Lock()
 	sc.nMap = nil
