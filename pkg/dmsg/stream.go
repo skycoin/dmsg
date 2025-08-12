@@ -29,14 +29,14 @@ type Stream struct {
 }
 
 func newInitiatingStream(cSes *ClientSession) (*Stream, error) {
-	if cSes.ss != nil {
-		sStr, err := cSes.ss.OpenStream()
+	if cSes.sm.smux != nil {
+		sStr, err := cSes.sm.smux.OpenStream()
 		if err != nil {
 			return nil, err
 		}
 		return &Stream{ses: cSes, sStr: sStr}, nil
 	}
-	yStr, err := cSes.ys.OpenStream()
+	yStr, err := cSes.sm.yamux.OpenStream()
 	if err != nil {
 		return nil, err
 	}
@@ -45,14 +45,14 @@ func newInitiatingStream(cSes *ClientSession) (*Stream, error) {
 }
 
 func newRespondingStream(cSes *ClientSession) (*Stream, error) {
-	if cSes.ss != nil {
-		sStr, err := cSes.ss.AcceptStream()
+	if cSes.sm.smux != nil {
+		sStr, err := cSes.sm.smux.AcceptStream()
 		if err != nil {
 			return nil, err
 		}
 		return &Stream{ses: cSes, sStr: sStr}, nil
 	}
-	yStr, err := cSes.ys.AcceptStream()
+	yStr, err := cSes.sm.yamux.AcceptStream()
 	if err != nil {
 		return nil, err
 	}
