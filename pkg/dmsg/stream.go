@@ -196,9 +196,10 @@ func (s *Stream) writeResponse(reqHash cipher.SHA256) error {
 		if err := s.ses.writeObject(s.sStr, obj); err != nil {
 			return err
 		}
-	}
-	if err := s.ses.writeObject(s.yStr, obj); err != nil {
-		return err
+	} else {
+		if err := s.ses.writeObject(s.yStr, obj); err != nil {
+			return err
+		}
 	}
 
 	// Push stream to listener.
