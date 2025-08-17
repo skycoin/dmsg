@@ -241,6 +241,14 @@ func (ce *Client) Serve(ctx context.Context) {
 				}
 			}
 
+			// use this for put protocol type of client to disc, for dicision part of dmsg-server
+			err := ce.initilizeClientEntry(cancellabelCtx, ce.conf.ClientType, ce.conf.Protocol)
+			if err != nil {
+				ce.log.WithError(err).Warn("initial post entry failed")
+			} else {
+				ce.log.WithError(err).Info("initial post entry successed")
+			}
+
 			if err := ce.EnsureSession(cancellabelCtx, entry); err != nil {
 				if err == context.Canceled || err == context.DeadlineExceeded {
 					ce.log.WithField("remote_pk", entry.Static).WithError(err).Warn("Failed to establish session.")
@@ -493,7 +501,7 @@ func (ce *Client) EnsureSession(ctx context.Context, entry *disc.Entry) error {
 		ce.log.WithField("remote_pk", entry.Static).Debug("Session already exists...")
 		return nil
 	}
-
+	entry.Protocol = ce.conf.Protocol
 	// Dial session.
 	_, err := ce.dialSession(ctx, entry)
 	return err
