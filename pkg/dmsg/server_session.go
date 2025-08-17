@@ -197,7 +197,6 @@ func (ss *ServerSession) forwardRequest(req StreamRequest) (mStr io.ReadWriteClo
 				Debugf("After forwardRequest failed, the yamux stream is closed.")
 		}
 	}()
-	fmt.Println("here 1")
 	if ss.sm.smux != nil {
 		if mStr, err = ss.sm.smux.OpenStream(); err != nil {
 			return nil, nil, err
@@ -207,24 +206,18 @@ func (ss *ServerSession) forwardRequest(req StreamRequest) (mStr io.ReadWriteClo
 			return nil, nil, err
 		}
 	}
-
-	fmt.Println("here 2")
 	if err = ss.writeObject(mStr, req.raw); err != nil {
 		return nil, nil, err
 	}
-	fmt.Println("here 3")
 	if respObj, err = ss.readObject(mStr); err != nil {
 		return nil, nil, err
 	}
-	fmt.Println("here 4")
 	var resp StreamResponse
 	if resp, err = respObj.ObtainStreamResponse(); err != nil {
 		return nil, nil, err
 	}
-	fmt.Println("here 5")
 	if err = resp.Verify(req); err != nil {
 		return nil, nil, err
 	}
-	fmt.Println("here 6")
 	return mStr, respObj, nil
 }

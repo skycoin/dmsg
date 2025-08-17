@@ -225,14 +225,8 @@ func (s *Server) handleSession(conn net.Conn) {
 		log.WithError(dSes.Close()).Info("Stopped session.")
 	}()
 	// detect visor protocol for dmsg
-	protocol, err := s.entryProtocol(ctx, dSes.RemotePK())
-	if err != nil {
-		if err := conn.Close(); err != nil {
-			log.WithError(err).Warn("On entryProtocol() failure, close connection resulted in error.")
-		}
-		cancel()
-		return
-	}
+	protocol := s.entryProtocol(ctx, dSes.RemotePK())
+
 	// based on protocol, create smux or yamux stream session
 	if protocol == "smux" {
 		dSes.sm.smux, err = smux.Server(conn, smux.DefaultConfig())
