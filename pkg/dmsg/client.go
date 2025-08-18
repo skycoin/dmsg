@@ -159,6 +159,8 @@ func (ce *Client) Serve(ctx context.Context) {
 
 	updateEntryLoopOnce := new(sync.Once)
 
+	needInitialPost := true
+
 	for {
 		if isClosed(ce.done) {
 			return
@@ -212,12 +214,15 @@ func (ce *Client) Serve(ctx context.Context) {
 			entries[i], entries[j] = entries[j], entries[i]
 		})
 
-		// use this for put protocol type of client to disc, for dicision part of dmsg-server
-		err = ce.initilizeClientEntry(cancellabelCtx, ce.conf.ClientType, ce.conf.Protocol)
-		if err != nil {
-			ce.log.WithError(err).Warn("Initial post entry failed")
-		} else {
-			ce.log.WithError(err).Info("Initial post entry successed")
+		if needInitialPost {
+			// use this for put protocol type of client to disc, for dicision part of dmsg-server
+			err = ce.initilizeClientEntry(cancellabelCtx, ce.conf.ClientType, ce.conf.Protocol)
+			if err != nil {
+				ce.log.WithError(err).Warn("Initial post entry failed")
+			} else {
+				ce.log.WithError(err).Info("Initial post entry successed")
+			}
+			needInitialPost = false
 		}
 
 		for n, entry := range entries {
