@@ -258,6 +258,9 @@ github.com/valyala/fastrand
 # github.com/valyala/histogram v1.2.0
 ## explicit; go 1.12
 github.com/valyala/histogram
+# github.com/xtaci/smux v1.5.34
+## explicit; go 1.13
+github.com/xtaci/smux
 # golang.org/x/arch v0.20.0
 ## explicit; go 1.23.0
 golang.org/x/arch/x86/x86asm
