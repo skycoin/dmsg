@@ -118,8 +118,8 @@ github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6 h1:1Nc5EBY6pjfw1kwW0
 github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6/go.mod h1:UXghlricA7J3aRD/k7p/zBObQfmBawwCxIVPVjz2Q3o=
 github.com/skycoin/skycoin v0.28.1-0.20250823221707-c533551dfabd h1:yKo1t3+P78TcCZvWqEJDV7DAB162C3qVHDKLjB8b2hA=
 github.com/skycoin/skycoin v0.28.1-0.20250823221707-c533551dfabd/go.mod h1:9w5J+CJ7fWwkmpttrQ2SFksiSPc0t0DtwsCdXLdl4Qg=
-github.com/skycoin/skywire v1.3.31-0.20250724153549-ec7ca3554d42 h1:9Hr/ht404g8fDo80Bw9YIPwu0IuDKrG3mRkZeH6y/Vc=
-github.com/skycoin/skywire v1.3.31-0.20250724153549-ec7ca3554d42/go.mod h1:JnR5EJHpryaFFILpPpFJybtUT+0+2/aQxSxgjKvsPZs=
+github.com/skycoin/skywire v1.3.31-0.20250810155428-30d83a379b39 h1:6+YIdW2rrU9ZDCvigTP9j/oUGcWgEzPPNFM0yo7Z2F0=
+github.com/skycoin/skywire v1.3.31-0.20250810155428-30d83a379b39/go.mod h1:8fUvhqqo54SR0lMlUpGX/qnXSjKZEQw6TFYsXzwBAqg=
 github.com/spf13/cobra v1.4.0/go.mod h1:Wo4iy3BUC+X2Fybo0PDqwJIv3dNRiZLHQymsfxlB84g=
 github.com/spf13/cobra v1.9.1 h1:CXSaggrXdbHK9CF+8ywj8Amf7PBRmPCOJugH954Nnlo=
 github.com/spf13/cobra v1.9.1/go.mod h1:nDyEzZ8ogv936Cinf6g1RU9MRY64Ir93oCnqb9wxYW0=
@@ -145,6 +145,8 @@ github.com/valyala/fastrand v1.1.0 h1:f+5HkLW4rsgzdNoleUOB69hyT9IlD2ZQh9GyDMfb5G
 github.com/valyala/fastrand v1.1.0/go.mod h1:HWqCzkrkg6QXT8V2EXWvXCoow7vLwOFN002oeRzjapQ=
 github.com/valyala/histogram v1.2.0 h1:wyYGAZZt3CpwUiIb9AU/Zbllg1llXyrtApRS815OLoQ=
 github.com/valyala/histogram v1.2.0/go.mod h1:Hb4kBwb4UxsaNbbbh+RRz8ZR6pdodR57tzWUS3BUzXY=
+github.com/xtaci/smux v1.5.34 h1:OUA9JaDFHJDT8ZT3ebwLWPAgEfE6sWo2LaTy3anXqwg=
+github.com/xtaci/smux v1.5.34/go.mod h1:OMlQbT5vcgl2gb49mFkYo6SMf+zP3rcjcwQz7ZU7IGY=
 golang.org/x/arch v0.20.0 h1:dx1zTU0MAE98U+TQ8BLl7XsJbgze2WnNKF/8tGp/Q6c=
 golang.org/x/arch v0.20.0/go.mod h1:bdwinDaKcfZUGpH09BB7ZmOfhalA8lQdzl62l8gGWsk=
 golang.org/x/crypto v0.41.0 h1:WKYxWedPGCTVVl5+WHSSrOBT0O8lx32+zxmHxijgXp4=
