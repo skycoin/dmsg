@@ -321,7 +321,7 @@ func (c *EntityCommon) updateClientEntryLoop(ctx context.Context, done chan stru
 func (c *EntityCommon) entryProtocol(ctx context.Context, pk cipher.PubKey) string {
 	entry, err := c.dc.Entry(ctx, pk)
 	if err != nil {
-		c.log.WithField("entry", entry).Warn("Entry not found, so return empty as protocol.\n")
+		c.log.WithField("entry", entry).WithError(err).Warn("Entry not found, so return empty as protocol.\n")
 		return ""
 	}
 
