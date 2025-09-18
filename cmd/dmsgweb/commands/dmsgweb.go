@@ -282,13 +282,13 @@ dmsgweb conf file detected: ` + dwcfg
 		}
 
 		if len(resolveDmsgAddr) == 0 && len(webPort) == 1 {
-		    if len(rawTCP) > 0 && rawTCP[0] {
-		        dlog.Debug("proxyTCPConn(-1)")
-		        proxyTCPConn(-1)
-		    } else {
-		        dlog.Debug("proxyHTTPConn(-1)")
-		        proxyHTTPConn(-1)
-		    }
+			if len(rawTCP) > 0 && rawTCP[0] {
+				dlog.Debug("proxyTCPConn(-1)")
+				proxyTCPConn(-1)
+			} else {
+				dlog.Debug("proxyHTTPConn(-1)")
+				proxyHTTPConn(-1)
+			}
 		} else {
 			for i := range resolveDmsgAddr {
 				wg.Add(1)
