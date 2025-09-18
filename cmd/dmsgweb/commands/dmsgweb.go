@@ -104,7 +104,7 @@ dmsgweb conf file detected: ` + dwcfg
 	Version:               buildinfo.Version(),
 	PreRun: func(_ *cobra.Command, _ []string) {
 		if isEnvs {
-			printEnvs(srvenvfileLinux)
+			printEnvs(envfileLinux)
 		}
 		if logLvl != "" {
 			if lvl, err := logging.LevelFromString(logLvl); err == nil {
@@ -229,14 +229,6 @@ dmsgweb conf file detected: ` + dwcfg
 		}
 		defer closeDmsg()
 
-		/*
-			go func() {
-				<-ctx.Done()
-				cancel()
-				closeDmsg()
-				os.Exit(0)
-			}()
-		*/
 		httpC = http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
 
 		if len(resolveDmsgAddr) == 0 {
@@ -290,13 +282,13 @@ dmsgweb conf file detected: ` + dwcfg
 		}
 
 		if len(resolveDmsgAddr) == 0 && len(webPort) == 1 {
-			if rawTCP[0] {
-				dlog.Debug("proxyTCPConn(-1)")
-				proxyTCPConn(-1)
-			} else {
-				dlog.Debug("proxyHTTPConn(-1)")
-				proxyHTTPConn(-1)
-			}
+		    if len(rawTCP) > 0 && rawTCP[0] {
+		        dlog.Debug("proxyTCPConn(-1)")
+		        proxyTCPConn(-1)
+		    } else {
+		        dlog.Debug("proxyHTTPConn(-1)")
+		        proxyHTTPConn(-1)
+		    }
 		} else {
 			for i := range resolveDmsgAddr {
 				wg.Add(1)
@@ -456,7 +448,7 @@ func proxyHTTPConn(n int) {
 const envfileLinux = //nolint unused
 `
 #########################################################################
-#--	DMSGWEB CONFIG TEMPLATE
+#--	DMSG WEB CONFIG TEMPLATE
 #--		Defaults shown
 #--		Uncomment to change default value
 #--		WEBPORT and DMSGPORT must contain the same number of elements
