@@ -123,8 +123,8 @@ func StartDmsg(ctx context.Context, dlog *logging.Logger, pk cipher.PubKey, sk c
 	dmsgC = dmsg.NewClient(pk, sk, disc.NewHTTP(dmsgDisc, httpClient, dlog), &dmsg.Config{MinSessions: dmsgSessions})
 	dlog.Debug("Created dmsg client.")
 
-	go dmsgC.Serve(context.Background())
-	dlog.Debug("dmsgclient.Serve(context.Background())")
+	go dmsgC.Serve(ctx)
+	dlog.Debug("dmsgclient.Serve(ctx)")
 
 	stop = func() {
 		err := dmsgC.Close()
