@@ -62,7 +62,9 @@ func InitDmsgWithFlags(ctx context.Context, dlog *logging.Logger, pk cipher.PubK
 			dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", flags.DmsgDiscURL, string(body))
 		}
 
-		return StartDmsg(ctx, dlog, pk, sk, httpClient, flags.DmsgDiscURL, flags.DmsgSessions)
+		// Use direct client with synthetic entries for discovery server and all dmsg servers
+		// This allows dialing the discovery server which doesn't register itself
+		return StartDmsgWithDirectClient(ctx, dlog, pk, sk, flags.DmsgSessions)
 	}
 
 	// Default dmsghttp mode
@@ -112,7 +114,61 @@ func InitDmsgWithFlags(ctx context.Context, dlog *logging.Logger, pk cipher.PubK
 		dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", flags.DmsgDiscAddr, string(body))
 	}
 
-	return StartDmsg(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
+	return StartDmsgWithSyntheticDiscovery(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
+}
+
+// StartDmsgWithSyntheticDiscovery starts dmsg with a synthetic discovery entry for the discovery server itself
+func StartDmsgWithSyntheticDiscovery(ctx context.Context, dlog *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, dmsgDisc string, dmsgSessions int) (dmsgC *dmsg.Client, stop func(), err error) {
+	if dlog == nil {
+		return nil, nil, fmt.Errorf("nil logger")
+	}
+
+	// Create base discovery client
+	baseDiscClient := disc.NewHTTP(dmsgDisc, httpClient, dlog)
+
+	// Wrap with caching client that includes synthetic entry for discovery server
+	discPK := dmsg.ExtractPKFromDmsgAddr(dmsgDisc)
+	if discPK != "" {
+		var discoveryPK cipher.PubKey
+		if err := discoveryPK.UnmarshalText([]byte(discPK)); err == nil {
+			// Get all available dmsg servers as delegated servers
+			var delegatedServers []cipher.PubKey
+			for _, server := range dmsg.Prod.DmsgServers {
+				delegatedServers = append(delegatedServers, server.Static)
+			}
+			syntheticEntry := &disc.Entry{
+				Static: discoveryPK,
+				Client: &disc.Client{
+					DelegatedServers: delegatedServers,
+				},
+			}
+			baseDiscClient = newCachingDiscClient(baseDiscClient, syntheticEntry, dlog)
+			dlog.Debug("Created synthetic discovery entry for dialing")
+		}
+	}
+
+	dmsgC = dmsg.NewClient(pk, sk, baseDiscClient, &dmsg.Config{MinSessions: dmsgSessions})
+	dlog.Debug("Created dmsg client.")
+
+	go dmsgC.Serve(ctx)
+	dlog.Debug("dmsgclient.Serve(ctx)")
+
+	stop = func() {
+		err := dmsgC.Close()
+		dlog.WithError(err).Debug("Disconnected from dmsg network.\n")
+		log.Println()
+	}
+	dlog.WithField("dmsg_disc", dmsgDisc).Debug("Connecting to dmsg network...\n")
+	dlog.WithField("client public_key", pk.String()).Debug("\n")
+	select {
+	case <-ctx.Done():
+		stop()
+		return nil, nil, ctx.Err()
+
+	case <-dmsgC.Ready():
+		dlog.Debug("Dmsg network ready.")
+		return dmsgC, stop, nil
+	}
 }
 
 // StartDmsg starts dmsg returns a dmsg client for the given dmsg discovery
@@ -227,6 +283,134 @@ func StartDmsgDirectWithServers(ctx context.Context, dlog *logging.Logger, pk ci
 	}
 
 	return dmsgC, stop, nil
+}
+
+// StartDmsgWithDirectClient starts dmsg with a direct client that includes synthetic entries
+// This allows dialing any client including the discovery server which doesn't register itself
+func StartDmsgWithDirectClient(ctx context.Context, dlog *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, dmsgSessions int) (dmsgC *dmsg.Client, stop func(), err error) {
+	if dlog == nil {
+		return nil, nil, fmt.Errorf("nil logger")
+	}
+
+	// Build entries for all dmsg servers
+	var entries []*disc.Entry
+	for _, server := range dmsg.Prod.DmsgServers {
+		entries = append(entries, &server)
+	}
+
+	// Add synthetic entry for discovery server
+	discPK := dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr)
+	if discPK != "" {
+		var discoveryPK cipher.PubKey
+		if err := discoveryPK.UnmarshalText([]byte(discPK)); err == nil {
+			var delegatedServers []cipher.PubKey
+			for _, server := range dmsg.Prod.DmsgServers {
+				delegatedServers = append(delegatedServers, server.Static)
+			}
+			discoveryEntry := &disc.Entry{
+				Static: discoveryPK,
+				Client: &disc.Client{
+					DelegatedServers: delegatedServers,
+				},
+			}
+			entries = append(entries, discoveryEntry)
+			dlog.Debug("Added synthetic discovery entry to direct client")
+		}
+	}
+
+	// Add synthetic entry for our own client
+	var delegatedServers []cipher.PubKey
+	for _, server := range dmsg.Prod.DmsgServers {
+		delegatedServers = append(delegatedServers, server.Static)
+	}
+	clientEntry := &disc.Entry{
+		Static: pk,
+		Client: &disc.Client{
+			DelegatedServers: delegatedServers,
+		},
+	}
+	entries = append(entries, clientEntry)
+
+	// Create direct client with all entries
+	directClient := direct.NewClient(entries, dlog)
+
+	dmsgC = dmsg.NewClient(pk, sk, directClient, &dmsg.Config{MinSessions: dmsgSessions})
+	dlog.Debug("Created dmsg client with direct client.")
+
+	go dmsgC.Serve(ctx)
+	dlog.Debug("dmsgclient.Serve(ctx)")
+
+	stop = func() {
+		err := dmsgC.Close()
+		dlog.WithError(err).Debug("Disconnected from dmsg network.\n")
+		log.Println()
+	}
+	dlog.Debug("Connecting to dmsg network...\n")
+	dlog.WithField("client public_key", pk.String()).Debug("\n")
+	select {
+	case <-ctx.Done():
+		stop()
+		return nil, nil, ctx.Err()
+
+	case <-dmsgC.Ready():
+		dlog.Debug("Dmsg network ready.")
+		return dmsgC, stop, nil
+	}
+}
+
+// cachingDiscClient wraps a discovery client and caches a synthetic entry
+type cachingDiscClient struct {
+	base           disc.APIClient
+	syntheticEntry *disc.Entry
+	log            *logging.Logger
+}
+
+// newCachingDiscClient creates a discovery client that caches a synthetic entry
+func newCachingDiscClient(base disc.APIClient, syntheticEntry *disc.Entry, log *logging.Logger) disc.APIClient {
+	return &cachingDiscClient{
+		base:           base,
+		syntheticEntry: syntheticEntry,
+		log:            log,
+	}
+}
+
+// Entry returns the synthetic entry if PK matches, otherwise queries base client
+func (c *cachingDiscClient) Entry(ctx context.Context, pk cipher.PubKey) (*disc.Entry, error) {
+	if c.syntheticEntry != nil && c.syntheticEntry.Static == pk {
+		c.log.WithField("pk", pk.String()).Debug("Returning synthetic discovery entry")
+		return c.syntheticEntry, nil
+	}
+	return c.base.Entry(ctx, pk)
+}
+
+// PostEntry delegates to base client
+func (c *cachingDiscClient) PostEntry(ctx context.Context, entry *disc.Entry) error {
+	return c.base.PostEntry(ctx, entry)
+}
+
+// PutEntry delegates to base client
+func (c *cachingDiscClient) PutEntry(ctx context.Context, sk cipher.SecKey, entry *disc.Entry) error {
+	return c.base.PutEntry(ctx, sk, entry)
+}
+
+// DelEntry delegates to base client
+func (c *cachingDiscClient) DelEntry(ctx context.Context, entry *disc.Entry) error {
+	return c.base.DelEntry(ctx, entry)
+}
+
+// AvailableServers delegates to base client
+func (c *cachingDiscClient) AvailableServers(ctx context.Context) ([]*disc.Entry, error) {
+	return c.base.AvailableServers(ctx)
+}
+
+// AllServers delegates to base client
+func (c *cachingDiscClient) AllServers(ctx context.Context) ([]*disc.Entry, error) {
+	return c.base.AllServers(ctx)
+}
+
+// AllEntries delegates to base client
+func (c *cachingDiscClient) AllEntries(ctx context.Context) ([]string, error) {
+	return c.base.AllEntries(ctx)
 }
 
 // FallbackRoundTripper tries multiple DMSG transports until one succeeds.
