@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
@@ -203,13 +204,26 @@ func StartDmsgDirectWithServers(ctx context.Context, dlog *logging.Logger, pk ci
 	}
 	if dmsgDiscAddr != "" {
 		// Validate that we can access discovery over DMSG
+		// Retry with exponential backoff to handle session initialization timing
 		dmsgHTTP := &http.Client{Transport: dmsghttp.MakeHTTPTransport(ctx, dmsgC)}
-		resp, err := dmsgHTTP.Get(dmsgDiscAddr + "/health")
+		var resp *http.Response
+		maxRetries := 5
+		for i := 0; i < maxRetries; i++ {
+			resp, err = dmsgHTTP.Get(dmsgDiscAddr + "/health")
+			if err == nil {
+				resp.Body.Close() //nolint
+				break
+			}
+			if i < maxRetries-1 {
+				backoff := time.Duration(200*(i+1)) * time.Millisecond
+				dlog.WithError(err).Debugf("Failed to reach discovery, retrying in %v (attempt %d/%d)", backoff, i+1, maxRetries)
+				time.Sleep(backoff)
+			}
+		}
 		if err != nil {
 			stop() // Cleanup if validation fails
 			return nil, nil, fmt.Errorf("failed to reach discovery server via DMSG: %w", err)
 		}
-		resp.Body.Close() //nolint
 	}
 
 	return dmsgC, stop, nil

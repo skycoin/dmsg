@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	bv bool
+	bv  bool
 	dbi bool
 )
 
