@@ -15,10 +15,10 @@ echo "==> Building DMSG e2e test environment..."
 
 # Build docker images
 cd docker
-docker-compose -f docker-compose.e2e.yml build
+docker compose -f docker-compose.e2e.yml build
 
 echo "==> Starting DMSG e2e test services..."
-docker-compose -f docker-compose.e2e.yml up -d
+docker compose -f docker-compose.e2e.yml up -d
 
 echo "==> Waiting for services to be ready..."
 sleep 15
@@ -29,8 +29,8 @@ go test -v -tags !no_ci ./internal/e2e/... || TEST_FAILED=1
 
 echo "==> Cleaning up..."
 cd docker
-docker-compose -f docker-compose.e2e.yml logs
-docker-compose -f docker-compose.e2e.yml down -v
+docker compose -f docker-compose.e2e.yml logs
+docker compose -f docker-compose.e2e.yml down -v
 
 if [ "$TEST_FAILED" == "1" ]; then
     echo "==> Tests FAILED"

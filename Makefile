@@ -71,10 +71,10 @@ test: ## Run tests
 	${OPTS} go test ${TEST_OPTS} ./...
 
 test-e2e-build: ## Build Docker images for e2e tests
-	cd docker && docker-compose -f docker-compose.e2e.yml build
+	cd docker && docker compose -f docker-compose.e2e.yml build
 
 test-e2e-run: ## Start e2e test environment
-	cd docker && docker-compose -f docker-compose.e2e.yml up -d
+	cd docker && docker compose -f docker-compose.e2e.yml up -d
 	@echo "Waiting for services to be ready..."
 	sleep 15
 
@@ -83,10 +83,10 @@ test-e2e-test: ## Run e2e tests (requires e2e-run)
 	go test -v -timeout=10m ./internal/e2e/...
 
 test-e2e-stop: ## Stop e2e environment
-	cd docker && docker-compose -f docker-compose.e2e.yml stop
+	cd docker && docker compose -f docker-compose.e2e.yml stop
 
 test-e2e-clean: ## Stop and remove e2e environment
-	cd docker && docker-compose -f docker-compose.e2e.yml down -v
+	cd docker && docker compose -f docker-compose.e2e.yml down -v
 
 test-e2e: test-e2e-build test-e2e-run test-e2e-test test-e2e-stop ## Run complete e2e test suite
 

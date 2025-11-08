@@ -28,7 +28,7 @@ jobs:
 
       - name: Show E2E Logs on Failure
         if: failure()
-        run: cd docker && docker-compose -f docker-compose.e2e.yml logs
+        run: cd docker && docker compose -f docker-compose.e2e.yml logs
 
       - name: Stop E2E Environment
         if: always()
