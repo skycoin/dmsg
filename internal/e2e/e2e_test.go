@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/require"
 )
@@ -46,7 +47,7 @@ func NewEnv() *TestEnv {
 func (env *TestEnv) ExecInContainer(containerName string, cmd []string) (string, error) {
 	ctx := context.Background()
 
-	execConfig := client.ExecOptions{
+	execConfig := container.ExecOptions{
 		AttachStdout: true,
 		AttachStderr: true,
 		Cmd:          cmd,
@@ -57,7 +58,7 @@ func (env *TestEnv) ExecInContainer(containerName string, cmd []string) (string,
 		return "", fmt.Errorf("failed to create exec: %w", err)
 	}
 
-	resp, err := env.cli.ContainerExecAttach(ctx, execID.ID, client.ExecStartOptions{})
+	resp, err := env.cli.ContainerExecAttach(ctx, execID.ID, container.ExecStartOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to attach exec: %w", err)
 	}
