@@ -4,7 +4,7 @@ else
 	SHELL := /bin/bash
 endif
 
-.PHONY : check lint install-linters dep test build
+.PHONY : check lint install-linters dep test test-e2e build
 
 VERSION := $(shell git describe --always)
 
@@ -69,6 +69,10 @@ vendorcheck:  ## Run vendorcheck
 test: ## Run tests
 	-go clean -testcache &>/dev/null
 	${OPTS} go test ${TEST_OPTS} ./...
+
+test-e2e: ## Run e2e tests (requires Docker)
+	@echo "Running e2e tests..."
+	@./scripts/run-e2e-tests.sh
 
 test-windows: ## Run tests
 	-go clean -testcache
