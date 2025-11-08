@@ -4,7 +4,7 @@ else
 	SHELL := /bin/bash
 endif
 
-.PHONY : check lint install-linters dep test test-e2e build
+.PHONY : check lint install-linters dep test test-e2e test-e2e-build test-e2e-run test-e2e-test test-e2e-stop test-e2e-clean build
 
 VERSION := $(shell git describe --always)
 
@@ -70,9 +70,25 @@ test: ## Run tests
 	-go clean -testcache &>/dev/null
 	${OPTS} go test ${TEST_OPTS} ./...
 
-test-e2e: ## Run e2e tests (requires Docker)
-	@echo "Running e2e tests..."
-	@./scripts/run-e2e-tests.sh
+test-e2e-build: ## Build Docker images for e2e tests
+	cd docker && docker-compose -f docker-compose.e2e.yml build
+
+test-e2e-run: ## Start e2e test environment
+	cd docker && docker-compose -f docker-compose.e2e.yml up -d
+	@echo "Waiting for services to be ready..."
+	sleep 15
+
+test-e2e-test: ## Run e2e tests (requires e2e-run)
+	-go clean -testcache
+	go test -v -timeout=10m ./internal/e2e/...
+
+test-e2e-stop: ## Stop e2e environment
+	cd docker && docker-compose -f docker-compose.e2e.yml stop
+
+test-e2e-clean: ## Stop and remove e2e environment
+	cd docker && docker-compose -f docker-compose.e2e.yml down -v
+
+test-e2e: test-e2e-build test-e2e-run test-e2e-test test-e2e-stop ## Run complete e2e test suite
 
 test-windows: ## Run tests
 	-go clean -testcache
