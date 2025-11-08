@@ -23,9 +23,6 @@ coverage.txt
 .DS_Store
 Thumbs.db
 
-# Vendor (don't copy to docker)
-vendor/
-
 # Git
 .git/
 .gitignore
