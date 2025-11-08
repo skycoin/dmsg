@@ -9,15 +9,14 @@ ENV CGO_ENABLED=${CGO_ENABLED} \
 COPY . /dmsg
 WORKDIR /dmsg
 
-# Build dmsg discovery
-RUN apk add --no-cache make bash git && \
-	make build-deploy
+# Build unified dmsg binary
+RUN go build -tags netgo -mod=vendor "-ldflags=-w -s" -o /release/dmsg ./cmd/dmsg
 
 # Build image
 FROM alpine:latest
 
-COPY --from=builder /release/dmsg-discovery /usr/local/bin/dmsg-discovery
+COPY --from=builder /release/dmsg /usr/local/bin/dmsg
 
 EXPOSE 9090
 STOPSIGNAL SIGINT
-ENTRYPOINT [ "dmsg-discovery" ]
+ENTRYPOINT [ "dmsg", "discovery" ]
