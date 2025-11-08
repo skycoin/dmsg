@@ -46,7 +46,7 @@ services:
       - "8080:8080"
     depends_on:
       - dmsg-discovery
-    command: ["start", "/e2e/dmsg-server.json"]
+    command: ["server", "start", "/e2e/dmsg-server.json"]
 
   dmsg-client:
     build:
