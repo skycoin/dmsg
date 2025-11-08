@@ -9,8 +9,8 @@ ENV CGO_ENABLED=${CGO_ENABLED} \
 COPY . /dmsg
 WORKDIR /dmsg
 
-# Build unified dmsg binary
-RUN go build -tags netgo -mod=vendor "-ldflags=-w -s" -o /release/dmsg ./cmd/dmsg
+# Build dmsg binary from repo root
+RUN go build -tags netgo -mod=vendor "-ldflags=-w -s" -o /release/dmsg .
 
 # Build image
 FROM alpine:latest

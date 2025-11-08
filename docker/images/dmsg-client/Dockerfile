@@ -10,7 +10,7 @@ ENV CGO_ENABLED=${CGO_ENABLED} \
 COPY . /dmsg
 WORKDIR /dmsg
 
-RUN go build -o /release/dmsg ./cmd/dmsg && \
+RUN go build -o /release/dmsg . && \
     go build -o /release/testserver ./internal/e2e/testserver
 
 ## Resulting image
