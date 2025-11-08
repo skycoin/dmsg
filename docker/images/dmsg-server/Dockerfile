@@ -22,7 +22,7 @@ RUN mkdir -p /e2e && \
   "public_key": "03b88c1335c28264c5e40ffad67eee75c2f2c39bda27015d6e14a0e90eaa78a41c",\
   "secret_key": "c46cf86c2e13e2ae41a9014d0e3b19e1b1dc1ea5c3e18aee4adf3c4db84ddca7",\
   "discovery": "http://dmsg-discovery:9090",\
-  "local_address": ":8080",\
+  "local_address": "dmsg-server:8080",\
   "log_level": "info"\
 }' > /e2e/dmsg-server.json
 
