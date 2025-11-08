@@ -48,10 +48,7 @@ services:
       - dmsg-discovery
     command: ["start", "/config/dmsg-server.json"]
     volumes:
-      - type: bind
-        source: ./e2e/dmsg-server.json
-        target: /config/dmsg-server.json
-        read_only: true
+      - ./e2e/dmsg-server.json:/config/dmsg-server.json:ro
 
   dmsg-client:
     build:
@@ -64,4 +61,5 @@ services:
         ipv4_address: 172.20.0.5
     depends_on:
       - dmsg-server
-    command: ["sleep", "infinity"]
+    entrypoint: ["/bin/sh"]
+    command: ["-c", "sleep infinity"]
