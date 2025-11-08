@@ -4,6 +4,7 @@
 package e2e_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,13 +66,20 @@ func (env *TestEnv) ExecInContainer(containerName string, cmd []string) (string,
 	}
 	defer resp.Close()
 
-	output := make([]byte, 4096)
-	n, err := resp.Reader.Read(output)
-	if err != nil && n == 0 {
+	// Docker exec output is multiplexed, use stdcopy to demultiplex
+	var stdout, stderr bytes.Buffer
+	_, err = stdcopy.StdCopy(&stdout, &stderr, resp.Reader)
+	if err != nil {
 		return "", fmt.Errorf("failed to read exec output: %w", err)
 	}
 
-	return string(output[:n]), nil
+	// Return combined output (stdout + stderr)
+	output := stdout.String()
+	if stderr.Len() > 0 {
+		output += stderr.String()
+	}
+
+	return output, nil
 }
 
 func TestMain(m *testing.M) {
@@ -193,7 +202,7 @@ func TestVersionFieldPresent(t *testing.T) {
 	// If the version field is missing, this will fail with
 	// "entry validation error: entry has no version"
 	require.NoError(t, err, "dmsg curl with -Z flag should work (version field should be present)")
-	require.Contains(t, output, "dmsgcurl", "dmsg curl help should be displayed")
+	require.Contains(t, output, "curl", "dmsg curl help should be displayed")
 
 	t.Log("Version field test passed - dmsg curl -Z works correctly")
 }

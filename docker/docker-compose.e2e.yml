@@ -46,9 +46,9 @@ services:
       - "8080:8080"
     depends_on:
       - dmsg-discovery
-    command: ["start", "/config/dmsg-server.json"]
+    command: ["start", "/e2e/dmsg-server.json"]
     volumes:
-      - ./e2e/dmsg-server.json:/config/dmsg-server.json:ro
+      - ./e2e:/e2e:ro
 
   dmsg-client:
     build:
