@@ -137,7 +137,8 @@ func StartDmsgWithSyntheticDiscovery(ctx context.Context, dlog *logging.Logger, 
 				delegatedServers = append(delegatedServers, server.Static)
 			}
 			syntheticEntry := &disc.Entry{
-				Static: discoveryPK,
+				Version: "0.0.1",
+				Static:  discoveryPK,
 				Client: &disc.Client{
 					DelegatedServers: delegatedServers,
 				},
@@ -310,7 +311,8 @@ func StartDmsgWithDirectClient(ctx context.Context, dlog *logging.Logger, pk cip
 				delegatedServers = append(delegatedServers, server.Static)
 			}
 			discoveryEntry := &disc.Entry{
-				Static: discoveryPK,
+				Version: "0.0.1",
+				Static:  discoveryPK,
 				Client: &disc.Client{
 					DelegatedServers: delegatedServers,
 				},
@@ -326,7 +328,8 @@ func StartDmsgWithDirectClient(ctx context.Context, dlog *logging.Logger, pk cip
 		delegatedServers = append(delegatedServers, server.Static)
 	}
 	clientEntry := &disc.Entry{
-		Static: pk,
+		Version: "0.0.1",
+		Static:  pk,
 		Client: &disc.Client{
 			DelegatedServers: delegatedServers,
 		},
