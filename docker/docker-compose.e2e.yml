@@ -47,8 +47,6 @@ services:
     depends_on:
       - dmsg-discovery
     command: ["start", "/e2e/dmsg-server.json"]
-    volumes:
-      - ./e2e:/e2e:ro
 
   dmsg-client:
     build:

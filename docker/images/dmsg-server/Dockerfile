@@ -17,6 +17,7 @@ RUN apk add --no-cache bash make git && \
 FROM alpine:latest
 
 COPY --from=builder /release/dmsg-server /usr/local/bin/dmsg-server
+COPY --from=builder /dmsg/docker/e2e/dmsg-server.json /e2e/dmsg-server.json
 
 STOPSIGNAL SIGINT
 
