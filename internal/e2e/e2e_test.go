@@ -65,7 +65,10 @@ func (env *TestEnv) ExecInContainer(containerName string, cmd []string) (string,
 	defer resp.Close()
 
 	output := make([]byte, 4096)
-	n, _ := resp.Reader.Read(output)
+	n, err := resp.Reader.Read(output)
+	if err != nil && n == 0 {
+		return "", fmt.Errorf("failed to read exec output: %w", err)
+	}
 
 	return string(output[:n]), nil
 }

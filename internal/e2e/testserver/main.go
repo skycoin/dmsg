@@ -2,43 +2,49 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-)
-
-var (
-	port = flag.Int("port", 8086, "port to listen on")
+	"time"
 )
 
 func main() {
-	flag.Parse()
-
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "DMSG E2E Test Server\n")
-		fmt.Fprintf(w, "Path: %s\n", r.URL.Path)
-		fmt.Fprintf(w, "Method: %s\n", r.Method)
-		fmt.Fprintf(w, "Host: %s\n", r.Host)
+		//nolint:errcheck,gosec
+		w.Write([]byte("DMSG E2E Test Server\n"))
+		//nolint:errcheck,gosec
+		w.Write([]byte("Path: " + r.URL.Path + "\n"))
+		//nolint:errcheck,gosec
+		w.Write([]byte("Method: " + r.Method + "\n"))
+		//nolint:errcheck,gosec
+		w.Write([]byte("Host: " + r.Host + "\n"))
 	})
 
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "OK")
+		//nolint:errcheck,gosec
+		w.Write([]byte("OK"))
 	})
 
 	http.HandleFunc("/echo", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 		for k, v := range query {
-			fmt.Fprintf(w, "%s: %v\n", k, v)
+			msg := fmt.Sprintf("%s: %v\n", k, v)
+			//nolint:errcheck,gosec
+			w.Write([]byte(msg))
 		}
 	})
 
-	addr := fmt.Sprintf(":%d", *port)
+	addr := ":8086"
 	log.Printf("Starting HTTP test server on %s", addr)
-	if err := http.ListenAndServe(addr, nil); err != nil {
-		log.Fatalf("Server failed: %v", err)
-		os.Exit(1)
+
+	server := &http.Server{
+		Addr:              addr,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
+
+	log.Fatal(server.ListenAndServe())
 }
