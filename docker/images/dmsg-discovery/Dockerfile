@@ -19,4 +19,4 @@ COPY --from=builder /release/dmsg /usr/local/bin/dmsg
 
 EXPOSE 9090
 STOPSIGNAL SIGINT
-ENTRYPOINT [ "dmsg", "discovery" ]
+ENTRYPOINT [ "dmsg", "disc" ]
