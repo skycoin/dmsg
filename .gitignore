@@ -6,7 +6,7 @@
 *.test
 *.out
 *.rdb
-*.json
+/*.json
 .DS_Store
 .vscode
 
