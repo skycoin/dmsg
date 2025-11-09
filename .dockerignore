@@ -1,0 +1,50 @@
+# Build artifacts
+bin/
+build/
+release/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test artifacts
+*.test
+*.out
+coverage.txt
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# CI
+.github/
+.appveyor.yml
+
+# Documentation
+*.md
+!internal/e2e/README.md
+docs/
+
+# Examples
+examples/
+
+# Integration test scripts (not needed in docker images)
+integration/
+scripts/
+
+# Docker
+docker/
+Dockerfile*
+docker-compose*.yml
+.dockerignore
