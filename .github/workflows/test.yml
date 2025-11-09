@@ -1,28 +1,25 @@
 on: [pull_request]
 name: Test
+
 jobs:
   linux:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.25.*
-      - uses: actions/checkout@v3
-      
-      - name: Cache golangci-lint
-        uses: actions/cache@v3
+          go-version: '1.25.x'
+          cache: true
+          cache-dependency-path: go.sum
+
+      - uses: golangci/golangci-lint-action@v7
         with:
-          path: ~/go/bin/golangci-lint
-          key: ${{ runner.os }}-golangci-lint-v2.4.0
-      
-      - name: Install Requirements
-        run: |
-          if [ ! -f ~/go/bin/golangci-lint ]; then
-            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/main/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.4.0
-          fi
-          go mod vendor
+          version: v2.6.1
+
       - name: Checking Format and Testing
         run: make check
+
       - name: Build
         run: make build
 
@@ -44,56 +41,44 @@ jobs:
         run: make test-e2e-clean
 
   darwin:
-    needs: linux
     runs-on: macos-latest
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.25.*
-      - uses: actions/checkout@v3
-      
-      - name: Cache golangci-lint
-        uses: actions/cache@v3
+          go-version: '1.25.x'
+          cache: true
+          cache-dependency-path: go.sum
+
+      - uses: golangci/golangci-lint-action@v7
         with:
-          path: ~/go/bin/golangci-lint
-          key: ${{ runner.os }}-golangci-lint-v2.4.0
-      
-      - name: Install Requirements
-        run: |
-          if [ ! -f ~/go/bin/golangci-lint ]; then
-            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/main/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.4.0
-          fi
-          go mod vendor
+          version: v2.6.1
+
       - name: Checking Format and Testing
         run: make check
+
       - name: Build
         run: make build
 
   windows:
-    needs: linux
     runs-on: windows-latest
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.25.*
-      - uses: actions/checkout@v3
-      
-      - name: Cache golangci-lint
-        uses: actions/cache@v3
-        with:
-          path: ~/go/bin/golangci-lint.exe
-          key: ${{ runner.os }}-golangci-lint-v2.4.0
-      
+          go-version: '1.25.x'
+          cache: true
+          cache-dependency-path: go.sum
+
       - name: Install Requirements
-        run: |
-          choco install make
-          if (-not (Test-Path ~/go/bin/golangci-lint.exe)) {
-            go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.4.0
-          }
-          go mod vendor
+        run: choco install make
+
       - name: Testing
-        run:  |
+        run: |
           set GO111MODULE=on
           make test-windows
+
       - name: Build
         run: make build-windows
