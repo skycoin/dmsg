@@ -1,4 +1,5 @@
 // Package servermetrics internal/servermetrics/delta.go
+
 package servermetrics
 
 // DeltaType represents a change in metrics gauge.
