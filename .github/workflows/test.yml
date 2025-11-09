@@ -13,10 +13,6 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
-      - name: Install Requirements
-        run: |
-          go mod vendor
-
       - uses: golangci/golangci-lint-action@v7
         with:
           version: v2.6.1
@@ -56,10 +52,6 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
-      - name: Install Requirements
-        run: |
-          go mod vendor
-
       - uses: golangci/golangci-lint-action@v7
         with:
           version: v2.6.1
@@ -83,9 +75,7 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Install Requirements
-        run: |
-          choco install make
-          go mod vendor
+        run: choco install make
 
       - uses: golangci/golangci-lint-action@v7
         with:
