@@ -75,10 +75,6 @@ jobs:
       - name: Install Requirements
         run: choco install make
 
-      - uses: golangci/golangci-lint-action@v7
-        with:
-          version: v2.6.1
-
       - name: Testing
         run: |
           set GO111MODULE=on
