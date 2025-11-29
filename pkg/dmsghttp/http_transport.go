@@ -47,7 +47,7 @@ func (t HTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Ensure stream is closed if we return an error before wrapping the response body
 	defer func() {
 		if err != nil {
-			_ = stream.Close()
+			_ = stream.Close() //nolint:errcheck // best-effort cleanup on error path
 		}
 	}()
 
