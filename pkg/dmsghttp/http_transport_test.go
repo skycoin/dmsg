@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
@@ -66,9 +67,19 @@ func TestHTTPTransport_RoundTrip(t *testing.T) {
 		ctx, cancel := cmdutil.SignalContext(context.Background(), log)
 		defer cancel()
 		// Arrange: create http clients (in which each http client has an underlying dmsg client).
-		httpC1 := http.Client{Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client1"))}
-		httpC2 := http.Client{Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client2"))}
-		httpC3 := http.Client{Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client3"))}
+		// Configure timeouts to prevent hanging on errors.
+		httpC1 := http.Client{
+			Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client1")),
+			Timeout:   10 * time.Second,
+		}
+		httpC2 := http.Client{
+			Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client2")),
+			Timeout:   10 * time.Second,
+		}
+		httpC3 := http.Client{
+			Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client3")),
+			Timeout:   10 * time.Second,
+		}
 
 		// Act: http clients send requests concurrently.
 		// - client1 sends "/index.html" requests.
