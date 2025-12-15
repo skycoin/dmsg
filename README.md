@@ -2,6 +2,7 @@
 
 # dmsg
 
+
 `dmsg` is a distributed messaging system comprised of three types of services:
 - `dmsg.Client` represents a user/client that wishes to use the dmsg network to establish `dmsg.Session`s and `dmsg.Stream`s.
 - `dmsg.Server` represents a service that proxies `dmsg.Stream`s between `dmsg.Client`s.
