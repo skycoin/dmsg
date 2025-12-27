@@ -1,6 +1,6 @@
 module github.com/skycoin/dmsg
 
-go 1.25.1
+go 1.25.4
 
 require (
 	github.com/ActiveState/termtest/conpty v0.5.0
@@ -19,8 +19,8 @@ require (
 	github.com/pires/go-proxyproto v0.8.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
-	github.com/skycoin/skycoin v0.28.1-0.20251215160458-f84f07154eae //MUST TRACK COBRA-CLI BRANCH FOR NOW v0.28.1-0.20251215160458-f84f07154eae
-	github.com/skycoin/skywire v1.3.32-0.20251108143835-4a7d00a050e1
+	github.com/skycoin/skycoin v0.28.2
+	github.com/skycoin/skywire v1.3.32-0.20251215232901-7d4328a5ca17
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.48.0
@@ -30,7 +30,7 @@ require (
 
 require (
 	github.com/docker/docker v28.5.2+incompatible
-	github.com/xtaci/smux v1.5.47
+	github.com/xtaci/smux v1.5.49
 )
 
 require (
@@ -57,9 +57,9 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.29.0 // indirect
+	github.com/go-playground/validator/v10 v10.30.1 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
-	github.com/goccy/go-yaml v1.19.0 // indirect
+	github.com/goccy/go-yaml v1.19.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/itchyny/gojq v0.12.18 // indirect
 	github.com/itchyny/timefmt-go v0.1.7 // indirect
@@ -80,7 +80,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
-	github.com/quic-go/quic-go v0.57.1 // indirect
+	github.com/quic-go/quic-go v0.58.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
@@ -95,7 +95,6 @@ require (
 	golang.org/x/arch v0.23.0 // indirect
 	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
-	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
@@ -115,8 +114,8 @@ require (
 // Below should reflect current versions of the following deps
 // To update deps to specific commit hash:
 // 1) Uncomment one of the following lines and substituite version with desired commit hash:
-//replace github.com/skycoin/skycoin => github.com/skycoin/skycoin v0.28.1-0.20251215160458-f84f07154eae
-//replace github.com/skycoin/skywire => github.com/skycoin/skywire v1.3.32-0.20251108143835-4a7d00a050e1
+//replace github.com/skycoin/skycoin => github.com/skycoin/skycoin v0.28.2
+//replace github.com/skycoin/skywire => github.com/skycoin/skywire v1.3.32-0.20251215232901-7d4328a5ca17
 // 2) Run `go mod tidy && go mod vendor`
 // 3) Copy the populated version string to the correct place in require(...) above - replacing the specified version string
 // 4) Re-comment the uncommented replace directive above
