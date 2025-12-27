@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/skycoin/skycoin/src/cipher"
+	"github.com/skycoin/skycoin/src/cipher/secp256k1-go"
 )
 
 func init() {
@@ -242,7 +243,7 @@ func SignPayload(payload []byte, sec SecKey) (Sig, error) {
 
 // VerifyPubKeySignedPayload verifies that SHA256 hash of the payload was signed by PubKey
 func VerifyPubKeySignedPayload(pubkey PubKey, sig Sig, payload []byte) error {
-	return cipher.VerifyPubKeySignedHash(cipher.PubKey(pubkey), cipher.Sig(sig), cipher.SumSHA256(payload))
+	return VerifyPubKeySignedHashLight(cipher.PubKey(pubkey), cipher.Sig(sig), cipher.SumSHA256(payload))
 }
 
 // RandByte returns rand N bytes
@@ -263,4 +264,25 @@ func SHA256FromBytes(b []byte) (SHA256, error) {
 // SumSHA256 sum sha256
 func SumSHA256(b []byte) SHA256 {
 	return SHA256(cipher.SumSHA256(b))
+}
+
+// VerifyPubKeySignedHashLight uses standard Skycoin implementation
+// This is your original optimized version that skips pubkey recovery
+func VerifyPubKeySignedHashLight(pubkey cipher.PubKey, sig cipher.Sig, hash cipher.SHA256) error {
+	// Validate pubkey format (fast)
+	if secp256k1.VerifyPubkey(pubkey[:]) != 1 {
+		return cipher.ErrInvalidSigInvalidPubKey
+	}
+
+	// Validate signature format (fast)
+	if secp256k1.VerifySignatureValidity(sig[:]) != 1 {
+		return cipher.ErrInvalidSigValidity
+	}
+
+	// Verify signature (expensive, but still faster than full recovery)
+	if secp256k1.VerifySignature(hash[:], sig[:], pubkey[:]) != 1 {
+		return cipher.ErrInvalidSigForMessage
+	}
+
+	return nil
 }
