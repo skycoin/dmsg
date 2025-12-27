@@ -19,18 +19,18 @@ require (
 	github.com/pires/go-proxyproto v0.8.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
-	github.com/skycoin/skycoin v0.28.1-0.20251109152000-9018c9f37372 //DO NOT MODIFY OR UPDATE v0.28.1-0.20251109152000-9018c9f37372
+	github.com/skycoin/skycoin v0.28.1-0.20251215160458-f84f07154eae //MUST TRACK COBRA-CLI BRANCH FOR NOW v0.28.1-0.20251215160458-f84f07154eae
 	github.com/skycoin/skywire v1.3.32-0.20251108143835-4a7d00a050e1
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/net v0.47.0
-	golang.org/x/sys v0.38.0
-	golang.org/x/term v0.37.0
+	golang.org/x/net v0.48.0
+	golang.org/x/sys v0.39.0
+	golang.org/x/term v0.38.0
 )
 
 require (
 	github.com/docker/docker v28.5.2+incompatible
-	github.com/xtaci/smux v1.5.44
+	github.com/xtaci/smux v1.5.47
 )
 
 require (
@@ -51,17 +51,17 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.11 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.28.0 // indirect
+	github.com/go-playground/validator/v10 v10.29.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.19.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/itchyny/gojq v0.12.17 // indirect
+	github.com/itchyny/gojq v0.12.18 // indirect
 	github.com/itchyny/timefmt-go v0.1.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
@@ -93,10 +93,10 @@ require (
 	go.opentelemetry.io/otel/metric v1.38.0 // indirect
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	golang.org/x/arch v0.23.0 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/crypto v0.46.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
-	google.golang.org/protobuf v1.36.10 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
 	mvdan.cc/sh/v3 v3.12.0 // indirect
@@ -115,7 +115,7 @@ require (
 // Below should reflect current versions of the following deps
 // To update deps to specific commit hash:
 // 1) Uncomment one of the following lines and substituite version with desired commit hash:
-//replace github.com/skycoin/skycoin => github.com/skycoin/skycoin v0.28.1-0.20251022232932-b3a844043898
+//replace github.com/skycoin/skycoin => github.com/skycoin/skycoin v0.28.1-0.20251215160458-f84f07154eae
 //replace github.com/skycoin/skywire => github.com/skycoin/skywire v1.3.32-0.20251108143835-4a7d00a050e1
 // 2) Run `go mod tidy && go mod vendor`
 // 3) Copy the populated version string to the correct place in require(...) above - replacing the specified version string
