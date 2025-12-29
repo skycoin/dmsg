@@ -217,7 +217,7 @@ func (s *Server) handleSession(conn net.Conn) {
 			}
 		}
 	}()
-	
+
 	log := s.log.WithField("remote_tcp", conn.RemoteAddr())
 
 	dSes, err := makeServerSession(s.m, &s.EntityCommon, conn)
