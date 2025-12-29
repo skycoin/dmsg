@@ -307,3 +307,90 @@ func GenKeyPair(t *testing.T, seed string) (cipher.PubKey, cipher.SecKey) {
 	require.NoError(t, err)
 	return pk, sk
 }
+
+// TestInvalidPublicKeyNoPanic tests that the server doesn't crash when receiving
+// a connection with an invalid public key during the noise handshake.
+// This is a regression test for a 2+ year old bug where invalid public keys
+// would cause the server to panic and crash.
+func TestInvalidPublicKeyNoPanic(t *testing.T) {
+	// Prepare mock discovery.
+	dc := disc.NewMock(0)
+	const maxSessions = 10
+
+	// Prepare dmsg server.
+	pkSrv, skSrv := GenKeyPair(t, "server")
+	srvConf := &ServerConfig{
+		MaxSessions:    maxSessions,
+		UpdateInterval: 0,
+	}
+	srv := NewServer(pkSrv, skSrv, dc, srvConf, nil)
+	srv.SetLogger(logging.MustGetLogger("server"))
+	lisSrv, err := net.Listen("tcp", "")
+	require.NoError(t, err)
+
+	// Serve dmsg server.
+	chSrv := make(chan error, 1)
+	go func() { chSrv <- srv.Serve(lisSrv, "") }() //nolint:errcheck
+
+	// Give server time to start
+	time.Sleep(500 * time.Millisecond)
+
+	// Attempt to send a handshake with invalid public key data
+	// This simulates a malicious or buggy client
+	t.Run("invalid_pubkey_handshake", func(t *testing.T) {
+		conn, err := net.Dial("tcp", lisSrv.Addr().String())
+		require.NoError(t, err)
+		defer func() { _ = conn.Close() }() //nolint:errcheck
+
+		// Send invalid noise handshake data (contains invalid public key)
+		// In a real noise handshake, the public key would be embedded in the message
+		// We send malformed data that will trigger invalid public key error
+		invalidData := make([]byte, 100)
+		// Write some invalid data that looks like a handshake but has invalid key
+		copy(invalidData, []byte{0x00, 0x32}) // frame length prefix (50 bytes)
+		// Rest is invalid/random data that will fail public key validation
+		for i := 2; i < len(invalidData); i++ {
+			invalidData[i] = byte(i) // deterministic but invalid
+		}
+
+		_, err = conn.Write(invalidData)
+		// Write may succeed, but the server should handle the invalid data gracefully
+		if err != nil {
+			t.Logf("Write failed (expected): %v", err)
+		}
+
+		// Give server time to process the invalid handshake
+		time.Sleep(500 * time.Millisecond)
+
+		// Read to see if connection was closed (expected behavior)
+		buf := make([]byte, 10)
+		_ = conn.SetReadDeadline(time.Now().Add(1 * time.Second)) //nolint:errcheck
+		_, _ = conn.Read(buf)                                     //nolint:errcheck
+		// We expect the connection to be closed or timeout
+		// The important thing is the server didn't crash
+	})
+
+	// Verify server is still running and can accept valid connections
+	t.Run("valid_connection_after_invalid", func(t *testing.T) {
+		// Prepare and serve a valid dmsg client
+		pkA, skA := GenKeyPair(t, "client A")
+		clientA := NewClient(pkA, skA, dc, DefaultConfig())
+		clientA.SetLogger(logging.MustGetLogger("client_A"))
+		go clientA.Serve(context.Background())
+
+		// Wait for client to register
+		time.Sleep(time.Second * 2)
+
+		// Attempt to use the client - if server crashed, this will fail
+		lis, err := clientA.Listen(8081)
+		require.NoError(t, err, "Server should still be running and accept valid connections")
+
+		// Clean up
+		require.NoError(t, lis.Close())
+		require.NoError(t, clientA.Close())
+	})
+
+	// Closing logic - server should still be healthy
+	require.NoError(t, srv.Close())
+	require.NoError(t, <-chSrv)
+}
