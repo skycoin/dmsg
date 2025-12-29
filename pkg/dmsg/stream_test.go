@@ -340,7 +340,7 @@ func TestInvalidPublicKeyNoPanic(t *testing.T) {
 	t.Run("invalid_pubkey_handshake", func(t *testing.T) {
 		conn, err := net.Dial("tcp", lisSrv.Addr().String())
 		require.NoError(t, err)
-		defer conn.Close()
+		defer func() { _ = conn.Close() }() //nolint:errcheck
 
 		// Send invalid noise handshake data (contains invalid public key)
 		// In a real noise handshake, the public key would be embedded in the message
@@ -364,8 +364,8 @@ func TestInvalidPublicKeyNoPanic(t *testing.T) {
 
 		// Read to see if connection was closed (expected behavior)
 		buf := make([]byte, 10)
-		conn.SetReadDeadline(time.Now().Add(1 * time.Second))
-		_, err = conn.Read(buf)
+		_ = conn.SetReadDeadline(time.Now().Add(1 * time.Second)) //nolint:errcheck
+		_, _ = conn.Read(buf)                                     //nolint:errcheck
 		// We expect the connection to be closed or timeout
 		// The important thing is the server didn't crash
 	})
