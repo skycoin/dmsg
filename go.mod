@@ -30,7 +30,7 @@ require (
 
 require (
 	github.com/docker/docker v28.5.2+incompatible
-	github.com/xtaci/smux v1.5.49
+	github.com/xtaci/smux v1.5.50
 )
 
 require (

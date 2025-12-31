@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
@@ -154,6 +155,9 @@ func TestHost(t *testing.T) {
 			})
 
 			t.Run("endpoint_proxy", func(t *testing.T) {
+				// Give hostA time to establish its listener on macOS
+				time.Sleep(100 * time.Millisecond)
+
 				conn, err := cliB.prepareConn()
 				require.NoError(t, err)
 
