@@ -3,6 +3,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -22,6 +23,7 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/metricsutil"
 	"github.com/spf13/cobra"
+	"github.com/tidwall/pretty"
 
 	"github.com/skycoin/dmsg/internal/discmetrics"
 	"github.com/skycoin/dmsg/internal/dmsg-discovery/api"
@@ -52,6 +54,75 @@ var (
 	pprofAddr         string
 )
 
+// exampleJSON marshals v to indented JSON with color, returning empty string on error
+func exampleJSON(v interface{}) string {
+	b, err := json.MarshalIndent(v, "    ", "  ")
+	if err != nil {
+		return ""
+	}
+	return string(pretty.Color(b, nil))
+}
+
+// generateExamples creates example responses from actual struct types
+func generateExamples() string {
+	exPK1 := "02a49bc0aa1b5b78f638e9189be4c5d699e6d1358472d8a47f4c20daacd672d7e5"
+	exPK2 := "03b160fa44bac22cae9f7eb1311f1648aaab962e1e55d8d9a22a9586ded871eb5e"
+
+	// GET /health - api.HealthCheckResponse
+	healthExample := map[string]interface{}{
+		"build_info": map[string]interface{}{
+			"version": "v1.3.29",
+			"commit":  "abc1234",
+			"date":    "2024-01-15T10:30:00Z",
+		},
+		"started_at":   "2024-01-15T10:00:00Z",
+		"dmsg_address": exPK1 + ":80",
+		"dmsg_servers": []string{exPK2},
+	}
+
+	// GET /dmsg-discovery/entry/{pk} - disc.Entry
+	entryExample := map[string]interface{}{
+		"version":   "1.0",
+		"sequence":  1,
+		"timestamp": 1705315200,
+		"static":    exPK1,
+		"client": map[string]interface{}{
+			"delegated_servers": []string{exPK2},
+		},
+	}
+
+	// GET /dmsg-discovery/available_servers - []disc.Entry (server entries)
+	serverEntryExample := map[string]interface{}{
+		"version":   "1.0",
+		"sequence":  1,
+		"timestamp": 1705315200,
+		"static":    exPK1,
+		"server": map[string]interface{}{
+			"address":           "192.168.1.100:8081",
+			"available_streams": 100,
+			"max_streams":       200,
+			"server_type":       "public",
+		},
+	}
+
+	return fmt.Sprintf(`
+Response Examples (from actual struct types):
+
+GET /health - api.HealthCheckResponse
+%s
+
+GET /dmsg-discovery/entry/{pk} - disc.Entry
+%s
+
+GET /dmsg-discovery/available_servers - []disc.Entry
+    [
+    %s
+    ]`,
+		exampleJSON(healthExample),
+		exampleJSON(entryExample),
+		exampleJSON(serverEntryExample))
+}
+
 func init() {
 	sf.Init(RootCmd, "dmsg_disc", "")
 
@@ -80,10 +151,28 @@ var RootCmd = &cobra.Command{
 	┌┬┐┌┬┐┌─┐┌─┐  ┌┬┐┬┌─┐┌─┐┌─┐┬  ┬┌─┐┬─┐┬ ┬
 	 │││││└─┐│ ┬───│││└─┐│  │ │└┐┌┘├┤ ├┬┘└┬┘
 	─┴┘┴ ┴└─┘└─┘  ─┴┘┴└─┘└─┘└─┘ └┘ └─┘┴└─ ┴
-DMSG Discovery Server
------ depends: redis -----
-skywire cli config gen-keys > dmsgd-config.json
-skywire dmsg disc --sk $(tail -n1 dmsgd-config.json)`,
+DMSG Discovery Server - registers and discovers DMSG clients and servers.
+
+Depends: redis
+
+HTTP Endpoints:
+  GET  /health                                Health check
+  GET  /dmsg-discovery/entry/{pk}             Get entry by public key
+  POST /dmsg-discovery/entry/                 Register/update entry
+  POST /dmsg-discovery/entry/{pk}             Register/update entry
+  DEL  /dmsg-discovery/entry                  Delete entry
+  GET  /dmsg-discovery/entries                All entries
+  GET  /dmsg-discovery/visorEntries           All visor entries
+  DEL  /dmsg-discovery/deregister             Deregister entry
+  GET  /dmsg-discovery/available_servers      Available DMSG servers
+  GET  /dmsg-discovery/all_servers            All DMSG servers
+  GET  /dmsg-discovery/servers/clients        Clients by all servers
+  GET  /dmsg-discovery/server/{pk}/clients    Clients by specific server
+` + generateExamples() + `
+
+Example:
+  skywire cli config gen-keys > dmsgd-config.json
+  skywire dmsg disc --sk $(tail -n1 dmsgd-config.json)`,
 	SilenceErrors:         true,
 	SilenceUsage:          true,
 	DisableSuggestions:    true,
