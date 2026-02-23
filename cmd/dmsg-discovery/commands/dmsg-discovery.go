@@ -239,18 +239,18 @@ GET /dmsg-discovery/server/{pk}/clients
 func init() {
 	sf.Init(RootCmd, "dmsg_disc", "")
 
-	RootCmd.Flags().StringVarP(&addr, "addr", "a", ":9090", "address to bind to")
-	RootCmd.Flags().StringVar(&pprofAddr, "pprof", "", "address to bind pprof debug server (e.g. localhost:6060)\033[0m")
+	RootCmd.Flags().StringVarP(&addr, "addr", "a", ":9090", "address to bind to\n\r")
+	RootCmd.Flags().StringVar(&pprofAddr, "pprof", "", "address to bind pprof debug server (e.g. localhost:6060)")
 	RootCmd.Flags().StringVar(&authPassphrase, "auth", "", "auth passphrase as simple auth for official dmsg servers registration")
 	RootCmd.Flags().StringVar(&officialServers, "official-servers", "", "list of official dmsg servers keys separated by comma")
-	RootCmd.Flags().StringVar(&redisURL, "redis", store.DefaultURL, "connections string for a redis store")
+	RootCmd.Flags().StringVar(&redisURL, "redis", store.DefaultURL, "connections string for a redis store\n\r")
 	RootCmd.Flags().StringVar(&whitelistKeys, "whitelist-keys", "", "list of whitelisted keys of network monitor used for deregistration")
-	RootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout")
+	RootCmd.Flags().DurationVar(&entryTimeout, "entry-timeout", store.DefaultTimeout, "discovery entry timeout\n\r")
 	RootCmd.Flags().BoolVarP(&testMode, "test-mode", "t", false, "in testing mode")
 	RootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
 	RootCmd.Flags().BoolVar(&testEnvironment, "test-environment", false, "distinguished between prod and test environment")
-	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key\n")
-	RootCmd.Flags().Uint16Var(&dmsgPort, "dmsgPort", dmsg.DefaultDmsgHTTPPort, "dmsg port value")
+	RootCmd.Flags().Var(&sk, "sk", "dmsg secret key\n\r")
+	RootCmd.Flags().Uint16Var(&dmsgPort, "dmsgPort", dmsg.DefaultDmsgHTTPPort, "dmsg port value\n\r")
 	RootCmd.Flags().StringVar(&dmsgServerType, "dmsg-server-type", "", "type of dmsg server on dmsghttp handler")
 }
 
