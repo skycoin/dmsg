@@ -143,6 +143,11 @@ func generateExamples() string {
 	// GET /dmsg-discovery/server/{pk}/clients - []client_pk
 	clientsForServerExample := []string{exPK1, exPK3}
 
+	// Arrays for list endpoints
+	entriesExample := []interface{}{clientEntryExample, serverEntryExample}
+	visorEntriesExample := []interface{}{clientEntryExample}
+	availableServersExample := []interface{}{serverEntryExample}
+
 	return fmt.Sprintf(`
 Response Examples:
 
@@ -164,17 +169,17 @@ POST /dmsg-discovery/entry/ (update entry)
 DEL /dmsg-discovery/entry
 %s
 
-GET /dmsg-discovery/entries
-    [<client entries>, <server entries>]
+GET /dmsg-discovery/entries (all client and server entries)
+%s
 
-GET /dmsg-discovery/visorEntries
-    [<client entries>]
+GET /dmsg-discovery/visorEntries (client entries only)
+%s
 
-GET /dmsg-discovery/available_servers
-    [<server entries with available_streams > 0>]
+GET /dmsg-discovery/available_servers (servers with available_streams > 0)
+%s
 
-GET /dmsg-discovery/all_servers
-    [<all server entries>]
+GET /dmsg-discovery/all_servers (all server entries)
+%s
 
 GET /dmsg-discovery/servers/clients
 %s
@@ -187,6 +192,10 @@ GET /dmsg-discovery/server/{pk}/clients
 		exampleJSON(entrySetExample),
 		exampleJSON(entryUpdatedExample),
 		exampleJSON(entryDeletedExample),
+		exampleJSON(entriesExample),
+		exampleJSON(visorEntriesExample),
+		exampleJSON(availableServersExample),
+		exampleJSON(availableServersExample),
 		exampleJSON(clientsByServerExample),
 		exampleJSON(clientsForServerExample))
 }
