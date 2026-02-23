@@ -65,10 +65,6 @@ func exampleJSON(v interface{}) string {
 
 // generateExamples creates example responses from actual struct types
 func generateExamples() string {
-	exPK1 := "02a49bc0aa1b5b78f638e9189be4c5d699e6d1358472d8a47f4c20daacd672d7e5"
-	exPK2 := "03b160fa44bac22cae9f7eb1311f1648aaab962e1e55d8d9a22a9586ded871eb5e"
-	exPK3 := "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7"
-
 	// Use actual build info with fallbacks
 	bi := buildinfo.Get()
 	version := bi.Version
@@ -84,7 +80,30 @@ func generateExamples() string {
 		date = "2024-01-15T10:30:00Z"
 	}
 
-	// GET /health - api.HealthCheckResponse
+	// Use actual DMSG servers from embedded deployment config
+	var serverEntries []disc.Entry
+	var serverPKs []string
+	if len(dmsg.Prod.DmsgServers) > 0 {
+		// Use up to 2 real servers for examples
+		limit := 2
+		if len(dmsg.Prod.DmsgServers) < limit {
+			limit = len(dmsg.Prod.DmsgServers)
+		}
+		for i := 0; i < limit; i++ {
+			serverEntries = append(serverEntries, dmsg.Prod.DmsgServers[i])
+			serverPKs = append(serverPKs, dmsg.Prod.DmsgServers[i].Static.Hex())
+		}
+	}
+
+	// Fallback example PKs if no servers available
+	exClientPK := "02a49bc0aa1b5b78f638e9189be4c5d699e6d1358472d8a47f4c20daacd672d7e5"
+	exClientPK2 := "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7"
+
+	// GET /health - use first real server PK if available
+	dmsgAddrPK := exClientPK
+	if len(serverPKs) > 0 {
+		dmsgAddrPK = serverPKs[0]
+	}
 	healthExample := map[string]interface{}{
 		"build_info": map[string]interface{}{
 			"version": version,
@@ -92,32 +111,22 @@ func generateExamples() string {
 			"date":    date,
 		},
 		"started_at":   "2024-01-15T10:00:00Z",
-		"dmsg_address": exPK1 + ":80",
-		"dmsg_servers": []string{exPK2},
+		"dmsg_address": dmsgAddrPK + ":80",
+		"dmsg_servers": serverPKs,
 	}
 
-	// disc.Entry (client)
+	// disc.Entry (client) - use real server PKs for delegated_servers
+	delegatedServers := serverPKs
+	if len(delegatedServers) == 0 {
+		delegatedServers = []string{"03b160fa44bac22cae9f7eb1311f1648aaab962e1e55d8d9a22a9586ded871eb5e"}
+	}
 	clientEntryExample := map[string]interface{}{
 		"version":   "1.0",
 		"sequence":  1,
 		"timestamp": 1705315200,
-		"static":    exPK1,
+		"static":    exClientPK,
 		"client": map[string]interface{}{
-			"delegated_servers": []string{exPK2},
-		},
-	}
-
-	// disc.Entry (server)
-	serverEntryExample := map[string]interface{}{
-		"version":   "1.0",
-		"sequence":  1,
-		"timestamp": 1705315200,
-		"static":    exPK2,
-		"server": map[string]interface{}{
-			"address":           "192.168.1.100:8081",
-			"available_streams": 100,
-			"max_streams":       200,
-			"server_type":       "public",
+			"delegated_servers": delegatedServers,
 		},
 	}
 
@@ -136,17 +145,44 @@ func generateExamples() string {
 	}
 
 	// GET /dmsg-discovery/servers/clients - map[server_pk][]client_pk
-	clientsByServerExample := map[string][]string{
-		exPK2: {exPK1, exPK3},
+	clientsByServerExample := make(map[string][]string)
+	if len(serverPKs) > 0 {
+		clientsByServerExample[serverPKs[0]] = []string{exClientPK, exClientPK2}
+	} else {
+		clientsByServerExample["03b160fa44bac22cae9f7eb1311f1648aaab962e1e55d8d9a22a9586ded871eb5e"] = []string{exClientPK, exClientPK2}
 	}
 
 	// GET /dmsg-discovery/server/{pk}/clients - []client_pk
-	clientsForServerExample := []string{exPK1, exPK3}
+	clientsForServerExample := []string{exClientPK, exClientPK2}
+
+	// Use real server entries if available, otherwise use fallback
+	var serverEntryForExample interface{}
+	var serverEntriesForList []interface{}
+	if len(serverEntries) > 0 {
+		serverEntryForExample = serverEntries[0]
+		for _, entry := range serverEntries {
+			serverEntriesForList = append(serverEntriesForList, entry)
+		}
+	} else {
+		// Fallback server entry
+		serverEntryForExample = map[string]interface{}{
+			"version":   "1.0",
+			"sequence":  1,
+			"timestamp": 1705315200,
+			"static":    "03b160fa44bac22cae9f7eb1311f1648aaab962e1e55d8d9a22a9586ded871eb5e",
+			"server": map[string]interface{}{
+				"address":           "192.168.1.100:8081",
+				"available_streams": 100,
+				"max_streams":       200,
+				"server_type":       "official",
+			},
+		}
+		serverEntriesForList = []interface{}{serverEntryForExample}
+	}
 
 	// Arrays for list endpoints
-	entriesExample := []interface{}{clientEntryExample, serverEntryExample}
+	entriesExample := append([]interface{}{clientEntryExample}, serverEntriesForList...)
 	visorEntriesExample := []interface{}{clientEntryExample}
-	availableServersExample := []interface{}{serverEntryExample}
 
 	return fmt.Sprintf(`
 Response Examples:
@@ -188,14 +224,14 @@ GET /dmsg-discovery/server/{pk}/clients
 %s`,
 		exampleJSON(healthExample),
 		exampleJSON(clientEntryExample),
-		exampleJSON(serverEntryExample),
+		exampleJSON(serverEntryForExample),
 		exampleJSON(entrySetExample),
 		exampleJSON(entryUpdatedExample),
 		exampleJSON(entryDeletedExample),
 		exampleJSON(entriesExample),
 		exampleJSON(visorEntriesExample),
-		exampleJSON(availableServersExample),
-		exampleJSON(availableServersExample),
+		exampleJSON(serverEntriesForList),
+		exampleJSON(serverEntriesForList),
 		exampleJSON(clientsByServerExample),
 		exampleJSON(clientsForServerExample))
 }
