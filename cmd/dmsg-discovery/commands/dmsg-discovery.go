@@ -67,6 +67,7 @@ func exampleJSON(v interface{}) string {
 func generateExamples() string {
 	exPK1 := "02a49bc0aa1b5b78f638e9189be4c5d699e6d1358472d8a47f4c20daacd672d7e5"
 	exPK2 := "03b160fa44bac22cae9f7eb1311f1648aaab962e1e55d8d9a22a9586ded871eb5e"
+	exPK3 := "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7"
 
 	// GET /health - api.HealthCheckResponse
 	healthExample := map[string]interface{}{
@@ -80,8 +81,8 @@ func generateExamples() string {
 		"dmsg_servers": []string{exPK2},
 	}
 
-	// GET /dmsg-discovery/entry/{pk} - disc.Entry
-	entryExample := map[string]interface{}{
+	// disc.Entry (client)
+	clientEntryExample := map[string]interface{}{
 		"version":   "1.0",
 		"sequence":  1,
 		"timestamp": 1705315200,
@@ -91,12 +92,12 @@ func generateExamples() string {
 		},
 	}
 
-	// GET /dmsg-discovery/available_servers - []disc.Entry (server entries)
+	// disc.Entry (server)
 	serverEntryExample := map[string]interface{}{
 		"version":   "1.0",
 		"sequence":  1,
 		"timestamp": 1705315200,
-		"static":    exPK1,
+		"static":    exPK2,
 		"server": map[string]interface{}{
 			"address":           "192.168.1.100:8081",
 			"available_streams": 100,
@@ -105,22 +106,74 @@ func generateExamples() string {
 		},
 	}
 
+	// POST response - disc.HTTPMessage
+	entrySetExample := map[string]interface{}{
+		"code":    200,
+		"message": "wrote a new entry",
+	}
+	entryUpdatedExample := map[string]interface{}{
+		"code":    200,
+		"message": "wrote new entry iteration",
+	}
+	entryDeletedExample := map[string]interface{}{
+		"code":    200,
+		"message": "deleted entry",
+	}
+
+	// GET /dmsg-discovery/servers/clients - map[server_pk][]client_pk
+	clientsByServerExample := map[string][]string{
+		exPK2: {exPK1, exPK3},
+	}
+
+	// GET /dmsg-discovery/server/{pk}/clients - []client_pk
+	clientsForServerExample := []string{exPK1, exPK3}
+
 	return fmt.Sprintf(`
-Response Examples (from actual struct types):
+Response Examples:
 
-GET /health - api.HealthCheckResponse
+GET /health
 %s
 
-GET /dmsg-discovery/entry/{pk} - disc.Entry
+GET /dmsg-discovery/entry/{pk} (client entry)
 %s
 
-GET /dmsg-discovery/available_servers - []disc.Entry
-    [
-    %s
-    ]`,
+GET /dmsg-discovery/entry/{pk} (server entry)
+%s
+
+POST /dmsg-discovery/entry/ (new entry)
+%s
+
+POST /dmsg-discovery/entry/ (update entry)
+%s
+
+DEL /dmsg-discovery/entry
+%s
+
+GET /dmsg-discovery/entries
+    [<client entries>, <server entries>]
+
+GET /dmsg-discovery/visorEntries
+    [<client entries>]
+
+GET /dmsg-discovery/available_servers
+    [<server entries with available_streams > 0>]
+
+GET /dmsg-discovery/all_servers
+    [<all server entries>]
+
+GET /dmsg-discovery/servers/clients
+%s
+
+GET /dmsg-discovery/server/{pk}/clients
+%s`,
 		exampleJSON(healthExample),
-		exampleJSON(entryExample),
-		exampleJSON(serverEntryExample))
+		exampleJSON(clientEntryExample),
+		exampleJSON(serverEntryExample),
+		exampleJSON(entrySetExample),
+		exampleJSON(entryUpdatedExample),
+		exampleJSON(entryDeletedExample),
+		exampleJSON(clientsByServerExample),
+		exampleJSON(clientsForServerExample))
 }
 
 func init() {
