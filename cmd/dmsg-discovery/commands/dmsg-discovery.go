@@ -69,12 +69,27 @@ func generateExamples() string {
 	exPK2 := "03b160fa44bac22cae9f7eb1311f1648aaab962e1e55d8d9a22a9586ded871eb5e"
 	exPK3 := "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7"
 
+	// Use actual build info with fallbacks
+	bi := buildinfo.Get()
+	version := bi.Version
+	if version == "" || version == "unknown" {
+		version = "v1.3.29"
+	}
+	commit := bi.Commit
+	if commit == "" || commit == "unknown" {
+		commit = "abc1234"
+	}
+	date := bi.Date
+	if date == "" || date == "unknown" {
+		date = "2024-01-15T10:30:00Z"
+	}
+
 	// GET /health - api.HealthCheckResponse
 	healthExample := map[string]interface{}{
 		"build_info": map[string]interface{}{
-			"version": "v1.3.29",
-			"commit":  "abc1234",
-			"date":    "2024-01-15T10:30:00Z",
+			"version": version,
+			"commit":  commit,
+			"date":    date,
 		},
 		"started_at":   "2024-01-15T10:00:00Z",
 		"dmsg_address": exPK1 + ":80",
