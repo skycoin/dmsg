@@ -268,34 +268,111 @@
     </div>
     <script>
       ;(function() {
+        var term = null;
+        var socket = null;
+        var fitAddon = null;
+        var reconnectAttempts = 0;
+        var maxReconnectAttempts = 5;
+        var reconnectDelay = 2000;
+
+        function connect() {
+          var protocol = (location.protocol == "https:") ? "wss" : "ws";
+          socket = new WebSocket(protocol + "://" + location.host + location.pathname + location.search);
+          socket.binaryType = 'arraybuffer';
+
+          socket.onopen = function() {
+            reconnectAttempts = 0;
+            term.write('\r\n\x1b[32mConnected.\x1b[0m\r\n');
+            // Send initial terminal size
+            sendResize();
+          };
+
+          socket.onmessage = function(event) {
+            if (event.data instanceof ArrayBuffer) {
+              term.write(new Uint8Array(event.data));
+            } else {
+              term.write(event.data);
+            }
+          };
+
+          socket.onclose = function(event) {
+            term.write('\r\n\x1b[31mDisconnected.\x1b[0m\r\n');
+            attemptReconnect();
+          };
+
+          socket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+          };
+        }
+
+        function attemptReconnect() {
+          if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            term.write('\x1b[33mReconnecting (attempt ' + reconnectAttempts + '/' + maxReconnectAttempts + ')...\x1b[0m\r\n');
+            setTimeout(connect, reconnectDelay);
+          } else {
+            term.write('\x1b[31mFailed to reconnect. Please refresh the page.\x1b[0m\r\n');
+          }
+        }
+
+        function sendResize() {
+          if (socket && socket.readyState === WebSocket.OPEN && term) {
+            var msg = JSON.stringify({
+              type: 'resize',
+              cols: term.cols,
+              rows: term.rows
+            });
+            socket.send(msg);
+          }
+        }
+
         window.onload = function() {
-          // Create the terminal object.
-          var term = new Terminal();
+          // Create the terminal object with options
+          term = new Terminal({
+            cursorBlink: true,
+            fontSize: 14,
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            theme: {
+              background: '#1e1e1e',
+              foreground: '#d4d4d4',
+              cursor: '#d4d4d4',
+              cursorAccent: '#1e1e1e',
+              selection: 'rgba(255, 255, 255, 0.3)'
+            }
+          });
 
-          // Connect to the back-end.
-          var protocol = (location.protocol == "https:") ? "wss" : "ws"
-          var socket = new WebSocket(protocol+"://"+location.host+location.pathname+location.search);
-          var attachAddon = new AttachAddon.AttachAddon(socket);
-          term.loadAddon(attachAddon);
-
-          // Prepare to fit to window.
-          var fitAddon = new FitAddon.FitAddon();
+          // Prepare to fit to window
+          fitAddon = new FitAddon.FitAddon();
           term.loadAddon(fitAddon);
 
-          // Open the terminal.
+          // Open the terminal
           var container = document.getElementById('terminal');
           term.open(container);
           fitAddon.fit();
 
-          // React to size changes.
-          document.getElementById('body').onresize = function(event) {
-            fitAddon.fit();
-          };
+          // Handle user input - send to server
+          term.onData(function(data) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+              socket.send(data);
+            }
+          });
+
+          // React to size changes
+          var resizeTimeout = null;
+          window.addEventListener('resize', function() {
+            // Debounce resize events
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(function() {
+              fitAddon.fit();
+              sendResize();
+            }, 100);
+          });
+
+          // Connect to the back-end
+          term.write('\x1b[33mConnecting...\x1b[0m\r\n');
+          connect();
         };
       }).call(this);
-      </script>
-  </body>
-</html>
- </script>
+    </script>
   </body>
 </html>

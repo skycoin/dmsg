@@ -3,6 +3,7 @@ package dmsgpty
 
 import (
 	"bytes"
+	stdjson "encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -155,8 +156,6 @@ func (ui *UI) Handler(customCommands map[string][]string) http.HandlerFunc {
 		defer func() { log.WithError(ptyC.Close()).Debug("Closed ptyC.") }()
 
 		if err = ui.uiStartSize(ptyC); err != nil {
-			log.Print("xxxx")
-
 			writeWSError(log, wsConn, err)
 			return
 		}
@@ -181,6 +180,14 @@ func (ui *UI) Handler(customCommands map[string][]string) http.HandlerFunc {
 		// urlCommands from URL | set DMSGPTYTERM=1 all times
 		ptyC.Write([]byte(urlCommands(r, customCommands))) //nolint
 
+		// Create WebSocket reader that handles resize messages
+		wsReader := newWSReader(ws, ptyC, log, r)
+		defer func() {
+			if err := wsReader.Close(); err != nil {
+				log.WithError(err).Debug("Error closing wsReader")
+			}
+		}()
+
 		// io
 		done, once := make(chan struct{}), new(sync.Once)
 		closeDone := func() { once.Do(func() { close(done) }) }
@@ -189,7 +196,7 @@ func (ui *UI) Handler(customCommands map[string][]string) http.HandlerFunc {
 			closeDone()
 		}()
 		go func() {
-			_, _ = io.Copy(ptyC, wsConn) //nolint:errcheck
+			_, _ = io.Copy(ptyC, wsReader) //nolint:errcheck
 			closeDone()
 		}()
 		<-done
@@ -254,4 +261,81 @@ func urlCommands(r *http.Request, customCommands map[string][]string) string {
 	stringCommands := strings.Join(commands, " && ")
 	stringCommands += "\n"
 	return stringCommands
+}
+
+// resizeMsg represents a terminal resize message from the client.
+type resizeMsg struct {
+	Type string `json:"type"`
+	Cols int    `json:"cols"`
+	Rows int    `json:"rows"`
+}
+
+// wsReader reads from a WebSocket connection, handling resize messages separately.
+// Resize messages are JSON objects with type="resize", cols, and rows fields.
+// All other data is passed through to the PTY.
+type wsReader struct {
+	ws     *websocket.Conn
+	ptyC   *PtyClient
+	log    logrus.FieldLogger
+	ctx    *http.Request
+	closed bool
+	mu     sync.Mutex
+}
+
+func newWSReader(ws *websocket.Conn, ptyC *PtyClient, log logrus.FieldLogger, r *http.Request) *wsReader {
+	return &wsReader{
+		ws:   ws,
+		ptyC: ptyC,
+		log:  log,
+		ctx:  r,
+	}
+}
+
+func (wr *wsReader) Read(p []byte) (int, error) {
+	for {
+		wr.mu.Lock()
+		if wr.closed {
+			wr.mu.Unlock()
+			return 0, io.EOF
+		}
+		wr.mu.Unlock()
+
+		msgType, data, err := wr.ws.Read(wr.ctx.Context())
+		if err != nil {
+			return 0, err
+		}
+
+		// Try to parse as resize message
+		if msgType == websocket.MessageText && len(data) > 0 && data[0] == '{' {
+			var msg resizeMsg
+			if err := stdjson.Unmarshal(data, &msg); err == nil && msg.Type == "resize" {
+				// Handle resize (with bounds checking for uint16)
+				if msg.Cols > 0 && msg.Rows > 0 && msg.Cols <= 0xFFFF && msg.Rows <= 0xFFFF {
+					size := &WinSize{
+						Cols: uint16(msg.Cols), //nolint:gosec // bounds checked above
+						Rows: uint16(msg.Rows), //nolint:gosec // bounds checked above
+						X:    uint16(msg.Cols), //nolint:gosec // bounds checked above
+						Y:    uint16(msg.Rows), //nolint:gosec // bounds checked above
+					}
+					if err := wr.ptyC.SetPtySize(size); err != nil {
+						wr.log.WithError(err).Debug("Failed to set PTY size")
+					} else {
+						wr.log.WithField("cols", msg.Cols).WithField("rows", msg.Rows).Debug("Resized PTY")
+					}
+				}
+				continue // Don't pass resize message to PTY, read next message
+			}
+		}
+
+		// Regular data - copy to output buffer
+		n := copy(p, data)
+		return n, nil
+	}
+}
+
+func (wr *wsReader) Close() error {
+	wr.mu.Lock()
+	defer wr.mu.Unlock()
+	wr.closed = true
+	return nil
 }
