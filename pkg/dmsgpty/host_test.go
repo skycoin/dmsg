@@ -240,9 +240,9 @@ func tempWhitelist(t *testing.T, c *dmsg.Client) (Whitelist, func()) {
 
 func checkPty(t *testing.T, ptyC *PtyClient, msg string) {
 	if runtime.GOOS == "windows" {
-		require.NoError(t, ptyC.Start(DefaultCmd, "-Command", "Write-Host "+msg))
+		require.NoError(t, ptyC.Start(DefaultCmd, nil, "-Command", "Write-Host "+msg))
 	} else {
-		require.NoError(t, ptyC.Start(DefaultCmd, "-c", "echo "+msg))
+		require.NoError(t, ptyC.Start(DefaultCmd, nil, "-c", "echo "+msg))
 	}
 
 	readB := make([]byte, len(msg))

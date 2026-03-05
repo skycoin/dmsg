@@ -155,8 +155,6 @@ func (ui *UI) Handler(customCommands map[string][]string) http.HandlerFunc {
 		defer func() { log.WithError(ptyC.Close()).Debug("Closed ptyC.") }()
 
 		if err = ui.uiStartSize(ptyC); err != nil {
-			log.Print("xxxx")
-
 			writeWSError(log, wsConn, err)
 			return
 		}
