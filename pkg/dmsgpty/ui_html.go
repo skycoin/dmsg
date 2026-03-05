@@ -4318,7 +4318,6 @@ func writeTermHTML(w io.Writer) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer gz.Close() //nolint
 
-	return io.Copy(w, gz) //nolint:gosec // HTML is trusted content
+	return io.Copy(w, gz) //nolint:gosec // G110: embedded content is trusted
 }
