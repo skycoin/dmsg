@@ -136,7 +136,8 @@ func (ui *UI) Handler(customCommands map[string][]string) http.HandlerFunc {
 		}
 		defer func() { log.WithError(ws.Close(websocket.StatusNormalClosure, "closed")).Debug("Closed ws.") }()
 
-		wsConn := websocket.NetConn(r.Context(), ws, websocket.MessageText)
+		// Use binary mode for PTY data - text mode fails on non-UTF-8 bytes
+		wsConn := websocket.NetConn(r.Context(), ws, websocket.MessageBinary)
 
 		// open pty
 		logWS(wsConn, "Dialing...")
