@@ -43,6 +43,14 @@ if (!fs.existsSync(fitLocation)) {
 let fithData = fs.readFileSync(fitLocation, 'utf8');
 currentData = replaceContent(currentData, fithData, '/* term-fit-start */', '/* term-fit-end */');
 
+// Add the webgl addon.
+let webglLocation = './node_modules/xterm-addon-webgl/lib/xterm-addon-webgl.js';
+if (!fs.existsSync(webglLocation)) {
+  exitWithError('ERROR: Unable to find the xterm webgl addon file. No changes were made.');
+}
+let webglData = fs.readFileSync(webglLocation, 'utf8');
+currentData = replaceContent(currentData, webglData, '/* term-webgl-start */', '/* term-webgl-end */');
+
 // Save the new file.
 fs.writeFileSync('../term.html', currentData, {encoding: 'utf8'});
 console.log('Dependencies injected.', '\n');
