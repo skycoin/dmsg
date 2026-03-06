@@ -193,7 +193,10 @@ func (ui *UI) Handler(customCommands map[string][]string) http.HandlerFunc {
 		done, once := make(chan struct{}), new(sync.Once)
 		closeDone := func() { once.Do(func() { close(done) }) }
 		go func() {
-			_, _ = io.Copy(wsConn, ptyC) //nolint:errcheck
+			// Buffer PTY output and flush periodically to reduce WebSocket message count
+			bw := newBufferedWSWriter(wsConn, 16*time.Millisecond)
+			defer bw.Close()
+			_, _ = io.Copy(bw, ptyC) //nolint:errcheck
 			closeDone()
 		}()
 		go func() {
@@ -338,5 +341,76 @@ func (wr *wsReader) Close() error {
 	wr.mu.Lock()
 	defer wr.mu.Unlock()
 	wr.closed = true
+	return nil
+}
+
+// bufferedWSWriter batches writes and flushes them periodically to reduce
+// the number of WebSocket messages, improving performance for high-frequency output.
+type bufferedWSWriter struct {
+	conn     net.Conn
+	buf      []byte
+	mu       sync.Mutex
+	closed   bool
+	interval time.Duration
+	done     chan struct{}
+}
+
+func newBufferedWSWriter(conn net.Conn, flushInterval time.Duration) *bufferedWSWriter {
+	bw := &bufferedWSWriter{
+		conn:     conn,
+		buf:      make([]byte, 0, 4096),
+		interval: flushInterval,
+		done:     make(chan struct{}),
+	}
+	go bw.flushLoop()
+	return bw
+}
+
+func (bw *bufferedWSWriter) Write(p []byte) (int, error) {
+	bw.mu.Lock()
+	defer bw.mu.Unlock()
+	if bw.closed {
+		return 0, io.ErrClosedPipe
+	}
+	bw.buf = append(bw.buf, p...)
+	return len(p), nil
+}
+
+func (bw *bufferedWSWriter) flushLoop() {
+	ticker := time.NewTicker(bw.interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			bw.flush()
+		case <-bw.done:
+			bw.flush() // Final flush
+			return
+		}
+	}
+}
+
+func (bw *bufferedWSWriter) flush() {
+	bw.mu.Lock()
+	if len(bw.buf) == 0 {
+		bw.mu.Unlock()
+		return
+	}
+	data := bw.buf
+	bw.buf = make([]byte, 0, 4096)
+	bw.mu.Unlock()
+
+	_, _ = bw.conn.Write(data) //nolint:errcheck
+}
+
+func (bw *bufferedWSWriter) Close() error {
+	bw.mu.Lock()
+	if bw.closed {
+		bw.mu.Unlock()
+		return nil
+	}
+	bw.closed = true
+	bw.mu.Unlock()
+	close(bw.done)
 	return nil
 }
