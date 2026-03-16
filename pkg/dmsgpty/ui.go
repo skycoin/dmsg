@@ -195,7 +195,7 @@ func (ui *UI) Handler(customCommands map[string][]string) http.HandlerFunc {
 		go func() {
 			// Buffer PTY output and flush periodically to reduce WebSocket message count
 			bw := newBufferedWSWriter(wsConn, 16*time.Millisecond)
-			defer bw.Close()
+			defer func() { _ = bw.Close() }()
 			_, _ = io.Copy(bw, ptyC) //nolint:errcheck
 			closeDone()
 		}()
