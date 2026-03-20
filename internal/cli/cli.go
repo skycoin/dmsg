@@ -530,7 +530,7 @@ func (f *FallbackRoundTripper) RoundTrip(req *http.Request) (*http.Response, err
 		if err != nil {
 			return nil, fmt.Errorf("failed to read request body for retry: %w", err)
 		}
-		req.Body.Close() //nolint:errcheck
+		req.Body.Close() //nolint:errcheck,gosec
 	}
 
 	var lastErr error
