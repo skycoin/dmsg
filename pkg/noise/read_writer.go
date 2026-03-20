@@ -192,6 +192,13 @@ func (rw *ReadWriter) Handshake(hsTimeout time.Duration) error {
 	case err := <-errCh:
 		return err
 	case <-time.After(hsTimeout):
+		// Set a past deadline on the underlying connection to unblock the
+		// handshake goroutine which may be stuck in a Read or Write call.
+		if conn, ok := rw.origin.(net.Conn); ok {
+			conn.SetDeadline(time.Now()) //nolint:errcheck,gosec
+		}
+		// Drain the goroutine result to avoid a leak.
+		<-errCh
 		return timeoutError{}
 	}
 }
