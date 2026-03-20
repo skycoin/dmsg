@@ -135,8 +135,6 @@ func (rw *ReadWriter) Write(p []byte) (n int, err error) {
 		return 0, err
 	}
 
-	p = p[:]
-
 	for len(p) > 0 {
 		// Enforce max frame size.
 		wn := len(p)
@@ -309,11 +307,13 @@ func ReadRawFrame(r *bufio.Reader) (p []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
+	out := make([]byte, prefix)
+	copy(out, b[prefixSize:])
 	if _, err := r.Discard(prefixSize + prefix); err != nil {
 		return nil, fmt.Errorf("unexpected error when discarding %d bytes: %w", prefixSize+prefix, err)
 	}
 
-	return b[prefixSize:], nil
+	return out, nil
 }
 
 func isTemp(err error) bool {

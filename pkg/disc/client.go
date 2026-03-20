@@ -199,7 +199,7 @@ func (c *httpClient) DelEntry(ctx context.Context, entry *Entry) error {
 			Error()
 		return errFromString(httpResponse.Message)
 	}
-	_, _ = io.Copy(io.Discard, resp.Body) //nolint:errcheck //nolint:errcheck
+	_, _ = io.Copy(io.Discard, resp.Body) //nolint:errcheck
 	return nil
 }
 
