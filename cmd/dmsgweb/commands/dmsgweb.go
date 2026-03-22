@@ -24,8 +24,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
 
-	"github.com/skycoin/dmsg/internal/cli"
-	"github.com/skycoin/dmsg/internal/flags"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
@@ -64,7 +63,7 @@ func init() {
 	}
 	pk, _ = sk.PubKey() //nolint
 
-	flags.InitFlags(RootCmd)
+	dmsgclient.InitFlags(RootCmd)
 	RootCmd.Flags().StringVarP(&filterDomainSuffix, "filter", "f", ".dmsg", "domain suffix to filter\033[0m\n\r")
 	RootCmd.Flags().UintVarP(&proxyPort, "socks", "q", proxyPort, "port to serve the socks5 proxy\033[0m\n\r")
 	RootCmd.Flags().StringVarP(&addProxy, "addproxy", "r", addProxy, "configure additional socks5 proxy for dmsgweb (i.e. 127.0.0.1:1080)\033[0m\n\r")
@@ -113,15 +112,15 @@ dmsgweb conf file detected: ` + dwcfg
 		}
 		dlog = logging.MustGetLogger("dmsgweb")
 
-		err = flags.InitConfig()
+		err = dmsgclient.InitConfig()
 		if err != nil {
 			dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
 		}
 
-		if flags.DmsgDiscURL == "" {
+		if dmsgclient.DmsgDiscURL == "" {
 			dlog.Fatal("Dmsg Discovery Server URL not specified")
 		}
-		if flags.DmsgDiscURL == "" {
+		if dmsgclient.DmsgDiscURL == "" {
 			dlog.Fatal("Dmsg Discovery Server dmsg address not specified")
 		}
 
@@ -222,7 +221,7 @@ dmsgweb conf file detected: ` + dwcfg
 			ctx = context.WithValue(ctx, "socks5_proxy", proxyAddr) //nolint
 		}
 
-		dmsgC, closeDmsg, err = cli.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, "")
+		dmsgC, closeDmsg, err = dmsgclient.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, "")
 		if err != nil {
 			dlog.WithError(err).Error("Error connecting to dmsg network")
 			return

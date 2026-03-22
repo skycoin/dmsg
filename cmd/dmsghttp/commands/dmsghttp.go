@@ -22,9 +22,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
 
-	"github.com/skycoin/dmsg/internal/cli"
-	"github.com/skycoin/dmsg/internal/flags"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 )
 
 var (
@@ -42,7 +41,7 @@ var (
 
 func init() {
 	RootCmd.Flags().SortFlags = false
-	flags.InitFlags(RootCmd)
+	dmsgclient.InitFlags(RootCmd)
 	RootCmd.Flags().StringVarP(&proxyAddr, "proxy", "p", proxyAddr, "connect to DMSG via proxy (i.e. '127.0.0.1:1080')")
 	RootCmd.Flags().StringVarP(&logLvl, "loglvl", "l", "debug", "[ debug | warn | error | fatal | panic | trace | info ]\033[0m\n\r")
 	RootCmd.Flags().StringVarP(&serveDir, "dir", "r", ".", "local dir to serve via dmsghttp\033[0m\n\r")
@@ -78,7 +77,7 @@ func server() {
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 
-	err = flags.InitConfig()
+	err = dmsgclient.InitConfig()
 	if err != nil {
 		dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
 	}
@@ -127,7 +126,7 @@ func server() {
 	var dmsgC *dmsg.Client
 	var closeDmsg func()
 
-	dmsgC, closeDmsg, err = cli.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, "")
+	dmsgC, closeDmsg, err = dmsgclient.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, "")
 	if err != nil {
 		dlog.WithError(err).Error("Error connecting to dmsg network")
 		return

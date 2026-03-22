@@ -17,8 +17,8 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
 
-	"github.com/skycoin/dmsg/internal/cli"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 )
 
 var (
@@ -60,7 +60,7 @@ var RootCmd = &cobra.Command{
 		}
 
 		// Initialize the DMSG client
-		dmsgC, closeDmsg, err := cli.StartDmsg(ctx, log, pk, sk, &http.Client{}, dmsgDisc, 1)
+		dmsgC, closeDmsg, err := dmsgclient.StartDmsg(ctx, log, pk, sk, &http.Client{}, dmsgDisc, 1)
 		if err != nil {
 			log.WithError(err).Fatal("failed to start dmsg")
 		}

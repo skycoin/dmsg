@@ -13,7 +13,7 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/netutil"
 	"github.com/xtaci/smux"
 
-	"github.com/skycoin/dmsg/internal/servermetrics"
+	"github.com/skycoin/dmsg/pkg/dmsg/metrics"
 	"github.com/skycoin/dmsg/pkg/disc"
 )
 
@@ -36,7 +36,7 @@ func DefaultServerConfig() *ServerConfig {
 type Server struct {
 	EntityCommon
 
-	m servermetrics.Metrics
+	m metrics.Metrics
 
 	ready     chan struct{} // Closed once dmsg.Server is serving.
 	readyOnce sync.Once
@@ -56,12 +56,12 @@ type Server struct {
 }
 
 // NewServer creates a new dmsg server entity.
-func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *ServerConfig, m servermetrics.Metrics) *Server {
+func NewServer(pk cipher.PubKey, sk cipher.SecKey, dc disc.APIClient, conf *ServerConfig, m metrics.Metrics) *Server {
 	if conf == nil {
 		conf = DefaultServerConfig()
 	}
 	if m == nil {
-		m = servermetrics.NewEmpty()
+		m = metrics.NewEmpty()
 	}
 	log := logging.MustGetLogger("dmsg_server")
 

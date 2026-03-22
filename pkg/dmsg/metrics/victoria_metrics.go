@@ -1,5 +1,5 @@
-// Package servermetrics internal/servermetrics/victoria_metrics.go
-package servermetrics
+// Package metrics pkg/dmsg/metrics/victoria_metrics.go
+package metrics
 
 import (
 	"fmt"

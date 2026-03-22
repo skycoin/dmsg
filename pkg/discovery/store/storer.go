@@ -1,4 +1,4 @@
-// Package store internal/dmsg-discovery/store/storer.go
+// Package store pkg/discovery/store/storer.go
 package store
 
 import (

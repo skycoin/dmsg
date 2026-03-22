@@ -1,4 +1,4 @@
-// Package api internal/dmsg-discovery/api/entries_endpoint_test.go
+// Package api pkg/discovery/api/entries_endpoint_test.go
 package api
 
 import (
@@ -14,9 +14,9 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/stretchr/testify/require"
 
-	"github.com/skycoin/dmsg/internal/discmetrics"
-	store2 "github.com/skycoin/dmsg/internal/dmsg-discovery/store"
 	"github.com/skycoin/dmsg/pkg/disc"
+	"github.com/skycoin/dmsg/pkg/disc/metrics"
+	store2 "github.com/skycoin/dmsg/pkg/discovery/store"
 )
 
 func TestEntriesEndpoint(t *testing.T) {
@@ -183,7 +183,7 @@ func TestEntriesEndpoint(t *testing.T) {
 				tc.storerPreHook(t, dbMock, &tc.entry)
 			}
 
-			api := New(nil, dbMock, discmetrics.NewEmpty(), true, false, true, "", "")
+			api := New(nil, dbMock, metrics.NewEmpty(), true, false, true, "", "")
 			req, err := http.NewRequest(tc.method, tc.endpoint, bytes.NewBufferString(tc.httpBody))
 			require.NoError(t, err)
 

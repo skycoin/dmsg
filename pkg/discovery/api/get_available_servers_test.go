@@ -1,4 +1,4 @@
-// Package api internal/dmsg-discovery/api/get_available_servers_test.go
+// Package api pkg/discovery/api/get_available_servers_test.go
 package api
 
 import (
@@ -13,9 +13,9 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/stretchr/testify/require"
 
-	"github.com/skycoin/dmsg/internal/discmetrics"
-	store2 "github.com/skycoin/dmsg/internal/dmsg-discovery/store"
 	"github.com/skycoin/dmsg/pkg/disc"
+	"github.com/skycoin/dmsg/pkg/disc/metrics"
+	store2 "github.com/skycoin/dmsg/pkg/discovery/store"
 )
 
 func TestGetAvailableServers(t *testing.T) {
@@ -117,7 +117,7 @@ func TestGetAvailableServers(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			db, entries := tc.databaseAndEntries(t)
 
-			api := New(nil, db, discmetrics.NewEmpty(), true, false, true, "", "")
+			api := New(nil, db, metrics.NewEmpty(), true, false, true, "", "")
 			req, err := http.NewRequest(tc.method, tc.endpoint, nil)
 			require.NoError(t, err)
 

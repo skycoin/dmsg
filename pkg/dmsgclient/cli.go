@@ -1,5 +1,5 @@
-// Package cli internal/cli/go
-package cli
+// Package dmsgclient pkg/dmsgclient/cli.go
+package dmsgclient
 
 import (
 	"bytes"
@@ -13,7 +13,6 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 
-	"github.com/skycoin/dmsg/internal/flags"
 	"github.com/skycoin/dmsg/pkg/direct"
 	"github.com/skycoin/dmsg/pkg/disc"
 	"github.com/skycoin/dmsg/pkg/dmsg"
@@ -46,11 +45,11 @@ Default mode of operation is dmsghttp:
 
 // InitDmsgWithFlags starts dmsg with flags from the flags package
 func InitDmsgWithFlags(ctx context.Context, dlog *logging.Logger, pk cipher.PubKey, sk cipher.SecKey, httpClient *http.Client, destination string) (dmsgC *dmsg.Client, stop func(), err error) {
-	if flags.UseDC {
-		return StartDmsgDirect(ctx, dlog, pk, sk, "", flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(destination))
+	if UseDC {
+		return StartDmsgDirect(ctx, dlog, pk, sk, "", DmsgSessions, dmsg.ExtractPKFromDmsgAddr(destination))
 	}
-	if flags.UseHTTP {
-		resp, err := httpClient.Get(flags.DmsgDiscURL + "/health")
+	if UseHTTP {
+		resp, err := httpClient.Get(DmsgDiscURL + "/health")
 		if err != nil {
 			dlog.WithError(err).Fatal("Error connecting to dmsg-discovery with http client")
 		}
@@ -60,12 +59,12 @@ func InitDmsgWithFlags(ctx context.Context, dlog *logging.Logger, pk cipher.PubK
 		if err != nil {
 			dlog.WithError(err).Error("Failed to read response body from discovery")
 		} else {
-			dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", flags.DmsgDiscURL, string(body))
+			dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", DmsgDiscURL, string(body))
 		}
 
 		// Use direct client with synthetic entries for discovery server and all dmsg servers
 		// This allows dialing the discovery server which doesn't register itself
-		return StartDmsgWithDirectClient(ctx, dlog, pk, sk, flags.DmsgSessions)
+		return StartDmsgWithDirectClient(ctx, dlog, pk, sk, DmsgSessions)
 	}
 
 	// Default dmsghttp mode
@@ -75,11 +74,11 @@ func InitDmsgWithFlags(ctx context.Context, dlog *logging.Logger, pk cipher.PubK
 
 	dlog.Debug("Starting DMSG direct clients.")
 	for _, server := range dmsg.Prod.DmsgServers {
-		if len(dmsgClients) >= flags.DmsgSessions {
+		if len(dmsgClients) >= DmsgSessions {
 			break
 		}
 
-		dmsgDC, closeFn, err := StartDmsgDirectWithServers(ctx, dlog, pk, sk, flags.DmsgDiscAddr, []*disc.Entry{&server}, flags.DmsgSessions, dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr))
+		dmsgDC, closeFn, err := StartDmsgDirectWithServers(ctx, dlog, pk, sk, DmsgDiscAddr, []*disc.Entry{&server}, DmsgSessions, dmsg.ExtractPKFromDmsgAddr(DmsgDiscAddr))
 		if err != nil {
 			dlog.WithError(err).Error("Failed to start DMSG direct client. Skipping server...")
 			continue
@@ -99,7 +98,7 @@ func InitDmsgWithFlags(ctx context.Context, dlog *logging.Logger, pk cipher.PubK
 	}
 
 	dlog.Debug("Checking discovery /health using DMSG HTTP client.")
-	resp, err := dmsgHTTP.Get(flags.DmsgDiscAddr + "/health")
+	resp, err := dmsgHTTP.Get(DmsgDiscAddr + "/health")
 	if err != nil {
 		for _, fn := range closeFns {
 			fn()
@@ -112,10 +111,10 @@ func InitDmsgWithFlags(ctx context.Context, dlog *logging.Logger, pk cipher.PubK
 	if err != nil {
 		dlog.WithError(err).Error("Failed to read discovery /health response body")
 	} else {
-		dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", flags.DmsgDiscAddr, string(body))
+		dlog.Infof("Received response from dmsg-discovery server %s/health:\n%s", DmsgDiscAddr, string(body))
 	}
 
-	return StartDmsgWithSyntheticDiscovery(ctx, dlog, pk, sk, dmsgHTTP, flags.DmsgDiscAddr, flags.DmsgSessions)
+	return StartDmsgWithSyntheticDiscovery(ctx, dlog, pk, sk, dmsgHTTP, DmsgDiscAddr, DmsgSessions)
 }
 
 // StartDmsgWithSyntheticDiscovery starts dmsg with a synthetic discovery entry for the discovery server itself
@@ -303,7 +302,7 @@ func StartDmsgWithDirectClient(ctx context.Context, dlog *logging.Logger, pk cip
 	}
 
 	// Add synthetic entry for discovery server
-	discPK := dmsg.ExtractPKFromDmsgAddr(flags.DmsgDiscAddr)
+	discPK := dmsg.ExtractPKFromDmsgAddr(DmsgDiscAddr)
 	if discPK != "" {
 		var discoveryPK cipher.PubKey
 		if err := discoveryPK.UnmarshalText([]byte(discPK)); err == nil {
@@ -341,7 +340,7 @@ func StartDmsgWithDirectClient(ctx context.Context, dlog *logging.Logger, pk cip
 	directClient := direct.NewClient(entries, dlog)
 
 	// Create HTTP discovery client as fallback for unknown entries
-	httpDiscClient := disc.NewHTTP(flags.DmsgDiscURL, &http.Client{}, dlog)
+	httpDiscClient := disc.NewHTTP(DmsgDiscURL, &http.Client{}, dlog)
 
 	// Wrap with fallback client that tries direct first, then HTTP discovery
 	fallbackClient := newFallbackDiscClient(directClient, httpDiscClient, dlog)

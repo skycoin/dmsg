@@ -20,8 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
 
-	"github.com/skycoin/dmsg/internal/cli"
-	"github.com/skycoin/dmsg/internal/flags"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 )
 
 const dwsenv = "DMSGWEBSRV"
@@ -42,7 +41,7 @@ func init() {
 	pk, _ = sk.PubKey() //nolint
 
 	RootCmd.AddCommand(srvCmd)
-	flags.InitFlags(srvCmd)
+	dmsgclient.InitFlags(srvCmd)
 	srvCmd.Flags().UintSliceVarP(&localPort, "lport", "p", localPort, "local application interface port(s)\033[0m\n\r")
 	srvCmd.Flags().UintSliceVarP(&dmsgPort, "dport", "d", dmsgPort, "DMSG port(s) to serve\033[0m\n\r")
 	srvCmd.Flags().StringSliceVarP(&wl, "wl", "w", wl, "whitelisted keys for DMSG authenticated routes"+func() string {
@@ -84,7 +83,7 @@ var srvCmd = &cobra.Command{
 		}
 		dlog = logging.MustGetLogger("dmsgwebsrv")
 
-		err = flags.InitConfig()
+		err = dmsgclient.InitConfig()
 		if err != nil {
 			dlog.WithError(err).Fatal("Failed to read specified dmsghttp-config")
 		}
@@ -133,7 +132,7 @@ func server() {
 		ctx = context.WithValue(ctx, "socks5_proxy", proxyAddr) //nolint
 	}
 
-	dmsgC, closeDmsg, err = cli.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, "")
+	dmsgC, closeDmsg, err = dmsgclient.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, "")
 	if err != nil {
 		dlog.WithError(err).Error("Error connecting to dmsg network")
 		return

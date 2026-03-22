@@ -19,8 +19,8 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
 
-	"github.com/skycoin/dmsg/internal/cli"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 )
 
 var (
@@ -137,7 +137,7 @@ var serveCmd = &cobra.Command{
 		defer cancel()
 		//TODO: implement whitelist logic
 
-		dmsgC, closeDmsg, err := cli.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, pk.String())
+		dmsgC, closeDmsg, err := dmsgclient.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, pk.String())
 
 		if err != nil {
 			dlog.WithError(err).Fatal("Error connecting to dmsg network")
@@ -235,7 +235,7 @@ var proxyCmd = &cobra.Command{
 		ctx, cancel := cmdutil.SignalContext(context.Background(), dlog)
 		defer cancel()
 
-		dmsgC, closeDmsg, err := cli.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, pk.String())
+		dmsgC, closeDmsg, err := dmsgclient.InitDmsgWithFlags(ctx, dlog, pk, sk, httpClient, pk.String())
 
 		if err != nil {
 			dlog.WithError(err).Fatal("Error connecting to dmsg network")

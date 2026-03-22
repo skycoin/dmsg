@@ -1,4 +1,4 @@
-// Package api internal/dmsg-discovery/api/error_handler_test.go
+// Package api pkg/discovery/api/error_handler_test.go
 package api
 
 import (
@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/skycoin/dmsg/internal/discmetrics"
-	"github.com/skycoin/dmsg/internal/dmsg-discovery/store"
 	"github.com/skycoin/dmsg/pkg/disc"
+	"github.com/skycoin/dmsg/pkg/disc/metrics"
+	"github.com/skycoin/dmsg/pkg/discovery/store"
 )
 
 var errHandlerTestCases = []struct {
@@ -35,7 +35,7 @@ func TestErrorHandler(t *testing.T) {
 		tc := tc
 		t.Run(tc.err.Error(), func(t *testing.T) {
 			w := httptest.NewRecorder()
-			api := New(nil, store.NewMock(), discmetrics.NewEmpty(), true, false, true, "", "")
+			api := New(nil, store.NewMock(), metrics.NewEmpty(), true, false, true, "", "")
 			api.handleError(w, &http.Request{}, tc.err)
 
 			msg := new(disc.HTTPMessage)
