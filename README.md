@@ -40,7 +40,7 @@ The connection between a `dmsg.Client` and `dmsg.Server` is called a `dmsg.Sessi
 made with [goda](https://github.com/loov/goda)
 
 ```
-goda graph github.com/skycoin/dmsg/... | dot -Tsvg -o docs/dmsg-goda-graph.svg
+go run github.com/loov/goda@latest graph github.com/skycoin/dmsg/... | dot -Tsvg -o docs/dmsg-goda-graph.svg
 ```
 
 ![Dependency Graph](docs/dmsg-goda-graph.svg "github.com/skycoin/dmsg Dependency Graph")
