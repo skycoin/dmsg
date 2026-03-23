@@ -77,7 +77,9 @@ func (a *ServerAPI) RunBackgroundTasks(ctx context.Context) {
 
 // SetDmsgServer saves srv in the ServerAPI
 func (a *ServerAPI) SetDmsgServer(srv *dmsg.Server) {
+	a.sMu.Lock()
 	a.dmsgServer = srv
+	a.sMu.Unlock()
 }
 
 // ListenAndServe runs dmsg Serve function alongside health endpoint

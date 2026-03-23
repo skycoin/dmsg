@@ -100,16 +100,16 @@ func (s *Server) Close() error {
 	if s == nil {
 		return nil
 	}
-	var err error
+	var closeErr error
 	s.once.Do(func() {
 		close(s.done)
 		s.wg.Wait()
-		err = s.delEntry(context.Background())
-		if err != nil {
+		closeErr = s.delEntry(context.Background())
+		if closeErr != nil {
 			s.log.Warn("Cannot delete entry from db.")
 		}
 	})
-	return nil
+	return closeErr
 }
 
 // Serve serves the server.
@@ -247,6 +247,7 @@ func (s *Server) handleSession(conn net.Conn) {
 		dSes.sm.smux, err = smux.Server(conn, smux.DefaultConfig())
 		if err != nil {
 			dSes.sm.mutx.Unlock()
+			conn.Close()
 			cancel()
 			return
 		}
@@ -256,6 +257,7 @@ func (s *Server) handleSession(conn net.Conn) {
 		dSes.sm.yamux, err = yamux.Server(conn, yamux.DefaultConfig())
 		if err != nil {
 			dSes.sm.mutx.Unlock()
+			conn.Close()
 			cancel()
 			return
 		}

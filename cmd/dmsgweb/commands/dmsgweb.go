@@ -23,8 +23,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/net/proxy"
 
-	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 	"github.com/skycoin/dmsg/pkg/ioutil"
 )
@@ -79,7 +79,7 @@ func init() {
 
 // RootCmd contains the root command for dmsgweb
 var RootCmd = &cobra.Command{
-	Use: dmsgclient.ExecName(),
+	Use:   dmsgclient.ExecName(),
 	Short: "DMSG resolving proxy & browser client",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐┬ ┬┌─┐┌┐
@@ -118,7 +118,7 @@ dmsgweb conf file detected: ` + dwcfg
 		if dmsgclient.DmsgDiscURL == "" {
 			dlog.Fatal("Dmsg Discovery Server URL not specified")
 		}
-		if dmsgclient.DmsgDiscURL == "" {
+		if dmsgclient.DmsgDiscAddr == "" {
 			dlog.Fatal("Dmsg Discovery Server dmsg address not specified")
 		}
 
@@ -268,12 +268,13 @@ dmsgweb conf file detected: ` + dwcfg
 
 			wg.Add(1)
 			go func() {
+				defer wg.Done()
+				defer server.Close() //nolint:errcheck
 				dlog.Debug("Serving SOCKS5 proxy on " + socksAddr)
 				err := server.ListenAndServe("tcp", socksAddr)
 				if err != nil {
 					dlog.WithError(err).Fatal("Failed to start SOCKS5 server")
 				}
-				defer server.Close() //nolint
 				dlog.Debug("Stopped serving SOCKS5 proxy on " + socksAddr)
 			}()
 		}
@@ -429,6 +430,7 @@ func proxyHTTPConn(n int) {
 	})
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		var thiswebport uint
 		if n == -1 {
 			thiswebport = webPort[0]
@@ -438,7 +440,6 @@ func proxyHTTPConn(n int) {
 		dlog.Debug(fmt.Sprintf("Serving http on: http://127.0.0.1:%v", thiswebport))
 		r.Run(":" + fmt.Sprintf("%v", thiswebport)) //nolint
 		dlog.Debug(fmt.Sprintf("Stopped serving http on: http://127.0.0.1:%v", thiswebport))
-		wg.Done()
 	}()
 }
 

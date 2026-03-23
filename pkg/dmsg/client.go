@@ -146,6 +146,7 @@ func (ce *Client) Serve(ctx context.Context) {
 	defer cancel()
 
 	setupNodeTicker := time.NewTicker(1 * time.Minute)
+	defer setupNodeTicker.Stop()
 
 	go func(ctx context.Context) {
 		select {
@@ -180,6 +181,7 @@ func (ce *Client) Serve(ctx context.Context) {
 			for ind, entry := range entries {
 				if dmsgServer, ok := ctx.Value("dmsgServer").(string); ok && entry.Static.Hex() == dmsgServer {
 					entries = entries[ind : ind+1]
+					break
 				}
 			}
 		} else if ctx.Value("setupNode") != nil {
@@ -226,9 +228,9 @@ func (ce *Client) Serve(ctx context.Context) {
 			if err != nil {
 				ce.log.WithError(err).Warn("Initial post entry failed")
 			} else {
-				ce.log.WithError(err).Info("Initial post entry successed")
+				ce.log.Info("Initial post entry succeeded")
+				needInitialPost = false
 			}
-			needInitialPost = false
 		}
 
 		for n, entry := range entries {
@@ -270,7 +272,10 @@ func (ce *Client) Serve(ctx context.Context) {
 				if n == (len(entries) - 1) {
 					if !isClosed(ce.done) {
 						ce.sesMx.Lock()
-						ce.errCh <- err
+						select {
+						case ce.errCh <- err:
+						default:
+						}
 						ce.sesMx.Unlock()
 					}
 				}

@@ -172,7 +172,12 @@ func proxyHTTPConnections(ctx context.Context, localPort uint, listener net.List
 	authRoute.Any("/*path", func(c *gin.Context) {
 		targetURL := fmt.Sprintf("http://127.0.0.1:%d%s?%s", localPort, c.Request.URL.Path, c.Request.URL.RawQuery)
 		proxy := httputil.ReverseProxy{Director: func(req *http.Request) {
-			req.URL, _ = url.Parse(targetURL) //nolint
+			parsed, err := url.Parse(targetURL)
+			if err != nil {
+				dlog.Errorf("failed to parse target URL %q: %v", targetURL, err)
+				return
+			}
+			req.URL = parsed
 			req.Host = req.URL.Host
 		}}
 		proxy.ServeHTTP(c.Writer, c.Request)
@@ -277,6 +282,9 @@ func proxyTCPConnections(ctx context.Context, localPort uint, listener net.Liste
 				if err2 != nil {
 					dlog.WithError(err2).Warn("Error on io.Copy(localConn, dmsgConn)")
 				}
+				// Close both to unblock the goroutine
+				dmsgConn.Close()  //nolint
+				localConn.Close() //nolint
 
 				connMutex.Lock()
 				delete(activeConns, dmsgConn)
