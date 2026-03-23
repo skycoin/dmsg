@@ -19,8 +19,8 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/httputil"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 
-	"github.com/skycoin/dmsg/pkg/dmsg/metrics"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsg/metrics"
 )
 
 // ServerAPI main object of the server

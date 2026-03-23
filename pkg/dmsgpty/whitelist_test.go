@@ -418,7 +418,7 @@ func TestWriteConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify file was written.
-	data, err := os.ReadFile(confPath)
+	data, err := os.ReadFile(confPath) //nolint:gosec
 	require.NoError(t, err)
 	require.Contains(t, string(data), "testpk")
 	require.Contains(t, string(data), "testsk")

@@ -156,7 +156,7 @@ func TestControl_PingPongExchange(t *testing.T) {
 }
 
 // TestControl_PingContextCancel verifies that Ping returns the context error
-// when the context is cancelled while waiting for a pong.
+// when the context is canceled while waiting for a pong.
 func TestControl_PingContextCancel(t *testing.T) {
 	connA, connB := net.Pipe()
 	defer connB.Close() //nolint:errcheck

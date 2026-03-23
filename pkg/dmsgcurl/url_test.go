@@ -126,7 +126,7 @@ func TestCancellableCopy_Normal(t *testing.T) {
 	assert.Equal(t, "hello world", dst.String())
 }
 
-func TestCancellableCopy_Cancelled(t *testing.T) {
+func TestCancellableCopy_Canceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel immediately
 

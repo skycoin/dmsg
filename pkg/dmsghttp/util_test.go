@@ -138,10 +138,10 @@ func TestMakeHTTPTransport_FullRoundTrip(t *testing.T) {
 		w.Write([]byte("world")) //nolint:errcheck
 	})
 	r.Post("/echo", func(w http.ResponseWriter, r *http.Request) {
-		data, _ := io.ReadAll(r.Body)
-		w.Write(data) //nolint:errcheck
+		data, _ := io.ReadAll(r.Body) //nolint:errcheck
+		w.Write(data)                 //nolint:errcheck
 	})
-	go http.Serve(dmsgLis, r) //nolint:errcheck
+	go http.Serve(dmsgLis, r) //nolint:errcheck,gosec
 
 	// Start dmsg client that runs HTTP client.
 	clientPK, clientSK := cipher.GenerateKeyPair()
@@ -164,7 +164,7 @@ func TestMakeHTTPTransport_FullRoundTrip(t *testing.T) {
 	t.Run("GET_request", func(t *testing.T) {
 		resp, err := httpC.Get(fmt.Sprintf("http://%s:%d/hello", hostPK.String(), dmsgHTTPPort))
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		body, err := io.ReadAll(resp.Body)
@@ -179,7 +179,7 @@ func TestMakeHTTPTransport_FullRoundTrip(t *testing.T) {
 			http.NoBody,
 		)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 }
@@ -213,7 +213,7 @@ func TestMakeHTTPTransport_DefaultPort(t *testing.T) {
 	r.Get("/", func(w http.ResponseWriter, _ *http.Request) {
 		w.Write([]byte("default-port")) //nolint:errcheck
 	})
-	go http.Serve(dmsgLis, r) //nolint:errcheck
+	go http.Serve(dmsgLis, r) //nolint:errcheck,gosec
 
 	// Client.
 	clientPK, clientSK := cipher.GenerateKeyPair()
@@ -236,7 +236,7 @@ func TestMakeHTTPTransport_DefaultPort(t *testing.T) {
 	// URL without port — should default to 80.
 	resp, err := httpC.Get(fmt.Sprintf("http://%s/", hostPK.String()))
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -350,8 +350,8 @@ func TestGetServers_FilterRemovesAllRetries(t *testing.T) {
 	assert.Empty(t, result)
 }
 
-func TestGetServers_ContextCancelledReturnsEmpty(t *testing.T) {
-	// If context is cancelled before any servers are found, return empty.
+func TestGetServers_ContextCanceledReturnsEmpty(t *testing.T) {
+	// If context is canceled before any servers are found, return empty.
 	log := logging.MustGetLogger("test_ctx_cancel")
 
 	// Use a URL that will fail (no server listening).
@@ -458,7 +458,7 @@ func TestListenAndServe_ServesHTTP(t *testing.T) {
 
 	resp, err := httpC.Get(fmt.Sprintf("http://%s:%d/", hostPK.String(), dmsgHTTPPort))
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)

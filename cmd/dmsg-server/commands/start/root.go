@@ -21,10 +21,10 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/metricsutil"
 	"github.com/spf13/cobra"
 
-	"github.com/skycoin/dmsg/pkg/dmsg/metrics"
-	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsg/metrics"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	"github.com/skycoin/dmsg/pkg/dmsgserver"
 )
 

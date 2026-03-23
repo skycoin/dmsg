@@ -2,13 +2,12 @@
 package commands
 
 import (
-
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo"
 	"github.com/spf13/cobra"
 
-	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	"github.com/skycoin/dmsg/cmd/dmsg-server/commands/config"
 	"github.com/skycoin/dmsg/cmd/dmsg-server/commands/start"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 )
 
 func init() {
@@ -21,7 +20,7 @@ func init() {
 
 // RootCmd contains the root dmsg-server command
 var RootCmd = &cobra.Command{
-	Use: dmsgclient.ExecName(),
+	Use:   dmsgclient.ExecName(),
 	Short: "DMSG Server",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐   ┌─┐┌─┐┬─┐┬  ┬┌─┐┬─┐
