@@ -7,8 +7,8 @@ import (
 	"github.com/bitfield/script"
 	"github.com/spf13/cobra"
 
-	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	"github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 )
 
 // RootCmd is the root command

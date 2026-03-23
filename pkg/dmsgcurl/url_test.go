@@ -161,7 +161,7 @@ func TestNew_ReturnsNonNil(t *testing.T) {
 func TestNew_RegistersFlags(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	_ = dmsgcurl.New(fs)
+	dmsgcurl.New(fs) //nolint:errcheck
 
 	// Verify some expected flags were registered.
 	for _, name := range []string{"help", "h", "dmsg-disc", "dmsg-sessions", "O", "t", "w", "U"} {

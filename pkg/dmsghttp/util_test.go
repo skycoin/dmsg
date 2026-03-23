@@ -118,7 +118,7 @@ func TestMakeHTTPTransport_FullRoundTrip(t *testing.T) {
 	srv := dmsg.NewServer(srvPK, srvSK, dc, &srvConf, nil)
 	lis, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
-	go srv.Serve(lis, "") //nolint:errcheck
+	go srv.Serve(lis, "")             //nolint:errcheck
 	t.Cleanup(func() { srv.Close() }) //nolint:errcheck
 	<-srv.Ready()
 
@@ -135,11 +135,11 @@ func TestMakeHTTPTransport_FullRoundTrip(t *testing.T) {
 	r := chi.NewRouter()
 	r.Get("/hello", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("world"))
+		w.Write([]byte("world")) //nolint:errcheck
 	})
 	r.Post("/echo", func(w http.ResponseWriter, r *http.Request) {
 		data, _ := io.ReadAll(r.Body)
-		_, _ = w.Write(data)
+		w.Write(data) //nolint:errcheck
 	})
 	go http.Serve(dmsgLis, r) //nolint:errcheck
 
@@ -195,7 +195,7 @@ func TestMakeHTTPTransport_DefaultPort(t *testing.T) {
 	srv := dmsg.NewServer(srvPK, srvSK, dc, &srvConf, nil)
 	lis, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
-	go srv.Serve(lis, "") //nolint:errcheck
+	go srv.Serve(lis, "")             //nolint:errcheck
 	t.Cleanup(func() { srv.Close() }) //nolint:errcheck
 	<-srv.Ready()
 
@@ -211,7 +211,7 @@ func TestMakeHTTPTransport_DefaultPort(t *testing.T) {
 
 	r := chi.NewRouter()
 	r.Get("/", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("default-port"))
+		w.Write([]byte("default-port")) //nolint:errcheck
 	})
 	go http.Serve(dmsgLis, r) //nolint:errcheck
 
@@ -414,7 +414,7 @@ func TestListenAndServe_ServesHTTP(t *testing.T) {
 	srv := dmsg.NewServer(srvPK, srvSK, dc, &srvConf, nil)
 	lis, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
-	go srv.Serve(lis, "") //nolint:errcheck
+	go srv.Serve(lis, "")             //nolint:errcheck
 	t.Cleanup(func() { srv.Close() }) //nolint:errcheck
 	<-srv.Ready()
 
@@ -430,7 +430,7 @@ func TestListenAndServe_ServesHTTP(t *testing.T) {
 	defer cancel()
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("listen-and-serve"))
+		w.Write([]byte("listen-and-serve")) //nolint:errcheck
 	})
 
 	errCh := make(chan error, 1)
@@ -480,7 +480,7 @@ func TestListenAndServe_InvalidPort(t *testing.T) {
 	srv := dmsg.NewServer(srvPK, srvSK, dc, &srvConf, nil)
 	lis, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
-	go srv.Serve(lis, "") //nolint:errcheck
+	go srv.Serve(lis, "")             //nolint:errcheck
 	t.Cleanup(func() { srv.Close() }) //nolint:errcheck
 	<-srv.Ready()
 

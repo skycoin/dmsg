@@ -45,11 +45,11 @@ func TestServeListener_AcceptAndControl(t *testing.T) {
 
 	// Cleanup.
 	for _, ctrl := range ctrls {
-		_ = ctrl.Close()
+		ctrl.Close() //nolint:errcheck
 	}
-	_ = connA.Close()
-	_ = connB.Close()
-	_ = l.Close()
+	connA.Close() //nolint:errcheck
+	connB.Close() //nolint:errcheck
+	l.Close()     //nolint:errcheck
 }
 
 // TestServeListener_ClosesChannelOnListenerClose verifies that the channel
@@ -128,11 +128,11 @@ func TestServeListener_FullChannelDropsControl(t *testing.T) {
 	}
 
 	// Cleanup.
-	_ = conn1.Close()
-	_ = conn2.Close()
-	_ = conn3.Close()
-	_ = conn4.Close()
-	_ = l.Close()
+	conn1.Close() //nolint:errcheck
+	conn2.Close() //nolint:errcheck
+	conn3.Close() //nolint:errcheck
+	conn4.Close() //nolint:errcheck
+	l.Close()     //nolint:errcheck
 }
 
 // TestControl_PingPongExchange tests that a ping on one side results in a
@@ -143,8 +143,8 @@ func TestControl_PingPongExchange(t *testing.T) {
 	ctrlB := dmsgctrl.ControlStream(connB)
 
 	t.Cleanup(func() {
-		_ = ctrlA.Close()
-		_ = ctrlB.Close()
+		ctrlA.Close() //nolint:errcheck
+		ctrlB.Close() //nolint:errcheck
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -182,7 +182,7 @@ func TestControl_PingContextCancel(t *testing.T) {
 	_, err := ctrlA.Ping(ctx)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 
-	_ = ctrlA.Close()
+	ctrlA.Close() //nolint:errcheck
 }
 
 // TestControl_Close verifies that Close sets the error and signals Done.
@@ -218,12 +218,12 @@ func TestControl_Close(t *testing.T) {
 func TestControl_DoubleClose(t *testing.T) {
 	connA, connB := net.Pipe()
 	ctrlA := dmsgctrl.ControlStream(connA)
-	_ = dmsgctrl.ControlStream(connB)
+	dmsgctrl.ControlStream(connB) //nolint:errcheck
 
 	err1 := ctrlA.Close()
 	// Second close: the connection is already closed so conn.Close may
 	// return an error, but it must not panic.
-	_ = ctrlA.Close()
+	ctrlA.Close() //nolint:errcheck
 	_ = err1
 
 	// Wait for done.
@@ -245,8 +245,8 @@ func TestControl_ErrBeforeDone(t *testing.T) {
 	assert.Nil(t, ctrlA.Err())
 	assert.Nil(t, ctrlB.Err())
 
-	_ = ctrlA.Close()
-	_ = ctrlB.Close()
+	ctrlA.Close() //nolint:errcheck
+	ctrlB.Close() //nolint:errcheck
 }
 
 // TestControl_DoneChannel tests that the Done channel blocks while the
@@ -272,18 +272,18 @@ func TestControl_DoneChannel(t *testing.T) {
 		t.Fatal("Done() did not close after Close()")
 	}
 
-	_ = ctrlB.Close()
+	ctrlB.Close() //nolint:errcheck
 }
 
 // TestControl_Conn verifies that Conn returns the underlying net.Conn.
 func TestControl_Conn(t *testing.T) {
 	connA, connB := net.Pipe()
 	ctrlA := dmsgctrl.ControlStream(connA)
-	_ = dmsgctrl.ControlStream(connB)
+	dmsgctrl.ControlStream(connB) //nolint:errcheck
 
 	assert.Equal(t, connA, ctrlA.Conn())
 
-	_ = ctrlA.Close()
+	ctrlA.Close() //nolint:errcheck
 }
 
 // TestControl_ConcurrentPing tests that multiple goroutines can ping
@@ -313,8 +313,8 @@ func TestControl_ConcurrentPing(t *testing.T) {
 	ctrlB := dmsgctrl.ControlStream(connB)
 
 	t.Cleanup(func() {
-		_ = ctrlA.Close()
-		_ = ctrlB.Close()
+		ctrlA.Close() //nolint:errcheck
+		ctrlB.Close() //nolint:errcheck
 	})
 
 	const goroutines = 5
@@ -327,11 +327,11 @@ func TestControl_ConcurrentPing(t *testing.T) {
 	for i := 0; i < goroutines; i++ {
 		go func() {
 			defer wg.Done()
-			_, _ = ctrlA.Ping(ctx)
+			_, _ = ctrlA.Ping(ctx) //nolint:errcheck
 		}()
 		go func() {
 			defer wg.Done()
-			_, _ = ctrlB.Ping(ctx)
+			_, _ = ctrlB.Ping(ctx) //nolint:errcheck
 		}()
 	}
 
@@ -343,7 +343,7 @@ func TestControl_ConcurrentPing(t *testing.T) {
 func TestControl_PingAfterClose(t *testing.T) {
 	connA, connB := net.Pipe()
 	ctrlA := dmsgctrl.ControlStream(connA)
-	_ = dmsgctrl.ControlStream(connB)
+	dmsgctrl.ControlStream(connB) //nolint:errcheck
 
 	require.NoError(t, ctrlA.Close())
 

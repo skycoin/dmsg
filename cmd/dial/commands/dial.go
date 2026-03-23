@@ -18,8 +18,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/pkg/disc"
-	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	"github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 )
 
 var (
@@ -39,7 +39,7 @@ func init() {
 
 // RootCmd contains the root dmsgcurl command
 var RootCmd = &cobra.Command{
-	Use: dmsgclient.ExecName(),
+	Use:   dmsgclient.ExecName(),
 	Short: "DMSG Dial network test utility",
 	Long: calvin.AsciiFont("dmsgdial") + `
 DMSG Dial network test utility

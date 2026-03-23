@@ -637,7 +637,7 @@ func TestHTTPClientEntry_Success(t *testing.T) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Contains(t, r.URL.Path, "/dmsg-discovery/entry/")
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(entry)
+		json.NewEncoder(w).Encode(entry) //nolint:errcheck
 	})
 
 	client := newTestHTTPClient(t, handler)
@@ -650,7 +650,7 @@ func TestHTTPClientEntry_Success(t *testing.T) {
 func TestHTTPClientEntry_NotFound(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		_ = json.NewEncoder(w).Encode(disc.HTTPMessage{
+		json.NewEncoder(w).Encode(disc.HTTPMessage{ //nolint:errcheck
 			Code:    http.StatusNotFound,
 			Message: disc.ErrKeyNotFound.Error(),
 		})
@@ -665,7 +665,7 @@ func TestHTTPClientEntry_NotFound(t *testing.T) {
 func TestHTTPClientEntry_UnknownErrorBecomesUnexpected(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(disc.HTTPMessage{
+		json.NewEncoder(w).Encode(disc.HTTPMessage{ //nolint:errcheck
 			Code:    http.StatusInternalServerError,
 			Message: "some unknown error",
 		})
@@ -700,7 +700,7 @@ func TestHTTPClientPostEntry_Error(t *testing.T) {
 			Code:    http.StatusUnprocessableEntity,
 			Message: disc.ErrValidationWrongSequence.Error(),
 		})
-		_, _ = w.Write(body)
+		w.Write(body) //nolint:errcheck
 	})
 
 	pk, sk := cipher.GenerateKeyPair()
@@ -736,7 +736,7 @@ func TestHTTPClientDelEntry_Error(t *testing.T) {
 			Code:    http.StatusUnauthorized,
 			Message: disc.ErrUnauthorized.Error(),
 		})
-		_, _ = w.Write(body)
+		w.Write(body) //nolint:errcheck
 	})
 
 	pk, sk := cipher.GenerateKeyPair()
@@ -757,7 +757,7 @@ func TestHTTPClientAvailableServers_Success(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/dmsg-discovery/available_servers", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode([]*disc.Entry{entry})
+		json.NewEncoder(w).Encode([]*disc.Entry{entry}) //nolint:errcheck
 	})
 
 	client := newTestHTTPClient(t, handler)
@@ -770,7 +770,7 @@ func TestHTTPClientAvailableServers_Success(t *testing.T) {
 func TestHTTPClientAvailableServers_Error(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(disc.HTTPMessage{
+		json.NewEncoder(w).Encode(disc.HTTPMessage{ //nolint:errcheck
 			Code:    http.StatusInternalServerError,
 			Message: disc.ErrNoAvailableServers.Error(),
 		})
@@ -790,7 +790,7 @@ func TestHTTPClientAllServers_Success(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/dmsg-discovery/all_servers", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode([]*disc.Entry{entry})
+		json.NewEncoder(w).Encode([]*disc.Entry{entry}) //nolint:errcheck
 	})
 
 	client := newTestHTTPClient(t, handler)
@@ -802,7 +802,7 @@ func TestHTTPClientAllServers_Success(t *testing.T) {
 func TestHTTPClientAllServers_Error(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(disc.HTTPMessage{
+		json.NewEncoder(w).Encode(disc.HTTPMessage{ //nolint:errcheck
 			Code:    http.StatusInternalServerError,
 			Message: disc.ErrUnexpected.Error(),
 		})
@@ -818,7 +818,7 @@ func TestHTTPClientAllEntries_Success(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/dmsg-discovery/entries", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode([]string{"abc123", "def456"})
+		json.NewEncoder(w).Encode([]string{"abc123", "def456"}) //nolint:errcheck
 	})
 
 	client := newTestHTTPClient(t, handler)
@@ -830,7 +830,7 @@ func TestHTTPClientAllEntries_Success(t *testing.T) {
 func TestHTTPClientAllEntries_Error(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(disc.HTTPMessage{
+		json.NewEncoder(w).Encode(disc.HTTPMessage{ //nolint:errcheck
 			Code:    http.StatusInternalServerError,
 			Message: disc.ErrBadInput.Error(),
 		})
@@ -854,7 +854,7 @@ func TestHTTPClientAllClientsByServer_Success(t *testing.T) {
 		result := map[string][]*disc.Entry{
 			serverPK.Hex(): {entry},
 		}
-		_ = json.NewEncoder(w).Encode(result)
+		json.NewEncoder(w).Encode(result) //nolint:errcheck
 	})
 
 	client := newTestHTTPClient(t, handler)
@@ -866,7 +866,7 @@ func TestHTTPClientAllClientsByServer_Success(t *testing.T) {
 func TestHTTPClientAllClientsByServer_Error(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(disc.HTTPMessage{
+		json.NewEncoder(w).Encode(disc.HTTPMessage{ //nolint:errcheck
 			Code:    http.StatusInternalServerError,
 			Message: disc.ErrUnexpected.Error(),
 		})
@@ -888,7 +888,7 @@ func TestHTTPClientClientsByServer_Success(t *testing.T) {
 		expectedPath := fmt.Sprintf("/dmsg-discovery/server/%s/clients", serverPK.Hex())
 		assert.Equal(t, expectedPath, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode([]*disc.Entry{entry})
+		json.NewEncoder(w).Encode([]*disc.Entry{entry}) //nolint:errcheck
 	})
 
 	client := newTestHTTPClient(t, handler)
@@ -903,7 +903,7 @@ func TestHTTPClientClientsByServer_Error(t *testing.T) {
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		_ = json.NewEncoder(w).Encode(disc.HTTPMessage{
+		json.NewEncoder(w).Encode(disc.HTTPMessage{ //nolint:errcheck
 			Code:    http.StatusNotFound,
 			Message: disc.ErrKeyNotFound.Error(),
 		})
@@ -928,7 +928,7 @@ func TestHTTPClientPutEntry_Success(t *testing.T) {
 		}
 		// GET for Entry lookup (shouldn't be needed if PostEntry succeeds)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(entry)
+		json.NewEncoder(w).Encode(entry) //nolint:errcheck
 	})
 
 	client := newTestHTTPClient(t, handler)

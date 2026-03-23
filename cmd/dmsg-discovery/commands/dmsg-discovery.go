@@ -22,13 +22,13 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/metricsutil"
 	"github.com/spf13/cobra"
 
+	"github.com/skycoin/dmsg/pkg/direct"
+	"github.com/skycoin/dmsg/pkg/disc"
 	"github.com/skycoin/dmsg/pkg/disc/metrics"
 	"github.com/skycoin/dmsg/pkg/discovery/api"
 	"github.com/skycoin/dmsg/pkg/discovery/store"
-	"github.com/skycoin/dmsg/pkg/dmsgclient"
-	"github.com/skycoin/dmsg/pkg/direct"
-	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
 
@@ -72,7 +72,7 @@ func init() {
 
 // RootCmd contains commands for dmsg-discovery
 var RootCmd = &cobra.Command{
-	Use: dmsgclient.ExecName(),
+	Use:   dmsgclient.ExecName(),
 	Short: "DMSG Discovery Server",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐  ┌┬┐┬┌─┐┌─┐┌─┐┬  ┬┌─┐┬─┐┬ ┬
