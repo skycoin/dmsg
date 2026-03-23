@@ -356,7 +356,7 @@ func TestRPCUtil_RequestResponseRoundTrip(t *testing.T) {
 	// Write length prefix + URI (same as writeRequest).
 	uriStr := "dmsgpty/whitelist"
 	buf := make([]byte, 0, 1+len(uriStr))
-	buf = append(buf, byte(len(uriStr)))
+	buf = append(buf, byte(len(uriStr))) //nolint:gosec
 	buf = append(buf, []byte(uriStr)...)
 	_, err := connB.Write(buf)
 	require.NoError(t, err)

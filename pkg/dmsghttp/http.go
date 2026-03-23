@@ -37,7 +37,7 @@ func ListenAndServe(ctx context.Context, _ cipher.SecKey, a http.Handler, _ disc
 	go func() {
 		select {
 		case <-ctx.Done():
-			if err := srv.Shutdown(context.Background()); err != nil {
+			if err := srv.Shutdown(context.Background()); err != nil { //nolint:gosec
 				log.WithError(err).Error()
 			}
 		case <-done:
