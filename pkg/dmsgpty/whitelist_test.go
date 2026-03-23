@@ -262,7 +262,7 @@ func TestWhitelistClientGateway_Integration(t *testing.T) {
 	// Server side: read the request, write response, then serve RPC.
 	serverReady := make(chan error, 1)
 	go func() {
-		defer connServer.Close() //nolint:errcheck
+		defer connServer.Close() //nolint:errcheck,gosec
 
 		// Read the length-prefixed URI request.
 		prefix := make([]byte, 1)
@@ -330,7 +330,7 @@ func TestRPCUtil_RequestResponseRoundTrip(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		defer connA.Close() //nolint:errcheck
+		defer connA.Close() //nolint:errcheck,gosec
 
 		// Read length-prefixed request.
 		prefix := make([]byte, 1)
@@ -376,15 +376,15 @@ func TestRPCUtil_RejectResponse(t *testing.T) {
 	connA, connB := net.Pipe()
 
 	go func() {
-		defer connA.Close() //nolint:errcheck
+		defer connA.Close() //nolint:errcheck,gosec
 		// Read and discard the request.
 		prefix := make([]byte, 1)
-		connA.Read(prefix) //nolint:errcheck
+		connA.Read(prefix) //nolint:errcheck,gosec
 		uri := make([]byte, prefix[0])
-		connA.Read(uri) //nolint:errcheck
+		connA.Read(uri) //nolint:errcheck,gosec
 
 		// Write reject (1).
-		connA.Write([]byte{1}) //nolint:errcheck
+		connA.Write([]byte{1}) //nolint:errcheck,gosec
 	}()
 
 	// NewWhitelistClient should fail when server rejects.
@@ -442,7 +442,7 @@ func TestRPCUtil_LargeURI(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		defer connA.Close() //nolint:errcheck
+		defer connA.Close() //nolint:errcheck,gosec
 		prefix := make([]byte, 1)
 		if _, err := connA.Read(prefix); err != nil {
 			done <- err

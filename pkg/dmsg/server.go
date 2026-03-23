@@ -247,7 +247,7 @@ func (s *Server) handleSession(conn net.Conn) {
 		dSes.sm.smux, err = smux.Server(conn, smux.DefaultConfig())
 		if err != nil {
 			dSes.sm.mutx.Unlock()
-			conn.Close() //nolint:errcheck
+			conn.Close() //nolint:errcheck,gosec
 			cancel()
 			return
 		}
@@ -257,7 +257,7 @@ func (s *Server) handleSession(conn net.Conn) {
 		dSes.sm.yamux, err = yamux.Server(conn, yamux.DefaultConfig())
 		if err != nil {
 			dSes.sm.mutx.Unlock()
-			conn.Close() //nolint:errcheck
+			conn.Close() //nolint:errcheck,gosec
 			cancel()
 			return
 		}
