@@ -11,8 +11,8 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 
-	"github.com/skycoin/dmsg/internal/cli"
 	"github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
 
@@ -25,7 +25,7 @@ func main() {
 	}
 	pk, sk := cipher.GenerateKeyPair()
 	ctx := context.Background()
-	dmsgClient, closeDmsg, err := cli.StartDmsg(ctx, dLog, pk, sk, &http.Client{}, dmsgDisc, 1)
+	dmsgClient, closeDmsg, err := dmsgclient.StartDmsg(ctx, dLog, pk, sk, &http.Client{}, dmsgDisc, 1)
 	if err != nil {
 		dLog.Fatalf("Failed to start DMSG client: %v", err)
 	}
