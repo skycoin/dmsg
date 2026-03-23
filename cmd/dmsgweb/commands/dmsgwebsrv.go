@@ -193,9 +193,9 @@ func proxyHTTPConnections(ctx context.Context, localPort uint, listener net.List
 	}
 
 	// Graceful shutdown on context cancellation
-	go func() {
+	go func() { //nolint:gosec
 		<-ctx.Done()
-		if err := server.Shutdown(context.Background()); err != nil { //nolint:gosec
+		if err := server.Shutdown(context.Background()); err != nil {
 			dlog.Errorf("HTTP server shutdown error: %v", err)
 		}
 	}()

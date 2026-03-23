@@ -147,8 +147,8 @@ func (env *Env) newClientWithKeys(ctx context.Context, pk cipher.PubKey, sk ciph
 	env.c[pk] = c
 	env.cWg.Add(1)
 
-	go func() {
-		c.Serve(context.Background()) //nolint:gosec
+	go func() { //nolint:gosec
+		c.Serve(context.Background())
 		env.mx.Lock()
 		delete(env.c, pk)
 		env.mx.Unlock()
