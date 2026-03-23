@@ -71,7 +71,7 @@ func init() {
 
 // RootCmd contains the root command
 var RootCmd = &cobra.Command{
-	Use: dmsgclient.ExecName(),
+	Use:   dmsgclient.ExecName(),
 	Short: "DMSG socks5 proxy server & client",
 	Long: calvin.AsciiFont("dmsg-socks") + `
 	DMSG socks5 proxy server & client`,

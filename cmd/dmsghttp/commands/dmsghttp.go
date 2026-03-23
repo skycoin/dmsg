@@ -53,7 +53,7 @@ func init() {
 
 // RootCmd contains the root dmsghttp command
 var RootCmd = &cobra.Command{
-	Use: dmsgclient.ExecName(),
+	Use:   dmsgclient.ExecName(),
 	Short: "DMSG http file server",
 	Long: calvin.AsciiFont("dmsghttp") + `
 	DMSG http file server`,

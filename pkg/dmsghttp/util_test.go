@@ -36,7 +36,7 @@ func TestMakeHTTPTransport_ReturnsValidTransport(t *testing.T) {
 
 	pk, sk := cipher.GenerateKeyPair()
 	dmsgC := dmsg.NewClient(pk, sk, dc, nil)
-	defer dmsgC.Close() //nolint:errcheck
+	defer dmsgC.Close() //nolint:errcheck,gosec
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -53,7 +53,7 @@ func TestMakeHTTPTransport_RoundTripInvalidHost(t *testing.T) {
 
 	pk, sk := cipher.GenerateKeyPair()
 	dmsgC := dmsg.NewClient(pk, sk, dc, nil)
-	defer dmsgC.Close() //nolint:errcheck
+	defer dmsgC.Close() //nolint:errcheck,gosec
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -80,13 +80,13 @@ func TestMakeHTTPTransport_RoundTripDialFailure(t *testing.T) {
 	srv := dmsg.NewServer(srvPK, srvSK, dc, &srvConf, nil)
 	lis, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
-	go srv.Serve(lis, "") //nolint:errcheck
-	defer srv.Close()     //nolint:errcheck
+	go srv.Serve(lis, "") //nolint:errcheck,gosec
+	defer srv.Close()     //nolint:errcheck,gosec
 
 	pk, sk := cipher.GenerateKeyPair()
 	dmsgC := dmsg.NewClient(pk, sk, dc, &dmsg.Config{MinSessions: 1})
 	go dmsgC.Serve(context.Background())
-	defer dmsgC.Close() //nolint:errcheck
+	defer dmsgC.Close() //nolint:errcheck,gosec
 	<-dmsgC.Ready()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -118,15 +118,15 @@ func TestMakeHTTPTransport_FullRoundTrip(t *testing.T) {
 	srv := dmsg.NewServer(srvPK, srvSK, dc, &srvConf, nil)
 	lis, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
-	go srv.Serve(lis, "")             //nolint:errcheck
-	t.Cleanup(func() { srv.Close() }) //nolint:errcheck
+	go srv.Serve(lis, "")             //nolint:errcheck,gosec
+	t.Cleanup(func() { srv.Close() }) //nolint:errcheck,gosec
 	<-srv.Ready()
 
 	// Start dmsg client that hosts HTTP server.
 	hostPK, hostSK := cipher.GenerateKeyPair()
 	dmsgHost := dmsg.NewClient(hostPK, hostSK, dc, &dmsg.Config{MinSessions: 1})
 	go dmsgHost.Serve(context.Background())
-	t.Cleanup(func() { dmsgHost.Close() }) //nolint:errcheck
+	t.Cleanup(func() { dmsgHost.Close() }) //nolint:errcheck,gosec
 	<-dmsgHost.Ready()
 
 	dmsgLis, err := dmsgHost.Listen(dmsgHTTPPort)
@@ -135,11 +135,11 @@ func TestMakeHTTPTransport_FullRoundTrip(t *testing.T) {
 	r := chi.NewRouter()
 	r.Get("/hello", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("world")) //nolint:errcheck
+		w.Write([]byte("world")) //nolint:errcheck,gosec
 	})
 	r.Post("/echo", func(w http.ResponseWriter, r *http.Request) {
-		data, _ := io.ReadAll(r.Body) //nolint:errcheck
-		w.Write(data)                 //nolint:errcheck
+		data, _ := io.ReadAll(r.Body) //nolint:errcheck,gosec
+		w.Write(data)                 //nolint:errcheck,gosec
 	})
 	go http.Serve(dmsgLis, r) //nolint:errcheck,gosec
 
@@ -147,7 +147,7 @@ func TestMakeHTTPTransport_FullRoundTrip(t *testing.T) {
 	clientPK, clientSK := cipher.GenerateKeyPair()
 	dmsgClient := dmsg.NewClient(clientPK, clientSK, dc, &dmsg.Config{MinSessions: 1})
 	go dmsgClient.Serve(context.Background())
-	t.Cleanup(func() { dmsgClient.Close() }) //nolint:errcheck
+	t.Cleanup(func() { dmsgClient.Close() }) //nolint:errcheck,gosec
 	<-dmsgClient.Ready()
 
 	// Allow time for dmsg sessions to stabilize.
@@ -164,7 +164,7 @@ func TestMakeHTTPTransport_FullRoundTrip(t *testing.T) {
 	t.Run("GET_request", func(t *testing.T) {
 		resp, err := httpC.Get(fmt.Sprintf("http://%s:%d/hello", hostPK.String(), dmsgHTTPPort))
 		require.NoError(t, err)
-		defer resp.Body.Close() //nolint:errcheck
+		defer resp.Body.Close() //nolint:errcheck,gosec
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		body, err := io.ReadAll(resp.Body)
@@ -179,7 +179,7 @@ func TestMakeHTTPTransport_FullRoundTrip(t *testing.T) {
 			http.NoBody,
 		)
 		require.NoError(t, err)
-		defer resp.Body.Close() //nolint:errcheck
+		defer resp.Body.Close() //nolint:errcheck,gosec
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 }
@@ -195,15 +195,15 @@ func TestMakeHTTPTransport_DefaultPort(t *testing.T) {
 	srv := dmsg.NewServer(srvPK, srvSK, dc, &srvConf, nil)
 	lis, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
-	go srv.Serve(lis, "")             //nolint:errcheck
-	t.Cleanup(func() { srv.Close() }) //nolint:errcheck
+	go srv.Serve(lis, "")             //nolint:errcheck,gosec
+	t.Cleanup(func() { srv.Close() }) //nolint:errcheck,gosec
 	<-srv.Ready()
 
 	// Host HTTP server on port 80.
 	hostPK, hostSK := cipher.GenerateKeyPair()
 	dmsgHost := dmsg.NewClient(hostPK, hostSK, dc, &dmsg.Config{MinSessions: 1})
 	go dmsgHost.Serve(context.Background())
-	t.Cleanup(func() { dmsgHost.Close() }) //nolint:errcheck
+	t.Cleanup(func() { dmsgHost.Close() }) //nolint:errcheck,gosec
 	<-dmsgHost.Ready()
 
 	dmsgLis, err := dmsgHost.Listen(80)
@@ -211,7 +211,7 @@ func TestMakeHTTPTransport_DefaultPort(t *testing.T) {
 
 	r := chi.NewRouter()
 	r.Get("/", func(w http.ResponseWriter, _ *http.Request) {
-		w.Write([]byte("default-port")) //nolint:errcheck
+		w.Write([]byte("default-port")) //nolint:errcheck,gosec
 	})
 	go http.Serve(dmsgLis, r) //nolint:errcheck,gosec
 
@@ -219,7 +219,7 @@ func TestMakeHTTPTransport_DefaultPort(t *testing.T) {
 	clientPK, clientSK := cipher.GenerateKeyPair()
 	dmsgClient := dmsg.NewClient(clientPK, clientSK, dc, &dmsg.Config{MinSessions: 1})
 	go dmsgClient.Serve(context.Background())
-	t.Cleanup(func() { dmsgClient.Close() }) //nolint:errcheck
+	t.Cleanup(func() { dmsgClient.Close() }) //nolint:errcheck,gosec
 	<-dmsgClient.Ready()
 
 	// Allow time for dmsg sessions to stabilize.
@@ -236,7 +236,7 @@ func TestMakeHTTPTransport_DefaultPort(t *testing.T) {
 	// URL without port — should default to 80.
 	resp, err := httpC.Get(fmt.Sprintf("http://%s/", hostPK.String()))
 	require.NoError(t, err)
-	defer resp.Body.Close() //nolint:errcheck
+	defer resp.Body.Close() //nolint:errcheck,gosec
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -414,15 +414,15 @@ func TestListenAndServe_ServesHTTP(t *testing.T) {
 	srv := dmsg.NewServer(srvPK, srvSK, dc, &srvConf, nil)
 	lis, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
-	go srv.Serve(lis, "")             //nolint:errcheck
-	t.Cleanup(func() { srv.Close() }) //nolint:errcheck
+	go srv.Serve(lis, "")             //nolint:errcheck,gosec
+	t.Cleanup(func() { srv.Close() }) //nolint:errcheck,gosec
 	<-srv.Ready()
 
 	// Host client.
 	hostPK, hostSK := cipher.GenerateKeyPair()
 	dmsgHost := dmsg.NewClient(hostPK, hostSK, dc, &dmsg.Config{MinSessions: 1})
 	go dmsgHost.Serve(context.Background())
-	t.Cleanup(func() { dmsgHost.Close() }) //nolint:errcheck
+	t.Cleanup(func() { dmsgHost.Close() }) //nolint:errcheck,gosec
 	<-dmsgHost.Ready()
 
 	log := logging.MustGetLogger("test_listen_serve")
@@ -430,7 +430,7 @@ func TestListenAndServe_ServesHTTP(t *testing.T) {
 	defer cancel()
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Write([]byte("listen-and-serve")) //nolint:errcheck
+		w.Write([]byte("listen-and-serve")) //nolint:errcheck,gosec
 	})
 
 	errCh := make(chan error, 1)
@@ -445,7 +445,7 @@ func TestListenAndServe_ServesHTTP(t *testing.T) {
 	clientPK, clientSK := cipher.GenerateKeyPair()
 	dmsgClient := dmsg.NewClient(clientPK, clientSK, dc, &dmsg.Config{MinSessions: 1})
 	go dmsgClient.Serve(context.Background())
-	t.Cleanup(func() { dmsgClient.Close() }) //nolint:errcheck
+	t.Cleanup(func() { dmsgClient.Close() }) //nolint:errcheck,gosec
 	<-dmsgClient.Ready()
 
 	// Allow time for dmsg sessions to stabilize.
@@ -458,7 +458,7 @@ func TestListenAndServe_ServesHTTP(t *testing.T) {
 
 	resp, err := httpC.Get(fmt.Sprintf("http://%s:%d/", hostPK.String(), dmsgHTTPPort))
 	require.NoError(t, err)
-	defer resp.Body.Close() //nolint:errcheck
+	defer resp.Body.Close() //nolint:errcheck,gosec
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -480,14 +480,14 @@ func TestListenAndServe_InvalidPort(t *testing.T) {
 	srv := dmsg.NewServer(srvPK, srvSK, dc, &srvConf, nil)
 	lis, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
-	go srv.Serve(lis, "")             //nolint:errcheck
-	t.Cleanup(func() { srv.Close() }) //nolint:errcheck
+	go srv.Serve(lis, "")             //nolint:errcheck,gosec
+	t.Cleanup(func() { srv.Close() }) //nolint:errcheck,gosec
 	<-srv.Ready()
 
 	hostPK, hostSK := cipher.GenerateKeyPair()
 	dmsgHost := dmsg.NewClient(hostPK, hostSK, dc, &dmsg.Config{MinSessions: 1})
 	go dmsgHost.Serve(context.Background())
-	t.Cleanup(func() { dmsgHost.Close() }) //nolint:errcheck
+	t.Cleanup(func() { dmsgHost.Close() }) //nolint:errcheck,gosec
 	<-dmsgHost.Ready()
 
 	log := logging.MustGetLogger("test_invalid_port")

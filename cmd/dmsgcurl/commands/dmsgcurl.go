@@ -25,8 +25,8 @@ import (
 	"golang.org/x/net/proxy"
 
 	"github.com/skycoin/dmsg/pkg/disc"
-	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	"github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
 )
 
