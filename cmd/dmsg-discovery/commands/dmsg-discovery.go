@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -28,6 +27,7 @@ import (
 	"github.com/skycoin/dmsg/pkg/disc/metrics"
 	"github.com/skycoin/dmsg/pkg/discovery/api"
 	"github.com/skycoin/dmsg/pkg/discovery/store"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	"github.com/skycoin/dmsg/pkg/direct"
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
@@ -256,9 +256,7 @@ func init() {
 
 // RootCmd contains commands for dmsg-discovery
 var RootCmd = &cobra.Command{
-	Use: func() string {
-		return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
-	}(),
+	Use: dmsgclient.ExecName(),
 	Short: "DMSG Discovery Server",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐  ┌┬┐┬┌─┐┌─┐┌─┐┬  ┬┌─┐┬─┐┬ ┬
@@ -421,9 +419,7 @@ Example:
 
 // Execute executes root CLI command.
 func Execute() {
-	if err := RootCmd.Execute(); err != nil {
-		log.Fatal(err)
-	}
+	dmsgclient.Execute(RootCmd)
 }
 
 func prepareDB(ctx context.Context, log *logging.Logger) store.Storer {

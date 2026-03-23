@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -390,9 +389,5 @@ func (pw *progressWriter) Write(p []byte) (int, error) {
 
 // Execute executes the RootCmd
 func Execute() {
-	if err := RootCmd.Execute(); err != nil {
-		// WHY WON'T THIS PRINT??
-		dlog.WithError(err).Debug("An error occurred\n")
-		log.Fatal("Failed to execute command: ", err)
-	}
+	dmsgclient.Execute(RootCmd)
 }

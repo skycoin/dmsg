@@ -20,6 +20,7 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"golang.org/x/net/proxy"
 
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 )
 
@@ -55,9 +56,7 @@ var (
 
 // Execute executes root CLI command.
 func Execute() {
-	if err := RootCmd.Execute(); err != nil {
-		log.Fatal("Failed to execute command: ", err)
-	}
+	dmsgclient.Execute(RootCmd)
 }
 
 func printEnvs(envfile string) {

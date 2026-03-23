@@ -4,10 +4,8 @@ package commands
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -40,9 +38,7 @@ var (
 
 // Execute executes root CLI command.
 func Execute() {
-	if err := RootCmd.Execute(); err != nil {
-		log.Fatal("Failed to execute command: ", err)
-	}
+	dmsgclient.Execute(RootCmd)
 }
 func init() {
 	RootCmd.AddCommand(
@@ -75,9 +71,7 @@ func init() {
 
 // RootCmd contains the root command
 var RootCmd = &cobra.Command{
-	Use: func() string {
-		return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
-	}(),
+	Use: dmsgclient.ExecName(),
 	Short: "DMSG socks5 proxy server & client",
 	Long: calvin.AsciiFont("dmsg-socks") + `
 	DMSG socks5 proxy server & client`,

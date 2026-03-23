@@ -3,15 +3,12 @@ package commands
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/calvin"
 	"github.com/spf13/cobra"
 
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	df "github.com/skycoin/dmsg/cmd/conf/commands"
 	dl "github.com/skycoin/dmsg/cmd/dial/commands"
 	dd "github.com/skycoin/dmsg/cmd/dmsg-discovery/commands"
@@ -87,9 +84,7 @@ func modifySubcommands(cmd *cobra.Command) {
 
 // RootCmd contains all binaries which may be separately compiled as subcommands
 var RootCmd = &cobra.Command{
-	Use: func() string {
-		return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
-	}(),
+	Use: dmsgclient.ExecName(),
 	Short: "DMSG services & utilities",
 	Long: func() (ret string) {
 		ret = calvin.AsciiFont("dmsg")
@@ -125,7 +120,5 @@ DMSG pseudoterminal (pty)`,
 
 // Execute executes root CLI command.
 func Execute() {
-	if err := RootCmd.Execute(); err != nil {
-		log.Fatal("Failed to execute command: ", err)
-	}
+	dmsgclient.Execute(RootCmd)
 }

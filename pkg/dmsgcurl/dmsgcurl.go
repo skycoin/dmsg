@@ -60,7 +60,7 @@ func (dg *DmsgCurl) String() string {
 	}
 	j, err := jsonite.Marshal(m)
 	if err != nil {
-		panic(err)
+		return fmt.Sprintf("<error: %v>", err)
 	}
 	return string(j)
 }

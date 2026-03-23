@@ -4,10 +4,7 @@ package commands
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -42,9 +39,7 @@ func init() {
 
 // RootCmd contains the root dmsgcurl command
 var RootCmd = &cobra.Command{
-	Use: func() string {
-		return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
-	}(),
+	Use: dmsgclient.ExecName(),
 	Short: "DMSG Dial network test utility",
 	Long: calvin.AsciiFont("dmsgdial") + `
 DMSG Dial network test utility
@@ -185,7 +180,5 @@ Default mode of operation is dmsghttp:
 
 // Execute executes root CLI command.
 func Execute() {
-	if err := RootCmd.Execute(); err != nil {
-		log.Fatal("Failed to execute command: ", err)
-	}
+	dmsgclient.Execute(RootCmd)
 }

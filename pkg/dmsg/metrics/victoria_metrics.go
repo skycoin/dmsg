@@ -2,7 +2,7 @@
 package metrics
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/metricsutil"
@@ -62,7 +62,7 @@ func (m *VictoriaMetrics) RecordSession(delta DeltaType) {
 	case -1:
 		m.activeSessions.Dec()
 	default:
-		panic(fmt.Errorf("invalid delta: %d", delta))
+		log.Printf("RecordSession: invalid delta: %d", delta)
 	}
 }
 
@@ -77,6 +77,6 @@ func (m *VictoriaMetrics) RecordStream(delta DeltaType) {
 	case -1:
 		m.activeStreams.Dec()
 	default:
-		panic(fmt.Errorf("invalid delta: %d", delta))
+		log.Printf("RecordStream: invalid delta: %d", delta)
 	}
 }

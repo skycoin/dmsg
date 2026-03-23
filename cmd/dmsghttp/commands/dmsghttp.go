@@ -4,12 +4,9 @@ package commands
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -56,9 +53,7 @@ func init() {
 
 // RootCmd contains the root dmsghttp command
 var RootCmd = &cobra.Command{
-	Use: func() string {
-		return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
-	}(),
+	Use: dmsgclient.ExecName(),
 	Short: "DMSG http file server",
 	Long: calvin.AsciiFont("dmsghttp") + `
 	DMSG http file server`,
@@ -313,9 +308,5 @@ const (
 
 // Execute executes root CLI command.
 func Execute() {
-	if err := RootCmd.Execute(); err != nil {
-		// WHY WON'T THIS PRINT??
-		dlog.WithError(err).Debug("An error occurred\n")
-		log.Fatal("Failed to execute command: ", err)
-	}
+	dmsgclient.Execute(RootCmd)
 }

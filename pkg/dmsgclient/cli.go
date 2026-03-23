@@ -8,16 +8,34 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
+	"github.com/spf13/cobra"
 
 	"github.com/skycoin/dmsg/pkg/direct"
 	"github.com/skycoin/dmsg/pkg/disc"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
+	"github.com/skycoin/dmsg/pkg/ioutil"
 )
+
+// ExecName returns the name of the currently running executable,
+// suitable for use as cobra.Command.Use.
+func ExecName() string {
+	return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
+}
+
+// Execute runs the given cobra command and exits on error.
+func Execute(cmd *cobra.Command) {
+	if err := cmd.Execute(); err != nil {
+		log.Fatal("Failed to execute command: ", err)
+	}
+}
 
 /*
 Default mode of operation is dmsghttp:
@@ -53,7 +71,7 @@ func InitDmsgWithFlags(ctx context.Context, dlog *logging.Logger, pk cipher.PubK
 		if err != nil {
 			dlog.WithError(err).Fatal("Error connecting to dmsg-discovery with http client")
 		}
-		defer resp.Body.Close() //nolint
+		defer ioutil.CloseQuietly(resp.Body, dlog)
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
@@ -105,7 +123,7 @@ func InitDmsgWithFlags(ctx context.Context, dlog *logging.Logger, pk cipher.PubK
 		}
 		dlog.WithError(err).Fatal("All DMSG transports failed to reach discovery /health")
 	}
-	defer resp.Body.Close() //nolint
+	defer ioutil.CloseQuietly(resp.Body, dlog)
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

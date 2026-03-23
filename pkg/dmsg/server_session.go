@@ -146,7 +146,11 @@ func (ss *ServerSession) serveStream(log logrus.FieldLogger, yStr io.ReadWriteCl
 			Accepted: true,
 			IP:       ip,
 		}
-		obj := MakeSignedStreamResponse(&resp, ss.entity.LocalSK())
+		obj, err := MakeSignedStreamResponse(&resp, ss.entity.LocalSK())
+		if err != nil {
+			ss.m.RecordStream(metrics.DeltaFailed) // record failed stream
+			return err
+		}
 
 		if err := ss.writeObject(yStr, obj); err != nil {
 			ss.m.RecordStream(metrics.DeltaFailed) // record failed stream

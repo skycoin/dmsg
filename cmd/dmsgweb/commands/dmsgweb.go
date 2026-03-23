@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -27,6 +26,7 @@ import (
 	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
+	"github.com/skycoin/dmsg/pkg/ioutil"
 )
 
 type customResolver struct{}
@@ -79,9 +79,7 @@ func init() {
 
 // RootCmd contains the root command for dmsgweb
 var RootCmd = &cobra.Command{
-	Use: func() string {
-		return strings.Split(filepath.Base(strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%v", os.Args), "[", ""), "]", "")), " ")[0]
-	}(),
+	Use: dmsgclient.ExecName(),
 	Short: "DMSG resolving proxy & browser client",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐┬ ┬┌─┐┌┐
@@ -315,7 +313,7 @@ func proxyTCPConn(n int) {
 	if err != nil {
 		dlog.WithError(err).Fatal(fmt.Sprintf("Failed to start TCP listener on port: %v", thiswebport))
 	}
-	defer listener.Close() //nolint
+	defer ioutil.CloseQuietly(listener, dlog)
 	dlog.Debug("Serving TCP on 127.0.0.1:", thiswebport)
 	if dmsgC == nil {
 		dlog.Fatal("dmsgC is nil")
@@ -329,7 +327,7 @@ func proxyTCPConn(n int) {
 		}
 
 		go func(conn net.Conn, n int, dmsgC *dmsg.Client) {
-			defer conn.Close() //nolint
+			defer ioutil.CloseQuietly(conn, dlog)
 			dp, ok := safecast.To[uint16](dmsgPorts[n])
 			if !ok {
 				dlog.Fatal("uint16 overflow when converting dmsg port")
@@ -341,7 +339,7 @@ func proxyTCPConn(n int) {
 				return
 			}
 
-			defer dmsgConn.Close() //nolint
+			defer ioutil.CloseQuietly(dmsgConn, dlog)
 
 			var wg sync.WaitGroup
 			wg.Add(2)
@@ -415,7 +413,7 @@ func proxyHTTPConn(n int) {
 			dlog.WithError(err).Warn("Failed to connect to HTTP server")
 			return
 		}
-		defer resp.Body.Close() //nolint
+		defer ioutil.CloseQuietly(resp.Body, dlog)
 
 		for header, values := range resp.Header {
 			for _, value := range values {
