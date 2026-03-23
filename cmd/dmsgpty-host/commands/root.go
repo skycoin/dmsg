@@ -21,9 +21,9 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/logging"
 	"github.com/spf13/cobra"
 
-	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	"github.com/skycoin/dmsg/pkg/disc"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	"github.com/skycoin/dmsg/pkg/dmsgpty"
 )
 
@@ -72,7 +72,7 @@ func init() {
 
 // RootCmd contains commands for dmsgpty-host
 var RootCmd = &cobra.Command{
-	Use: dmsgclient.ExecName(),
+	Use:   dmsgclient.ExecName(),
 	Short: "DMSG host for pseudoterminal command line interface",
 	Long: calvin.AsciiFont("dmsgpty-host") + `
 	DMSG host for pseudoterminal (pty) command line interface`,

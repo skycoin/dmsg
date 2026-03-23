@@ -48,7 +48,7 @@ func init() {
 
 // RootCmd contains the root dmsgcurl command
 var RootCmd = &cobra.Command{
-	Use: dmsgclient.ExecName(),
+	Use:   dmsgclient.ExecName(),
 	Short: "DMSG IP utility",
 	Long: calvin.AsciiFont("dmsgip") + `
 	DMSG IP utility`,

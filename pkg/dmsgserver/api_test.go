@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/skycoin/dmsg/pkg/dmsg/metrics"
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
+	"github.com/skycoin/dmsg/pkg/dmsg/metrics"
 	"github.com/skycoin/dmsg/pkg/dmsgserver"
 )
 

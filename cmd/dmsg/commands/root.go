@@ -8,7 +8,6 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/calvin"
 	"github.com/spf13/cobra"
 
-	"github.com/skycoin/dmsg/pkg/dmsgclient"
 	df "github.com/skycoin/dmsg/cmd/conf/commands"
 	dl "github.com/skycoin/dmsg/cmd/dial/commands"
 	dd "github.com/skycoin/dmsg/cmd/dmsg-discovery/commands"
@@ -21,6 +20,7 @@ import (
 	dph "github.com/skycoin/dmsg/cmd/dmsgpty-host/commands"
 	dpu "github.com/skycoin/dmsg/cmd/dmsgpty-ui/commands"
 	dw "github.com/skycoin/dmsg/cmd/dmsgweb/commands"
+	"github.com/skycoin/dmsg/pkg/dmsgclient"
 )
 
 var (
@@ -84,7 +84,7 @@ func modifySubcommands(cmd *cobra.Command) {
 
 // RootCmd contains all binaries which may be separately compiled as subcommands
 var RootCmd = &cobra.Command{
-	Use: dmsgclient.ExecName(),
+	Use:   dmsgclient.ExecName(),
 	Short: "DMSG services & utilities",
 	Long: func() (ret string) {
 		ret = calvin.AsciiFont("dmsg")

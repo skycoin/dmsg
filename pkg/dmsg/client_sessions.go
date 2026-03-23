@@ -89,20 +89,20 @@ func (ce *Client) dialSession(ctx context.Context, entry *disc.Entry) (cs Client
 
 	dSes, err := makeClientSession(&ce.EntityCommon, ce.porter, conn, entry.Static)
 	if err != nil {
-		conn.Close() //nolint:errcheck
+		conn.Close() //nolint:errcheck,gosec
 		return ClientSession{}, err
 	}
 	if entry.Protocol == "smux" {
 		dSes.sm.smux, err = smux.Client(conn, smux.DefaultConfig())
 		if err != nil {
-			conn.Close() //nolint:errcheck
+			conn.Close() //nolint:errcheck,gosec
 			return ClientSession{}, err
 		}
 		ce.log.Infof("smux stream session initial for %s", dSes.RemotePK().String())
 	} else {
 		dSes.sm.yamux, err = yamux.Client(conn, yamux.DefaultConfig())
 		if err != nil {
-			conn.Close() //nolint:errcheck
+			conn.Close() //nolint:errcheck,gosec
 			return ClientSession{}, err
 		}
 		ce.log.Infof("yamux stream session initial for %s", dSes.RemotePK().String())

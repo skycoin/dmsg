@@ -41,7 +41,7 @@ func init() {
 
 // RootCmd contains commands for dmsgpty-cli; which interacts with the dmsgpty-host instance (i.e. skywire-visor)
 var RootCmd = &cobra.Command{
-	Use: dmsgcli.ExecName(),
+	Use:   dmsgcli.ExecName(),
 	Short: "DMSG pseudoterminal command line interface",
 	Long: calvin.AsciiFont("dmsgpty-cli") + `
 	DMSG pseudoterminal command line interface`,

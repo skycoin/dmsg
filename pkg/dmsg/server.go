@@ -13,8 +13,8 @@ import (
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/netutil"
 	"github.com/xtaci/smux"
 
-	"github.com/skycoin/dmsg/pkg/dmsg/metrics"
 	"github.com/skycoin/dmsg/pkg/disc"
+	"github.com/skycoin/dmsg/pkg/dmsg/metrics"
 )
 
 // ServerConfig configues the Server
@@ -247,7 +247,7 @@ func (s *Server) handleSession(conn net.Conn) {
 		dSes.sm.smux, err = smux.Server(conn, smux.DefaultConfig())
 		if err != nil {
 			dSes.sm.mutx.Unlock()
-			conn.Close()
+			conn.Close() //nolint:errcheck
 			cancel()
 			return
 		}
@@ -257,7 +257,7 @@ func (s *Server) handleSession(conn net.Conn) {
 		dSes.sm.yamux, err = yamux.Server(conn, yamux.DefaultConfig())
 		if err != nil {
 			dSes.sm.mutx.Unlock()
-			conn.Close()
+			conn.Close() //nolint:errcheck
 			cancel()
 			return
 		}

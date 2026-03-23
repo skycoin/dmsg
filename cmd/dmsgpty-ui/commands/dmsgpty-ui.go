@@ -31,7 +31,7 @@ func init() {
 
 // RootCmd contains commands to start a dmsgpty-ui server for a dmsgpty-host
 var RootCmd = &cobra.Command{
-	Use: dmsgclient.ExecName(),
+	Use:   dmsgclient.ExecName(),
 	Short: "DMSG pseudoterminal GUI",
 	Long: `
 	┌┬┐┌┬┐┌─┐┌─┐┌─┐┌┬┐┬ ┬   ┬ ┬┬
