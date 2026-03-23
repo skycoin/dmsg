@@ -9,13 +9,13 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.25.x'
+          go-version: '1.26.x'
           cache: true
           cache-dependency-path: go.sum
 
       - uses: golangci/golangci-lint-action@v7
         with:
-          version: v2.6.1
+          version: v2.11.4
 
       - name: Checking Format and Testing
         run: make check
@@ -47,13 +47,13 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.25.x'
+          go-version: '1.26.x'
           cache: true
           cache-dependency-path: go.sum
 
       - uses: golangci/golangci-lint-action@v7
         with:
-          version: v2.6.1
+          version: v2.11.4
 
       - name: Checking Format and Testing
         run: make check
@@ -68,7 +68,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.25.x'
+          go-version: '1.26.x'
           cache: true
           cache-dependency-path: go.sum
 
