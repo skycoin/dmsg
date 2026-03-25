@@ -19,7 +19,7 @@ require (
 	github.com/pires/go-proxyproto v0.11.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
-	github.com/skycoin/skycoin v0.28.5
+	github.com/skycoin/skycoin v0.28.6-0.20260325014814-f48988877c68
 	github.com/skycoin/skywire v1.3.37
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1

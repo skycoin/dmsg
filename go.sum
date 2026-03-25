@@ -170,8 +170,8 @@ github.com/sirupsen/logrus v1.9.4 h1:TsZE7l11zFCLZnZ+teH4Umoq5BhEIfIzfRDZ1Uzql2w
 github.com/sirupsen/logrus v1.9.4/go.mod h1:ftWc9WdOfJ0a92nsE2jF5u5ZwH8Bv2zdeOC42RjbV2g=
 github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6 h1:1Nc5EBY6pjfw1kwW0duwyG+7WliWz5u9kgk1h5MnLuA=
 github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6/go.mod h1:UXghlricA7J3aRD/k7p/zBObQfmBawwCxIVPVjz2Q3o=
-github.com/skycoin/skycoin v0.28.5 h1:4sHS4KjndrAbIgJoiV0w9/lSLhthUH4GHMAoeS0ujaU=
-github.com/skycoin/skycoin v0.28.5/go.mod h1:tgVxjBBV4/OxVBDrcpsVK0q/awGxqBjwTUPDBMh9ZcA=
+github.com/skycoin/skycoin v0.28.6-0.20260325014814-f48988877c68 h1:M+VmlCByq6jRbxio6GOn4h+5jP+nmumiu1xMZZg3MZI=
+github.com/skycoin/skycoin v0.28.6-0.20260325014814-f48988877c68/go.mod h1:tgVxjBBV4/OxVBDrcpsVK0q/awGxqBjwTUPDBMh9ZcA=
 github.com/skycoin/skywire v1.3.37 h1:LIgOrj6PqdH6RAOWsD8TSI/vTyp7kUYE2Ale6pkvjJw=
 github.com/skycoin/skywire v1.3.37/go.mod h1:k3TA1edIXR96Jtec5XYVy7EGHQlZL524pCPYRTzBBok=
 github.com/spf13/cobra v1.4.0/go.mod h1:Wo4iy3BUC+X2Fybo0PDqwJIv3dNRiZLHQymsfxlB84g=
