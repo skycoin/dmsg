@@ -16,8 +16,8 @@ import (
 // Supported modes: http, cpu, mem, mutex, block, trace.
 // If mode is empty, this is a no-op.
 // Returns a stop function that should be called on shutdown to finalize profiles.
-func InitPProf(log *logging.Logger, mode string, addr string) (stop func()) {
-	stop = func() {}
+func InitPProf(log *logging.Logger, mode string, addr string) func() { //nolint:gocyclo
+	noop := func() {}
 
 	switch mode {
 	case "http":
@@ -46,34 +46,39 @@ func InitPProf(log *logging.Logger, mode string, addr string) (stop func()) {
 		}()
 
 		time.Sleep(100 * time.Millisecond)
+		return noop
 
 	case "cpu":
 		f, err := os.Create("cpu.pprof")
 		if err != nil {
 			log.Errorf("failed to create cpu.pprof: %v", err)
-			return
+			return noop
 		}
 		if err := rpprof.StartCPUProfile(f); err != nil {
 			log.Errorf("failed to start CPU profile: %v", err)
-			f.Close() //nolint:errcheck
-			return
+			if err := f.Close(); err != nil {
+				log.Errorf("failed to close cpu.pprof: %v", err)
+			}
+			return noop
 		}
 		log.Info("CPU profiling started, will write to cpu.pprof on shutdown")
-		stop = func() {
+		return func() {
 			rpprof.StopCPUProfile()
-			f.Close() //nolint:errcheck
+			if err := f.Close(); err != nil {
+				log.Errorf("failed to close cpu.pprof: %v", err)
+			}
 			log.Info("CPU profile written to cpu.pprof")
 		}
 
 	case "mem":
 		log.Info("Memory profiling enabled, will write to mem.pprof on shutdown")
-		stop = func() {
+		return func() {
 			f, err := os.Create("mem.pprof")
 			if err != nil {
 				log.Errorf("failed to create mem.pprof: %v", err)
 				return
 			}
-			defer f.Close() //nolint:errcheck
+			defer f.Close() //nolint:errcheck,gosec
 			runtime.GC()
 			if err := rpprof.WriteHeapProfile(f); err != nil {
 				log.Errorf("failed to write memory profile: %v", err)
@@ -85,13 +90,13 @@ func InitPProf(log *logging.Logger, mode string, addr string) (stop func()) {
 	case "mutex":
 		runtime.SetMutexProfileFraction(1)
 		log.Info("Mutex profiling enabled, will write to mutex.pprof on shutdown")
-		stop = func() {
+		return func() {
 			f, err := os.Create("mutex.pprof")
 			if err != nil {
 				log.Errorf("failed to create mutex.pprof: %v", err)
 				return
 			}
-			defer f.Close() //nolint:errcheck
+			defer f.Close() //nolint:errcheck,gosec
 			if err := rpprof.Lookup("mutex").WriteTo(f, 0); err != nil {
 				log.Errorf("failed to write mutex profile: %v", err)
 				return
@@ -102,13 +107,13 @@ func InitPProf(log *logging.Logger, mode string, addr string) (stop func()) {
 	case "block":
 		runtime.SetBlockProfileRate(1)
 		log.Info("Block profiling enabled, will write to block.pprof on shutdown")
-		stop = func() {
+		return func() {
 			f, err := os.Create("block.pprof")
 			if err != nil {
 				log.Errorf("failed to create block.pprof: %v", err)
 				return
 			}
-			defer f.Close() //nolint:errcheck
+			defer f.Close() //nolint:errcheck,gosec
 			if err := rpprof.Lookup("block").WriteTo(f, 0); err != nil {
 				log.Errorf("failed to write block profile: %v", err)
 				return
@@ -133,6 +138,7 @@ func InitPProf(log *logging.Logger, mode string, addr string) (stop func()) {
 		}()
 
 		time.Sleep(100 * time.Millisecond)
+		return noop
 
 	case "":
 		// no-op
@@ -141,5 +147,5 @@ func InitPProf(log *logging.Logger, mode string, addr string) (stop func()) {
 		log.Errorf("unknown pprof mode %q, supported: [ cpu | mem | mutex | block | trace | http ]", mode)
 	}
 
-	return stop
+	return noop
 }
