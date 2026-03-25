@@ -19,7 +19,7 @@ require (
 	github.com/pires/go-proxyproto v0.11.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
-	github.com/skycoin/skycoin v0.28.5-alpha1.0.20260323015226-90b668188f85
+	github.com/skycoin/skycoin v0.28.6-0.20260325014814-f48988877c68
 	github.com/skycoin/skywire v1.3.37
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
@@ -77,7 +77,7 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
-	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
+	github.com/pelletier/go-toml/v2 v2.3.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
