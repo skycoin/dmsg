@@ -8,10 +8,10 @@ jobs:
   linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: 1.25.*
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Requirements
         run: |
           sudo apt update
@@ -26,10 +26,10 @@ jobs:
     needs: linux
     runs-on: macos-latest
     steps:
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: 1.25.*
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Requirements
         run: |
           brew install goreleaser
@@ -44,10 +44,10 @@ jobs:
     needs: darwin
     runs-on: windows-latest
     steps:
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: 1.25.*
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Requirements
         shell: pwsh
         run: |
