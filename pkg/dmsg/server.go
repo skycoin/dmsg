@@ -150,12 +150,14 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 			return err
 		}
 
-		// TODO(evanlinjin): Implement proper load-balancing.
-		if s.SessionCount() >= s.maxSessions {
+			if s.SessionCount() >= s.maxSessions {
 			s.log.
 				WithField("max_sessions", s.maxSessions).
 				WithField("remote_tcp", conn.RemoteAddr()).
-				Debug("Max sessions is reached, but still accepting so clients who delegated us can still listen.")
+				Warn("Max sessions reached, rejecting connection.")
+			conn.Close() //nolint:errcheck,gosec
+			time.Sleep(10 * time.Millisecond)
+			continue
 		}
 
 		s.wg.Add(1)
