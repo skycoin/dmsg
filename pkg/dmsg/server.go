@@ -150,7 +150,7 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 			return err
 		}
 
-			if s.SessionCount() >= s.maxSessions {
+		if s.SessionCount() >= s.maxSessions {
 			s.log.
 				WithField("max_sessions", s.maxSessions).
 				WithField("remote_tcp", conn.RemoteAddr()).

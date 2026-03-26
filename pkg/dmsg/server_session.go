@@ -138,6 +138,14 @@ func (ss *ServerSession) Serve() {
 // struct
 
 func (ss *ServerSession) serveStream(log logrus.FieldLogger, yStr io.ReadWriteCloser, addr net.Addr) error {
+	// Set a deadline for the initial stream request read so a slow or
+	// malicious client cannot hold a goroutine and semaphore slot indefinitely.
+	if conn, ok := yStr.(net.Conn); ok {
+		if err := conn.SetReadDeadline(time.Now().Add(HandshakeTimeout)); err != nil {
+			return fmt.Errorf("set read deadline: %w", err)
+		}
+	}
+
 	readRequest := func() (StreamRequest, error) {
 		obj, err := ss.readObject(yStr)
 		if err != nil {
@@ -219,6 +227,11 @@ func (ss *ServerSession) serveStream(log logrus.FieldLogger, yStr io.ReadWriteCl
 		return err
 	}
 	log.Debug("Forwarded stream response.")
+
+	// Clear the read deadline before the long-lived bidirectional copy.
+	if conn, ok := yStr.(net.Conn); ok {
+		conn.SetReadDeadline(time.Time{}) //nolint:errcheck,gosec
+	}
 
 	// Serve stream.
 	log.Info("Serving stream.")
