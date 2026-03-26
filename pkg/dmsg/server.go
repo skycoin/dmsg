@@ -154,10 +154,7 @@ func (s *Server) Serve(lis net.Listener, addr string) error {
 			s.log.
 				WithField("max_sessions", s.maxSessions).
 				WithField("remote_tcp", conn.RemoteAddr()).
-				Warn("Max sessions reached, rejecting connection.")
-			conn.Close() //nolint:errcheck,gosec
-			time.Sleep(10 * time.Millisecond)
-			continue
+				Debug("Max sessions is reached, but still accepting so clients who delegated us can still listen.")
 		}
 
 		s.wg.Add(1)
