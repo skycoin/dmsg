@@ -1,5 +1,4 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/skycoin/dmsg)](https://goreportcard.com/report/github.com/skycoin/dmsg)
-[![GoDoc](https://pkg.go.dev/badge/github.com/skycoin/dmsg)](https://pkg.go.dev/github.com/skycoin/dmsg)
 ![Test](https://github.com/skycoin/dmsg/actions/workflows/test.yml/badge.svg)
 ![Release](https://github.com/skycoin/dmsg/actions/workflows/release.yml/badge.svg)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/skycoin/dmsg/badge)](https://api.securityscorecards.dev/projects/github.com/skycoin/dmsg)
