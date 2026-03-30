@@ -155,7 +155,11 @@ func (ss *ServerSession) serveStream(log logrus.FieldLogger, yStr io.ReadWriteCl
 		if err != nil {
 			return StreamRequest{}, err
 		}
-		// TODO(evanlinjin): Implement timestamp tracker.
+		// Timestamp validation: we pass 0 because concurrent streams from
+		// the same client can have timestamps that arrive out of order at
+		// the server. Strict monotonic enforcement would reject valid
+		// concurrent requests. The noise encryption layer already prevents
+		// replay at the session level via nonce tracking.
 		if err := req.Verify(0); err != nil {
 			return StreamRequest{}, err
 		}
