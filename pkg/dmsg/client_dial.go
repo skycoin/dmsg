@@ -63,6 +63,22 @@ func (ce *Client) DialStream(ctx context.Context, addr Addr) (*Stream, error) {
 		return stream, nil
 	}
 
+	// Fallback: try all existing sessions. If servers are meshed, our server
+	// can forward the request to the destination's server via peer connections.
+	for _, ses := range ce.allClientSessions(ce.porter) {
+		// Skip servers we already tried above.
+		if hasPK(entry.Client.DelegatedServers, ses.RemotePK()) {
+			continue
+		}
+		stream, err := ses.DialStream(addr)
+		if err != nil {
+			ce.log.WithError(err).WithField("server", ses.RemotePK()).
+				Debug("DialStream failed via mesh fallback, trying next server")
+			continue
+		}
+		return stream, nil
+	}
+
 	return nil, ErrCannotConnectToDelegated
 }
 
