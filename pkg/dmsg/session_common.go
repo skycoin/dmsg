@@ -23,6 +23,7 @@ import (
 type SessionCommon struct {
 	entity *EntityCommon // back reference
 	rPK    cipher.PubKey // remote pk
+	isPeer bool          // true if this session is with a peer server
 
 	netConn net.Conn // underlying net.Conn (TCP connection to the dmsg server)
 	// ys      *yamux.Session
