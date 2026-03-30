@@ -76,7 +76,7 @@ func (sc *SessionCommon) initClient(entity *EntityCommon, conn net.Conn, rPK cip
 	}
 
 	rw := noise.NewReadWriter(conn, ns)
-	if err := rw.Handshake(time.Second * 5); err != nil {
+	if err := rw.Handshake(HandshakeTimeout); err != nil {
 		return err
 	}
 	if rw.Buffered() > 0 {
@@ -102,7 +102,7 @@ func (sc *SessionCommon) initServer(entity *EntityCommon, conn net.Conn) error {
 	}
 
 	rw := noise.NewReadWriter(conn, ns)
-	if err := rw.Handshake(time.Second * 5); err != nil {
+	if err := rw.Handshake(HandshakeTimeout); err != nil {
 		return err
 	}
 	if rw.Buffered() > 0 {

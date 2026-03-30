@@ -60,7 +60,7 @@ func GenerateDefaultConfig(c *Config) {
 	c.LocalAddress = defaultLocalAddress
 	c.HTTPAddress = defaultHTTPAddress
 	c.LogLevel = "info"
-	c.MaxSessions = 2048
+	c.MaxSessions = dmsg.DefaultMaxSessions
 }
 
 // Flush trying to save config file
