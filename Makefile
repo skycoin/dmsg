@@ -4,7 +4,8 @@ else
 	SHELL := /bin/bash
 endif
 
-.PHONY : check lint install-linters dep test test-e2e test-e2e-build test-e2e-run test-e2e-test test-e2e-stop test-e2e-clean build
+.PHONY : check lint install-linters dep tidy test test-e2e test-e2e-build test-e2e-run test-e2e-test test-e2e-stop test-e2e-clean build
+.PHONY : update-dep update-skywire update-skycoin push-deps sync-upstream-develop
 
 VERSION := $(shell git describe --always)
 
@@ -101,7 +102,7 @@ install-linters-windows: ## Install linters on windows
 	${OPTS} go install golang.org/x/tools/cmd/goimports@latest
 	${OPTS} go install github.com/incu6us/goimports-reviser@latest
 
-format: ## Formats the code. Must have goimports and goimports-reviser installed (use make install-linters).
+format: tidy ## Formats the code. Must have goimports and goimports-reviser installed (use make install-linters).
 	${OPTS} goimports -w -local ${DMSG_REPO} ./pkg ./cmd ./internal ./examples
 	find . -type f -name '*.go' -not -path "./.git/*" -not -path "./vendor/*"  -exec goimports-reviser -project-name ${DMSG_REPO} {} \;
 
@@ -109,9 +110,78 @@ format: ## Formats the code. Must have goimports and goimports-reviser installed
 format-windows: ## Formats the code. Must have goimports and goimports-reviser installed (use make install-linters-windows).
 	powershell -Command .\scripts\format-windows.ps1
 
-dep: ## Sorts dependencies
-	${OPTS} go mod vendor -v
+tidy: ## Tidies dependencies
 	${OPTS} go mod tidy -v
+
+dep: tidy ## Sorts and vendors dependencies
+	${OPTS} go mod vendor -v
+
+update-dep: ## Update all dependencies to latest versions, vendor, and commit
+	${OPTS} go get -v -u ./...
+	${OPTS} go mod tidy -v
+	${OPTS} go mod vendor -v
+	git add go.mod go.sum vendor
+	git diff --cached --quiet || git commit -m "update deps"
+
+update-skywire: ## Update skywire to latest develop branch
+	@echo "Updating skywire to latest develop..."
+	${OPTS} go get -v github.com/skycoin/skywire@develop
+	${OPTS} go mod tidy -v
+	${OPTS} go mod vendor -v
+	@echo "skywire updated successfully"
+
+update-skycoin: ## Update skycoin to latest develop branch
+	@echo "Updating skycoin to latest develop..."
+	${OPTS} go get -v github.com/skycoin/skycoin@develop
+	${OPTS} go mod tidy -v
+	${OPTS} go mod vendor -v
+	@echo "skycoin updated successfully"
+
+push-deps: ## Commit and push dependency updates
+	@echo "Committing dependency updates..."
+	git add go.mod go.sum vendor
+	git diff --cached --quiet || git commit -m "update deps"
+	git push
+	@echo "Dependencies pushed successfully"
+
+sync-upstream-develop: ## Sync local develop branch with upstream skycoin/dmsg develop
+	@normalize() { \
+		echo "$$1" | sed \
+			-e 's|git@github.com:|https://github.com/|' \
+			-e 's|ssh://github.com/|https://github.com/|' \
+			-e 's|\.git$$||' \
+			-e 's|https://github.com/||' \
+			| tr '[:upper:]' '[:lower:]'; \
+	}; \
+	UPSTREAM_URL=$$(git remote get-url upstream 2>/dev/null); \
+	if [ -z "$$UPSTREAM_URL" ]; then \
+		echo "[error] no 'upstream' remote found. Add it with:"; \
+		echo "  git remote add upstream https://github.com/skycoin/dmsg.git"; \
+		exit 1; \
+	fi; \
+	UPSTREAM_NORM=$$(normalize "$$UPSTREAM_URL"); \
+	if [ "$$UPSTREAM_NORM" != "skycoin/dmsg" ]; then \
+		echo "[error] upstream remote does not point to skycoin/dmsg."; \
+		echo "  Found: $$UPSTREAM_URL"; \
+		exit 1; \
+	fi; \
+	ORIGIN_URL=$$(git remote get-url origin 2>/dev/null); \
+	if [ -z "$$ORIGIN_URL" ]; then \
+		echo "[error] no 'origin' remote found."; \
+		exit 1; \
+	fi; \
+	ORIGIN_NORM=$$(normalize "$$ORIGIN_URL"); \
+	if [ "$$ORIGIN_NORM" = "skycoin/dmsg" ]; then \
+		echo "[error] origin points to skycoin/dmsg directly."; \
+		echo "  This target must be run from a fork, not the canonical repo."; \
+		exit 1; \
+	fi; \
+	echo "[ok] origin is a fork ($$ORIGIN_NORM), upstream is skycoin/dmsg — syncing develop..."; \
+	git checkout develop && \
+	git pull && \
+	git fetch upstream && \
+	git merge upstream/develop && \
+	git push
 
 install: ## Install `dmsg-discovery`, `dmsg-server`, `dmsgcurl`,`dmsgpty-cli`, `dmsgpty-host`, `dmsgpty-ui`
 	${OPTS} go install ${BUILD_OPTS} ./cmd/*

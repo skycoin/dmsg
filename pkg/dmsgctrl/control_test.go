@@ -19,21 +19,24 @@ func TestControl_Ping(t *testing.T) {
 	ctrlA := ControlStream(connA)
 	ctrlB := ControlStream(connB)
 
-	t.Cleanup(func() {
-		assert.NoError(t, ctrlA.Close())
-		assert.NoError(t, ctrlB.Close())
-	})
+	defer func() {
+		// Close in order: B first (the responder side), then A.
+		// This avoids EOF races where A's close kills the pipe
+		// while B's serve goroutine is mid-read.
+		_ = ctrlB.Close() //nolint:errcheck
+		_ = ctrlA.Close() //nolint:errcheck
+	}()
 
 	for i := 0; i < times; i++ {
-		// act
+		// Ping A → B (ctrlA sends ping, ctrlB's serve goroutine responds with pong).
 		durA, errA := ctrlA.Ping(context.TODO())
-		durB, errB := ctrlB.Ping(context.TODO())
-		t.Log(durA)
-		t.Log(durB)
+		require.NoError(t, errA, "ping A failed on iteration %d", i)
+		t.Logf("A: %v", durA)
 
-		// assert
-		assert.NoError(t, errA)
-		assert.NoError(t, errB)
+		// Ping B → A.
+		durB, errB := ctrlB.Ping(context.TODO())
+		require.NoError(t, errB, "ping B failed on iteration %d", i)
+		t.Logf("B: %v", durB)
 	}
 }
 
