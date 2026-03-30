@@ -293,15 +293,18 @@ func (s *Server) discoverAndConnectPeers(ctx context.Context) {
 					continue
 				}
 				// Skip if already a static peer (handled by connectToPeers).
-				if _, ok := s.peerPKs[pk]; ok {
+				s.peerSessionsMx.Lock()
+				_, alreadyPeer := s.peerPKs[pk]
+				if !alreadyPeer && entry.Server != nil && entry.Server.Address != "" {
+					s.peerPKs[pk] = struct{}{}
+				}
+				s.peerSessionsMx.Unlock()
+				if alreadyPeer {
 					continue
 				}
 				if entry.Server == nil || entry.Server.Address == "" {
 					continue
 				}
-
-				// Register as known peer so incoming sessions are marked isPeer.
-				s.peerPKs[pk] = struct{}{}
 
 				peerCtx, peerCancel := context.WithCancel(ctx) //nolint:gosec
 				activePeers[pk] = peerCancel
@@ -409,7 +412,9 @@ func (s *Server) maintainPeerConnection(ctx context.Context, peer PeerEntry) {
 
 // isPeerPK returns true if the given PK is a known peer server.
 func (s *Server) isPeerPK(pk cipher.PubKey) bool {
+	s.peerSessionsMx.Lock()
 	_, ok := s.peerPKs[pk]
+	s.peerSessionsMx.Unlock()
 	return ok
 }
 
