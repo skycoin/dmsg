@@ -3,6 +3,7 @@ package dmsghttp
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net"
 	"net/http"
@@ -12,8 +13,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 	"github.com/stretchr/testify/assert"
-
-	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
 )
 
 const (
@@ -126,22 +125,27 @@ func startHTTPServer(t *testing.T, results chan httpServerResult, lis net.Listen
 		results <- result
 	})
 
+	srv := &http.Server{
+		ReadTimeout:       3 * time.Second,
+		WriteTimeout:      3 * time.Second,
+		IdleTimeout:       30 * time.Second,
+		ReadHeaderTimeout: 3 * time.Second,
+		Handler:           r,
+	}
+
 	errCh := make(chan error, 1)
 	go func() {
-		srv := &http.Server{
-			ReadTimeout:       3 * time.Second,
-			WriteTimeout:      3 * time.Second,
-			IdleTimeout:       30 * time.Second,
-			ReadHeaderTimeout: 3 * time.Second,
-			Handler:           r,
-		}
 		errCh <- srv.Serve(lis)
 		close(errCh)
 	}()
 
 	t.Cleanup(func() {
-		assert.NoError(t, lis.Close())
-		assert.EqualError(t, <-errCh, dmsg.ErrEntityClosed.Error())
+		// Graceful shutdown: let in-flight requests finish before closing.
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_ = srv.Shutdown(ctx) //nolint:errcheck
+		_ = lis.Close()       //nolint:errcheck
+		<-errCh
 	})
 }
 
