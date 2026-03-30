@@ -1,6 +1,6 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/skycoin/dmsg)](https://goreportcard.com/report/github.com/skycoin/dmsg)
+[![GoDoc](https://pkg.go.dev/badge/github.com/skycoin/dmsg)](https://pkg.go.dev/github.com/skycoin/dmsg)
 ![Test](https://github.com/skycoin/dmsg/actions/workflows/test.yml/badge.svg)
-![Deploy](https://github.com/skycoin/dmsg/actions/workflows/deploy.yml/badge.svg)
 ![Release](https://github.com/skycoin/dmsg/actions/workflows/release.yml/badge.svg)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/skycoin/dmsg/badge)](https://api.securityscorecards.dev/projects/github.com/skycoin/dmsg)
 [![go.mod](https://img.shields.io/github/go-mod/go-version/skycoin/dmsg.svg)](https://github.com/skycoin/dmsg)
@@ -9,14 +9,14 @@
 
 # dmsg
 
-`dmsg` (read as *D-message*) is a distributed messaging system and encrypted transport layer used as the control plane for [Skywire](https://github.com/skycoin/skywire). It provides anonymous, public key-based routing between clients mediated by relay servers, with end-to-end encryption via the Noise Protocol (ChaCha20-Poly1305 / secp256k1).
+`dmsg` (read as *D-message*) is an anonymous relay system and encrypted transport layer used as the control plane for [Skywire](https://github.com/skycoin/skywire). It provides public key-based routing between clients relayed by servers, with end-to-end encryption via the Noise Protocol (ChaCha20-Poly1305 / secp256k1).
 
 ## Architecture
 
 The dmsg network is comprised of three types of services:
 
-- **`dmsg.Discovery`** — acts like a DNS for the network, identifying servers and clients by their `secp256k1` public keys.
-- **`dmsg.Server`** — relays encrypted streams between clients. Servers can be meshed with each other to enable cross-server client connectivity.
+- **`dmsg.Discovery`** — identifies servers and clients by their `secp256k1` public keys, similar to DNS for the dmsg network.
+- **`dmsg.Server`** — relays encrypted streams between clients. Servers connect to each other so that clients on different servers can communicate.
 - **`dmsg.Client`** — connects to one or more servers to establish sessions and streams with other clients.
 
 ```
@@ -30,22 +30,23 @@ The dmsg network is comprised of three types of services:
 
 Legend:
 - `[D]` — `dmsg.Discovery`
-- `S(X)` — `dmsg.Server` (servers are meshed with each other)
+- `S(X)` — `dmsg.Server`
 - `C(X)` — `dmsg.Client`
+- `←——→` — server-to-server connection (enables cross-server relay)
 
 Clients and servers are identified via `secp256k1` public keys and store records of themselves in the discovery. Client records include the public keys of servers they are delegated to.
 
 ## Key Concepts
 
 - **Session** — the connection between a client and a server (noise-encrypted TCP + yamux/smux multiplexing).
-- **Stream** — a connection between two clients, routed via one or more servers. Each stream has its own noise handshake for end-to-end encryption.
-- **Server Mesh** — servers can peer with each other (via static config or auto-discovery) so that clients on different servers can communicate. The mesh uses a 1-hop maximum: a client's server forwards the request to the destination's server, which delivers it locally.
+- **Stream** — a connection between two clients, relayed via one or more servers. Each stream has its own noise handshake for end-to-end encryption. The relay servers cannot read the stream contents.
+- **Server-to-Server Relay** — servers connect to each other so that a client on one server can reach a client on another server. A stream is relayed through at most two servers (the client's server and the destination's server).
 
-## Server-to-Server Mesh
+## Server-to-Server Connections
 
-By default, dmsg servers automatically discover and peer with all other servers registered in the same dmsg discovery. This means clients connected to different servers can reach each other transparently — the dial is forwarded through the server mesh.
+By default, dmsg servers automatically discover and connect to all other servers registered in the same dmsg discovery. This means clients connected to different servers can reach each other transparently — the stream request is relayed through the server-to-server connection.
 
-Servers can also be configured to peer with specific servers via static config:
+Servers can also be configured to connect to specific servers via static config, which is useful for environments without discovery (e.g., direct clients):
 
 ```json
 {
@@ -55,7 +56,10 @@ Servers can also be configured to peer with specific servers via static config:
 }
 ```
 
-Static peers are useful for environments without discovery (e.g., direct clients) or for establishing guaranteed peering relationships.
+When a client dials a destination that is not on its own server, the following order is used:
+1. Try existing sessions to the destination's delegated servers (direct relay)
+2. Try existing sessions to any other connected server (cross-server relay)
+3. Establish a new session to the destination's delegated server (last resort)
 
 ## Dmsg Tools and Libraries
 
