@@ -245,12 +245,85 @@ func (s *Server) Ready() <-chan struct{} {
 }
 
 func (s *Server) connectToPeers(ctx context.Context) {
+	// Connect to statically configured peers.
 	for _, peer := range s.peers {
 		s.wg.Add(1)
 		go func(peer PeerEntry) {
 			defer s.wg.Done()
 			s.maintainPeerConnection(ctx, peer)
 		}(peer)
+	}
+
+	// Periodically discover other servers from discovery and peer with them.
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		s.discoverAndConnectPeers(ctx)
+	}()
+}
+
+// discoverAndConnectPeers periodically queries discovery for all servers
+// and establishes peer connections to any that aren't already connected.
+func (s *Server) discoverAndConnectPeers(ctx context.Context) {
+	// activePeers tracks goroutines managing discovered peer connections.
+	activePeers := make(map[cipher.PubKey]context.CancelFunc)
+
+	// Initial delay to let the server register itself first.
+	select {
+	case <-time.After(10 * time.Second):
+	case <-ctx.Done():
+		return
+	}
+
+	ticker := time.NewTicker(s.updateInterval)
+	defer ticker.Stop()
+
+	for {
+		entries, err := s.dc.AllServers(ctx)
+		if err != nil {
+			s.log.WithError(err).Debug("Failed to discover peer servers.")
+		} else {
+			for _, entry := range entries {
+				pk := entry.Static
+				// Skip self and already-connected peers.
+				if pk == s.pk {
+					continue
+				}
+				if _, ok := activePeers[pk]; ok {
+					continue
+				}
+				// Skip if already a static peer (handled by connectToPeers).
+				if _, ok := s.peerPKs[pk]; ok {
+					continue
+				}
+				if entry.Server == nil || entry.Server.Address == "" {
+					continue
+				}
+
+				// Register as known peer so incoming sessions are marked isPeer.
+				s.peerPKs[pk] = struct{}{}
+
+				peerCtx, peerCancel := context.WithCancel(ctx) //nolint:gosec
+				activePeers[pk] = peerCancel
+
+				peer := PeerEntry{PK: pk, Addr: entry.Server.Address}
+				s.wg.Add(1)
+				go func() {
+					defer s.wg.Done()
+					s.maintainPeerConnection(peerCtx, peer)
+				}()
+			}
+		}
+
+		select {
+		case <-ticker.C:
+		case <-ctx.Done():
+			// Cancel all discovered peer connections.
+			for _, cancel := range activePeers {
+				cancel()
+			}
+			return
+		}
 	}
 }
 
