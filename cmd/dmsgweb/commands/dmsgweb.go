@@ -401,7 +401,7 @@ func proxyHTTPConn(n int) {
 		}
 
 		dlog.Debug(fmt.Sprintf("Proxying request: %s %s", c.Request.Method, urlStr))
-		req, err := http.NewRequest(c.Request.Method, urlStr, c.Request.Body)
+		req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, urlStr, c.Request.Body)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Failed to create HTTP request")
 			dlog.WithError(err).Warn("Failed to create HTTP request")
@@ -430,7 +430,8 @@ func proxyHTTPConn(n int) {
 
 		c.Status(resp.StatusCode)
 		if _, err := io.Copy(c.Writer, resp.Body); err != nil {
-			c.String(http.StatusInternalServerError, "Failed to copy response body")
+			// Status header is already written; cannot override with 500.
+			// Just log the error.
 			dlog.WithError(err).Warn("Failed to copy response body")
 		}
 	})
