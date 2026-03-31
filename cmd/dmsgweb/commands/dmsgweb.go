@@ -469,7 +469,7 @@ func proxyHTTPConn(ctx context.Context, n int) { //nolint:unparam
 	// Graceful shutdown on context cancellation.
 	go func() { //nolint:gosec // G118: context.Background is intentional — shutdown must outlive parent ctx
 		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second) //nolint:govet
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			dlog.WithError(err).Warn("HTTP server shutdown error")
