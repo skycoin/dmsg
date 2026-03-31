@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
+	"time"
 
 	"github.com/chen3feng/safecast"
 	"github.com/confiant-inc/go-socks5"
@@ -288,20 +288,20 @@ dmsgweb conf file detected: ` + dwcfg
 		if len(resolveDmsgAddr) == 0 && len(webPort) == 1 {
 			if len(rawTCP) > 0 && rawTCP[0] {
 				dlog.Debug("proxyTCPConn(-1)")
-				proxyTCPConn(-1)
+				proxyTCPConn(ctx, -1)
 			} else {
 				dlog.Debug("proxyHTTPConn(-1)")
-				proxyHTTPConn(-1)
+				proxyHTTPConn(ctx, -1)
 			}
 		} else {
 			for i := range resolveDmsgAddr {
 				wg.Add(1)
 				if rawTCP[i] {
 					dlog.Debug("proxyTCPConn(" + fmt.Sprintf("%v", i) + ")")
-					go proxyTCPConn(i)
+					go proxyTCPConn(ctx, i)
 				} else {
 					dlog.Debug("proxyHTTPConn(" + fmt.Sprintf("%v", i) + ")")
-					go proxyHTTPConn(i)
+					go proxyHTTPConn(ctx, i)
 				}
 			}
 		}
@@ -309,7 +309,7 @@ dmsgweb conf file detected: ` + dwcfg
 	},
 }
 
-func proxyTCPConn(n int) {
+func proxyTCPConn(ctx context.Context, n int) { //nolint:unparam
 	var thiswebport uint
 	if n == -1 {
 		thiswebport = webPort[0]
@@ -337,7 +337,9 @@ func proxyTCPConn(n int) {
 			defer ioutil.CloseQuietly(conn, dlog)
 			dp, ok := safecast.To[uint16](dmsgPorts[n])
 			if !ok {
-				dlog.Fatal("uint16 overflow when converting dmsg port")
+				dlog.WithError(fmt.Errorf("uint16 overflow for port %v", dmsgPorts[n])).
+					Warn("Failed to convert dmsg port")
+				return
 			}
 			dlog.Debug(fmt.Sprintf("Dialing %v:%v", dialPK[n].String(), dp))
 			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: dp}) //nolint
@@ -345,34 +347,31 @@ func proxyTCPConn(n int) {
 				dlog.WithError(err).Warn(fmt.Sprintf("Failed to dial dmsg address %v port %v", dialPK[n].String(), dmsgPorts[n]))
 				return
 			}
-
 			defer ioutil.CloseQuietly(dmsgConn, dlog)
 
-			var wg sync.WaitGroup
-			wg.Add(2)
-
+			done := make(chan struct{})
 			go func() {
-				defer wg.Done()
+				defer close(done)
 				_, err := io.Copy(dmsgConn, conn)
 				if err != nil {
-					dlog.WithError(err).Warn("Error on io.Copy(dmsgConn, conn)")
+					dlog.WithError(err).Debug("io.Copy(dmsgConn, conn) ended")
 				}
 			}()
 
-			go func() {
-				defer wg.Done()
-				_, err := io.Copy(conn, dmsgConn)
-				if err != nil {
-					dlog.WithError(err).Warn("Error on io.Copy(conn, dmsgConn)")
-				}
-			}()
+			_, err = io.Copy(conn, dmsgConn)
+			if err != nil {
+				dlog.WithError(err).Debug("io.Copy(conn, dmsgConn) ended")
+			}
 
-			wg.Wait()
+			// Close both to unblock the goroutine's io.Copy.
+			conn.Close()      //nolint:errcheck
+			dmsgConn.Close()  //nolint:errcheck
+			<-done
 		}(conn, n, dmsgC)
 	}
 }
 
-func proxyHTTPConn(n int) {
+func proxyHTTPConn(ctx context.Context, n int) { //nolint:unparam
 	r := gin.New()
 
 	r.Use(gin.Recovery())
@@ -435,18 +434,37 @@ func proxyHTTPConn(n int) {
 			dlog.WithError(err).Warn("Failed to copy response body")
 		}
 	})
+
+	var thiswebport uint
+	if n == -1 {
+		thiswebport = webPort[0]
+	} else {
+		thiswebport = webPort[n]
+	}
+
+	srv := &http.Server{
+		Addr:    fmt.Sprintf(":%v", thiswebport),
+		Handler: r,
+	}
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		var thiswebport uint
-		if n == -1 {
-			thiswebport = webPort[0]
-		} else {
-			thiswebport = webPort[n]
-		}
 		dlog.Debug(fmt.Sprintf("Serving http on: http://127.0.0.1:%v", thiswebport))
-		r.Run(":" + fmt.Sprintf("%v", thiswebport)) //nolint
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			dlog.WithError(err).Error("HTTP server error")
+		}
 		dlog.Debug(fmt.Sprintf("Stopped serving http on: http://127.0.0.1:%v", thiswebport))
+	}()
+
+	// Graceful shutdown on context cancellation.
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			dlog.WithError(err).Warn("HTTP server shutdown error")
+		}
 	}()
 }
 

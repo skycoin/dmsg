@@ -177,12 +177,13 @@ func proxyHTTPConnections(ctx context.Context, localPort uint, listener net.List
 	}
 	authRoute.Any("/*path", func(c *gin.Context) {
 		targetURL := fmt.Sprintf("http://127.0.0.1:%d%s?%s", localPort, c.Request.URL.Path, c.Request.URL.RawQuery)
+		parsed, err := url.Parse(targetURL)
+		if err != nil {
+			dlog.Errorf("failed to parse target URL %q: %v", targetURL, err)
+			c.String(http.StatusInternalServerError, "Bad target URL")
+			return
+		}
 		proxy := httputil.ReverseProxy{Director: func(req *http.Request) {
-			parsed, err := url.Parse(targetURL)
-			if err != nil {
-				dlog.Errorf("failed to parse target URL %q: %v", targetURL, err)
-				return
-			}
 			req.URL = parsed
 			req.Host = req.URL.Host
 		}}
