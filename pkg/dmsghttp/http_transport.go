@@ -41,7 +41,7 @@ func MakeHTTPTransport(ctx context.Context, dmsgC *dmsg.Client) HTTPTransport {
 		// HTTP keep-alive.
 		DisableKeepAlives: true,
 	}
-	// Close idle pooled connections when context is cancelled so that
+	// Close idle pooled connections when context is canceled so that
 	// server-side goroutines can clean up without waiting for idle timeout.
 	go func() {
 		<-ctx.Done()

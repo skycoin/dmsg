@@ -342,7 +342,7 @@ func proxyTCPConn(ctx context.Context, n int) { //nolint:unparam
 				return
 			}
 			dlog.Debug(fmt.Sprintf("Dialing %v:%v", dialPK[n].String(), dp))
-			dmsgConn, err := dmsgC.DialStream(context.Background(), dmsg.Addr{PK: dialPK[n], Port: dp}) //nolint
+			dmsgConn, err := dmsgC.DialStream(ctx, dmsg.Addr{PK: dialPK[n], Port: dp})
 			if err != nil {
 				dlog.WithError(err).Warn(fmt.Sprintf("Failed to dial dmsg address %v port %v", dialPK[n].String(), dmsgPorts[n]))
 				return
@@ -364,8 +364,12 @@ func proxyTCPConn(ctx context.Context, n int) { //nolint:unparam
 			}
 
 			// Close both to unblock the goroutine's io.Copy.
-			conn.Close()      //nolint:errcheck
-			dmsgConn.Close()  //nolint:errcheck
+			if err := conn.Close(); err != nil {
+				dlog.WithError(err).Debug("Error closing client conn")
+			}
+			if err := dmsgConn.Close(); err != nil {
+				dlog.WithError(err).Debug("Error closing dmsg conn")
+			}
 			<-done
 		}(conn, n, dmsgC)
 	}
@@ -447,8 +451,9 @@ func proxyHTTPConn(ctx context.Context, n int) { //nolint:unparam
 	}
 
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%v", thiswebport),
-		Handler: r,
+		Addr:              fmt.Sprintf(":%v", thiswebport),
+		Handler:           r,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	wg.Add(1)
@@ -462,9 +467,9 @@ func proxyHTTPConn(ctx context.Context, n int) { //nolint:unparam
 	}()
 
 	// Graceful shutdown on context cancellation.
-	go func() {
+	go func() { //nolint:gosec // G118: context.Background is intentional — shutdown must outlive parent ctx
 		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second) //nolint:govet
 		defer cancel()
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			dlog.WithError(err).Warn("HTTP server shutdown error")
