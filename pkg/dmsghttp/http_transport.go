@@ -2,10 +2,9 @@
 package dmsghttp
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"io"
+	"net"
 	"net/http"
 
 	dmsg "github.com/skycoin/dmsg/pkg/dmsg"
@@ -13,78 +12,72 @@ import (
 
 const defaultHTTPPort = uint16(80)
 
-// HTTPTransport implements http.RoundTripper
+// HTTPTransport implements http.RoundTripper using dmsg streams as the
+// underlying transport. It wraps Go's http.Transport with a custom DialContext
+// so that standard HTTP connection pooling and keep-alive work over dmsg.
+//
 // Do not confuse this with a Skywire Transport implementation.
 type HTTPTransport struct {
-	ctx   context.Context
-	dmsgC *dmsg.Client
+	ctx       context.Context
+	dmsgC     *dmsg.Client
+	transport *http.Transport
 }
 
 // MakeHTTPTransport makes an HTTPTransport.
 func MakeHTTPTransport(ctx context.Context, dmsgC *dmsg.Client) HTTPTransport {
-	return HTTPTransport{
+	t := HTTPTransport{
 		ctx:   ctx,
 		dmsgC: dmsgC,
 	}
+	t.transport = &http.Transport{
+		DialContext: t.dialContext,
+		// Connection pooling is disabled because dmsg streams use
+		// noise-encrypted framing with per-stream handshakes. Reusing
+		// streams across HTTP requests can cause EOF errors when the
+		// server's ReadTimeout expires between requests, and POST
+		// requests cannot be automatically retried.
+		// The main latency savings come from route caching and
+		// latency-sorted server selection in DialStream, not from
+		// HTTP keep-alive.
+		DisableKeepAlives: true,
+	}
+	// Close idle pooled connections when context is cancelled so that
+	// server-side goroutines can clean up without waiting for idle timeout.
+	go func() {
+		<-ctx.Done()
+		t.transport.CloseIdleConnections()
+	}()
+	return t
 }
 
-// RoundTrip implements golang's http package support for alternative HTTP transport protocols.
-// In this case dmsg is used instead of TCP to initiate the communication with the server.
-func (t HTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+// dialContext dials a dmsg stream for the given address.
+// Called by http.Transport when it needs a new connection.
+func (t HTTPTransport) dialContext(ctx context.Context, _, addr string) (net.Conn, error) {
 	var hostAddr dmsg.Addr
-	if err := hostAddr.Set(req.Host); err != nil {
+	if err := hostAddr.Set(addr); err != nil {
 		return nil, fmt.Errorf("invalid host address: %w", err)
 	}
 	if hostAddr.Port == 0 {
 		hostAddr.Port = defaultHTTPPort
 	}
-
-	stream, err := t.dmsgC.DialStream(req.Context(), hostAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	// Ensure stream is closed if we return an error before wrapping the response body
-	defer func() {
-		if err != nil {
-			_ = stream.Close() //nolint:errcheck // best-effort cleanup on error path
-		}
-	}()
-
-	if err = req.Write(stream); err != nil {
-		return nil, err
-	}
-	bufR := bufio.NewReader(stream)
-	resp, err := http.ReadResponse(bufR, req)
-	if err != nil {
-		return nil, err
-	}
-
-	// Wrap resp.Body to ensure the stream is closed when the body is closed
-	resp.Body = &wrappedBody{
-		ReadCloser: resp.Body,
-		stream:     stream,
-	}
-
-	return resp, nil
+	return t.dmsgC.DialStream(ctx, hostAddr)
 }
 
-// wrappedBody ensures that the DMSG stream is closed when the HTTP response body is closed.
-type wrappedBody struct {
-	io.ReadCloser
-	stream *dmsg.Stream
+// RoundTrip implements http.RoundTripper.
+// It normalizes the URL scheme to "http" (so Go's transport handles it)
+// and delegates to the pooled transport. The actual connection goes
+// through dmsg via the custom DialContext.
+func (t HTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Normalize scheme: callers may use "dmsg://" URLs.
+	// Go's transport only understands "http" and "https".
+	if req.URL.Scheme == "dmsg" {
+		req = req.Clone(req.Context())
+		req.URL.Scheme = "http"
+	}
+	return t.transport.RoundTrip(req)
 }
 
-func (wb *wrappedBody) Close() error {
-	// Drain the response body up to a limit (e.g., 512KB).
-	const maxDrainBytes = 512 * 1024
-	_, _ = io.CopyN(io.Discard, wb.ReadCloser, maxDrainBytes) //nolint
-
-	err1 := wb.ReadCloser.Close()
-	err2 := wb.stream.Close()
-
-	if err1 != nil {
-		return err1
-	}
-	return err2
+// CloseIdleConnections closes any idle pooled connections.
+func (t HTTPTransport) CloseIdleConnections() {
+	t.transport.CloseIdleConnections()
 }
