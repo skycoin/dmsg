@@ -379,6 +379,10 @@ func proxyHTTPConn(ctx context.Context, n int) { //nolint:unparam
 	r.Use(loggingMiddleware())
 
 	r.Any("/*path", func(c *gin.Context) {
+		// Limit request body to 10MB to prevent resource exhaustion.
+		const maxBodySize = 10 << 20
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBodySize)
+
 		var urlStr string
 		if n > -1 {
 			urlStr = fmt.Sprintf("dmsg://%s%s", resolveDmsgAddr[n], c.Param("path"))
