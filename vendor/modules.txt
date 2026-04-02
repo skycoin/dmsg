@@ -320,7 +320,7 @@ github.com/sirupsen/logrus/hooks/syslog
 # github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
 ## explicit
 github.com/skycoin/noise
-# github.com/skycoin/skycoin v0.28.6-0.20260328152706-a360adb0a4d3
+# github.com/skycoin/skycoin v0.28.6-0.20260401142608-a27afbb0b33b
 ## explicit; go 1.26.1
 github.com/skycoin/skycoin/src/cipher
 github.com/skycoin/skycoin/src/cipher/base58
@@ -329,9 +329,10 @@ github.com/skycoin/skycoin/src/cipher/ripemd160
 github.com/skycoin/skycoin/src/cipher/secp256k1-go
 github.com/skycoin/skycoin/src/cipher/secp256k1-go/secp256k1-go2
 github.com/skycoin/skycoin/src/util/logging
-# github.com/skycoin/skywire v1.3.40-0.20260328171146-a5facdc74e72
-## explicit; go 1.26.1
+# github.com/skycoin/skywire v1.3.40-0.20260402164617-90c6d9b52e01
+## explicit; go 1.21
 github.com/skycoin/skywire/deployment
+github.com/skycoin/skywire/pkg/skyenv
 github.com/skycoin/skywire/pkg/skywire-utilities/pkg/buildinfo
 github.com/skycoin/skywire/pkg/skywire-utilities/pkg/calvin
 github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher
@@ -484,8 +485,6 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# google.golang.org/genproto/googleapis/api v0.0.0-20260319201613-d00831a3d3e7
-## explicit; go 1.25.0
 # google.golang.org/protobuf v1.36.11
 ## explicit; go 1.23
 google.golang.org/protobuf/encoding/protowire
