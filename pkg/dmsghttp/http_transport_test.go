@@ -103,11 +103,33 @@ func TestHTTPTransport_RoundTrip(t *testing.T) {
 		}
 
 		// Assert: ensure we get expected behavior from both the http client and server perspectives.
+		// Use a deadline to prevent hanging if a DMSG session fails.
+		deadline := time.After(60 * time.Second)
 		for i := 0; i < nReqs; i++ {
-			(<-server0Results).Assert(t, i)
-			(<-client1Results).Assert(t, i)
-			(<-client2Results).Assert(t, i)
-			(<-client3Results).Assert(t, i)
+			select {
+			case r := <-server0Results:
+				r.Assert(t, i)
+			case <-deadline:
+				t.Fatal("timed out waiting for server results")
+			}
+			select {
+			case r := <-client1Results:
+				r.Assert(t, i)
+			case <-deadline:
+				t.Fatal("timed out waiting for client1 results")
+			}
+			select {
+			case r := <-client2Results:
+				r.Assert(t, i)
+			case <-deadline:
+				t.Fatal("timed out waiting for client2 results")
+			}
+			select {
+			case r := <-client3Results:
+				r.Assert(t, i)
+			case <-deadline:
+				t.Fatal("timed out waiting for client3 results")
+			}
 		}
 	})
 }
@@ -159,6 +181,10 @@ func newDmsgClient(t *testing.T, dc disc.APIClient, minSessions int, name string
 		assert.NoError(t, dmsgC.Close())
 	})
 
-	<-dmsgC.Ready()
+	select {
+	case <-dmsgC.Ready():
+	case <-time.After(30 * time.Second):
+		t.Fatal("timed out waiting for dmsg client to be ready")
+	}
 	return dmsgC
 }
