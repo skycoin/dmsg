@@ -19,8 +19,8 @@ require (
 	github.com/pires/go-proxyproto v0.11.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
-	github.com/skycoin/skycoin v0.28.6-0.20260328152706-a360adb0a4d3
-	github.com/skycoin/skywire v1.3.40-0.20260328171146-a5facdc74e72
+	github.com/skycoin/skycoin v0.28.6-0.20260401142608-a27afbb0b33b
+	github.com/skycoin/skywire v1.3.40-0.20260402164617-90c6d9b52e01
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.52.0
@@ -99,7 +99,6 @@ require (
 	golang.org/x/arch v0.25.0 // indirect
 	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/text v0.35.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260319201613-d00831a3d3e7 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
