@@ -20,7 +20,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6
 	github.com/skycoin/skycoin v0.28.6-0.20260401142608-a27afbb0b33b
-	github.com/skycoin/skywire v1.3.40-alpha1.0.20260403193212-00c8873faec9
+	github.com/skycoin/skywire v1.3.40-alpha1.0.20260403200912-95fa16e23aff
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.52.0
