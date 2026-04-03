@@ -58,7 +58,7 @@ func WhitelistMiddleware(whitelistedPKs []cipher.PubKey, next http.Handler) http
 }
 
 // ServeDebug serves pprof endpoints over dmsg on DefaultDebugPort, gated by the
-// provided whitelist public keys. It blocks until the context is cancelled or
+// provided whitelist public keys. It blocks until the context is canceled or
 // an error occurs.
 func ServeDebug(ctx context.Context, dmsgC *dmsg.Client, log *logging.Logger, whitelistPKs []cipher.PubKey) error {
 	handler := WhitelistMiddleware(whitelistPKs, DebugMux())
@@ -81,10 +81,12 @@ func ServeDebug(ctx context.Context, dmsgC *dmsg.Client, log *logging.Logger, wh
 	}
 
 	done := make(chan struct{})
-	go func() {
+	go func() { //nolint:gosec
 		select {
 		case <-ctx.Done():
-			if shutdownErr := srv.Shutdown(context.Background()); shutdownErr != nil {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second) //nolint:gosec
+			defer cancel()
+			if shutdownErr := srv.Shutdown(shutdownCtx); shutdownErr != nil {
 				log.WithError(shutdownErr).Error("debug server shutdown error")
 			}
 		case <-done:
