@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"log"
+	"os"
 
 	"github.com/skycoin/skywire/pkg/skywire-utilities/pkg/cipher"
 )
@@ -12,15 +13,27 @@ import (
 /*
 Embedded Deployment Defaults
 
-Change the contents of services-config.json and / or dmsghttp-config.json to embed updated values
+services-config.json contains the complete deployment configuration including
+both HTTP and DMSG endpoints. The _dmsg suffixed fields contain dmsg:// URLs
+for the same services, and dmsg_servers lists the DMSG servers for bootstrapping.
+
+Set SKYDEPLOY=/path/to/config.json to override the embedded defaults with a
+custom deployment configuration (e.g., for private networks or testing).
+
+dmsghttp-config.json is retained for backward compatibility with dmsg imports.
+It will be removed once dmsg is updated to read from services-config.json.
 */
 
-// ServicesJSON is the embedded services-config.json file
+// ServicesJSON is the deployment configuration. By default this is the embedded
+// services-config.json. If the SKYDEPLOY environment variable is set to a file
+// path, that file is loaded instead at init time.
 //
 //go:embed services-config.json
 var ServicesJSON []byte
 
-// DmsghttpJSON is the embedded dmsghttp-config.json file
+// DmsghttpJSON is the embedded dmsghttp-config.json file.
+// Deprecated: retained for backward compatibility with dmsg package imports.
+// Use ServicesJSON with _dmsg suffixed fields instead.
 //
 //go:embed dmsghttp-config.json
 var DmsghttpJSON []byte
@@ -31,8 +44,30 @@ type EnvServices struct {
 	Prod json.RawMessage `json:"prod"`
 }
 
-// Services are URLs, IP addresses, and public keys of the skywire services as deployed
+// DmsgServerEntry represents a DMSG server with its public key and address.
+// This is a simplified representation that avoids importing dmsg/disc.
+// Use ToDiscEntries() to convert to []*disc.Entry when needed.
+type DmsgServerEntry struct {
+	Static string `json:"static"`
+	Server struct {
+		Address string `json:"address"`
+	} `json:"server"`
+}
+
+// HasDmsgServers returns true if the deployment has DMSG server entries.
+func (s *Services) HasDmsgServers() bool {
+	return len(s.DmsgServers) > 0
+}
+
+// HasDmsgEndpoints returns true if the deployment has DMSG service endpoints.
+func (s *Services) HasDmsgEndpoints() bool {
+	return s.DmsgDiscoveryDmsg != ""
+}
+
+// Services are URLs, IP addresses, and public keys of the skywire services as deployed.
+// HTTP fields contain plain HTTP URLs, _dmsg fields contain dmsg:// URLs for the same services.
 type Services struct {
+	// HTTP endpoints
 	DmsgDiscovery      string          `json:"dmsg_discovery,omitempty"`
 	TransportDiscovery string          `json:"transport_discovery,omitempty"`
 	AddressResolver    string          `json:"address_resolver,omitempty"`
@@ -44,6 +79,14 @@ type Services struct {
 	StunServers        []string        `json:"stun_servers,omitempty"`
 	DNSServer          string          `json:"dns_server,omitempty"`
 	SurveyWhitelist    []cipher.PubKey `json:"survey_whitelist,omitempty"`
+	// DMSG endpoints (dmsg:// URLs for the same services)
+	DmsgServers            []DmsgServerEntry `json:"dmsg_servers,omitempty"`
+	DmsgDiscoveryDmsg      string            `json:"dmsg_discovery_dmsg,omitempty"`
+	TransportDiscoveryDmsg string            `json:"transport_discovery_dmsg,omitempty"`
+	AddressResolverDmsg    string            `json:"address_resolver_dmsg,omitempty"`
+	RouteFinderDmsg        string            `json:"route_finder_dmsg,omitempty"`
+	UptimeTrackerDmsg      string            `json:"uptime_tracker_dmsg,omitempty"`
+	ServiceDiscoveryDmsg   string            `json:"service_discovery_dmsg,omitempty"`
 }
 
 // Conf is the configuration URL for the deployment which may be fetched on `skywire cli config gen`
@@ -64,34 +107,31 @@ var Test Services
 var TestConf Conf
 
 func init() {
-	var js interface{}
-	err := json.Unmarshal(ServicesJSON, &js)
-	if err != nil {
-		log.Panic("services-config.json ", err)
+	// SKYDEPLOY overrides the embedded deployment config with a user-supplied file.
+	// This supports private networks, corporate deployments, and test environments.
+	if path := os.Getenv("SKYDEPLOY"); path != "" {
+		data, err := os.ReadFile(path) //nolint:gosec
+		if err != nil {
+			log.Panicf("SKYDEPLOY=%s: %v", path, err)
+		}
+		ServicesJSON = data
 	}
-	err = json.Unmarshal(DmsghttpJSON, &js)
-	if err != nil {
-		log.Panic("dmsghttp-config.json ", err)
-	}
+
 	var envServices EnvServices
-	err = json.Unmarshal(ServicesJSON, &envServices)
+	err := json.Unmarshal(ServicesJSON, &envServices)
 	if err != nil {
+		log.Panic("services-config.json: ", err)
+	}
+	if err = json.Unmarshal(envServices.Prod, &Prod); err != nil {
 		log.Panic(err)
 	}
-	err = json.Unmarshal(envServices.Prod, &Prod)
-	if err != nil {
+	if err = json.Unmarshal(envServices.Prod, &ProdConf); err != nil {
 		log.Panic(err)
 	}
-	err = json.Unmarshal(envServices.Prod, &ProdConf)
-	if err != nil {
+	if err = json.Unmarshal(envServices.Test, &Test); err != nil {
 		log.Panic(err)
 	}
-	err = json.Unmarshal(envServices.Test, &Test)
-	if err != nil {
-		log.Panic(err)
-	}
-	err = json.Unmarshal(envServices.Test, &TestConf)
-	if err != nil {
+	if err = json.Unmarshal(envServices.Test, &TestConf); err != nil {
 		log.Panic(err)
 	}
 }

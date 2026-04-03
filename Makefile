@@ -116,6 +116,8 @@ tidy: ## Tidies dependencies
 dep: tidy ## Sorts and vendors dependencies
 	${OPTS} go mod vendor -v
 
+update-deps: update-dep ## Alias for update-dep
+
 update-dep: ## Update all dependencies to latest versions, vendor, and commit
 	${OPTS} go get -v -u ./...
 	${OPTS} go mod tidy -v
