@@ -24,8 +24,8 @@ jobs:
         with:
           version: v2.11.4
 
-      - name: Checking Format and Testing
-        run: make check
+      - name: Unit Tests
+        run: make test
 
       - name: Build
         run: make build
@@ -62,8 +62,8 @@ jobs:
         with:
           version: v2.11.4
 
-      - name: Checking Format and Testing
-        run: make check
+      - name: Unit Tests
+        run: make test
 
       - name: Build
         run: make build

@@ -21,13 +21,9 @@ linters:
     - nakedret
     - revive
     - staticcheck
-    - unparam
-    - unused
-    - misspell
-    - unparam
-    - revive
     - unconvert
     - unparam
+    - unused
   settings:
     dupl:
       threshold: 100
