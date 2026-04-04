@@ -82,9 +82,9 @@ func (env *TestEnv) ExecInContainer(containerName string, cmd []string) (string,
 }
 
 // waitForDiscoveryServer polls the discovery until the dmsg server is registered.
-func (env *TestEnv) waitForDiscoveryServer(t *testing.T, timeout time.Duration) {
+func (env *TestEnv) waitForDiscoveryServer(t *testing.T) {
 	t.Helper()
-	deadline := time.Now().Add(timeout)
+	deadline := time.Now().Add(60 * time.Second)
 	for time.Now().Before(deadline) {
 		output, err := env.ExecInContainer(containerClient, []string{
 			"curl", "-sf", fmt.Sprintf("%s/dmsg-discovery/available_servers", discoveryURL),
@@ -95,59 +95,7 @@ func (env *TestEnv) waitForDiscoveryServer(t *testing.T, timeout time.Duration) 
 		}
 		time.Sleep(2 * time.Second)
 	}
-	t.Fatalf("DMSG server did not register within %v", timeout)
-}
-
-// startTestServer starts the testserver HTTP server and dmsg web srv on the client container.
-// Returns a cleanup function.
-func (env *TestEnv) startTestServer(t *testing.T, sk string) (clientPK string) {
-	t.Helper()
-
-	// Start the built-in HTTP test server
-	_, err := env.ExecInContainer(containerClient, []string{
-		"sh", "-c", "nohup testserver > /tmp/testserver.log 2>&1 &",
-	})
-	require.NoError(t, err, "failed to start testserver")
-
-	time.Sleep(1 * time.Second)
-
-	// Start dmsg web srv to proxy the test server over dmsg
-	_, err = env.ExecInContainer(containerClient, []string{
-		"sh", "-c", fmt.Sprintf(
-			"nohup dmsg web srv -Z -U %s -s %s -p %d -d %d --loglvl debug > /tmp/dmsg-web-srv.log 2>&1 &",
-			discoveryURL, sk, httpServerPort, dmsgPort,
-		),
-	})
-	require.NoError(t, err, "failed to start dmsg web srv")
-
-	// Derive PK from SK
-	output, err := env.ExecInContainer(containerClient, []string{
-		"sh", "-c", fmt.Sprintf("echo '%s' | dmsg conf 2>/dev/null || true", sk),
-	})
-	require.NoError(t, err)
-
-	// Wait for dmsg web srv to register and connect
-	time.Sleep(8 * time.Second)
-
-	// Get the PK by querying discovery for our entry
-	output, err = env.ExecInContainer(containerClient, []string{
-		"sh", "-c", "cat /tmp/dmsg-web-srv.log | grep -o 'public_key=[^ ]*' | head -1 | cut -d= -f2 | tr -d '\"'",
-	})
-	require.NoError(t, err)
-	clientPK = strings.TrimSpace(output)
-	if clientPK == "" {
-		// Fallback: derive from SK using the dmsg binary
-		output, err = env.ExecInContainer(containerClient, []string{
-			"sh", "-c", fmt.Sprintf(
-				"dmsg curl -Z -U %s -s %s --help 2>&1 | grep -o 'public_key=[^ ]*' | head -1 | cut -d= -f2 || true",
-				discoveryURL, sk,
-			),
-		})
-		require.NoError(t, err)
-		clientPK = strings.TrimSpace(output)
-	}
-	t.Logf("Test server PK: %s", clientPK)
-	return clientPK
+	t.Fatal("DMSG server did not register within 60s")
 }
 
 func TestMain(m *testing.M) {
@@ -176,7 +124,7 @@ func TestDmsgServerIsRunning(t *testing.T) {
 
 func TestDiscoveryHasServer(t *testing.T) {
 	env := NewEnv()
-	env.waitForDiscoveryServer(t, 60*time.Second)
+	env.waitForDiscoveryServer(t)
 
 	output, err := env.ExecInContainer(containerClient, []string{
 		"curl", "-sf", fmt.Sprintf("%s/dmsg-discovery/available_servers", discoveryURL),
@@ -200,7 +148,7 @@ func TestDiscoveryHealth(t *testing.T) {
 
 func TestDmsgCurl_DirectClient(t *testing.T) {
 	env := NewEnv()
-	env.waitForDiscoveryServer(t, 60*time.Second)
+	env.waitForDiscoveryServer(t)
 
 	// Start testserver + dmsg web srv
 	_, err := env.ExecInContainer(containerClient, []string{
@@ -248,7 +196,7 @@ func TestDmsgCurl_DirectClient(t *testing.T) {
 
 func TestDmsgCurl_HTTPDiscovery(t *testing.T) {
 	env := NewEnv()
-	env.waitForDiscoveryServer(t, 60*time.Second)
+	env.waitForDiscoveryServer(t)
 
 	// Use the dmsg server's PK — the server itself listens on dmsg, so we can
 	// try reaching the discovery's HTTP API via dmsg curl with -Z flag.
@@ -267,7 +215,7 @@ func TestDmsgCurl_HTTPDiscovery(t *testing.T) {
 
 func TestDmsgCurl_SpecificServer(t *testing.T) {
 	env := NewEnv()
-	env.waitForDiscoveryServer(t, 60*time.Second)
+	env.waitForDiscoveryServer(t)
 
 	// Start testserver + dmsg web srv with a different SK
 	testSK2 := "b3e4a0c8f4e2f9a7b1d5c3e8f9a2b1c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9b1"
@@ -316,7 +264,7 @@ func TestDmsgCurl_SpecificServer(t *testing.T) {
 
 func TestDmsgCurl_DiscoveryOverDmsg(t *testing.T) {
 	env := NewEnv()
-	env.waitForDiscoveryServer(t, 60*time.Second)
+	env.waitForDiscoveryServer(t)
 
 	// The dmsg-discovery serves its API over dmsg on port 80 (dmsghttp).
 	// Get the discovery's PK from its SK.
@@ -341,7 +289,7 @@ func TestDmsgCurl_DiscoveryOverDmsg(t *testing.T) {
 
 func TestHTTPServerOverDmsg(t *testing.T) {
 	env := NewEnv()
-	env.waitForDiscoveryServer(t, 60*time.Second)
+	env.waitForDiscoveryServer(t)
 
 	// Start the testserver and dmsg web srv
 	testSK3 := "c4e4a0c8f4e2f9a7b1d5c3e8f9a2b1c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9c2"
