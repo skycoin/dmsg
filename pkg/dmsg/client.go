@@ -306,10 +306,13 @@ func (ce *Client) Serve(ctx context.Context) {
 						}
 						ce.sesMx.Unlock()
 					}
+					// Only backoff after all servers have been tried
+					ce.log.WithField("current_backoff", ce.bo.String()).
+						Warn("All servers failed, backing off.")
+					ce.serveWait()
 				}
-				ce.log.WithField("remote_pk", entry.Static).WithError(err).WithField("current_backoff", ce.bo.String()).
+				ce.log.WithField("remote_pk", entry.Static).WithError(err).
 					Warn("Failed to establish session.")
-				ce.serveWait()
 			} else {
 				// Reset backoff on successful session establishment.
 				ce.bo = ce.initBO
