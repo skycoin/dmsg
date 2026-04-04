@@ -21,7 +21,7 @@ import (
 
 const (
 	discoveryURL    = "http://dmsg-discovery:9090"
-	serverPK        = "03b88c1335c28264c5e40ffad67eee75c2f2c39bda27015d6e14a0e90eaa78a41c"
+	serverPK        = "039346fcae983d7e91d923f5331b725b6892baa27bf779e563014660aa05e273e9"
 	testClientSK    = "a3e4a0c8f4e2f9a7b1d5c3e8f9a2b1c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0"
 	containerClient = "dmsg-e2e-client"
 	containerServer = "dmsg-e2e-server"
