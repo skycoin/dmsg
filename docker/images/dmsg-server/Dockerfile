@@ -25,7 +25,8 @@ RUN mkdir -p /e2e && \
   "public_address": "172.20.0.4:8080",\
   "local_address": ":8080",\
   "health_endpoint_address": ":8081",\
-  "log_level": "info"\
+  "log_level": "info",\
+  "max_sessions": 2048\
 }' > /e2e/dmsg-server.json
 
 STOPSIGNAL SIGINT
