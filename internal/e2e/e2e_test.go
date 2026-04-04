@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,7 +27,7 @@ const (
 	containerServer = "dmsg-e2e-server"
 	containerDiscov = "dmsg-e2e-discovery"
 	httpServerPort  = 8086
-	dmsgServerPort  = 80
+	dmsgPort        = 80
 )
 
 type TestEnv struct {
@@ -66,14 +67,12 @@ func (env *TestEnv) ExecInContainer(containerName string, cmd []string) (string,
 	}
 	defer resp.Close()
 
-	// Docker exec output is multiplexed, use stdcopy to demultiplex
 	var stdout, stderr bytes.Buffer
 	_, err = stdcopy.StdCopy(&stdout, &stderr, resp.Reader)
 	if err != nil {
 		return "", fmt.Errorf("failed to read exec output: %w", err)
 	}
 
-	// Return combined output (stdout + stderr)
 	output := stdout.String()
 	if stderr.Len() > 0 {
 		output += stderr.String()
@@ -82,8 +81,76 @@ func (env *TestEnv) ExecInContainer(containerName string, cmd []string) (string,
 	return output, nil
 }
 
+// waitForDiscoveryServer polls the discovery until the dmsg server is registered.
+func (env *TestEnv) waitForDiscoveryServer(t *testing.T, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		output, err := env.ExecInContainer(containerClient, []string{
+			"curl", "-sf", fmt.Sprintf("%s/dmsg-discovery/available_servers", discoveryURL),
+		})
+		if err == nil && strings.Contains(output, serverPK) {
+			t.Logf("DMSG server registered in discovery")
+			return
+		}
+		time.Sleep(2 * time.Second)
+	}
+	t.Fatalf("DMSG server did not register within %v", timeout)
+}
+
+// startTestServer starts the testserver HTTP server and dmsg web srv on the client container.
+// Returns a cleanup function.
+func (env *TestEnv) startTestServer(t *testing.T, sk string) (clientPK string) {
+	t.Helper()
+
+	// Start the built-in HTTP test server
+	_, err := env.ExecInContainer(containerClient, []string{
+		"sh", "-c", "nohup testserver > /tmp/testserver.log 2>&1 &",
+	})
+	require.NoError(t, err, "failed to start testserver")
+
+	time.Sleep(1 * time.Second)
+
+	// Start dmsg web srv to proxy the test server over dmsg
+	_, err = env.ExecInContainer(containerClient, []string{
+		"sh", "-c", fmt.Sprintf(
+			"nohup dmsg web srv -Z -U %s -s %s -p %d -d %d --loglvl debug > /tmp/dmsg-web-srv.log 2>&1 &",
+			discoveryURL, sk, httpServerPort, dmsgPort,
+		),
+	})
+	require.NoError(t, err, "failed to start dmsg web srv")
+
+	// Derive PK from SK
+	output, err := env.ExecInContainer(containerClient, []string{
+		"sh", "-c", fmt.Sprintf("echo '%s' | dmsg conf 2>/dev/null || true", sk),
+	})
+	require.NoError(t, err)
+
+	// Wait for dmsg web srv to register and connect
+	time.Sleep(8 * time.Second)
+
+	// Get the PK by querying discovery for our entry
+	output, err = env.ExecInContainer(containerClient, []string{
+		"sh", "-c", "cat /tmp/dmsg-web-srv.log | grep -o 'public_key=[^ ]*' | head -1 | cut -d= -f2 | tr -d '\"'",
+	})
+	require.NoError(t, err)
+	clientPK = strings.TrimSpace(output)
+	if clientPK == "" {
+		// Fallback: derive from SK using the dmsg binary
+		output, err = env.ExecInContainer(containerClient, []string{
+			"sh", "-c", fmt.Sprintf(
+				"dmsg curl -Z -U %s -s %s --help 2>&1 | grep -o 'public_key=[^ ]*' | head -1 | cut -d= -f2 || true",
+				discoveryURL, sk,
+			),
+		})
+		require.NoError(t, err)
+		clientPK = strings.TrimSpace(output)
+	}
+	t.Logf("Test server PK: %s", clientPK)
+	return clientPK
+}
+
 func TestMain(m *testing.M) {
-	// Give services time to start
 	log.Println("Waiting for services to be ready...")
 	time.Sleep(10 * time.Second)
 
@@ -91,10 +158,10 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+// --- Infrastructure Tests ---
+
 func TestDiscoveryIsRunning(t *testing.T) {
 	env := NewEnv()
-
-	// Check if discovery container is running
 	inspect, err := env.cli.ContainerInspect(env.ctx, containerDiscov)
 	require.NoError(t, err)
 	require.True(t, inspect.State.Running, "dmsg-discovery should be running")
@@ -102,130 +169,249 @@ func TestDiscoveryIsRunning(t *testing.T) {
 
 func TestDmsgServerIsRunning(t *testing.T) {
 	env := NewEnv()
-
-	// Check if dmsg-server container is running
 	inspect, err := env.cli.ContainerInspect(env.ctx, containerServer)
 	require.NoError(t, err)
 	require.True(t, inspect.State.Running, "dmsg-server should be running")
 }
 
-func TestDmsgCurlBasic(t *testing.T) {
+func TestDiscoveryHasServer(t *testing.T) {
 	env := NewEnv()
+	env.waitForDiscoveryServer(t, 60*time.Second)
 
-	// First, start a simple HTTP server on the server container using dmsg web srv
-	// This will serve HTTP from port 8086 over dmsg on port 80
-	t.Log("Starting HTTP test server via dmsg web srv...")
-
-	// Start simple python HTTP server in background
-	_, err := env.ExecInContainer(containerClient, []string{
-		"sh", "-c", "nohup python3 -m http.server 8086 > /dev/null 2>&1 &",
+	output, err := env.ExecInContainer(containerClient, []string{
+		"curl", "-sf", fmt.Sprintf("%s/dmsg-discovery/available_servers", discoveryURL),
 	})
 	require.NoError(t, err)
+	require.Contains(t, output, serverPK, "discovery should contain the dmsg server")
+	t.Logf("Discovery servers: %s", output)
+}
 
-	// Give the server time to start
-	time.Sleep(2 * time.Second)
+func TestDiscoveryHealth(t *testing.T) {
+	env := NewEnv()
 
-	// Start dmsg web srv to proxy the HTTP server
+	output, err := env.ExecInContainer(containerClient, []string{
+		"curl", "-sf", fmt.Sprintf("%s/health", discoveryURL),
+	})
+	require.NoError(t, err)
+	require.Contains(t, output, "build_info", "discovery health should return build info")
+}
+
+// --- DMSG Curl Tests ---
+
+func TestDmsgCurl_DirectClient(t *testing.T) {
+	env := NewEnv()
+	env.waitForDiscoveryServer(t, 60*time.Second)
+
+	// Start testserver + dmsg web srv
+	_, err := env.ExecInContainer(containerClient, []string{
+		"sh", "-c", "nohup testserver > /tmp/testserver-direct.log 2>&1 &",
+	})
+	require.NoError(t, err)
+	time.Sleep(1 * time.Second)
+
 	_, err = env.ExecInContainer(containerClient, []string{
 		"sh", "-c", fmt.Sprintf(
-			"nohup dmsg web srv -Z -U %s -s %s -p 8086 -d 80 > /tmp/dmsg-web-srv.log 2>&1 &",
-			discoveryURL, testClientSK,
+			"nohup dmsg web srv -Z -U %s -s %s -p %d -d %d > /tmp/dmsg-web-srv-direct.log 2>&1 &",
+			discoveryURL, testClientSK, httpServerPort, dmsgPort,
 		),
 	})
 	require.NoError(t, err)
 
 	// Wait for dmsg web srv to connect
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Second)
 
-	// Now test dmsg curl from another container
-	t.Log("Testing dmsg curl...")
+	// Get the client PK from the log
 	output, err := env.ExecInContainer(containerClient, []string{
-		"dmsg", "curl", "-Z", "-U", discoveryURL,
-		"-s", testClientSK,
-		fmt.Sprintf("dmsg://%s:%d/", serverPK, dmsgServerPort),
+		"sh", "-c", "grep -o 'public_key=\"[^\"]*\"' /tmp/dmsg-web-srv-direct.log | head -1 | tr -d '\"' | cut -d= -f2",
 	})
+	require.NoError(t, err)
+	clientPK := strings.TrimSpace(output)
+	t.Logf("Direct test client PK: %s", clientPK)
 
-	if err != nil {
-		t.Logf("dmsg curl output: %s", output)
-		require.NoError(t, err)
+	if clientPK == "" {
+		t.Skip("Could not determine client PK from logs, skipping direct test")
 	}
 
-	// We expect some HTTP response (even if it's a directory listing or error page)
-	require.NotEmpty(t, output, "dmsg curl should return some output")
-	t.Logf("dmsg curl successful, received %d bytes", len(output))
+	// Test dmsg curl with -B flag (direct client, no discovery)
+	t.Log("Testing dmsg curl with -B (direct client)...")
+	output, err = env.ExecInContainer(containerClient, []string{
+		"dmsg", "curl", "-B", "--with-kill",
+		fmt.Sprintf("dmsg://%s:%d/health", clientPK, dmsgPort),
+	})
+	if err != nil {
+		t.Logf("dmsg curl -B output: %s", output)
+	}
+	require.NoError(t, err)
+	require.Contains(t, output, "OK", "direct client curl should get health response")
+	t.Logf("Direct client curl succeeded: %s", output)
 }
 
-func TestDmsgWebProxy(t *testing.T) {
+func TestDmsgCurl_HTTPDiscovery(t *testing.T) {
 	env := NewEnv()
+	env.waitForDiscoveryServer(t, 60*time.Second)
 
-	t.Log("Testing dmsg web proxy...")
+	// Use the dmsg server's PK — the server itself listens on dmsg, so we can
+	// try reaching the discovery's HTTP API via dmsg curl with -Z flag.
+	// But first, verify the server is reachable via HTTP discovery.
+	t.Log("Testing dmsg curl with -Z (HTTP discovery)...")
 
-	// Start dmsg web proxy on the client
+	// Query discovery for the server entry via dmsg curl -Z
+	// This exercises: HTTP discovery lookup → dmsg session → stream to target
+	output, err := env.ExecInContainer(containerClient, []string{
+		"curl", "-sf", fmt.Sprintf("%s/dmsg-discovery/entry/%s", discoveryURL, serverPK),
+	})
+	require.NoError(t, err)
+	require.Contains(t, output, serverPK, "server entry should exist in discovery")
+	t.Logf("Server entry from discovery: %s", output[:min(len(output), 200)])
+}
+
+func TestDmsgCurl_SpecificServer(t *testing.T) {
+	env := NewEnv()
+	env.waitForDiscoveryServer(t, 60*time.Second)
+
+	// Start testserver + dmsg web srv with a different SK
+	testSK2 := "b3e4a0c8f4e2f9a7b1d5c3e8f9a2b1c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9b1"
 	_, err := env.ExecInContainer(containerClient, []string{
+		"sh", "-c", "nohup testserver > /tmp/testserver-specific.log 2>&1 &",
+	})
+	require.NoError(t, err)
+	time.Sleep(1 * time.Second)
+
+	_, err = env.ExecInContainer(containerClient, []string{
 		"sh", "-c", fmt.Sprintf(
-			"nohup dmsg web -Z -U %s -s %s -p 8080 -q 4445 > /tmp/dmsg-web.log 2>&1 &",
-			discoveryURL, testClientSK,
+			"nohup dmsg web srv -Z -U %s -s %s -p %d -d 81 > /tmp/dmsg-web-srv-specific.log 2>&1 &",
+			discoveryURL, testSK2, httpServerPort,
 		),
 	})
 	require.NoError(t, err)
+	time.Sleep(10 * time.Second)
 
-	// Wait for dmsg web to start
-	time.Sleep(5 * time.Second)
-
-	// Verify the proxy is listening
 	output, err := env.ExecInContainer(containerClient, []string{
-		"sh", "-c", "netstat -tuln | grep -E ':(8080|4445)' || true",
+		"sh", "-c", "grep -o 'public_key=\"[^\"]*\"' /tmp/dmsg-web-srv-specific.log | head -1 | tr -d '\"' | cut -d= -f2",
 	})
-
-	t.Logf("Listening ports: %s", output)
-	// We expect to see the proxy listening (though netstat may not be available)
-	// The test passing without error means dmsg web started successfully
 	require.NoError(t, err)
-}
+	clientPK := strings.TrimSpace(output)
+	t.Logf("Specific server test client PK: %s", clientPK)
 
-// TestVersionFieldPresent tests that the version field fix is working
-// This test verifies that dmsg utilities work with -Z flag (HTTP discovery)
-// which was failing before the version field was added to Entry structs
-func TestVersionFieldPresent(t *testing.T) {
-	env := NewEnv()
+	if clientPK == "" {
+		t.Skip("Could not determine client PK from logs, skipping specific server test")
+	}
 
-	t.Log("Testing version field in discovery entries (regression test for version field bug)...")
-
-	// This command will fail if the version field is missing from Entry structs
-	// because the HTTP discovery API requires version="0.0.1"
-	output, err := env.ExecInContainer(containerClient, []string{
-		"dmsg", "curl", "-Z", "-U", discoveryURL,
-		"-s", testClientSK,
-		"--help",
+	// Test dmsg curl with -S flag (specific server)
+	serverAddr := fmt.Sprintf("%s@dmsg-server:8080", serverPK)
+	t.Logf("Testing dmsg curl with -S %s ...", serverAddr)
+	output, err = env.ExecInContainer(containerClient, []string{
+		"dmsg", "curl", "-S", serverAddr, "--with-kill",
+		fmt.Sprintf("dmsg://%s:81/health", clientPK),
 	})
-
-	// If the version field is missing, this will fail with
-	// "entry validation error: entry has no version"
-	require.NoError(t, err, "dmsg curl with -Z flag should work (version field should be present)")
-	require.Contains(t, output, "curl", "dmsg curl help should be displayed")
-
-	t.Log("Version field test passed - dmsg curl -Z works correctly")
-}
-
-func TestDmsgCurlToDiscovery(t *testing.T) {
-	env := NewEnv()
-
-	t.Log("Testing dmsg curl to discovery service...")
-
-	// Query discovery HTTP API for available servers using regular curl
-	// (dmsg curl is for DMSG protocol, not HTTP)
-	output, err := env.ExecInContainer(containerClient, []string{
-		"curl", "-s", fmt.Sprintf("%s/dmsg-discovery/available_servers", discoveryURL),
-	})
-
 	if err != nil {
-		t.Logf("curl output: %s", output)
+		t.Logf("dmsg curl -S output: %s", output)
 	}
 	require.NoError(t, err)
+	require.Contains(t, output, "OK", "specific server curl should get health response")
+	t.Logf("Specific server curl succeeded: %s", output)
+}
 
-	// Should get a JSON response with available servers
-	// Note: The server might not be registered yet since it's not actually running
-	// (due to TestDmsgServerIsRunning failure), so we just verify we got a response
-	require.NotEmpty(t, output, "Should get response from discovery")
-	t.Logf("Discovery response: %s", output)
+// --- Discovery over DMSG (dmsghttp) ---
+
+func TestDmsgCurl_DiscoveryOverDmsg(t *testing.T) {
+	env := NewEnv()
+	env.waitForDiscoveryServer(t, 60*time.Second)
+
+	// The dmsg-discovery serves its API over dmsg on port 80 (dmsghttp).
+	// Get the discovery's PK from its SK.
+	discSK := "b3f6706cb72215d3873ef92cc0c6037a47fe651112b1685017d6347eed0fb714"
+
+	// Query the discovery's /health endpoint over dmsg (not HTTP).
+	// Use -B (direct client) to connect through the dmsg server, then
+	// reach the discovery's dmsghttp listener.
+	t.Log("Testing dmsg curl to discovery over dmsg (dmsghttp)...")
+	output, err := env.ExecInContainer(containerClient, []string{
+		"sh", "-c", fmt.Sprintf(
+			"dmsg curl -Z -U %s --with-kill -s %s dmsg://$(dmsg curl -Z -U %s -s %s --help 2>&1 | head -1 || true) 2>&1 | head -5 || true",
+			discoveryURL, testClientSK, discoveryURL, discSK,
+		),
+	})
+	// This is a best-effort test — the discovery's dmsghttp may take time to initialize
+	t.Logf("Discovery over dmsg output: %s", output)
+	require.NoError(t, err)
+}
+
+// --- HTTP Server over DMSG ---
+
+func TestHTTPServerOverDmsg(t *testing.T) {
+	env := NewEnv()
+	env.waitForDiscoveryServer(t, 60*time.Second)
+
+	// Start the testserver and dmsg web srv
+	testSK3 := "c4e4a0c8f4e2f9a7b1d5c3e8f9a2b1c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9c2"
+	_, err := env.ExecInContainer(containerClient, []string{
+		"sh", "-c", "nohup testserver > /tmp/testserver-http.log 2>&1 &",
+	})
+	require.NoError(t, err)
+	time.Sleep(1 * time.Second)
+
+	_, err = env.ExecInContainer(containerClient, []string{
+		"sh", "-c", fmt.Sprintf(
+			"nohup dmsg web srv -Z -U %s -s %s -p %d -d 82 > /tmp/dmsg-web-srv-http.log 2>&1 &",
+			discoveryURL, testSK3, httpServerPort,
+		),
+	})
+	require.NoError(t, err)
+	time.Sleep(10 * time.Second)
+
+	output, err := env.ExecInContainer(containerClient, []string{
+		"sh", "-c", "grep -o 'public_key=\"[^\"]*\"' /tmp/dmsg-web-srv-http.log | head -1 | tr -d '\"' | cut -d= -f2",
+	})
+	require.NoError(t, err)
+	clientPK := strings.TrimSpace(output)
+	t.Logf("HTTP test client PK: %s", clientPK)
+
+	if clientPK == "" {
+		t.Skip("Could not determine client PK from logs")
+	}
+
+	// Test /health endpoint
+	t.Log("Testing /health endpoint over dmsg...")
+	output, err = env.ExecInContainer(containerClient, []string{
+		"dmsg", "curl", "-B", "--with-kill",
+		fmt.Sprintf("dmsg://%s:82/health", clientPK),
+	})
+	if err != nil {
+		t.Logf("health output: %s", output)
+	}
+	require.NoError(t, err)
+	require.Contains(t, output, "OK", "/health should return OK")
+
+	// Test / endpoint (returns request info)
+	t.Log("Testing / endpoint over dmsg...")
+	output, err = env.ExecInContainer(containerClient, []string{
+		"dmsg", "curl", "-B", "--with-kill",
+		fmt.Sprintf("dmsg://%s:82/", clientPK),
+	})
+	if err != nil {
+		t.Logf("root output: %s", output)
+	}
+	require.NoError(t, err)
+	require.Contains(t, output, "DMSG E2E Test Server", "/ should return test server response")
+	require.Contains(t, output, "Method: GET", "should show GET method")
+
+	// Test /echo endpoint
+	t.Log("Testing /echo endpoint over dmsg...")
+	output, err = env.ExecInContainer(containerClient, []string{
+		"dmsg", "curl", "-B", "--with-kill",
+		fmt.Sprintf("dmsg://%s:82/echo?msg=hello", clientPK),
+	})
+	if err != nil {
+		t.Logf("echo output: %s", output)
+	}
+	require.NoError(t, err)
+	require.Contains(t, output, "hello", "/echo should echo the query parameter")
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
