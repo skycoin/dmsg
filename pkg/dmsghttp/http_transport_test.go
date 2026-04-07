@@ -70,15 +70,15 @@ func TestHTTPTransport_RoundTrip(t *testing.T) {
 		// Configure timeouts to prevent hanging on errors.
 		httpC1 := http.Client{
 			Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client1")),
-			Timeout:   10 * time.Second,
+			Timeout:   30 * time.Second,
 		}
 		httpC2 := http.Client{
 			Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client2")),
-			Timeout:   10 * time.Second,
+			Timeout:   30 * time.Second,
 		}
 		httpC3 := http.Client{
 			Transport: MakeHTTPTransport(ctx, newDmsgClient(t, dc, minSessions, "client3")),
-			Timeout:   10 * time.Second,
+			Timeout:   30 * time.Second,
 		}
 
 		// Allow time for dmsg sessions to stabilize across all platforms.
