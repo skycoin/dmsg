@@ -81,8 +81,10 @@ func TestHTTPTransport_RoundTrip(t *testing.T) {
 			Timeout:   10 * time.Second,
 		}
 
-		// Allow time for dmsg sessions to stabilize on macOS
-		time.Sleep(200 * time.Millisecond)
+		// Allow time for dmsg sessions to stabilize across all platforms.
+		// CI runners are slower; 200ms was insufficient for noise handshakes
+		// to complete across 5 servers × 4 clients.
+		time.Sleep(2 * time.Second)
 
 		// Act: http clients send requests concurrently.
 		// - client1 sends "/index.html" requests.
