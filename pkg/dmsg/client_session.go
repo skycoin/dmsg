@@ -49,13 +49,13 @@ func (cs *ClientSession) DialStream(ctx context.Context, dst Addr) (dStr *Stream
 		}
 	}()
 
-	// If the caller's context is cancelled, close the stream to interrupt
+	// If the caller's context is canceled, close the stream to interrupt
 	// any blocked read/write and free the ephemeral port immediately.
 	ctxDone := make(chan struct{})
 	go func() {
 		select {
 		case <-ctx.Done():
-			dStr.Close() //nolint:errcheck
+			_ = dStr.Close()
 		case <-ctxDone:
 		}
 	}()
