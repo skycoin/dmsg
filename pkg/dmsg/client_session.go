@@ -55,7 +55,7 @@ func (cs *ClientSession) DialStream(ctx context.Context, dst Addr) (dStr *Stream
 	go func() {
 		select {
 		case <-ctx.Done():
-			_ = dStr.Close()
+			dStr.Close() //nolint:errcheck
 		case <-ctxDone:
 		}
 	}()
